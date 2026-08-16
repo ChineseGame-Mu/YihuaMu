@@ -6,6 +6,7 @@
 //! the multiplayer room handler.
 
 pub mod rules;
+pub mod trick;
 
 pub const MIN_PLAYERS: usize = 4;
 pub const MAX_PLAYERS: usize = 14;
@@ -69,8 +70,6 @@ pub enum CardFace {
     Joker(Joker),
 }
 
-/// High-level Guandan play families. Detailed validation and comparison are
-/// added in the next milestone without changing the existing Shengji engine.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlayPattern {
     Single,
@@ -92,10 +91,7 @@ mod tests {
     #[test]
     fn accepts_every_supported_table_size() {
         for player_count in MIN_PLAYERS..=MAX_PLAYERS {
-            assert_eq!(
-                TableConfig::new(player_count),
-                Ok(TableConfig { player_count })
-            );
+            assert_eq!(TableConfig::new(player_count), Ok(TableConfig { player_count }));
         }
     }
 
