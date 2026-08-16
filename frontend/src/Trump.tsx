@@ -17,16 +17,16 @@ const TrumpE = (props: IProps): JSX.Element => {
     )[0].value;
     return (
       <div className="trump">
-        The trump suit is <InlineCard card={card} /> (rank {rank})
+        主牌花色：<InlineCard card={card} />（级牌 {rank}）
       </div>
     );
   } else if (
     trump.NoTrump.number !== undefined &&
     trump.NoTrump.number !== null
   ) {
-    return <div className="trump">No trump, rank {trump.NoTrump.number}</div>;
+    return <div className="trump">无主，级牌 {trump.NoTrump.number}</div>;
   } else {
-    return <div className="trump">No trump</div>;
+    return <div className="trump">无主</div>;
   }
 };
 
