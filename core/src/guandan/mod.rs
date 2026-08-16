@@ -5,6 +5,7 @@
 pub mod compare;
 pub mod deck;
 pub mod rules;
+pub mod team;
 pub mod trick;
 
 pub const MIN_PLAYERS: usize = 4;
