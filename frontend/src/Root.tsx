@@ -7,6 +7,7 @@ import Exchange from "./Exchange";
 import JoinRoom from "./JoinRoom";
 import { AppStateContext } from "./AppStateProvider";
 import { TimerContext } from "./TimerProvider";
+import { WebsocketContext } from "./WebsocketProvider";
 import Credits from "./Credits";
 import Chat from "./Chat";
 import Play from "./Play";
@@ -21,6 +22,7 @@ const Confetti = React.lazy(async () => await import("./Confetti"));
 const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
+  const { send } = React.useContext(WebsocketContext);
   const hasRoomInUrl = window.location.hash.replace(/^#/, "").length === 16;
   const [showLobby, setShowLobby] = React.useState<boolean>(hasRoomInUrl);
 
@@ -30,6 +32,7 @@ const Root = (): JSX.Element => {
   const [showHeaderMessages, setShowHeaderMessages] = React.useState<boolean>(
     state.headerMessages.length > 0,
   );
+
   React.useEffect(() => {
     if (
       state.headerMessages.length > 0 &&
@@ -54,6 +57,31 @@ const Root = (): JSX.Element => {
       document.body.classList.remove("dark-mode");
     };
   }, [state.settings.darkMode]);
+
+  React.useEffect(() => {
+    if (
+      state.gameState !== null &&
+      "Initialize" in state.gameState &&
+      state.roomName.length === 16
+    ) {
+      const desiredMode = sessionStorage.getItem("yihuaDesiredGameMode");
+      if (desiredMode === "FindingFriends") {
+        send({
+          Action: {
+            SetGameMode: {
+              FindingFriends: {
+                num_friends: null,
+              },
+            },
+          },
+        });
+        sessionStorage.removeItem("yihuaDesiredGameMode");
+      } else if (desiredMode === "Tractor") {
+        send({ Action: { SetGameMode: "Tractor" } });
+        sessionStorage.removeItem("yihuaDesiredGameMode");
+      }
+    }
+  }, [state.gameState, state.roomName, send]);
 
   const headerMessages = showHeaderMessages ? (
     <div
