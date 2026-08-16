@@ -1099,8 +1099,7 @@ const Initialize = (props: IProps): JSX.Element => {
         <button
           className="big"
           disabled={
-            props.state.propagated.game_start_policy ===
-              "AllowLandlordOnly" &&
+            props.state.propagated.game_start_policy === "AllowLandlordOnly" &&
             landlordIndex !== -1 &&
             props.state.propagated.players[landlordIndex].name !== props.name
           }
