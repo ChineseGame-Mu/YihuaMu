@@ -21,14 +21,14 @@ const percentage = (numerator: number, denominator: number): string => {
   if (denominator > 0) {
     return ((numerator / denominator) * 100).toFixed(2) + "%";
   }
-  return "n/a";
+  return "无数据";
 };
 
 const ranksPerGame = (ranks: number, numGames: number): string => {
   if (numGames > 0) {
     return (ranks / numGames).toFixed(3);
   }
-  return "n/a";
+  return "无数据";
 };
 
 interface RowIProps {
@@ -66,48 +66,44 @@ const GameStatisticsPane = (props: IProps): JSX.Element => {
 
   return (
     <div className="gameStatistics">
-      <h3>win statistics</h3>
+      <h3>胜负统计</h3>
       <div style={{ display: "table" }}>
         <Row>
           <Cell />
-          <LabelCell>played</LabelCell>
-          <LabelCell>won</LabelCell>
-          <LabelCell>percentage</LabelCell>
+          <LabelCell>局数</LabelCell>
+          <LabelCell>获胜</LabelCell>
+          <LabelCell>胜率</LabelCell>
         </Row>
         <GameStatisticsRow
-          label={"attacking"}
+          label={"闲家"}
           numPlayed={gamesPlayedAsAttacking}
           numWon={gamesWonAsAttacking}
         />
         <GameStatisticsRow
-          label={"defending"}
+          label={"庄家队"}
           numPlayed={gameStatistics.gamesPlayedAsDefending}
           numWon={gameStatistics.gamesWonAsDefending}
         />
         <GameStatisticsRow
-          label={"as landlord"}
+          label={"担任庄家"}
           numPlayed={gameStatistics.gamesPlayedAsLandlord}
           numWon={gameStatistics.gamesWonAsLandlord}
         />
         <GameStatisticsRow
-          label={"total"}
+          label={"总计"}
           numPlayed={gameStatistics.gamesPlayed}
           numWon={gameStatistics.gamesWon}
         />
       </div>
-      <h3>rank up statistics</h3>
+      <h3>升级统计</h3>
       <div style={{ display: "table" }}>
         <Row>
-          <LabelCell>ranks/game</LabelCell>
-          <Cell>
-            {ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesPlayed)}
-          </Cell>
+          <LabelCell>平均每局升级级数</LabelCell>
+          <Cell>{ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesPlayed)}</Cell>
         </Row>
         <Row>
-          <LabelCell>ranks/win</LabelCell>
-          <Cell>
-            {ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesWon)}
-          </Cell>
+          <LabelCell>平均每胜局升级级数</LabelCell>
+          <Cell>{ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesWon)}</Cell>
         </Row>
       </div>
     </div>
