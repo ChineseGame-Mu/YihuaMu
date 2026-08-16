@@ -59,7 +59,12 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
         if (propFriends.length !== numFriends) {
           const friends = [...this.state.friends];
           while (friends.length < numFriends) {
-            friends.push({ card: "", skip: 0, initial_skip: 0, player_id: null });
+            friends.push({
+              card: "",
+              skip: 0,
+              initial_skip: 0,
+              player_id: null,
+            });
           }
           while (friends.length > numFriends) friends.pop();
           this.setState({ friends });
@@ -72,8 +77,12 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
     }
   }
 
-  componentDidMount(): void { this.fixFriends(); }
-  componentDidUpdate(): void { this.fixFriends(); }
+  componentDidMount(): void {
+    this.fixFriends();
+  }
+  componentDidUpdate(): void {
+    this.fixFriends();
+  }
 
   moveCardToKitty(card: string): void {
     (window as any).send({ Action: { MoveCardToKitty: card } });
@@ -97,7 +106,8 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
     evt.preventDefault();
     if (
       this.props.state.game_mode !== "Tractor" &&
-      this.props.state.game_mode.FindingFriends.num_friends === this.state.friends.length
+      this.props.state.game_mode.FindingFriends.num_friends ===
+        this.state.friends.length
     ) {
       (window as any).send({ Action: { SetFriends: this.state.friends } });
     } else {
@@ -106,7 +116,10 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
   }
 
   render(): JSX.Element {
-    const exchanger = this.props.state.exchanger === null ? this.props.state.landlord : this.props.state.exchanger;
+    const exchanger =
+      this.props.state.exchanger === null
+        ? this.props.state.landlord
+        : this.props.state.exchanger;
     let landlordIdx = -1;
     let exchangerIdx = -1;
     let playerId = -1;
@@ -116,45 +129,58 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
       if (player.name === this.props.name) playerId = player.id;
     });
 
-    const isLandlord = this.props.state.propagated.players[landlordIdx].name === this.props.name;
-    const isExchanger = this.props.state.propagated.players[exchangerIdx].name === this.props.name;
-    const kittyTheftEnabled = this.props.state.propagated.kitty_theft_policy === "AllowKittyTheft";
-    const nextPlayer = kittyTheftEnabled && !this.props.state.finalized && this.props.state.exchanger !== null
-      ? this.props.state.exchanger
-      : this.props.state.landlord;
+    const isLandlord =
+      this.props.state.propagated.players[landlordIdx].name === this.props.name;
+    const isExchanger =
+      this.props.state.propagated.players[exchangerIdx].name ===
+      this.props.name;
+    const kittyTheftEnabled =
+      this.props.state.propagated.kitty_theft_policy === "AllowKittyTheft";
+    const nextPlayer =
+      kittyTheftEnabled &&
+      !this.props.state.finalized &&
+      this.props.state.exchanger !== null
+        ? this.props.state.exchanger
+        : this.props.state.landlord;
 
-    const exchangeUI = isExchanger && !this.props.state.finalized ? (
-      <>
-        <h2>您的手牌</h2>
-        <Cards
-          hands={this.props.state.hands}
-          playerId={playerId}
-          onCardClick={(c) => this.moveCardToKitty(c)}
-          trump={this.props.state.trump}
-        />
-        <h2>已放入底牌 {this.props.state.kitty.length} / {this.props.state.kitty_size}</h2>
-        <div className="kitty">
-          {this.props.state.kitty.map((c, idx) => (
-            <Card
-              trump={this.props.state.trump}
-              key={idx}
-              onClick={() => this.moveCardToHand(c)}
-              collapseRight={idx !== this.props.state.kitty.length - 1}
-              card={c}
-            />
-          ))}
-        </div>
-        {kittyTheftEnabled ? (
-          <button
-            onClick={this.putDownKitty}
-            disabled={this.props.state.kitty.length !== this.props.state.kitty_size}
-            className="big"
-          >
-            确认埋牌
-          </button>
-        ) : null}
-      </>
-    ) : null;
+    const exchangeUI =
+      isExchanger && !this.props.state.finalized ? (
+        <>
+          <h2>您的手牌</h2>
+          <Cards
+            hands={this.props.state.hands}
+            playerId={playerId}
+            onCardClick={(c) => this.moveCardToKitty(c)}
+            trump={this.props.state.trump}
+          />
+          <h2>
+            已放入底牌 {this.props.state.kitty.length} /{" "}
+            {this.props.state.kitty_size}
+          </h2>
+          <div className="kitty">
+            {this.props.state.kitty.map((c, idx) => (
+              <Card
+                trump={this.props.state.trump}
+                key={idx}
+                onClick={() => this.moveCardToHand(c)}
+                collapseRight={idx !== this.props.state.kitty.length - 1}
+                card={c}
+              />
+            ))}
+          </div>
+          {kittyTheftEnabled ? (
+            <button
+              onClick={this.putDownKitty}
+              disabled={
+                this.props.state.kitty.length !== this.props.state.kitty_size
+              }
+              className="big"
+            >
+              确认埋牌
+            </button>
+          ) : null}
+        </>
+      ) : null;
 
     const lastBid = this.props.state.bids![this.props.state.bids!.length - 1];
     const startGame = (
@@ -162,7 +188,9 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
         onClick={this.startGame}
         disabled={
           this.props.state.kitty.length !== this.props.state.kitty_size ||
-          (kittyTheftEnabled && !this.props.state.finalized && this.props.state.autobid === null)
+          (kittyTheftEnabled &&
+            !this.props.state.finalized &&
+            this.props.state.autobid === null)
         }
         className="big"
       >
@@ -185,7 +213,9 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
             landlord={this.props.state.propagated.landlord!}
             players={this.props.state.propagated.players}
             bidPolicy={this.props.state.propagated.bid_policy!}
-            bidReinforcementPolicy={this.props.state.propagated.bid_reinforcement_policy!}
+            bidReinforcementPolicy={
+              this.props.state.propagated.bid_reinforcement_policy!
+            }
             jokerBidPolicy={this.props.state.propagated.joker_bid_policy!}
             numDecks={this.props.state.num_decks}
             header={<h2>叫主（第 {this.props.state.epoch! + 1} 轮）</h2>}
@@ -193,7 +223,10 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
               <>
                 <button
                   onClick={this.pickUpKitty}
-                  disabled={lastBid.id !== playerId || lastBid.epoch !== this.props.state.epoch}
+                  disabled={
+                    lastBid.id !== playerId ||
+                    lastBid.epoch !== this.props.state.epoch
+                  }
                   className="big"
                 >
                   拿起底牌
@@ -202,7 +235,8 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
               </>
             }
             bidTakeBacksEnabled={
-              this.props.state.propagated.bid_takeback_policy === "AllowBidTakeback"
+              this.props.state.propagated.bid_takeback_policy ===
+              "AllowBidTakeback"
             }
           />
           <LabeledPlay
@@ -214,34 +248,42 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
         </>
       ) : null;
 
-    const friendUI = this.props.state.game_mode !== "Tractor" && isLandlord ? (
-      <div>
-        <Friends gameMode={this.props.state.game_mode} showPlayed={false} />
-        {this.state.friends.map((friend, idx) => {
-          const onChange = (x: Friend): void => {
-            const newFriends = [...this.state.friends];
-            newFriends[idx] = x;
-            this.setState({ friends: newFriends });
-            this.fixFriends();
-          };
-          return (
-            <FriendSelect
-              onChange={onChange}
-              key={idx}
-              friend={friend}
-              trump={this.props.state.trump}
-              friend_selection_policy={this.props.state.propagated.friend_selection_policy!}
-              num_decks={this.props.state.num_decks}
-            />
-          );
-        })}
-        <button onClick={this.pickFriends} className="big">选择朋友</button>
-      </div>
-    ) : null;
+    const friendUI =
+      this.props.state.game_mode !== "Tractor" && isLandlord ? (
+        <div>
+          <Friends gameMode={this.props.state.game_mode} showPlayed={false} />
+          {this.state.friends.map((friend, idx) => {
+            const onChange = (x: Friend): void => {
+              const newFriends = [...this.state.friends];
+              newFriends[idx] = x;
+              this.setState({ friends: newFriends });
+              this.fixFriends();
+            };
+            return (
+              <FriendSelect
+                onChange={onChange}
+                key={idx}
+                friend={friend}
+                trump={this.props.state.trump}
+                friend_selection_policy={
+                  this.props.state.propagated.friend_selection_policy!
+                }
+                num_decks={this.props.state.num_decks}
+              />
+            );
+          })}
+          <button onClick={this.pickFriends} className="big">
+            选择朋友
+          </button>
+        </div>
+      ) : null;
 
     return (
       <div>
-        <Header gameMode={this.props.state.game_mode} chatLink={this.props.state.propagated.chat_link} />
+        <Header
+          gameMode={this.props.state.game_mode}
+          chatLink={this.props.state.propagated.chat_link}
+        />
         <Players
           players={this.props.state.propagated.players}
           observers={this.props.state.propagated.observers}
@@ -252,16 +294,22 @@ class Exchange extends React.Component<IExchangeProps, IExchangeState> {
         <Trump trump={this.props.state.trump} />
         {(this.props.state.removed_cards || []).length > 0 ? (
           <p>
-            注意：{(this.props.state.removed_cards || []).map((c) => (
+            注意：
+            {(this.props.state.removed_cards || []).map((c) => (
               <InlineCard key={c} card={c} />
-            ))} 已从牌堆中移除
+            ))}{" "}
+            已从牌堆中移除
           </p>
         ) : null}
         {friendUI}
         {exchangeUI}
         {exchangeUI === null && bidUI === null && playerId >= 0 ? (
           <>
-            <Cards hands={this.props.state.hands} playerId={playerId} trump={this.props.state.trump} />
+            <Cards
+              hands={this.props.state.hands}
+              playerId={playerId}
+              trump={this.props.state.trump}
+            />
             <p>等待其他玩家……</p>
           </>
         ) : null}

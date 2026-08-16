@@ -17,7 +17,9 @@ const TrumpE = (props: IProps): JSX.Element => {
     )[0].value;
     return (
       <div className="trump">
-        主牌花色：<InlineCard card={card} />（级牌 {rank}）
+        主牌花色：
+        <InlineCard card={card} />
+        （级牌 {rank}）
       </div>
     );
   } else if (

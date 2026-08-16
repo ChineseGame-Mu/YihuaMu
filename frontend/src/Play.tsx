@@ -385,11 +385,7 @@ const Play = (props: IProps): JSX.Element => {
         <button
           className="big"
           onClick={() => {
-            if (
-              confirm(
-                "确定要提前结束本局吗？底牌中可能仍有分牌。",
-              )
-            ) {
+            if (confirm("确定要提前结束本局吗？底牌中可能仍有分牌。")) {
               endGameEarly();
             }
           }}
@@ -569,14 +565,11 @@ const HelperContents = (props: {
     return (
       <>
         <p>
-          <strong>🌈 彩虹牌型！</strong> 首家出了至少横跨 4 种花色、点数相同的一组牌。
+          <strong>🌈 彩虹牌型！</strong> 首家出了至少横跨 4
+          种花色、点数相同的一组牌。
         </p>
-        <p>
-          如果你有“彩虹”——张数与本墩相同且点数全部相同——则必须出一组彩虹。
-        </p>
-        <p>
-          点数最高的彩虹获胜；如果跟家无人出彩虹，则首家获胜。
-        </p>
+        <p>如果你有“彩虹”——张数与本墩相同且点数全部相同——则必须出一组彩虹。</p>
+        <p>点数最高的彩虹获胜；如果跟家无人出彩虹，则首家获胜。</p>
         {rainbows.length > 0 ? (
           <>
             <p>你可以出：</p>
@@ -629,7 +622,9 @@ const HelperContents = (props: {
 
       {decomp.length > 1 && props.trickDrawPolicy !== "NoFormatBasedDraw" && (
         <>
-          <p>如果不能完全跟出上述牌型，但能跟出以下某种牌型，则必须按顺序尽量跟：</p>
+          <p>
+            如果不能完全跟出上述牌型，但能跟出以下某种牌型，则必须按顺序尽量跟：
+          </p>
           <ol>
             {decomp.slice(1).map((d, idx) => (
               <li
@@ -668,7 +663,8 @@ const HelperContents = (props: {
       </p>
       {trickSuit !== "Trump" && (
         <p>
-          如果你没有 {trickSuit}，可以用主牌中的 {decomp[0].description} 尝试赢得本墩。
+          如果你没有 {trickSuit}，可以用主牌中的 {decomp[0].description}{" "}
+          尝试赢得本墩。
         </p>
       )}
     </>

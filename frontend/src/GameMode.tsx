@@ -19,11 +19,7 @@ const GameModeE = (props: IProps): JSX.Element => {
       </span>
     );
   } else {
-    return (
-      <span>
-        找朋友（{rules}）
-      </span>
-    );
+    return <span>找朋友（{rules}）</span>;
   }
 };
 

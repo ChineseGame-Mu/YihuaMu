@@ -18,15 +18,8 @@ interface IProps {
 }
 
 const Players = (props: IProps): JSX.Element => {
-  const {
-    players,
-    observers,
-    landlord,
-    landlords_team,
-    movable,
-    next,
-    name,
-  } = props;
+  const { players, observers, landlord, landlords_team, movable, next, name } =
+    props;
   const { send } = React.useContext(WebsocketContext);
 
   const makeDescriptor = (p: Player): Array<JSX.Element | string> => {

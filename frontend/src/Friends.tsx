@@ -28,7 +28,8 @@ const Friends = (props: IProps): JSX.Element => {
           }
           return (
             <p key={idx}>
-              第 {friend.initial_skip + 1} 次打出 <InlineCard card={friend.card} /> 的玩家是朋友。{" "}
+              第 {friend.initial_skip + 1} 次打出{" "}
+              <InlineCard card={friend.card} /> 的玩家是朋友。{" "}
               {props.showPlayed
                 ? `此前各轮已经出现 ${friend.initial_skip - friend.skip} 次。`
                 : ""}

@@ -79,12 +79,8 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
             value={props.state.propagated.multiple_join_policy}
             onChange={props.setMultipleJoinPolicy}
           >
-            <option value="Unrestricted">
-              同一玩家可多次加入庄家方
-            </option>
-            <option value="NoDoubleJoin">
-              每位玩家最多只能加入庄家方一次
-            </option>
+            <option value="Unrestricted">同一玩家可多次加入庄家方</option>
+            <option value="NoDoubleJoin">每位玩家最多只能加入庄家方一次</option>
           </select>
         </label>
       </div>
@@ -97,9 +93,7 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
           >
             <option value="Unrestricted">A 必须守住</option>
             <option value="FullyUnrestricted">无限制</option>
-            <option value="DefendPoints">
-              分牌（5、10、K）和 A 必须守住
-            </option>
+            <option value="DefendPoints">分牌（5、10、K）和 A 必须守住</option>
           </select>
         </label>
       </div>
@@ -149,9 +143,7 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
             onChange={props.setKittyPenalty}
           >
             <option value="Times">按最后一墩张数的两倍计算</option>
-            <option value="Power">
-              按 2 的“最后一墩张数”次方计算
-            </option>
+            <option value="Power">按 2 的“最后一墩张数”次方计算</option>
           </select>
         </label>
       </div>
@@ -163,9 +155,7 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
             onChange={props.setThrowPenalty}
           >
             <option value="None">无惩罚</option>
-            <option value="TenPointsPerAttempt">
-              每次错误甩牌罚 10 分
-            </option>
+            <option value="TenPointsPerAttempt">每次错误甩牌罚 10 分</option>
           </select>
         </label>
       </div>
@@ -463,9 +453,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
             <option value="AllowMultipleSessions">
               允许用相同名字加入并旁观/接管同一玩家
             </option>
-            <option value="SingleSessionOnly">
-              不允许同名玩家重复加入
-            </option>
+            <option value="SingleSessionOnly">不允许同名玩家重复加入</option>
           </select>
         </label>
       </div>
@@ -488,9 +476,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
             value={props.state.propagated.first_landlord_selection_policy}
             onChange={props.setFirstLandlordSelectionPolicy}
           >
-            <option value="ByWinningBid">
-              最终叫主者同时决定庄家和主牌
-            </option>
+            <option value="ByWinningBid">最终叫主者同时决定庄家和主牌</option>
             <option value="ByFirstBid">
               第一个叫主者成为庄家，最终叫主决定主牌
             </option>
@@ -583,9 +569,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
               onChange={props.setBombPolicy}
             >
               <option value="NoBombs">关闭</option>
-              <option value="AllowBombs">
-                开启（任何花色，不要求跟花色）
-              </option>
+              <option value="AllowBombs">开启（任何花色，不要求跟花色）</option>
               <option value="AllowBombsSuitFollowing">
                 开启（仍必须跟花色）
               </option>
@@ -1232,7 +1216,9 @@ const Initialize = (props: IProps): JSX.Element => {
             >
               <option value="All">跟家必须压过所有组成部分才算赢</option>
               <option value="Highest">跟家只需压过最高的一组</option>
-              <option value="TrickUnitLength">跟家必须压过张数最多的组成部分</option>
+              <option value="TrickUnitLength">
+                跟家必须压过张数最多的组成部分
+              </option>
             </select>
           </label>
         </div>

@@ -233,8 +233,11 @@ const Points = (props: IProps): JSX.Element => {
         {penaltyDelta === 0
           ? nonLandlordPoints
           : `${nonLandlordPoints} + ${penaltyDelta}`}
-        分{props.hideLandlordPoints ? null : ` / 已出现总分 ${totalPointsPlayed}分`}。{" "}
-        {thresholdStr}
+        分
+        {props.hideLandlordPoints
+          ? null
+          : ` / 已出现总分 ${totalPointsPlayed}分`}
+        。 {thresholdStr}
       </p>
       {playerPointElements}
     </div>

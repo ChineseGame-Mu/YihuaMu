@@ -99,11 +99,15 @@ const GameStatisticsPane = (props: IProps): JSX.Element => {
       <div style={{ display: "table" }}>
         <Row>
           <LabelCell>平均每局升级级数</LabelCell>
-          <Cell>{ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesPlayed)}</Cell>
+          <Cell>
+            {ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesPlayed)}
+          </Cell>
         </Row>
         <Row>
           <LabelCell>平均每胜局升级级数</LabelCell>
-          <Cell>{ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesWon)}</Cell>
+          <Cell>
+            {ranksPerGame(gameStatistics.ranksUp, gameStatistics.gamesWon)}
+          </Cell>
         </Row>
       </div>
     </div>

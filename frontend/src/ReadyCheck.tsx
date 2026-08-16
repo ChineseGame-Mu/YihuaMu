@@ -9,9 +9,7 @@ const ReadyCheck = (): JSX.Element => {
   return (
     <button
       className="big"
-      onClick={() =>
-        confirm("大家准备好开始游戏了吗？") && send("ReadyCheck")
-      }
+      onClick={() => confirm("大家准备好开始游戏了吗？") && send("ReadyCheck")}
     >
       检查大家是否准备好
     </button>

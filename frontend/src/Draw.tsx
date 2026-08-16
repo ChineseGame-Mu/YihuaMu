@@ -37,7 +37,8 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   drawCard(): void {
     const canDraw =
-      this.props.state.propagated.players[this.props.state.position].name === this.props.name;
+      this.props.state.propagated.players[this.props.state.position].name ===
+      this.props.name;
     if (this.timeout !== null) {
       this.props.clearTimeout(this.timeout);
       this.timeout = null;
@@ -45,7 +46,9 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
     if (canDraw) {
       if (this.props.playDrawCardSound) {
         if (this.drawCardAudio === null) {
-          this.drawCardAudio = new Audio("434472_dersuperanton_taking-card.mp3");
+          this.drawCardAudio = new Audio(
+            "434472_dersuperanton_taking-card.mp3",
+          );
         }
         this.drawCardAudio.play();
       }
@@ -75,9 +78,14 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   render(): JSX.Element {
     const canDraw =
-      this.props.state.propagated.players[this.props.state.position].name === this.props.name &&
-      this.props.state.deck.length > 0;
-    if (canDraw && !this.could_draw && this.timeout === null && this.state.autodraw) {
+      this.props.state.propagated.players[this.props.state.position].name ===
+        this.props.name && this.props.state.deck.length > 0;
+    if (
+      canDraw &&
+      !this.could_draw &&
+      this.timeout === null &&
+      this.state.autodraw
+    ) {
       this.timeout = this.props.setTimeout(
         () => this.drawCard(),
         this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250,
@@ -85,8 +93,12 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
     }
     this.could_draw = canDraw;
 
-    let next = this.props.state.propagated.players[this.props.state.position].id;
-    if (this.props.state.deck.length === 0 && this.props.state.bids.length > 0) {
+    let next =
+      this.props.state.propagated.players[this.props.state.position].id;
+    if (
+      this.props.state.deck.length === 0 &&
+      this.props.state.bids.length > 0
+    ) {
       next = this.props.state.bids[this.props.state.bids.length - 1].id;
     }
 
@@ -99,7 +111,11 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
     const landlord = this.props.state.propagated.landlord;
     let trump: Trump | undefined;
-    if (landlord !== null && landlord !== undefined && players[landlord] !== undefined) {
+    if (
+      landlord !== null &&
+      landlord !== undefined &&
+      players[landlord] !== undefined
+    ) {
       trump = {
         NoTrump: {
           number:
@@ -114,7 +130,10 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
     return (
       <div>
-        <Header gameMode={this.props.state.game_mode} chatLink={this.props.state.propagated.chat_link} />
+        <Header
+          gameMode={this.props.state.game_mode}
+          chatLink={this.props.state.propagated.chat_link}
+        />
         <Players
           players={this.props.state.propagated.players}
           observers={this.props.state.propagated.observers}
@@ -132,7 +151,9 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
           landlord={landlord!}
           players={this.props.state.propagated.players}
           bidPolicy={this.props.state.propagated.bid_policy!}
-          bidReinforcementPolicy={this.props.state.propagated.bid_reinforcement_policy!}
+          bidReinforcementPolicy={
+            this.props.state.propagated.bid_reinforcement_policy!
+          }
           jokerBidPolicy={this.props.state.propagated.joker_bid_policy!}
           numDecks={this.props.state.num_decks}
           header={
@@ -140,9 +161,11 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
               <h2>叫主（牌堆还剩 {this.props.state.deck.length} 张）</h2>
               {this.props.state.removed_cards!.length > 0 ? (
                 <p>
-                  注意：{this.props.state.removed_cards!.map((c) => (
+                  注意：
+                  {this.props.state.removed_cards!.map((c) => (
                     <InlineCard key={c} card={c} />
-                  ))} 已从牌堆中移除
+                  ))}{" "}
+                  已从牌堆中移除
                 </p>
               ) : null}
             </>
@@ -185,9 +208,12 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
                     )) ||
                   (landlord !== null && landlord !== playerId) ||
                   (landlord === null &&
-                    ((this.props.state.propagated.first_landlord_selection_policy === "ByWinningBid" &&
-                      this.props.state.bids[this.props.state.bids.length - 1].id !== playerId) ||
-                      (this.props.state.propagated.first_landlord_selection_policy === "ByFirstBid" &&
+                    ((this.props.state.propagated
+                      .first_landlord_selection_policy === "ByWinningBid" &&
+                      this.props.state.bids[this.props.state.bids.length - 1]
+                        .id !== playerId) ||
+                      (this.props.state.propagated
+                        .first_landlord_selection_policy === "ByFirstBid" &&
                         this.props.state.bids[0].id !== playerId)))
                 }
                 className="big"
@@ -202,7 +228,8 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
                   this.props.state.deck.length > 0 ||
                   this.props.state.bids.length > 0 ||
                   this.props.state.autobid !== null ||
-                  (this.props.state.revealed_cards || 0) >= this.props.state.kitty.length ||
+                  (this.props.state.revealed_cards || 0) >=
+                    this.props.state.kitty.length ||
                   (landlord !== null &&
                     landlord !== undefined &&
                     players[landlord].level === "NT")
@@ -215,7 +242,8 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
             </>
           }
           bidTakeBacksEnabled={
-            this.props.state.propagated.bid_takeback_policy === "AllowBidTakeback"
+            this.props.state.propagated.bid_takeback_policy ===
+            "AllowBidTakeback"
           }
         />
         <LabeledPlay
