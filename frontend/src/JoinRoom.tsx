@@ -1,6 +1,5 @@
 import * as React from "react";
 import { WebsocketContext } from "./WebsocketProvider";
-import { TimerContext } from "./TimerProvider";
 import LabeledPlay from "./LabeledPlay";
 import PublicRoomsPane from "./PublicRoomsPane";
 import { isWasmAvailable } from "./detectWasm";
@@ -16,11 +15,10 @@ interface IProps {
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [editable, setEditable] = React.useState<boolean>(false);
-  const [shouldGenerate, setShouldGenerate] = React.useState<boolean>(
-    props.room_name.length !== 16,
+  const [showRoomForm, setShowRoomForm] = React.useState<boolean>(
+    props.room_name.length === 16,
   );
   const { send } = React.useContext(WebsocketContext);
-  const { setTimeout } = React.useContext(TimerContext);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
     props.setName(event.target.value.trim());
@@ -63,15 +61,18 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const generateRoomName = (): void => {
     const arr = new Uint8Array(8);
     window.crypto.getRandomValues(arr);
-    setShouldGenerate(false);
     props.setRoomName(
       Array.from(arr, (d) => ("0" + d.toString(16)).substr(-2)).join(""),
     );
+    setEditable(false);
+    setShowRoomForm(true);
   };
 
-  if (shouldGenerate) {
-    setTimeout(generateRoomName, 0);
-  }
+  const joinExistingRoom = (): void => {
+    props.setRoomName("");
+    setEditable(true);
+    setShowRoomForm(true);
+  };
 
   return (
     <div>
@@ -80,43 +81,60 @@ const JoinRoom = (props: IProps): JSX.Element => {
         trump={{ NoTrump: {} }}
         label={null}
       ></LabeledPlay>
-      <form className="join-room" onSubmit={handleSubmit}>
+
+      {!showRoomForm ? (
         <div>
-          <h2>
+          <h2>欢迎来到升级游戏</h2>
+          <p>请选择创建一个新房间，或输入朋友发给您的房间代码加入已有房间。</p>
+          <p>
+            <button className="normal" onClick={generateRoomName}>
+              创建新房间
+            </button>{" "}
+            <button className="normal" onClick={joinExistingRoom}>
+              加入已有房间
+            </button>
+          </p>
+        </div>
+      ) : (
+        <form className="join-room" onSubmit={handleSubmit}>
+          <div>
+            <h2>
+              <label>
+                <strong>房间代码：</strong>{" "}
+                {editable ? editableRoomName : nonEditableRoomName}{" "}
+                <span title="生成新房间" onClick={generateRoomName}>
+                  🎲
+                </span>{" "}
+              </label>
+            </h2>
+          </div>
+          <div>
             <label>
-              <strong>房间代码：</strong>{" "}
-              {editable ? editableRoomName : nonEditableRoomName}{" "}
-              <span title="生成新房间" onClick={() => generateRoomName()}>
-                🎲
-              </span>{" "}
+              <strong>玩家姓名：</strong>{" "}
+              <input
+                type="text"
+                placeholder="请输入您的姓名"
+                value={props.name}
+                onChange={handleChange}
+                autoFocus={true}
+              />
             </label>
-          </h2>
-        </div>
-        <div>
-          <label>
-            <strong>玩家姓名：</strong>{" "}
             <input
-              type="text"
-              placeholder="请输入您的姓名"
-              value={props.name}
-              onChange={handleChange}
-              autoFocus={true}
+              type="submit"
+              value="加入（或创建）游戏"
+              disabled={
+                props.room_name.length !== 16 ||
+                props.name.length === 0 ||
+                props.name.length > 32
+              }
             />
-          </label>
-          <input
-            type="submit"
-            value="加入（或创建）游戏"
-            disabled={
-              props.room_name.length !== 16 ||
-              props.name.length === 0 ||
-              props.name.length > 32
-            }
-          />
-        </div>
-      </form>
+          </div>
+        </form>
+      )}
+
       <div>
         <p>
-          欢迎来到升级游戏！在上方输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
+          欢迎来到升级游戏！输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
         </p>
         <p>
           如果您还不熟悉玩法，可以先阅读{" "}
