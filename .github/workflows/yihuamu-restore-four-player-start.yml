@@ -1,0 +1,77 @@
+name: YihuaMu restore four-player start
+
+on:
+  push:
+    branches:
+      - agent/yihuamu-3-to-8-decks-chinese-ui
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[restore-4-player-done]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/yihuamu-3-to-8-decks-chinese-ui
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore four-player start condition
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/Initialize.tsx')
+          s = p.read_text()
+          old = '''      <>
+        <button
+          className="big"
+          disabled={
+            props.state.propagated.game_start_policy ===
+              "AllowLandlordOnly" &&
+            landlordIndex !== -1 &&
+            props.state.propagated.players[landlordIndex].name !== props.name
+          }
+          onClick={startGame}
+        >
+          开始游戏
+        </button>
+        <ReadyCheck />
+        {props.state.propagated.players.length < 4 ? (
+          <p>试用模式：当前少于 4 名玩家，按钮仍保持显示。</p>
+        ) : null}
+      </>
+'''
+          new = '''      {props.state.propagated.players.length >= 4 ? (
+        <>
+          <button
+            className="big"
+            disabled={
+              props.state.propagated.game_start_policy ===
+                "AllowLandlordOnly" &&
+              landlordIndex !== -1 &&
+              props.state.propagated.players[landlordIndex].name !== props.name
+            }
+            onClick={startGame}
+          >
+            开始游戏
+          </button>
+          <ReadyCheck />
+        </>
+      ) : (
+        <h2>等待其他玩家加入……</h2>
+      )}
+'''
+          if old not in s:
+              raise SystemExit('Expected trial-mode block not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - name: Remove temporary workflows and commit
+        run: |
+          rm -f .github/workflows/yihuamu-show-start-button.yml
+          rm -f .github/workflows/yihuamu-restore-four-player-start.yml
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add frontend/src/Initialize.tsx .github/workflows
+          git commit -m "Restore four-player start requirement [restore-4-player-done]"
+          git push origin HEAD:agent/yihuamu-3-to-8-decks-chinese-ui
