@@ -1,0 +1,34 @@
+name: YihuaMu Prettier fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/yihuamu-prettier-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/yihuamu-3-to-8-decks-chinese-ui
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn prettier src/Credits.tsx --write
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/Credits.tsx
+          if git diff --cached --quiet; then
+            echo "No formatting changes needed"
+          else
+            git commit -m "Format restored new-player modal"
+            git push origin HEAD:agent/yihuamu-3-to-8-decks-chinese-ui
+          fi
