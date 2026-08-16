@@ -17,9 +17,9 @@ jobs:
         with:
           ref: agent/yihuamu-3-to-8-decks-chinese-ui
           token: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
+      - name: Install frontend dependencies
+        run: yarn install
+        working-directory: frontend
       - name: Patch Initialize.tsx
         run: |
           python - <<'PY'
