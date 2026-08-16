@@ -5,6 +5,8 @@
 //! shared vocabulary needed by the Guandan rules engine before wiring it into
 //! the multiplayer room handler.
 
+pub mod rules;
+
 pub const MIN_PLAYERS: usize = 4;
 pub const MAX_PLAYERS: usize = 14;
 
