@@ -58,7 +58,6 @@ const Play = (props: IProps): JSX.Element => {
     null,
   );
 
-  // Helper function to update selection and grouping
   const updateSelectionAndGrouping = async (
     newSelected: string[],
     trump: any,
@@ -92,8 +91,6 @@ const Play = (props: IProps): JSX.Element => {
 
   const { playPhase } = props;
 
-  // TODO: instead of telling who the player is by checking the name, pass in
-  // the Player object
   let isSpectator = true;
   let currentPlayer = playPhase.propagated.players.find(
     (p) => p.name === props.name,
@@ -114,21 +111,16 @@ const Play = (props: IProps): JSX.Element => {
     };
   }
 
-  // Prefill caches when trump or game parameters change
   React.useEffect(() => {
     const trumpKey = JSON.stringify(playPhase.trump);
 
-    // Only prefill if trump has changed
     if (trumpKey !== lastPrefillTrump) {
-      // Trump changed, prefill caches
       setLastPrefillTrump(trumpKey);
 
-      // Prefill card info cache for all cards with the new trump
       prefillCardInfoCache(engine, playPhase.trump).catch((error) => {
         console.error("Failed to prefill card info cache:", error);
       });
 
-      // Prefill explainScoring cache
       if (playPhase.propagated.game_scoring_parameters && playPhase.decks) {
         prefillExplainScoringCache(
           engine,
@@ -148,10 +140,6 @@ const Play = (props: IProps): JSX.Element => {
   ]);
 
   React.useEffect(() => {
-    // When the hands change, our `selected` cards may become invalid, since we
-    // could have raced and selected cards that we just played.
-    //
-    // In that case, let's fix the selected cards.
     const hand =
       currentPlayer.id in playPhase.hands.hands
         ? { ...playPhase.hands.hands[currentPlayer.id] }
@@ -196,7 +184,6 @@ const Play = (props: IProps): JSX.Element => {
           trick_draw_policy: playPhase.propagated.trick_draw_policy!,
         })
         .then((playable) => {
-          // In order to play the first trick, the grouping must be disambiguated!
           if (lastPlay === undefined) {
             playable = playable && grouping.length === 1;
           }
@@ -301,8 +288,6 @@ const Play = (props: IProps): JSX.Element => {
     smallerTeamSize = landlordTeamSize < configFriendTeamSize;
   }
 
-  // For now, return unsorted cards since sortAndGroupCards needs to be async
-  // This function is used in rendering and needs refactoring to handle async
   const getCardsFromHand = (pid: number): SuitGroup[] => {
     const cardsInHand =
       pid in playPhase.hands.hands
@@ -310,12 +295,10 @@ const Play = (props: IProps): JSX.Element => {
             Array(ct).fill(c),
           )
         : [];
-    // TODO: Make this async or cache the sorted results
-    // For now, return all cards in a single group
     return cardsInHand.length > 0
       ? [
           {
-            suit: null as any, // Will be replaced when async is properly handled
+            suit: null as any,
             cards: cardsInHand,
           },
         ]
@@ -341,11 +324,11 @@ const Play = (props: IProps): JSX.Element => {
       <Friends gameMode={playPhase.game_mode} showPlayed={true} />
       {playPhase.removed_cards!.length > 0 ? (
         <p>
-          Note:{" "}
+          注意：{" "}
           {playPhase.removed_cards!.map((c) => (
             <InlineCard key={c} card={c} />
           ))}{" "}
-          have been removed from the deck
+          已从牌堆中移除
         </p>
       ) : null}
       {settings.showPointsAboveGame && (
@@ -386,7 +369,7 @@ const Play = (props: IProps): JSX.Element => {
       />
       {playPhase.propagated.play_takeback_policy === "AllowPlayTakeback" && (
         <button className="big" onClick={takeBackCards} disabled={!canTakeBack}>
-          Take back last play
+          撤回上一次出牌
         </button>
       )}
       <button
@@ -396,7 +379,7 @@ const Play = (props: IProps): JSX.Element => {
           playPhase.trick.player_queue.length > 0 || playPhase.game_ended_early
         }
       >
-        Finish trick
+        结束本墩
       </button>
       {canEndGameEarly && (
         <button
@@ -404,25 +387,25 @@ const Play = (props: IProps): JSX.Element => {
           onClick={() => {
             if (
               confirm(
-                "Do you want to end the game early? There may still be points in the bottom...",
+                "确定要提前结束本局吗？底牌中可能仍有分牌。",
               )
             ) {
               endGameEarly();
             }
           }}
         >
-          End game early
+          提前结束本局
         </button>
       )}
       {canFinish && (
         <button className="big" onClick={startNewGame}>
-          Finish game
+          结束本局
         </button>
       )}
       <BeepButton />
       {canFinish && !noCardsLeft && (
         <div>
-          <p>Cards remaining (that were not played):</p>
+          <p>未出的剩余手牌：</p>
           {playPhase.propagated.players.map((p) => (
             <LabeledPlay
               key={p.id}
@@ -456,11 +439,8 @@ const Play = (props: IProps): JSX.Element => {
             isCurrentPlayerTurn &&
             grouping.length > 1 && (
               <div>
-                <p>
-                  It looks like you are making a play that can be interpreted in
-                  multiple ways!
-                </p>
-                <p>Which of the following did you mean?</p>
+                <p>你选择的牌有多种牌型解释。</p>
+                <p>请选择你想出的牌型：</p>
                 {grouping.map((g, gidx) => (
                   <button
                     key={gidx}
@@ -495,7 +475,7 @@ const Play = (props: IProps): JSX.Element => {
       playPhase.last_trick !== null &&
       props.showLastTrick ? (
         <div>
-          <p>Previous trick</p>
+          <p>上一墩</p>
           <Trick
             trick={playPhase.last_trick}
             players={playPhase.propagated.players}
@@ -581,7 +561,7 @@ const HelperContents = (props: {
   ]);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return <div>正在分析牌型……</div>;
   }
 
   if (props.format.is_rainbow) {
@@ -589,20 +569,17 @@ const HelperContents = (props: {
     return (
       <>
         <p>
-          <strong>🌈 Rainbow trick!</strong> The leader played cards all of the
-          same rank spanning at least 4 suits.
+          <strong>🌈 彩虹牌型！</strong> 首家出了至少横跨 4 种花色、点数相同的一组牌。
         </p>
         <p>
-          If you have a <em>rainbow</em> — the same number of cards as the
-          trick, all of the same rank — you <strong>must</strong> play one.
+          如果你有“彩虹”——张数与本墩相同且点数全部相同——则必须出一组彩虹。
         </p>
         <p>
-          The highest-rank rainbow wins. If no follower plays a rainbow, the
-          leader wins.
+          点数最高的彩虹获胜；如果跟家无人出彩虹，则首家获胜。
         </p>
         {rainbows.length > 0 ? (
           <>
-            <p>You can play:</p>
+            <p>你可以出：</p>
             <ul>
               {rainbows.map((r, idx) => (
                 <li key={idx}>
@@ -619,14 +596,14 @@ const HelperContents = (props: {
             </ul>
           </>
         ) : (
-          <p>You have no rainbow — you may play any cards.</p>
+          <p>你没有彩虹牌型，可以任意出牌。</p>
         )}
       </>
     );
   }
 
   if (decomp.length === 0) {
-    return <div>Unable to analyze format</div>;
+    return <div>无法分析该牌型</div>;
   }
 
   const trickSuit = props.format.suit;
@@ -634,11 +611,11 @@ const HelperContents = (props: {
   const modalContents = (
     <>
       <p>
-        In order to win, you have to play {decomp[0].description} in {trickSuit}
+        要争取赢得本墩，你需要在 {trickSuit} 中跟出 {decomp[0].description}。
       </p>
       {decomp[0].playable.length > 0 && (
         <p>
-          It looks like you are able to match this format, e.g. with{" "}
+          你可以跟出这个牌型，例如：{" "}
           <span
             style={{ cursor: "pointer" }}
             onClick={() => props.setSelected(decomp[0].playable)}
@@ -652,10 +629,7 @@ const HelperContents = (props: {
 
       {decomp.length > 1 && props.trickDrawPolicy !== "NoFormatBasedDraw" && (
         <>
-          <p>
-            If you can&apos;t play that, but you <em>can</em> play one of the
-            following, you have to play it
-          </p>
+          <p>如果不能完全跟出上述牌型，但能跟出以下某种牌型，则必须按顺序尽量跟：</p>
           <ol>
             {decomp.slice(1).map((d, idx) => (
               <li
@@ -664,7 +638,7 @@ const HelperContents = (props: {
                   fontWeight: idx === bestMatch - 1 ? "bold" : "normal",
                 }}
               >
-                {d.description} in {trickSuit}
+                {d.description}（{trickSuit}）
                 {idx === bestMatch - 1 && (
                   <>
                     {" "}
@@ -672,11 +646,11 @@ const HelperContents = (props: {
                       style={{ cursor: "pointer" }}
                       onClick={() => props.setSelected(d.playable)}
                     >
-                      (for example:{" "}
+                      （例如：{" "}
                       {d.playable.map((c: string, cidx: number) => (
                         <InlineCard key={cidx} card={c} />
                       ))}
-                      )
+                      ）
                     </span>
                   </>
                 )}
@@ -690,13 +664,11 @@ const HelperContents = (props: {
           fontWeight: bestMatch < 0 ? "bold" : "normal",
         }}
       >
-        Otherwise, you have to play as many {trickSuit} as you can. The
-        remaining cards can be anything.
+        否则，你必须尽可能把手中的 {trickSuit} 跟完；不足的张数可用其他牌补足。
       </p>
       {trickSuit !== "Trump" && (
         <p>
-          If you have no cards in {trickSuit}, you can play{" "}
-          {decomp[0].description} in Trump to potentially win the trick.
+          如果你没有 {trickSuit}，可以用主牌中的 {decomp[0].description} 尝试赢得本墩。
         </p>
       )}
     </>
@@ -726,7 +698,7 @@ const TrickFormatHelper = (props: {
       <Tooltip id="helpTip" place="top" />
       <button
         data-tooltip-id="helpTip"
-        data-tooltip-content="Get help on what you can play"
+        data-tooltip-content="查看当前可以出的牌型"
         className="big"
         onClick={(evt) => {
           evt.preventDefault();
@@ -738,7 +710,7 @@ const TrickFormatHelper = (props: {
       <Tooltip id="suggestTip" place="top" />
       <button
         data-tooltip-id="suggestTip"
-        data-tooltip-content="Suggest a play (not guaranteed to succeed)"
+        data-tooltip-content="建议一组可出的牌（不保证最佳）"
         className="big"
         disabled={isLoading}
         onClick={async (evt) => {
@@ -754,15 +726,15 @@ const TrickFormatHelper = (props: {
             const bestMatch = decomp.findIndex((d) => d.playable.length > 0);
             if (bestMatch >= 0) {
               props.setSelected(decomp[bestMatch].playable);
-              setMessage("success");
+              setMessage("已选择建议牌");
               setTimeout(() => setMessage(""), 500);
             } else {
-              setMessage("cannot suggest a play");
+              setMessage("无法提供出牌建议");
               setTimeout(() => setMessage(""), 2000);
             }
           } catch (error) {
             console.error("Error getting play suggestion:", error);
-            setMessage("error suggesting play");
+            setMessage("生成出牌建议时出错");
             setTimeout(() => setMessage(""), 2000);
           } finally {
             setIsLoading(false);
