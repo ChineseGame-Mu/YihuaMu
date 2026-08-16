@@ -21,6 +21,8 @@ const Confetti = React.lazy(async () => await import("./Confetti"));
 const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
+  const hasRoomInUrl = window.location.hash.replace(/^#/, "").length === 16;
+  const [showLobby, setShowLobby] = React.useState<boolean>(hasRoomInUrl);
 
   const [previousHeaderMessages, setPreviousHeaderMessages] = React.useState<
     string[]
@@ -63,13 +65,82 @@ const Root = (): JSX.Element => {
       ))}
     </div>
   ) : null;
+
   if (state.connected) {
     if (state.gameState === null || state.roomName.length !== 16) {
+      if (!showLobby) {
+        return (
+          <div
+            style={{
+              maxWidth: 720,
+              margin: "0 auto",
+              padding: "48px 20px 32px",
+              textAlign: "center",
+            }}
+          >
+            {headerMessages}
+            <Errors errors={state.errors} />
+            <div style={{ fontSize: 52, marginBottom: 12 }}>🃏</div>
+            <h1 style={{ fontSize: 38, marginBottom: 8 }}>升级 · 找朋友</h1>
+            <p style={{ fontSize: 20, marginTop: 0, opacity: 0.8 }}>
+              Yihua 升级游戏中文修改版
+            </p>
+            <p style={{ fontSize: 17, lineHeight: 1.7, margin: "28px auto" }}>
+              在线和亲友一起玩升级、拖拉机、找朋友。支持多副牌玩法，并按本版本规则进行游戏。
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowLobby(true)}
+              style={{
+                fontSize: 22,
+                fontWeight: 700,
+                padding: "15px 42px",
+                borderRadius: 12,
+                border: "1px solid #8f0010",
+                background: "#bb0313",
+                color: "white",
+                cursor: "pointer",
+                margin: "8px 0 24px",
+              }}
+            >
+              开始游戏
+            </button>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: 22,
+                flexWrap: "wrap",
+                fontSize: 17,
+              }}
+            >
+              <a href="rules.html">游戏规则</a>
+              <a href="rules.html">新手指南</a>
+              <a href="#" onClick={(e) => e.preventDefault()}>
+                更新记录
+              </a>
+            </div>
+            <p style={{ marginTop: 48, fontSize: 14, opacity: 0.65 }}>
+              Yihua modified · Based on Robert Ying Shengji
+            </p>
+            <TitleHandler playerName={state.name} />
+          </div>
+        );
+      }
+
       return (
         <div>
           {headerMessages}
           <Errors errors={state.errors} />
           <div className="game">
+            <button
+              type="button"
+              className="normal"
+              onClick={() => setShowLobby(false)}
+              style={{ marginTop: 12 }}
+            >
+              ← 返回首页
+            </button>
             <h1>
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
@@ -164,24 +235,17 @@ const Root = (): JSX.Element => {
     );
   } else {
     return (
-      <div>
-        <div className="game">
-          <h1>
-            升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
-            <span className="red">Finding Friends</span>
-          </h1>
-          <p>
-            Welcome! This website helps you play 升级 / Tractor / 找朋友 /
-            Finding Friends with other people online.
-          </p>
-          <p>
-            If you&apos;re not familiar with the rules, check them out{" "}
-            <a href="rules.html">here</a>!
-          </p>
-          <p>Connecting to the server...</p>
-        </div>
-        <hr />
-        <Credits />
+      <div
+        style={{
+          maxWidth: 720,
+          margin: "0 auto",
+          padding: "48px 20px",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 52, marginBottom: 12 }}>🃏</div>
+        <h1>升级 · 找朋友</h1>
+        <p>正在连接服务器...</p>
         <TitleHandler playerName={state.name} />
       </div>
     );
