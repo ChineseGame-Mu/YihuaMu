@@ -7,5 +7,6 @@
 pub mod settings;
 
 pub mod game_state;
+pub mod guandan;
 pub mod interactive;
 pub mod message;
