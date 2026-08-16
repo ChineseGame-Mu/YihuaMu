@@ -44,64 +44,36 @@ mod wasm_rpc_handler;
 use serving_types::{CardsBlob, VersionedGame};
 use state_dump::InMemoryStats;
 
-/// Our global unique user id counter.
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
 
 lazy_static::lazy_static! {
     static ref CARDS_JSON: CardsBlob = CardsBlob {
         cards: FULL_DECK.iter().map(|c| c.as_info()).collect()
     };
-
     static ref ROOT_LOGGER: Logger = {
         #[cfg(not(feature = "dynamic"))]
         let drain = slog_bunyan::default(std::io::stdout());
         #[cfg(feature = "dynamic")]
         let drain = slog_term::FullFormat::new(slog_term::TermDecorator::new().build()).build();
-
         let version = std::env::var("VERSION").unwrap_or_else(|_| "unknown_dev".to_string());
-
-        Logger::root(
-            slog_async::Async::new(drain.fuse()).build().fuse(),
-            o!("version" => version)
-        )
+        Logger::root(slog_async::Async::new(drain.fuse()).build().fuse(), o!("version" => version))
     };
-
     static ref ZSTD_COMPRESSOR: std::sync::Mutex<zstd::bulk::Compressor<'static>> = {
-        // default zstd dictionary size is 112_640
         let comp = zstd::bulk::Compressor::with_dictionary(0, &zstd::bulk::decompress(ZSTD_ZSTD_DICT, 112_640).unwrap()).unwrap();
         std::sync::Mutex::new(comp)
     };
-
-    static ref VERSION: String = {
-        std::env::var("VERSION").unwrap_or_else(|_| "unknown_dev".to_string())
-    };
-
-    static ref DUMP_PATH: String = {
-        std::env::var("DUMP_PATH").unwrap_or_else(|_| "/tmp/shengji_state.json".to_string())
-    };
-    static ref MESSAGE_PATH: String = {
-        std::env::var("MESSAGE_PATH").unwrap_or_else(|_| "/tmp/shengji_messages.json".to_string())
-    };
-    static ref WEBSOCKET_HOST: Option<String> = {
-        std::env::var("WEBSOCKET_HOST").ok()
-    };
+    static ref VERSION: String = std::env::var("VERSION").unwrap_or_else(|_| "unknown_dev".to_string());
+    static ref DUMP_PATH: String = std::env::var("DUMP_PATH").unwrap_or_else(|_| "/tmp/shengji_state.json".to_string());
+    static ref MESSAGE_PATH: String = std::env::var("MESSAGE_PATH").unwrap_or_else(|_| "/tmp/shengji_messages.json".to_string());
+    static ref WEBSOCKET_HOST: Option<String> = std::env::var("WEBSOCKET_HOST").ok();
 }
 
 async fn runtime_settings() -> impl IntoResponse {
     let body = match WEBSOCKET_HOST.as_ref() {
-        Some(s) => format!(
-            "window._WEBSOCKET_HOST = \"{}\";window._VERSION = \"{}\";",
-            s, *VERSION,
-        ),
-        None => format!(
-            "window._WEBSOCKET_HOST = null;window._VERSION = \"{}\";",
-            *VERSION
-        ),
+        Some(s) => format!("window._WEBSOCKET_HOST = \"{}\";window._VERSION = \"{}\";", s, *VERSION),
+        None => format!("window._WEBSOCKET_HOST = null;window._VERSION = \"{}\";", *VERSION),
     };
-    (
-        [(http::header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
-        body,
-    )
+    ([(http::header::CONTENT_TYPE, "text/javascript; charset=utf-8")], body)
 }
 
 #[tokio::main]
@@ -109,97 +81,57 @@ async fn main() -> Result<(), anyhow::Error> {
     ctrlc::set_handler(move || {
         info!(ROOT_LOGGER, "Received SIGTERM, shutting down");
         std::process::exit(0);
-    })
-    .unwrap();
+    }).unwrap();
 
     let (backend_storage, stats) = state_dump::load_state().await?;
-
-    tokio::task::spawn(periodically_dump_state(
-        backend_storage.clone(),
-        stats.clone(),
-    ));
+    tokio::task::spawn(periodically_dump_state(backend_storage.clone(), stats.clone()));
 
     let app = Router::new()
         .route("/api", get(handle_websocket))
         .route("/api/rpc", post(wasm_rpc_handler::handle_wasm_rpc))
-        .route(
-            "/default_settings.json",
-            get(|| async { Json(settings::PropagatedState::default()) }),
-        )
+        .route("/default_settings.json", get(|| async { Json(settings::PropagatedState::default()) }))
         .route("/full_state.json", get(state_dump::dump_state))
         .route("/stats", get(get_stats))
         .route("/runtime.js", get(runtime_settings))
         .route("/cards.json", get(|| async { Json(CARDS_JSON.clone()) }))
-        .route(
-            "/rules",
-            get(|| async { Redirect::permanent("/rules.html") }),
-        )
+        .route("/rules", get(|| async { Redirect::permanent("/rules.html") }))
         .route("/public_games.json", get(state_dump::public_games));
 
     #[cfg(feature = "dynamic")]
-    let app = app.fallback_service(get_service(
-        ServeDir::new("../frontend/dist").fallback(ServeDir::new("../favicon")),
-    ));
+    let app = app.fallback_service(get_service(ServeDir::new("../frontend/dist").fallback(ServeDir::new("../favicon"))));
     #[cfg(not(feature = "dynamic"))]
     let app = app
-        .route(
-            "/",
-            get(|| async { serve_static_routes(Path("index.html".to_string())).await }),
-        )
+        .route("/", get(|| async { serve_static_routes(Path("index.html".to_string())).await }))
         .route("/*path", get(serve_static_routes));
 
-    // Configure CORS based on environment variables
-    // CORS_ALLOWED_ORIGINS: comma-separated list of allowed origins (e.g., "http://localhost:3000,https://example.com")
-    // Set to "*" to allow any origin (not recommended for production)
-    // If not set, defaults to allowing localhost origins in development
     let cors = {
-        let allowed_origins = std::env::var("CORS_ALLOWED_ORIGINS")
-            .unwrap_or_else(|_| {
-                // Default to common development origins if not specified
-                "http://localhost:3000,http://localhost:3030,http://127.0.0.1:3000,http://127.0.0.1:3030".to_string()
-            });
-
+        let allowed_origins = std::env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "http://localhost:3000,http://localhost:3030,http://127.0.0.1:3000,http://127.0.0.1:3030".to_string());
         if allowed_origins.trim() == "*" {
-            // Allow any origin (use with caution)
-            info!(
-                ROOT_LOGGER,
-                "CORS configured to allow ANY origin - not recommended for production"
-            );
-            CorsLayer::new()
-                .allow_origin(tower_http::cors::Any)
-                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-                .allow_headers(tower_http::cors::Any)
+            info!(ROOT_LOGGER, "CORS configured to allow ANY origin - not recommended for production");
+            CorsLayer::new().allow_origin(tower_http::cors::Any).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(tower_http::cors::Any)
         } else {
-            let origins: Vec<HeaderValue> = allowed_origins
-                .split(',')
-                .filter_map(|origin| origin.trim().parse::<HeaderValue>().ok())
-                .collect();
-
+            let origins: Vec<HeaderValue> = allowed_origins.split(',').filter_map(|origin| origin.trim().parse::<HeaderValue>().ok()).collect();
             if origins.is_empty() {
-                // If no valid origins, fall back to same-origin only
-                info!(
-                    ROOT_LOGGER,
-                    "No valid CORS origins configured, using same-origin policy"
-                );
+                info!(ROOT_LOGGER, "No valid CORS origins configured, using same-origin policy");
                 CorsLayer::new()
             } else {
                 info!(ROOT_LOGGER, "CORS origins configured: {:?}", origins);
-                CorsLayer::new()
-                    .allow_origin(AllowOrigin::list(origins))
-                    .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-                    .allow_headers(tower_http::cors::Any)
+                CorsLayer::new().allow_origin(AllowOrigin::list(origins)).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(tower_http::cors::Any)
             }
         }
     };
 
-    let app = app
-        .layer(cors)
-        .layer(Extension(backend_storage))
-        .layer(Extension(stats));
+    let app = app.layer(cors).layer(Extension(backend_storage)).layer(Extension(stats));
 
-    axum::Server::bind(&SocketAddr::from(([0, 0, 0, 0], 3030)))
-        .serve(app.into_make_service())
-        .await?;
+    // Render provides the public HTTP port through PORT. Keep 3030 as the
+    // local-development fallback, and always bind all interfaces in containers.
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(3030);
+    let address = SocketAddr::from(([0, 0, 0, 0], port));
+    info!(ROOT_LOGGER, "Listening"; "address" => address.to_string());
+    axum::Server::bind(&address).serve(app.into_make_service()).await?;
 
     info!(ROOT_LOGGER, "Shutting down");
     Ok(())
@@ -213,88 +145,46 @@ struct GameStats {
     sha: &'static str,
 }
 
-async fn get_stats(
-    Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>,
-) -> Result<Json<GameStats>, &'static str> {
-    let num_games_created = backend_storage
-        .clone()
-        .get_states_created()
-        .await
-        .map_err(|_| "failed to get number of games created")?;
-    let (num_active_games, num_players_online_now) = backend_storage
-        .clone()
-        .stats()
-        .await
-        .map_err(|_| "failed to get number of active games and online players")?;
-    Ok(Json(GameStats {
-        num_games_created,
-        num_players_online_now,
-        num_active_games,
-        sha: &VERSION,
-    }))
+async fn get_stats(Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>) -> Result<Json<GameStats>, &'static str> {
+    let num_games_created = backend_storage.clone().get_states_created().await.map_err(|_| "failed to get number of games created")?;
+    let (num_active_games, num_players_online_now) = backend_storage.clone().stats().await.map_err(|_| "failed to get number of active games and online players")?;
+    Ok(Json(GameStats { num_games_created, num_players_online_now, num_active_games, sha: &VERSION }))
 }
 
-async fn periodically_dump_state(
-    backend_storage: HashMapStorage<VersionedGame>,
-    stats: Arc<Mutex<InMemoryStats>>,
-) {
+async fn periodically_dump_state(backend_storage: HashMapStorage<VersionedGame>, stats: Arc<Mutex<InMemoryStats>>) {
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
     loop {
         interval.tick().await;
-        let _ =
-            state_dump::dump_state(Extension(backend_storage.clone()), Extension(stats.clone()))
-                .await;
+        let _ = state_dump::dump_state(Extension(backend_storage.clone()), Extension(stats.clone())).await;
     }
 }
 
-async fn handle_websocket(
-    ws: WebSocketUpgrade,
-    Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>,
-    Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>,
-) -> impl IntoResponse {
+async fn handle_websocket(ws: WebSocketUpgrade, Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>>, Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>) -> impl IntoResponse {
     ws.on_upgrade(|ws| {
         let ws_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
         let logger = ROOT_LOGGER.new(o!("ws_id" => ws_id));
         info!(logger, "Websocket connection initialized");
-        // Split the socket into a sender and receive of messages.
         let (mut user_ws_tx, mut user_ws_rx) = ws.split();
-
-        // Use an unbounded channel to handle buffering and flushing of messages
-        // to the websocket...
         let logger_ = logger.clone();
         let (tx, mut rx) = mpsc::unbounded_channel();
         tokio::task::spawn(async move {
-            while let Some(v) = rx.recv().await {
-                let _ = user_ws_tx.send(Message::Binary(v)).await;
-            }
+            while let Some(v) = rx.recv().await { let _ = user_ws_tx.send(Message::Binary(v)).await; }
             debug!(logger_, "Ending tx task");
         });
-
-        // And another channel to receive messages from the websocket
         let logger_ = logger.clone();
         let (tx2, rx2) = mpsc::unbounded_channel();
         tokio::task::spawn(async move {
             while let Some(result) = user_ws_rx.next().await {
                 match result {
-                    Ok(Message::Close(_)) => {
-                        break;
-                    }
-                    Ok(Message::Binary(r)) => {
-                        let _ = tx2.send(r);
-                    }
-                    Ok(Message::Text(r)) => {
-                        let _ = tx2.send(r.into_bytes());
-                    }
+                    Ok(Message::Close(_)) => break,
+                    Ok(Message::Binary(r)) => { let _ = tx2.send(r); }
+                    Ok(Message::Text(r)) => { let _ = tx2.send(r.into_bytes()); }
                     Ok(Message::Ping(_)) | Ok(Message::Pong(_)) => (),
-                    Err(e) => {
-                        error!(logger_, "Failed to fetch message"; "error" => format!("{e:?}"));
-                        break;
-                    }
+                    Err(e) => { error!(logger_, "Failed to fetch message"; "error" => format!("{e:?}")); break; }
                 }
             }
             debug!(logger_, "Ending rx task");
         });
-
         shengji_handler::entrypoint(tx, rx2, ws_id, logger, backend_storage, stats)
     })
 }
@@ -304,38 +194,18 @@ async fn serve_static_routes(Path(path): Path<String>) -> impl IntoResponse {
     static DIST: include_dir::Dir<'_> = include_dir::include_dir!("frontend/dist");
     static FAVICON: include_dir::Dir<'_> = include_dir::include_dir!("favicon");
     let mime_type = mime_guess::from_path(&path).first_or_text_plain();
-
     match DIST.get_file(&path).or_else(|| FAVICON.get_file(&path)) {
-        Some(f) => Response::builder()
-            .status(axum::http::StatusCode::OK)
-            .header(
-                http::header::CONTENT_TYPE,
-                http::HeaderValue::from_str(mime_type.as_ref()).unwrap(),
-            )
-            .body(axum::body::boxed(Full::from(f.contents())))
-            .unwrap(),
-        None => Response::builder()
-            .status(axum::http::StatusCode::NOT_FOUND)
-            .body(axum::body::boxed(Empty::new()))
-            .unwrap(),
+        Some(f) => Response::builder().status(axum::http::StatusCode::OK).header(http::header::CONTENT_TYPE, http::HeaderValue::from_str(mime_type.as_ref()).unwrap()).body(axum::body::boxed(Full::from(f.contents()))).unwrap(),
+        None => Response::builder().status(axum::http::StatusCode::NOT_FOUND).body(axum::body::boxed(Empty::new())).unwrap(),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::CARDS_JSON;
-
     static CARDS_JSON_FROM_FILE: &str = include_str!("../../frontend/src/generated/cards.json");
-
     #[test]
     fn test_cards_json_compatibility() {
-        assert_eq!(
-            serde_json::from_str::<serde_json::Value>(
-                &serde_json::to_string(&*CARDS_JSON).unwrap()
-            )
-            .unwrap(),
-            serde_json::from_str::<serde_json::Value>(CARDS_JSON_FROM_FILE).unwrap(),
-            "Run `yarn download-cards-json` with the backend running to sync the generated cards.json file"
-        );
+        assert_eq!(serde_json::from_str::<serde_json::Value>(&serde_json::to_string(&*CARDS_JSON).unwrap()).unwrap(), serde_json::from_str::<serde_json::Value>(CARDS_JSON_FROM_FILE).unwrap(), "Run `yarn download-cards-json` with the backend running to sync the generated cards.json file");
     }
 }
