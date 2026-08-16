@@ -157,7 +157,7 @@ impl PlayPhase {
             cards,
             self.propagated.trick_draw_policy,
             self.propagated.compound_formats.clone(),
-            self.num_decks == 4,
+            (3..=8).contains(&self.num_decks),
         )?)
     }
 
@@ -280,7 +280,6 @@ impl PlayPhase {
 
                                     match self.propagated.multiple_join_policy {
                                         MultipleJoinPolicy::Unrestricted if already_on_the_team => {
-                                            // double-join!
                                             friend.player_id = Some(played.id);
                                             msgs.push(MessageVariant::JoinedTeam {
                                                 player: played.id,
@@ -391,7 +390,7 @@ impl PlayPhase {
                 let mut was_blocked = false;
                 if is_defending && should_go_back_to_two {
                     player.reset_rank();
-                };
+                }
                 let initial_rank = player.rank();
 
                 for bump_idx in 0..bump {
@@ -415,8 +414,6 @@ impl PlayPhase {
                         | (AdvancementPolicy::Unrestricted, _)
                         | (AdvancementPolicy::DefendPoints, _) => false,
                     };
-                    // In order to advance past NoTrump, the landlord must also be defending
-                    // NoTrump.
                     let landlord_must_defend = must_defend && player.rank() == Rank::NoTrump;
 
                     if must_defend
@@ -480,8 +477,6 @@ impl PlayPhase {
             winner: winner_pid, ..
         } = last_trick.complete().unwrap();
 
-        // In any jack variation, the rule can only applies if the non-landord team wins the
-        // last trick
         if landlords_team.contains(&winner_pid) {
             return false;
         }
@@ -492,7 +487,6 @@ impl PlayPhase {
             .find(|pc| pc.id == winner_pid)
             .unwrap();
 
-        // In the jack variation, the last trick must be won with a single (trump) jack
         jack_variation.compute(cards)
     }
 
@@ -641,7 +635,6 @@ impl PlayPhase {
     ) -> Result<(Option<InitializePhase>, Vec<MessageVariant>), Error> {
         match self.player_requested_reset {
             Some(p) => {
-                // ignore duplicate reset requests from same player
                 if p == player {
                     return Ok((None, vec![]));
                 }
@@ -681,7 +674,6 @@ impl PlayPhase {
                 }
             }
         }
-        // Don't redact at the end of the game.
         let game_ongoing = !self.game_ended_early
             && (!self.hands.is_empty() || !self.trick.played_cards().is_empty());
         if game_ongoing {
