@@ -10,10 +10,10 @@ const ReadyCheck = (): JSX.Element => {
     <button
       className="big"
       onClick={() =>
-        confirm("Are you ready to start the game?") && send("ReadyCheck")
+        confirm("大家准备好开始游戏了吗？") && send("ReadyCheck")
       }
     >
-      Check if everyone is ready!
+      检查大家是否准备好
     </button>
   );
 };
