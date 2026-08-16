@@ -1,10 +1,8 @@
 //! Guandan core scaffolding.
 //!
 //! This module is intentionally isolated from the existing Shengji game state.
-//! The first milestone is to establish a safe 4-14 player table model and the
-//! shared vocabulary needed by the Guandan rules engine before wiring it into
-//! the multiplayer room handler.
 
+pub mod compare;
 pub mod deck;
 pub mod rules;
 pub mod trick;
