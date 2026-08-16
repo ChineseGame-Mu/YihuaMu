@@ -66,6 +66,7 @@ async fn main() -> Result<(), anyhow::Error> {
     tokio::task::spawn(periodically_dump_state(backend_storage.clone(), stats.clone()));
     let app = Router::new()
         .route("/api", get(handle_websocket))
+        .route("/api/guandan", get(handle_guandan_websocket))
         .route("/api/rpc", post(wasm_rpc_handler::handle_wasm_rpc))
         .route("/default_settings.json", get(|| async { Json(settings::PropagatedState::default()) }))
         .route("/full_state.json", get(state_dump::dump_state))
@@ -108,6 +109,11 @@ async fn periodically_dump_state(backend_storage: HashMapStorage<VersionedGame>,
     let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(60));
     loop { interval.tick().await; let _ = state_dump::dump_state(Extension(backend_storage.clone()), Extension(stats.clone())).await; }
 }
+
+async fn handle_guandan_websocket(ws: WebSocketUpgrade) -> impl IntoResponse {
+    ws.on_upgrade(guandan_handler::websocket)
+}
+
 async fn handle_websocket(ws: WebSocketUpgrade, Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>, Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>) -> impl IntoResponse {
     ws.on_upgrade(|ws| {
         let ws_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
