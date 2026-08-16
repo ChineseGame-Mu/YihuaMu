@@ -1,0 +1,63 @@
+name: YihuaMu clean room link
+on:
+  push:
+    branches:
+      - agent/yihuamu-3-to-8-decks-chinese-ui
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/yihuamu-3-to-8-decks-chinese-ui
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Patch Initialize.tsx
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/Initialize.tsx')
+          s = p.read_text()
+
+          anchor = '  const startGame = (evt: React.SyntheticEvent): void => {\n'
+          helper = '''  const cleanRoomUrl = (): string => {\n    const url = new URL(window.location.href);\n    url.search = "";\n    return url.toString();\n  };\n\n'''
+          if helper not in s:
+              if anchor not in s:
+                  raise SystemExit('Could not find startGame anchor')
+              s = s.replace(anchor, helper + anchor, 1)
+
+          old_link = '''        <a href={window.location.href} target="_blank" rel="noreferrer">\n          <code>{window.location.href}</code>\n        </a>'''
+          new_link = '''        <a href={cleanRoomUrl()} target="_blank" rel="noreferrer">\n          <code>{cleanRoomUrl()}</code>\n        </a>'''
+          if old_link in s:
+              s = s.replace(old_link, new_link, 1)
+          elif new_link not in s:
+              raise SystemExit('Could not find room link block')
+
+          old_start = '''      <>\n        <button\n          className="big"\n          disabled={\n            props.state.propagated.game_start_policy === "AllowLandlordOnly" &&\n            landlordIndex !== -1 &&\n            props.state.propagated.players[landlordIndex].name !== props.name\n          }\n          onClick={startGame}\n        >\n          开始游戏\n        </button>\n        <ReadyCheck />\n        {props.state.propagated.players.length < 4 ? (\n          <p>试用模式：当前少于 4 名玩家，按钮仍保持显示。</p>\n        ) : null}\n      </>'''
+          new_start = '''      {props.state.propagated.players.length >= 4 ? (\n        <>\n          <button\n            className="big"\n            disabled={\n              props.state.propagated.game_start_policy === "AllowLandlordOnly" &&\n              landlordIndex !== -1 &&\n              props.state.propagated.players[landlordIndex].name !== props.name\n            }\n            onClick={startGame}\n          >\n            开始游戏\n          </button>\n          <ReadyCheck />\n        </>\n      ) : (\n        <h2>等待其他玩家加入……</h2>\n      )}'''
+          if old_start in s:
+              s = s.replace(old_start, new_start, 1)
+          elif new_start not in s:
+              raise SystemExit('Could not find start-game block')
+
+          p.write_text(s)
+          PY
+      - name: Format frontend
+        run: yarn prettier --write src/Initialize.tsx
+        working-directory: frontend
+      - name: Commit patch and remove temporary workflow
+        run: |
+          rm .github/workflows/yihuamu-clean-room-link.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/Initialize.tsx .github/workflows/yihuamu-clean-room-link.yml
+          git commit -m "Clean shared room URLs and enforce four-player start"
+          git push origin HEAD:agent/yihuamu-3-to-8-decks-chinese-ui
