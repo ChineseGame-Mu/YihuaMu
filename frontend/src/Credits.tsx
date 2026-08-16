@@ -1,3 +1,4 @@
+import * as React from "react";
 import type { JSX } from "react";
 
 const Credits = (): JSX.Element => (
