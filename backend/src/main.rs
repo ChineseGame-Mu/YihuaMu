@@ -159,7 +159,7 @@ async fn periodically_dump_state(backend_storage: HashMapStorage<VersionedGame>,
     }
 }
 
-async fn handle_websocket(ws: WebSocketUpgrade, Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>>, Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>) -> impl IntoResponse {
+async fn handle_websocket(ws: WebSocketUpgrade, Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>, Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>) -> impl IntoResponse {
     ws.on_upgrade(|ws| {
         let ws_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
         let logger = ROOT_LOGGER.new(o!("ws_id" => ws_id));
