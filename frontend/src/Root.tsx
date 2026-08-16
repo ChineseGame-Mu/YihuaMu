@@ -18,9 +18,13 @@ import type { JSX } from "react";
 
 const Confetti = React.lazy(async () => await import("./Confetti"));
 
+type GameModeChoice = "Tractor" | "FindingFriends";
+
 const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
+  const [selectedGameMode, setSelectedGameMode] =
+    React.useState<GameModeChoice | null>(null);
 
   const [previousHeaderMessages, setPreviousHeaderMessages] = React.useState<
     string[]
@@ -74,15 +78,52 @@ const Root = (): JSX.Element => {
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
             </h1>
-            <JoinRoom
-              name={state.name}
-              room_name={state.roomName}
-              setName={(name: string) => updateState({ name })}
-              setRoomName={(roomName: string) => {
-                updateState({ roomName });
-                window.location.hash = roomName;
-              }}
-            />
+            {selectedGameMode === null ? (
+              <div className="game-settings">
+                <h2>请选择游戏模式</h2>
+                <p>
+                  <button
+                    className="big"
+                    onClick={() => setSelectedGameMode("Tractor")}
+                  >
+                    升级 / 拖拉机
+                  </button>{" "}
+                  <button
+                    className="big"
+                    onClick={() => setSelectedGameMode("FindingFriends")}
+                  >
+                    找朋友
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <>
+                <p>
+                  当前模式：
+                  <strong>
+                    {selectedGameMode === "Tractor"
+                      ? "升级 / 拖拉机"
+                      : "找朋友"}
+                  </strong>{" "}
+                  <button
+                    className="normal"
+                    onClick={() => setSelectedGameMode(null)}
+                  >
+                    重新选择
+                  </button>
+                </p>
+                <JoinRoom
+                  name={state.name}
+                  room_name={state.roomName}
+                  gameMode={selectedGameMode}
+                  setName={(name: string) => updateState({ name })}
+                  setRoomName={(roomName: string) => {
+                    updateState({ roomName });
+                    window.location.hash = roomName;
+                  }}
+                />
+              </>
+            )}
           </div>
           <hr />
           <Credits />
