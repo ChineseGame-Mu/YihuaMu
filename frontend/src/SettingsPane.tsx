@@ -58,9 +58,9 @@ const SettingsPane = (props: IProps): JSX.Element => {
           evt.preventDefault();
           setLink(evt.target.value);
         }}
-        placeholder="https://... link to voice chat"
+        placeholder="https://... 语音聊天室链接"
       />
-      <input type="button" onClick={setChatLink} value="set" />
+      <input type="button" onClick={setChatLink} value="设置" />
     </div>
   );
 
@@ -68,276 +68,114 @@ const SettingsPane = (props: IProps): JSX.Element => {
     <div className="settings">
       <div style={{ display: "table" }}>
         <Row>
-          <LabelCell>four-color mode</LabelCell>
-          <Cell>
-            <input
-              name="four-color-mode"
-              type="checkbox"
-              checked={settings.fourColor}
-              onChange={makeChangeHandler({ fourColor: !settings.fourColor })}
-            />
-          </Cell>
+          <LabelCell>四色牌面模式</LabelCell>
+          <Cell><input name="four-color-mode" type="checkbox" checked={settings.fourColor} onChange={makeChangeHandler({ fourColor: !settings.fourColor })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>dark mode</LabelCell>
-          <Cell>
-            <input
-              name="dark-mode"
-              type="checkbox"
-              checked={settings.darkMode}
-              onChange={makeChangeHandler({ darkMode: !settings.darkMode })}
-            />
-          </Cell>
+          <LabelCell>深色模式</LabelCell>
+          <Cell><input name="dark-mode" type="checkbox" checked={settings.darkMode} onChange={makeChangeHandler({ darkMode: !settings.darkMode })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>use SVG cards</LabelCell>
-          <Cell>
-            <input
-              name="svg-cards"
-              type="checkbox"
-              checked={settings.svgCards}
-              onChange={makeChangeHandler({ svgCards: !settings.svgCards })}
-            />
-          </Cell>
+          <LabelCell>使用 SVG 扑克牌</LabelCell>
+          <Cell><input name="svg-cards" type="checkbox" checked={settings.svgCards} onChange={makeChangeHandler({ svgCards: !settings.svgCards })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>always show card labels</LabelCell>
-          <Cell>
-            <input
-              name="show-card-labels"
-              type="checkbox"
-              checked={settings.showCardLabels}
-              onChange={makeChangeHandler({
-                showCardLabels: !settings.showCardLabels,
-              })}
-            />
-          </Cell>
+          <LabelCell>始终显示牌面文字</LabelCell>
+          <Cell><input name="show-card-labels" type="checkbox" checked={settings.showCardLabels} onChange={makeChangeHandler({ showCardLabels: !settings.showCardLabels })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>icon on point cards</LabelCell>
+          <LabelCell>分牌图标</LabelCell>
           <Cell>
             <EmojiPicker
               value={settings.pointCardIcon}
-              setEmoji={(emoji) => {
-                makeChangeHandler({
-                  pointCardIcon: emoji,
-                })();
-              }}
-              setDefault={makeChangeHandler({
-                pointCardIcon: DEFAULT_POINT_CARD_ICON,
-              })}
+              setEmoji={(emoji) => makeChangeHandler({ pointCardIcon: emoji })()}
+              setDefault={makeChangeHandler({ pointCardIcon: DEFAULT_POINT_CARD_ICON })}
             />
           </Cell>
         </Row>
         <Row>
-          <LabelCell>icon on trump cards</LabelCell>
+          <LabelCell>主牌图标</LabelCell>
           <Cell>
             <EmojiPicker
               value={settings.trumpCardIcon}
-              setEmoji={(emoji) => {
-                makeChangeHandler({
-                  trumpCardIcon: emoji,
-                })();
-              }}
-              setDefault={makeChangeHandler({
-                trumpCardIcon: DEFAULT_TRUMP_CARD_ICON,
-              })}
+              setEmoji={(emoji) => makeChangeHandler({ trumpCardIcon: emoji })()}
+              setDefault={makeChangeHandler({ trumpCardIcon: DEFAULT_TRUMP_CARD_ICON })}
             />
           </Cell>
         </Row>
         <Row>
-          <LabelCell>show last trick</LabelCell>
-          <Cell>
-            <input
-              name="show-last-trick"
-              type="checkbox"
-              checked={settings.showLastTrick}
-              onChange={makeChangeHandler({
-                showLastTrick: !settings.showLastTrick,
-              })}
-            />
-          </Cell>
+          <LabelCell>显示上一轮牌</LabelCell>
+          <Cell><input name="show-last-trick" type="checkbox" checked={settings.showLastTrick} onChange={makeChangeHandler({ showLastTrick: !settings.showLastTrick })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>beep on turn</LabelCell>
-          <Cell>
-            <input
-              name="beep-on-turn"
-              type="checkbox"
-              checked={settings.beepOnTurn}
-              onChange={makeChangeHandler({ beepOnTurn: !settings.beepOnTurn })}
-            />
-          </Cell>
+          <LabelCell>轮到我时发出提示音</LabelCell>
+          <Cell><input name="beep-on-turn" type="checkbox" checked={settings.beepOnTurn} onChange={makeChangeHandler({ beepOnTurn: !settings.beepOnTurn })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>reverse card order (in hand)</LabelCell>
-          <Cell>
-            <input
-              name="reverse-card-order"
-              type="checkbox"
-              checked={settings.reverseCardOrder}
-              onChange={makeChangeHandler({
-                reverseCardOrder: !settings.reverseCardOrder,
-              })}
-            />
-          </Cell>
+          <LabelCell>手牌反向排列</LabelCell>
+          <Cell><input name="reverse-card-order" type="checkbox" checked={settings.reverseCardOrder} onChange={makeChangeHandler({ reverseCardOrder: !settings.reverseCardOrder })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>separate cards by effective suit (in hand)</LabelCell>
-          <Cell>
-            <input
-              name="separate-cards-by-suit"
-              type="checkbox"
-              checked={settings.separateCardsBySuit}
-              onChange={makeChangeHandler({
-                separateCardsBySuit: !settings.separateCardsBySuit,
-              })}
-            />
-          </Cell>
+          <LabelCell>按有效花色分开手牌</LabelCell>
+          <Cell><input name="separate-cards-by-suit" type="checkbox" checked={settings.separateCardsBySuit} onChange={makeChangeHandler({ separateCardsBySuit: !settings.separateCardsBySuit })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>disable suit highlights</LabelCell>
-          <Cell>
-            <input
-              name="disable-suit-highlights"
-              type="checkbox"
-              checked={settings.disableSuitHighlights}
-              onChange={makeChangeHandler({
-                disableSuitHighlights: !settings.disableSuitHighlights,
-              })}
-            />
-          </Cell>
+          <LabelCell>关闭同花色高亮</LabelCell>
+          <Cell><input name="disable-suit-highlights" type="checkbox" checked={settings.disableSuitHighlights} onChange={makeChangeHandler({ disableSuitHighlights: !settings.disableSuitHighlights })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>unset auto-play if winner changes</LabelCell>
-          <Cell>
-            <input
-              name="unset-auto-play-when-winner-changes"
-              type="checkbox"
-              checked={settings.unsetAutoPlayWhenWinnerChanges}
-              onChange={makeChangeHandler({
-                unsetAutoPlayWhenWinnerChanges:
-                  !settings.unsetAutoPlayWhenWinnerChanges,
-              })}
-            />
-          </Cell>
+          <LabelCell>当前赢家改变时取消自动出牌</LabelCell>
+          <Cell><input name="unset-auto-play-when-winner-changes" type="checkbox" checked={settings.unsetAutoPlayWhenWinnerChanges} onChange={makeChangeHandler({ unsetAutoPlayWhenWinnerChanges: !settings.unsetAutoPlayWhenWinnerChanges })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>show tricks in player order</LabelCell>
-          <Cell>
-            <input
-              name="show-trick-in-player-order"
-              type="checkbox"
-              checked={settings.showTrickInPlayerOrder}
-              onChange={makeChangeHandler({
-                showTrickInPlayerOrder: !settings.showTrickInPlayerOrder,
-              })}
-            />
-          </Cell>
+          <LabelCell>按玩家顺序显示本轮出牌</LabelCell>
+          <Cell><input name="show-trick-in-player-order" type="checkbox" checked={settings.showTrickInPlayerOrder} onChange={makeChangeHandler({ showTrickInPlayerOrder: !settings.showTrickInPlayerOrder })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>suit color overrides</LabelCell>
+          <LabelCell>自定义花色颜色</LabelCell>
           <Cell>
             {settings.svgCards ? (
-              "disabled with SVG cards"
+              "使用 SVG 扑克牌时不可用"
             ) : (
               <SuitOverrides
                 suitColors={settings.suitColorOverrides}
                 setSuitColors={(newOverrides: ISuitOverrides) =>
-                  props.onChangeSettings({
-                    ...props.settings,
-                    suitColorOverrides: newOverrides,
-                  })
+                  props.onChangeSettings({ ...props.settings, suitColorOverrides: newOverrides })
                 }
               />
             )}
           </Cell>
         </Row>
         <Row>
-          <LabelCell>play sound when drawing card</LabelCell>
-          <Cell>
-            <input
-              name="play-sound-when-drawing-card"
-              type="checkbox"
-              checked={settings.playDrawCardSound}
-              onChange={makeChangeHandler({
-                playDrawCardSound: !settings.playDrawCardSound,
-              })}
-            />
-          </Cell>
+          <LabelCell>摸牌时播放声音</LabelCell>
+          <Cell><input name="play-sound-when-drawing-card" type="checkbox" checked={settings.playDrawCardSound} onChange={makeChangeHandler({ playDrawCardSound: !settings.playDrawCardSound })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>show debugging information</LabelCell>
-          <Cell>
-            <input
-              name="show-debug-info"
-              type="checkbox"
-              checked={settings.showDebugInfo}
-              onChange={makeChangeHandler({
-                showDebugInfo: !settings.showDebugInfo,
-              })}
-            />
-          </Cell>
+          <LabelCell>显示调试信息</LabelCell>
+          <Cell><input name="show-debug-info" type="checkbox" checked={settings.showDebugInfo} onChange={makeChangeHandler({ showDebugInfo: !settings.showDebugInfo })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>show player name in title bar</LabelCell>
-          <Cell>
-            <input
-              name="show-player-name"
-              type="checkbox"
-              checked={settings.showPlayerName}
-              onChange={makeChangeHandler({
-                showPlayerName: !settings.showPlayerName,
-              })}
-            />
-          </Cell>
+          <LabelCell>在浏览器标题栏显示玩家姓名</LabelCell>
+          <Cell><input name="show-player-name" type="checkbox" checked={settings.showPlayerName} onChange={makeChangeHandler({ showPlayerName: !settings.showPlayerName })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>hide chat box</LabelCell>
-          <Cell>
-            <input
-              name="hide-chat-box"
-              type="checkbox"
-              checked={settings.hideChatBox}
-              onChange={makeChangeHandler({
-                hideChatBox: !settings.hideChatBox,
-              })}
-            />
-          </Cell>
+          <LabelCell>隐藏聊天框</LabelCell>
+          <Cell><input name="hide-chat-box" type="checkbox" checked={settings.hideChatBox} onChange={makeChangeHandler({ hideChatBox: !settings.hideChatBox })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>
-            show points bar above the game (rather than below)
-          </LabelCell>
-          <Cell>
-            <input
-              name="show-points-above-game"
-              type="checkbox"
-              checked={settings.showPointsAboveGame}
-              onChange={makeChangeHandler({
-                showPointsAboveGame: !settings.showPointsAboveGame,
-              })}
-            />
-          </Cell>
+          <LabelCell>把分数进度条显示在牌桌上方</LabelCell>
+          <Cell><input name="show-points-above-game" type="checkbox" checked={settings.showPointsAboveGame} onChange={makeChangeHandler({ showPointsAboveGame: !settings.showPointsAboveGame })} /></Cell>
         </Row>
         <Row>
-          <LabelCell>autodraw speed</LabelCell>
+          <LabelCell>自动摸牌速度</LabelCell>
           <Cell>
             <select
-              value={
-                settings.autodrawSpeedMs !== null
-                  ? settings.autodrawSpeedMs
-                  : ""
-              }
-              onChange={(e) =>
-                makeChangeHandler({
-                  autodrawSpeedMs: parseInt(e.target.value),
-                })()
-              }
+              value={settings.autodrawSpeedMs !== null ? settings.autodrawSpeedMs : ""}
+              onChange={(e) => makeChangeHandler({ autodrawSpeedMs: parseInt(e.target.value) })()}
             >
-              <option value="250">default</option>
-              <option value="500">slow</option>
-              <option value="10">fast</option>
+              <option value="250">默认</option>
+              <option value="500">慢</option>
+              <option value="10">快</option>
             </select>
           </Cell>
         </Row>
@@ -345,7 +183,7 @@ const SettingsPane = (props: IProps): JSX.Element => {
       <hr />
       <div style={{ display: "table" }}>
         <Row>
-          <LabelCell>chat link</LabelCell>
+          <LabelCell>聊天室链接</LabelCell>
           <Cell>{editor}</Cell>
         </Row>
       </div>
@@ -358,7 +196,7 @@ const SuitOverrides = (props: {
   setSuitColors: (overrides: ISuitOverrides) => void;
 }): JSX.Element => {
   const suits: Array<keyof ISuitOverrides> = ["♢", "♡", "♤", "♧", "🃟", "🃏"];
-  const labels = ["♦", "♥", "♠", "♣", "LJ", "HJ"];
+  const labels = ["♦", "♥", "♠", "♣", "小王", "大王"];
   return (
     <>
       {suits.map((suit, idx) => (
@@ -381,7 +219,7 @@ const SuitOverrides = (props: {
           props.setSuitColors({});
         }}
       >
-        reset
+        恢复默认
       </button>
     </>
   );
@@ -409,10 +247,7 @@ const SuitColorPicker = (props: {
             style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}
             onClick={() => setShowPicker(false)}
           />
-          <CompactPicker
-            color={props.suitColor}
-            onChangeComplete={(c: any) => props.setSuitColor(c.hex)}
-          />
+          <CompactPicker color={props.suitColor} onChangeComplete={(c: any) => props.setSuitColor(c.hex)} />
         </div>
       ) : null}
     </>
@@ -430,29 +265,25 @@ const EmojiPicker = (props: {
       <span>{props.value}</span>
       {!showPicker && (
         <button className="normal" onClick={() => setShowPicker(true)}>
-          pick
+          选择
         </button>
       )}
       {showPicker && (
         <button className="normal" onClick={() => setShowPicker(false)}>
-          hide
+          隐藏
         </button>
       )}
       <button className="normal" onClick={props.setDefault}>
-        reset
+        恢复默认
       </button>
       {props.value !== "" && (
         <button className="normal" onClick={() => props.setEmoji("")}>
-          no icon
+          不显示图标
         </button>
       )}
       {showPicker && (
         <React.Suspense fallback={"..."}>
-          <Picker
-            onEmojiClick={(emoji) => {
-              props.setEmoji(emoji.emoji);
-            }}
-          />
+          <Picker onEmojiClick={(emoji) => props.setEmoji(emoji.emoji)} />
         </React.Suspense>
       )}
     </>
