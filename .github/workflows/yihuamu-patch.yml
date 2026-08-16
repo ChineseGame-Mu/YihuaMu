@@ -1,0 +1,326 @@
+name: Apply YihuaMu four-deck follow rule
+
+on:
+  push:
+    branches:
+      - agent/yihuamu-four-deck-follow-rule
+    paths:
+      - .github/workflows/yihuamu-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/yihuamu-four-deck-follow-rule
+
+      - name: Apply narrowly-scoped four-deck rule
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected 1 match, found {count}")
+              return text.replace(old, new, 1)
+
+          trick_path = Path("mechanics/src/trick.rs")
+          trick = trick_path.read_text()
+
+          old = '''    pub fn is_legal_play(
+              &self,
+              hand: &HashMap<Card, usize>,
+              proposed: &'_ [Card],
+              trick_draw_policy: TrickDrawPolicy,
+              bomb_policy: BombPolicy,
+          ) -> bool {
+          '''
+          new = '''    pub fn is_legal_play(
+              &self,
+              hand: &HashMap<Card, usize>,
+              proposed: &'_ [Card],
+              trick_draw_policy: TrickDrawPolicy,
+              bomb_policy: BombPolicy,
+          ) -> bool {
+              self.is_legal_play_with_yihuamu_rule(
+                  hand,
+                  proposed,
+                  trick_draw_policy,
+                  bomb_policy,
+                  false,
+              )
+          }
+
+          pub fn is_legal_play_with_yihuamu_rule(
+              &self,
+              hand: &HashMap<Card, usize>,
+              proposed: &'_ [Card],
+              trick_draw_policy: TrickDrawPolicy,
+              bomb_policy: BombPolicy,
+              yihuamu_four_deck_rule: bool,
+          ) -> bool {
+          '''
+          trick = replace_once(trick, old, new, "TrickFormat::is_legal_play header")
+
+          old = '''        if num_proposed_correct_suit < required {
+              let num_correct_suit = num_correct_suit_in_hand();
+              // If this is all of the correct suit that is available, it's fine
+              // Otherwise, this is an invalid play.
+              num_correct_suit == num_proposed_correct_suit
+          } else {
+          '''
+          new = '''        if num_proposed_correct_suit < required {
+              let num_correct_suit = num_correct_suit_in_hand();
+
+              // YihuaMu four-deck house rule:
+              // If exactly four cards were led and the follower has exactly three
+              // cards of the led suit in a pair+single pattern, the pair is not
+              // forced. The follower may split the pair by playing two led-suit
+              // cards (one card from the pair plus the singleton) and fill the
+              // remaining two slots off-suit. Playing fewer than two led-suit
+              // cards is still illegal.
+              let has_pair_plus_single = yihuamu_four_deck_rule
+                  && required == 4
+                  && num_correct_suit == 3
+                  && hand.iter().any(|(c, ct)| {
+                      self.trump.effective_suit(*c) == self.suit && *ct == 2
+                  });
+              if has_pair_plus_single && num_proposed_correct_suit == 2 {
+                  return true;
+              }
+
+              // Standard rule: when short in the led suit, every available
+              // led-suit card must be played.
+              num_correct_suit == num_proposed_correct_suit
+          } else {
+          '''
+          trick = replace_once(trick, old, new, "short-suit legality block")
+
+          old = '''    pub fn can_play_cards(
+              &self,
+              id: PlayerID,
+              hands: &Hands,
+              cards: &[Card],
+              trick_draw_policy: TrickDrawPolicy,
+              compound_formats: CompoundFormats,
+          ) -> Result<(), TrickError> {
+              hands.contains(id, cards.iter().cloned())?;
+          '''
+          new = '''    pub fn can_play_cards(
+              &self,
+              id: PlayerID,
+              hands: &Hands,
+              cards: &[Card],
+              trick_draw_policy: TrickDrawPolicy,
+              compound_formats: CompoundFormats,
+          ) -> Result<(), TrickError> {
+              self.can_play_cards_with_yihuamu_rule(
+                  id,
+                  hands,
+                  cards,
+                  trick_draw_policy,
+                  compound_formats,
+                  false,
+              )
+          }
+
+          pub fn can_play_cards_with_yihuamu_rule(
+              &self,
+              id: PlayerID,
+              hands: &Hands,
+              cards: &[Card],
+              trick_draw_policy: TrickDrawPolicy,
+              compound_formats: CompoundFormats,
+              yihuamu_four_deck_rule: bool,
+          ) -> Result<(), TrickError> {
+              hands.contains(id, cards.iter().cloned())?;
+          '''
+          trick = replace_once(trick, old, new, "Trick::can_play_cards header")
+
+          old = '''                if tf.is_legal_play(hands.get(id)?, cards, trick_draw_policy, self.bomb_policy) {
+          '''
+          new = '''                if tf.is_legal_play_with_yihuamu_rule(
+                      hands.get(id)?,
+                      cards,
+                      trick_draw_policy,
+                      self.bomb_policy,
+                      yihuamu_four_deck_rule,
+                  ) {
+          '''
+          trick = replace_once(trick, old, new, "TrickFormat legality call")
+
+          old = '''    pub fn play_cards(
+              &mut self,
+              args: PlayCards<'_, '_, '_>,
+          ) -> Result<Vec<PlayCardsMessage>, TrickError> {
+              let PlayCards {
+          '''
+          new = '''    pub fn play_cards(
+              &mut self,
+              args: PlayCards<'_, '_, '_>,
+          ) -> Result<Vec<PlayCardsMessage>, TrickError> {
+              self.play_cards_with_yihuamu_rule(args, false)
+          }
+
+          pub fn play_cards_with_yihuamu_rule(
+              &mut self,
+              args: PlayCards<'_, '_, '_>,
+              yihuamu_four_deck_rule: bool,
+          ) -> Result<Vec<PlayCardsMessage>, TrickError> {
+              let PlayCards {
+          '''
+          trick = replace_once(trick, old, new, "Trick::play_cards header")
+
+          old = '''        self.can_play_cards(
+              id,
+              hands,
+              cards,
+              trick_draw_policy,
+              compound_formats.clone(),
+          )?;
+          '''
+          new = '''        self.can_play_cards_with_yihuamu_rule(
+              id,
+              hands,
+              cards,
+              trick_draw_policy,
+              compound_formats.clone(),
+              yihuamu_four_deck_rule,
+          )?;
+          '''
+          trick = replace_once(trick, old, new, "internal can_play_cards call")
+
+          marker = '''    // ---- Bug regression tests ----
+          '''
+          test = r'''    #[test]
+              fn test_yihuamu_four_deck_three_card_suit_pair_may_be_split() {
+                  let trick_format = TrickFormat::from_cards(
+                      TRUMP,
+                      TractorRequirements::default(),
+                      &[H_6, H_6, H_7, H_7],
+                      None,
+                      CompoundFormats::default(),
+                  )
+                  .unwrap();
+
+                  // Exactly three hearts: a genuine pair plus one singleton.
+                  let hand = Card::count(vec![H_9, H_9, H_J, C_2, D_2]);
+                  let split_pair_play = [H_9, H_J, C_2, D_2];
+
+                  // Robert Ying's standard rule rejects this because one heart is retained.
+                  assert!(!trick_format.is_legal_play(
+                      &hand,
+                      &split_pair_play,
+                      TrickDrawPolicy::NoProtections,
+                      BombPolicy::NoBombs,
+                  ));
+
+                  // YihuaMu four-deck rule allows the pair to be split.
+                  assert!(trick_format.is_legal_play_with_yihuamu_rule(
+                      &hand,
+                      &split_pair_play,
+                      TrickDrawPolicy::NoProtections,
+                      BombPolicy::NoBombs,
+                      true,
+                  ));
+
+                  // At least two cards of the led suit are still required.
+                  assert!(!trick_format.is_legal_play_with_yihuamu_rule(
+                      &hand,
+                      &[H_J, C_2, D_2, C_3],
+                      TrickDrawPolicy::NoProtections,
+                      BombPolicy::NoBombs,
+                      true,
+                  ));
+
+                  // A triple is not treated as the requested pair+single exception.
+                  let triple_hand = Card::count(vec![H_9, H_9, H_9, C_2, D_2]);
+                  assert!(!trick_format.is_legal_play_with_yihuamu_rule(
+                      &triple_hand,
+                      &[H_9, H_9, C_2, D_2],
+                      TrickDrawPolicy::NoProtections,
+                      BombPolicy::NoBombs,
+                      true,
+                  ));
+
+                  // Three distinct cards also remain under the standard short-suit rule.
+                  let three_singles = Card::count(vec![H_8, H_9, H_J, C_2, D_2]);
+                  assert!(!trick_format.is_legal_play_with_yihuamu_rule(
+                      &three_singles,
+                      &[H_8, H_9, C_2, D_2],
+                      TrickDrawPolicy::NoProtections,
+                      BombPolicy::NoBombs,
+                      true,
+                  ));
+              }
+
+          '''
+          if marker not in trick:
+              raise SystemExit("test insertion marker not found")
+          trick = trick.replace(marker, test + marker, 1)
+          trick_path.write_text(trick)
+
+          core_path = Path("core/src/game_state/play_phase.rs")
+          core = core_path.read_text()
+
+          old = '''        Ok(self.trick.can_play_cards(
+              id,
+              &self.hands,
+              cards,
+              self.propagated.trick_draw_policy,
+              self.propagated.compound_formats.clone(),
+          )?)
+          '''
+          new = '''        Ok(self.trick.can_play_cards_with_yihuamu_rule(
+              id,
+              &self.hands,
+              cards,
+              self.propagated.trick_draw_policy,
+              self.propagated.compound_formats.clone(),
+              self.num_decks == 4,
+          )?)
+          '''
+          core = replace_once(core, old, new, "PlayPhase::can_play_cards")
+
+          old = '''        let mut msgs = self.trick.play_cards(PlayCards {
+          '''
+          new = '''        let mut msgs = self.trick.play_cards_with_yihuamu_rule(PlayCards {
+          '''
+          core = replace_once(core, old, new, "PlayPhase::play_cards call")
+
+          old = '''            bomb_policy: self.propagated.bomb_policy,
+              compound_formats: self.propagated.compound_formats.clone(),
+          })?;
+          '''
+          new = '''            bomb_policy: self.propagated.bomb_policy,
+              compound_formats: self.propagated.compound_formats.clone(),
+          }, self.num_decks == 4)?;
+          '''
+          core = replace_once(core, old, new, "PlayPhase::play_cards custom-rule flag")
+          core_path.write_text(core)
+          PY
+
+      - name: Format
+        run: cargo fmt --all -- --check || cargo fmt --all
+
+      - name: Test custom mechanics rule
+        run: cargo test -p shengji-mechanics yihuamu_four_deck -- --nocapture
+
+      - name: Check core integration
+        run: cargo check -p shengji-core
+
+      - name: Commit tested changes and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name "YihuaMu Rule Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git rm .github/workflows/yihuamu-patch.yml
+          git add mechanics/src/trick.rs core/src/game_state/play_phase.rs
+          git commit -m "Relax pair follow rule for YihuaMu four-deck games"
+          git push origin HEAD:agent/yihuamu-four-deck-follow-rule
