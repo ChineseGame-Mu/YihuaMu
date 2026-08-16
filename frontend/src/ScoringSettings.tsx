@@ -37,10 +37,8 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
   React.useEffect(() => {
     setIsLoading(true);
 
-    // Load regular scoring
     const loadScoring = async () => {
       try {
-        // Check cache first for regular scoring
         const regularKey = getExplainScoringKey(
           props.params,
           false,
@@ -61,7 +59,6 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
         setStepSize(regular.step_size);
         setTotalPoints(regular.total_points);
 
-        // Load bonus scoring if enabled
         if (bonusEnabled) {
           const bonusKey = getExplainScoringKey(
             props.params,
@@ -86,7 +83,6 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
         setIsLoading(false);
       } catch (error) {
         console.error("Error explaining scoring:", error);
-        // Set defaults
         setScoreTransitions([]);
         setBonusScoreTransitions([]);
         setStepSize(10);
@@ -101,7 +97,7 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
   if (isLoading) {
     return (
       <>
-        <div>Loading scoring settings...</div>
+        <div>正在加载计分设置……</div>
       </>
     );
   }
@@ -164,23 +160,15 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
   }
 
   const text = (idx: number): JSX.Element => {
-    let txt = "Attacking team wins, but doesn't level up.";
+    let txt = "闲家获胜，但不升级。";
     const segment = scoreSegments[idx];
     if (segment.segment.results.landlord_won) {
-      txt = `Defending team wins, and goes up ${
-        segment.segment.results.landlord_delta
-      } level${segment.segment.results.landlord_delta === 1 ? "" : "s"}.`;
+      txt = `庄家方获胜，升 ${segment.segment.results.landlord_delta} 级。`;
       if (segment.bonusSegment !== null) {
-        txt += ` If the team is unexpectedly small, they go up ${
-          segment.bonusSegment.results.landlord_delta
-        } level${
-          segment.bonusSegment.results.landlord_delta === 1 ? "" : "s"
-        }.`;
+        txt += ` 如果庄家方人数少于正常人数，则升 ${segment.bonusSegment.results.landlord_delta} 级。`;
       }
     } else if (segment.segment.results.non_landlord_delta > 0) {
-      txt = `Attacking team wins, and goes up ${
-        segment.segment.results.non_landlord_delta
-      } level${segment.segment.results.non_landlord_delta === 1 ? "" : "s"}.`;
+      txt = `闲家方获胜，升 ${segment.segment.results.non_landlord_delta} 级。`;
     }
     return <>{txt}</>;
   };
@@ -241,14 +229,14 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
           {highlighted !== null ? (
             <p> {text(highlighted)}</p>
           ) : (
-            <p>Hover over the scores above for more details.</p>
+            <p>把鼠标移到上方分数区间，可查看详细结果。</p>
           )}
         </div>
         <div>
-          <label>Step size: {stepSize} points</label>
+          <label>当前每档：{stepSize} 分</label>
         </div>
         <div>
-          <label>Base step size: </label>
+          <label>基础每档分数：</label>
           <select
             value={`${props.params.step_size_per_deck * props.decks.length}`}
             onChange={(evt) => {
@@ -265,12 +253,10 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
               <option key={idx}>{ss}</option>
             ))}
           </select>{" "}
-          (default: {20 * props.decks.length})
+          （默认：{20 * props.decks.length}）
         </div>
         <div>
-          <label>
-            Adjustment to step size for {props.decks.length} decks:{" "}
-          </label>
+          <label>使用 {props.decks.length} 副牌时的每档调整：</label>
           <select
             value={
               props.params.step_adjustments[props.decks.length] !== undefined
@@ -292,17 +278,19 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
               }
             }}
           >
-            <option key="none">none</option>
+            <option value="none">无</option>
             {Array((props.params.step_size_per_deck * props.decks.length) / 5)
               .fill(undefined)
               .map((_, idx) => (
-                <option key={idx}>{(idx + 1) * 5}</option>
+                <option key={idx} value={(idx + 1) * 5}>
+                  {(idx + 1) * 5}
+                </option>
               ))}
           </select>{" "}
-          (default: none)
+          （默认：无）
         </div>
         <div>
-          <label>Number of steps where nobody gains a level: </label>
+          <label>双方都不升级的档数：</label>
           <select
             value={`${props.params.deadzone_size}`}
             onChange={(evt) => {
@@ -320,10 +308,10 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
                 <option key={idx}>{idx}</option>
               ))}
           </select>{" "}
-          (default: 1)
+          （默认：1）
         </div>
         <div>
-          <label>Number of steps for the attacking team to win: </label>
+          <label>闲家获胜所需档数：</label>
           <select
             value={`${props.params.num_steps_to_non_landlord_turnover}`}
             onChange={(evt) => {
@@ -346,10 +334,10 @@ export const GameScoringSettings = (props: IProps): JSX.Element => {
                 <option key={idx + 1}>{idx + 1}</option>
               ))}
           </select>{" "}
-          (default: 2)
+          （默认：2）
         </div>
         <div>
-          <label>Grant a bonus level for unexpectedly small team</label>{" "}
+          <label>庄家方人数意外较少时额外升一级</label>{" "}
           <input
             id="small-team-bonus"
             type="checkbox"

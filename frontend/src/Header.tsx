@@ -21,7 +21,7 @@ const Header = (props: IProps): JSX.Element => (
     </h1>
     {props.chatLink !== undefined && props.chatLink !== null ? (
       <p>
-        Join the chat at{" "}
+        聊天室：{" "}
         <a href={props.chatLink} target="_blank" rel="noreferrer">
           {props.chatLink}
         </a>

@@ -20,12 +20,12 @@ const LandlordSelector = (props: IProps): JSX.Element => {
   return (
     <div className="landlord-picker">
       <label>
-        Current leader:{" "}
+        当前庄家：{" "}
         <select
           value={props.landlordId === null ? "" : props.landlordId}
           onChange={handleChange}
         >
-          <option value="">determined by the bid</option>
+          <option value="">由叫主结果决定</option>
           {props.players.map((player: Player) => (
             <option value={player.id} key={player.id}>
               {player.name}

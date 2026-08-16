@@ -18,26 +18,18 @@ interface IProps {
 }
 
 const Players = (props: IProps): JSX.Element => {
-  const {
-    players,
-    observers,
-    landlord,
-
-    landlords_team,
-    movable,
-    next,
-    name,
-  } = props;
+  const { players, observers, landlord, landlords_team, movable, next, name } =
+    props;
   const { send } = React.useContext(WebsocketContext);
 
   const makeDescriptor = (p: Player): Array<JSX.Element | string> => {
     if (p.metalevel <= 1) {
-      return [`${p.name} (rank ${p.level})`];
+      return [`${p.name}（级别 ${p.level}）`];
     } else {
       return [
-        `${p.name} (rank ${p.level}`,
+        `${p.name}（级别 ${p.level}`,
         <sup key={`meta-${p.id}`}>{p.metalevel}</sup>,
-        ")",
+        "）",
       ];
     }
   };
@@ -57,10 +49,10 @@ const Players = (props: IProps): JSX.Element => {
             const descriptor = makeDescriptor(player);
 
             if (player.id === landlord) {
-              descriptor.push(" (当庄)");
+              descriptor.push("（庄家）");
             }
             if (player.name === name) {
-              descriptor.push(" (You!)");
+              descriptor.push("（您）");
             }
 
             return (
@@ -78,6 +70,7 @@ const Players = (props: IProps): JSX.Element => {
                     <MovePlayerLeft players={players} player={player} />
                     <span
                       style={{ cursor: "pointer" }}
+                      title="改为旁观者"
                       onClick={(_) => {
                         send({ Action: { MakeObserver: player.id } });
                       }}
@@ -95,7 +88,7 @@ const Players = (props: IProps): JSX.Element => {
             const descriptor = makeDescriptor(player);
 
             if (player.name === name) {
-              descriptor.push(" (You!)");
+              descriptor.push("（您）");
             }
 
             return (
@@ -114,6 +107,7 @@ const Players = (props: IProps): JSX.Element => {
                   >
                     <span
                       style={{ cursor: "pointer" }}
+                      title="加入为玩家"
                       onClick={(_) => {
                         send({ Action: { MakePlayer: player.id } });
                       }}

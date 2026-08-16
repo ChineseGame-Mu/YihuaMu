@@ -28,9 +28,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   constructor(props: IDrawProps) {
     super(props);
-    this.state = {
-      autodraw: true,
-    };
+    this.state = { autodraw: true };
     this.drawCard = this.drawCard.bind(this);
     this.pickUpKitty = this.pickUpKitty.bind(this);
     this.revealCard = this.revealCard.bind(this);
@@ -52,7 +50,6 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
             "434472_dersuperanton_taking-card.mp3",
           );
         }
-
         this.drawCardAudio.play();
       }
       (window as any).send({ Action: "DrawCard" });
@@ -70,16 +67,12 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
   }
 
   onAutodrawClicked(evt: React.ChangeEvent<HTMLInputElement>): void {
-    this.setState({
-      autodraw: evt.target.checked,
-    });
+    this.setState({ autodraw: evt.target.checked });
     if (evt.target.checked) {
       this.drawCard();
-    } else {
-      if (this.timeout !== null) {
-        clearTimeout(this.timeout);
-        this.timeout = null;
-      }
+    } else if (this.timeout !== null) {
+      clearTimeout(this.timeout);
+      this.timeout = null;
     }
   }
 
@@ -94,9 +87,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
       this.state.autodraw
     ) {
       this.timeout = this.props.setTimeout(
-        () => {
-          this.drawCard();
-        },
+        () => this.drawCard(),
         this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250,
       );
     }
@@ -115,9 +106,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
     let playerId = -1;
     this.props.state.propagated.players.forEach((p) => {
       players[p.id] = p;
-      if (p.name === this.props.name) {
-        playerId = p.id;
-      }
+      if (p.name === this.props.name) playerId = p.id;
     });
 
     const landlord = this.props.state.propagated.landlord;
@@ -138,6 +127,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
         },
       };
     }
+
     return (
       <div>
         <Header
@@ -168,17 +158,14 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
           numDecks={this.props.state.num_decks}
           header={
             <>
-              <h2>
-                Bids ({this.props.state.deck.length} cards remaining in the
-                deck)
-              </h2>
+              <h2>叫主（牌堆还剩 {this.props.state.deck.length} 张）</h2>
               {this.props.state.removed_cards!.length > 0 ? (
                 <p>
-                  Note:{" "}
+                  注意：
                   {this.props.state.removed_cards!.map((c) => (
                     <InlineCard key={c} card={c} />
                   ))}{" "}
-                  have been removed from the deck
+                  已从牌堆中移除
                 </p>
               ) : null}
             </>
@@ -193,10 +180,10 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
                 disabled={!canDraw}
                 className="big"
               >
-                Draw card
+                摸牌
               </button>
               <label>
-                auto-draw
+                自动摸牌
                 <input
                   type="checkbox"
                   name="autodraw"
@@ -231,7 +218,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
                 }
                 className="big"
               >
-                Pick up cards from the bottom
+                拿起底牌
               </button>
               <button
                 onClick={this.revealCard}
@@ -249,7 +236,7 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
                 }
                 className="big"
               >
-                Reveal card from the bottom
+                翻开一张底牌定主
               </button>
               <BeepButton />
             </>

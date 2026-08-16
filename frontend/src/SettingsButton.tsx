@@ -26,7 +26,8 @@ const SettingsButton = (): JSX.Element => {
       <IconButton
         onClick={() => setModalOpen(true)}
         data-tooltip-id="settingsTip"
-        data-tooltip-content="Change user interface settings"
+        data-tooltip-content="界面设置"
+        aria-label="界面设置"
       >
         <Gear width="2em" />
       </IconButton>
@@ -36,6 +37,7 @@ const SettingsButton = (): JSX.Element => {
         shouldCloseOnOverlayClick
         shouldCloseOnEsc
         style={{ content: contentStyle }}
+        contentLabel="界面设置"
       >
         <SettingsPane
           settings={state.settings}

@@ -197,7 +197,15 @@ async fn main() -> Result<(), anyhow::Error> {
         .layer(Extension(backend_storage))
         .layer(Extension(stats));
 
-    axum::Server::bind(&SocketAddr::from(([0, 0, 0, 0], 3030)))
+    // Render provides the public HTTP port through PORT. Keep 3030 as the
+    // local-development fallback, and always bind all interfaces in containers.
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(3030);
+    let address = SocketAddr::from(([0, 0, 0, 0], port));
+    info!(ROOT_LOGGER, "Listening"; "address" => address.to_string());
+    axum::Server::bind(&address)
         .serve(app.into_make_service())
         .await?;
 

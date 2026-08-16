@@ -28,12 +28,10 @@ const Friends = (props: IProps): JSX.Element => {
           }
           return (
             <p key={idx}>
-              The person to play the {nth(friend.initial_skip + 1)}{" "}
-              <InlineCard card={friend.card} /> is a friend.{" "}
+              第 {friend.initial_skip + 1} 次打出{" "}
+              <InlineCard card={friend.card} /> 的玩家是朋友。{" "}
               {props.showPlayed
-                ? `${
-                    friend.initial_skip - friend.skip
-                  } played in previous tricks.`
+                ? `此前各轮已经出现 ${friend.initial_skip - friend.skip} 次。`
                 : ""}
             </p>
           );
@@ -44,12 +42,5 @@ const Friends = (props: IProps): JSX.Element => {
     return <></>;
   }
 };
-
-function nth(n: number): string {
-  const suffix = ["st", "nd", "rd"][
-    (((((n < 0 ? -n : n) + 90) % 100) - 10) % 10) - 1
-  ];
-  return `${n}${suffix !== undefined ? suffix : "th"}`;
-}
 
 export default Friends;

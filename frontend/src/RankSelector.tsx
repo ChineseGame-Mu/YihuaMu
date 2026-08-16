@@ -42,11 +42,11 @@ const RankSelector = (props: IProps): JSX.Element => {
   return (
     <div className="rank-picker">
       <label>
-        Your rank:{" "}
+        你的级别：{" "}
         <select value={props.rank} onChange={handleChange}>
           {allRanks.map((rank) => (
             <option value={rank} key={rank}>
-              {rank}
+              {rank === "NT" ? "无主" : rank}
             </option>
           ))}
         </select>
@@ -54,7 +54,7 @@ const RankSelector = (props: IProps): JSX.Element => {
           type="checkbox"
           checked={showMetaRank}
           onChange={() => setShowMetaRank(!showMetaRank)}
-          title="show meta-rank"
+          title="显示附加级别"
         />
         {showMetaRank && (
           <select value={props.metaRank} onChange={handleMetaChange}>

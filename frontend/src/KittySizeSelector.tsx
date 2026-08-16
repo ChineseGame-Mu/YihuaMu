@@ -27,7 +27,6 @@ const KittySizeSelector = (props: IProps): JSX.Element => {
       })
       .catch((error) => {
         console.error("Error computing deck length:", error);
-        // Fallback: estimate based on number of decks
         setDeckLen(props.decks.length * 54);
         setIsLoading(false);
       });
@@ -55,18 +54,17 @@ const KittySizeSelector = (props: IProps): JSX.Element => {
     (v) =>
       !defaultOptions.includes(v) &&
       v < deckLen - props.numPlayers &&
-      // Note: this isn't quite right, but it seems fine for the common case of no short decks.
       (deckLen - v) % props.numPlayers <= props.decks.length * 4,
   );
 
   if (isLoading) {
-    return <div>Loading kitty size options...</div>;
+    return <div>正在计算底牌数量选项...</div>;
   }
 
   return (
     <div>
       <label>
-        Number of cards in the bottom:{" "}
+        底牌张数：{" "}
         <select
           value={
             props.kittySize !== undefined && props.kittySize !== null
@@ -75,20 +73,20 @@ const KittySizeSelector = (props: IProps): JSX.Element => {
           }
           onChange={handleChange}
         >
-          <optgroup label="Standard">
-            <option value="">default</option>
+          <optgroup label="标准选项">
+            <option value="">默认</option>
             {defaultOptions
               .filter((v) => v < deckLen - props.numPlayers)
               .map((v) => (
                 <option value={v} key={v}>
-                  {v} card{v === 1 ? "" : "s"}
+                  {v} 张
                 </option>
               ))}
           </optgroup>
-          <optgroup label="Requires removing cards from the deck">
+          <optgroup label="需要从牌组中移除部分牌">
             {options.map((v) => (
               <option value={v} key={v}>
-                {v} card{v === 1 ? "" : "s"}
+                {v} 张
               </option>
             ))}
           </optgroup>

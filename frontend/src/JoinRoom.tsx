@@ -42,7 +42,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const editableRoomName = (
     <input
       type="text"
-      placeholder="Enter a room code"
+      placeholder="请输入房间代码"
       value={props.room_name}
       onChange={handleRoomChange}
       maxLength={16}
@@ -50,7 +50,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   );
   const nonEditableRoomName = (
     <span
-      title="Set the room name"
+      title="设置房间名称"
       onClick={(evt) => {
         evt.preventDefault();
         setEditable(true);
@@ -84,12 +84,9 @@ const JoinRoom = (props: IProps): JSX.Element => {
         <div>
           <h2>
             <label>
-              <strong>Room Name:</strong>{" "}
+              <strong>房间代码：</strong>{" "}
               {editable ? editableRoomName : nonEditableRoomName}{" "}
-              <span
-                title="Generate new room"
-                onClick={() => generateRoomName()}
-              >
+              <span title="生成新房间" onClick={() => generateRoomName()}>
                 🎲
               </span>{" "}
             </label>
@@ -97,10 +94,10 @@ const JoinRoom = (props: IProps): JSX.Element => {
         </div>
         <div>
           <label>
-            <strong>Player Name:</strong>{" "}
+            <strong>玩家姓名：</strong>{" "}
             <input
               type="text"
-              placeholder="Enter your name here"
+              placeholder="请输入您的姓名"
               value={props.name}
               onChange={handleChange}
               autoFocus={true}
@@ -108,7 +105,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
           </label>
           <input
             type="submit"
-            value="Join (or create) the game!"
+            value="加入（或创建）游戏"
             disabled={
               props.room_name.length !== 16 ||
               props.name.length === 0 ||
@@ -119,26 +116,18 @@ const JoinRoom = (props: IProps): JSX.Element => {
       </form>
       <div>
         <p>
-          Welcome to the game! Enter your name above to create a new game, or
-          (re-)join the game if it already exists.
+          欢迎来到升级游戏！在上方输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
         </p>
         <p>
-          If you&apos;re unfamiliar with the game, it might be helpful to{" "}
+          如果您还不熟悉玩法，可以先阅读{" "}
           <a href="rules.html" target="_blank">
-            read the rules
+            游戏规则
           </a>{" "}
-          and then shadow another player&mdash;you can just join with the same
-          name, case-sensitive.
+          。也可以使用与另一位玩家完全相同的姓名加入，以旁观该玩家的牌局。
         </p>
+        <p>进入游戏后，把房间链接发给至少三位朋友，就可以开始打牌。</p>
         <p>
-          Once you are in the game, share the room link with at least three
-          friends to start playing!
-        </p>
-        <p>
-          This is a game with many house rules, so be sure to check out the game
-          settings to see if your favorite rules are implemented. There&apos;s
-          also a settings gear at the top, which can change how the game looks
-          to you.
+          升级各地玩法差异很多，请在开始前查看游戏设置，确认是否已经选择您习惯的规则。页面顶部的齿轮按钮还可以调整个人显示方式。
         </p>
       </div>
       <PublicRoomsPane setRoomName={props.setRoomName} />

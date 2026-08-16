@@ -67,24 +67,21 @@ const PublicRoomsPane = (props: IProps): JSX.Element => {
 
   return (
     <div className="">
-      <h3>Public Rooms</h3>
+      <h3>公开房间</h3>
       <div>
-        <p>
-          The games listed below are open to the public. Join them to find new
-          friends to play with!
-        </p>
+        <p>下面的牌局对所有人开放。您可以加入房间，与新的牌友一起玩。</p>
       </div>
       <div style={{ display: "table", borderSpacing: 10 }}>
         <Row>
-          <LabelCell>Room Name</LabelCell>
-          <LabelCell>Players</LabelCell>
+          <LabelCell>房间代码</LabelCell>
+          <LabelCell>玩家人数</LabelCell>
           <LabelCell>
             <button onClick={loadPublicRooms} className="normal">
-              Refresh
+              刷新
             </button>
           </LabelCell>
         </Row>
-        {publicRooms.length === 0 && <Cell>No public rooms available</Cell>}
+        {publicRooms.length === 0 && <Cell>目前没有公开房间</Cell>}
         {publicRooms.map((roomInfo) => {
           return (
             <PublicRoomRow

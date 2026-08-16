@@ -281,6 +281,17 @@ impl TrickFormat {
         trick_draw_policy: TrickDrawPolicy,
         bomb_policy: BombPolicy,
     ) -> bool {
+        self.is_legal_play_with_yihuamu_rule(hand, proposed, trick_draw_policy, bomb_policy, false)
+    }
+
+    pub fn is_legal_play_with_yihuamu_rule(
+        &self,
+        hand: &HashMap<Card, usize>,
+        proposed: &'_ [Card],
+        trick_draw_policy: TrickDrawPolicy,
+        bomb_policy: BombPolicy,
+        yihuamu_four_deck_rule: bool,
+    ) -> bool {
         let required = self.units.iter().map(|c| c.size()).sum::<usize>();
         if proposed.len() != required {
             return false;
@@ -329,8 +340,15 @@ impl TrickFormat {
 
         if num_proposed_correct_suit < required {
             let num_correct_suit = num_correct_suit_in_hand();
-            // If this is all of the correct suit that is available, it's fine
-            // Otherwise, this is an invalid play.
+            let has_pair_plus_single = yihuamu_four_deck_rule
+                && required == 4
+                && num_correct_suit == 3
+                && hand
+                    .iter()
+                    .any(|(c, ct)| self.trump.effective_suit(*c) == self.suit && *ct == 2);
+            if has_pair_plus_single && num_proposed_correct_suit == 2 {
+                return true;
+            }
             num_correct_suit == num_proposed_correct_suit
         } else {
             if let TrickDrawPolicy::NoFormatBasedDraw = trick_draw_policy {
@@ -661,10 +679,35 @@ impl Trick {
         trick_draw_policy: TrickDrawPolicy,
         compound_formats: CompoundFormats,
     ) -> Result<(), TrickError> {
+        self.can_play_cards_with_yihuamu_rule(
+            id,
+            hands,
+            cards,
+            trick_draw_policy,
+            compound_formats,
+            false,
+        )
+    }
+
+    pub fn can_play_cards_with_yihuamu_rule(
+        &self,
+        id: PlayerID,
+        hands: &Hands,
+        cards: &[Card],
+        trick_draw_policy: TrickDrawPolicy,
+        compound_formats: CompoundFormats,
+        yihuamu_four_deck_rule: bool,
+    ) -> Result<(), TrickError> {
         hands.contains(id, cards.iter().cloned())?;
         match self.trick_format.as_ref() {
             Some(tf) => {
-                if tf.is_legal_play(hands.get(id)?, cards, trick_draw_policy, self.bomb_policy) {
+                if tf.is_legal_play_with_yihuamu_rule(
+                    hands.get(id)?,
+                    cards,
+                    trick_draw_policy,
+                    self.bomb_policy,
+                    yihuamu_four_deck_rule,
+                ) {
                     Ok(())
                 } else {
                     Err(TrickError::IllegalPlay)
@@ -3339,6 +3382,48 @@ mod tests {
             .unwrap();
 
         assert_eq!(trick.complete().unwrap().winner, P2);
+    }
+
+    #[test]
+    fn test_yihuamu_four_deck_three_card_suit_pair_may_be_split() {
+        let trick_format = TrickFormat::from_cards(
+            TRUMP,
+            TractorRequirements::default(),
+            &[H_6, H_6, H_7, H_7],
+            None,
+            CompoundFormats::default(),
+        )
+        .unwrap();
+        let hand = Card::count(vec![H_9, H_9, H_J, C_2, D_2, C_3]);
+        let split_pair_play = [H_9, H_J, C_2, D_2];
+        assert!(!trick_format.is_legal_play(
+            &hand,
+            &split_pair_play,
+            TrickDrawPolicy::NoProtections,
+            BombPolicy::NoBombs
+        ));
+        assert!(trick_format.is_legal_play_with_yihuamu_rule(
+            &hand,
+            &split_pair_play,
+            TrickDrawPolicy::NoProtections,
+            BombPolicy::NoBombs,
+            true
+        ));
+        assert!(!trick_format.is_legal_play_with_yihuamu_rule(
+            &hand,
+            &[H_J, C_2, D_2, C_3],
+            TrickDrawPolicy::NoProtections,
+            BombPolicy::NoBombs,
+            true
+        ));
+        let triple = Card::count(vec![H_9, H_9, H_9, C_2, D_2]);
+        assert!(!trick_format.is_legal_play_with_yihuamu_rule(
+            &triple,
+            &[H_9, H_9, C_2, D_2],
+            TrickDrawPolicy::NoProtections,
+            BombPolicy::NoBombs,
+            true
+        ));
     }
 
     // ---- Bug regression tests ----

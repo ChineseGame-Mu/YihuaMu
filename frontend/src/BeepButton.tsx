@@ -9,9 +9,9 @@ const BeepButton = (): JSX.Element => {
   return (
     <button
       className="big"
+      title="提醒当前玩家"
       onClick={() =>
-        confirm("Do you really want to send a beep to the current player?") &&
-        send("Beep")
+        confirm("确定要给当前出牌的玩家发送提醒吗？") && send("Beep")
       }
     >
       🛎️

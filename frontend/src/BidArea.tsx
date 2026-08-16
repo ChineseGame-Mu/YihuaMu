@@ -55,7 +55,6 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
     }
   });
 
-  // Load valid bids when player is not a spectator
   React.useEffect(() => {
     if (playerId >= 0) {
       setIsLoadingBids(true);
@@ -73,25 +72,18 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
           num_decks: props.numDecks,
         })
         .then((bids) => {
-          // Sort the bids
           bids.sort((a, b) => {
-            if (a.card < b.card) {
-              return -1;
-            } else if (a.card > b.card) {
-              return 1;
-            } else if (a.count < b.count) {
-              return -1;
-            } else if (a.count > b.count) {
-              return 1;
-            } else {
-              return 0;
-            }
+            if (a.card < b.card) return -1;
+            if (a.card > b.card) return 1;
+            if (a.count < b.count) return -1;
+            if (a.count > b.count) return 1;
+            return 0;
           });
           setValidBids(bids);
           setIsLoadingBids(false);
         })
         .catch((error) => {
-          console.error("Error finding valid bids:", error);
+          console.error("查找有效叫主选项时出错：", error);
           setValidBids([]);
           setIsLoadingBids(false);
         });
@@ -111,13 +103,12 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
   ]);
 
   if (playerId === null || playerId < 0) {
-    // Spectator mode
     return (
       <div>
         {props.header}
         {props.autobid !== null ? (
           <LabeledPlay
-            label={`${players[props.autobid.id].name} (from bottom)`}
+            label={`${players[props.autobid.id].name}（底牌定主）`}
             trump={trump}
             cards={[props.autobid.card]}
           />
@@ -134,7 +125,7 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
           );
         })}
         {props.bids.length === 0 && props.autobid === null ? (
-          <LabeledPlay trump={trump} label={"No bids yet..."} cards={["🂠"]} />
+          <LabeledPlay trump={trump} label={"还没有人叫主……"} cards={["🂠"]} />
         ) : null}
       </div>
     );
@@ -160,7 +151,7 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
           {props.header}
           {props.autobid !== null ? (
             <LabeledPlay
-              label={`${players[props.autobid.id].name} (from bottom)`}
+              label={`${players[props.autobid.id].name}（底牌定主）`}
               cards={[props.autobid.card]}
               trump={trump}
             />
@@ -179,9 +170,9 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
           {props.trump !== undefined &&
           "NoTrump" in props.trump &&
           props.trump?.NoTrump?.number === null ? (
-            <>No bidding in no trump!</>
+            <>无主状态下不能再叫主！</>
           ) : props.bids.length === 0 && props.autobid === null ? (
-            <LabeledPlay trump={trump} label={"No bids yet..."} cards={["🂠"]} />
+            <LabeledPlay trump={trump} label={"还没有人叫主……"} cards={["🂠"]} />
           ) : null}
         </div>
         {props.prefixButtons}
@@ -195,16 +186,16 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
             }
             className="big"
           >
-            Take back bid
+            撤回叫主
           </button>
         ) : null}
         {props.suffixButtons}
         {isLoadingBids ? (
-          <p>Loading bid options...</p>
+          <p>正在加载叫主选项……</p>
         ) : validBids.length > 0 ? (
-          <p>Click a bid option to bid</p>
+          <p>点击下面的牌进行叫主</p>
         ) : (
-          <p>No available bids!</p>
+          <p>目前没有可用的叫主选项！</p>
         )}
         {!isLoadingBids &&
           validBids.map((bid, idx) => {
@@ -213,7 +204,7 @@ const BidArea = (props: IBidAreaProps): JSX.Element => {
                 trump={trump}
                 cards={Array(bid.count).fill(bid.card)}
                 key={idx}
-                label={`Bid option ${idx + 1}`}
+                label={`叫主选项 ${idx + 1}`}
                 onClick={() => {
                   send({ Action: { Bid: [bid.card, bid.count] } });
                 }}
