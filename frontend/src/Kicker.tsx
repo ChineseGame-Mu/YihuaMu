@@ -17,7 +17,7 @@ const Kicker = (props: IProps): JSX.Element => {
   return (
     <div className="kicker">
       <label>
-        Kick player:{" "}
+        移除玩家：{" "}
         <select
           value={selection === null ? "" : selection}
           onChange={handleChange}
@@ -38,7 +38,7 @@ const Kicker = (props: IProps): JSX.Element => {
           }}
           disabled={selection === null}
         >
-          Kick
+          移除
         </button>
       </label>
     </div>
