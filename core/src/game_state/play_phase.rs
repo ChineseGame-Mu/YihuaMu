@@ -151,12 +151,13 @@ impl PlayPhase {
         if self.game_ended_early {
             bail!("Game has already ended; cards can't be played");
         }
-        Ok(self.trick.can_play_cards(
+        Ok(self.trick.can_play_cards_with_yihuamu_rule(
             id,
             &self.hands,
             cards,
             self.propagated.trick_draw_policy,
             self.propagated.compound_formats.clone(),
+            self.num_decks == 4,
         )?)
     }
 
