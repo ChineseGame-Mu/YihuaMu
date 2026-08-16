@@ -7,16 +7,22 @@ import { isWasmAvailable } from "./detectWasm";
 
 import type { JSX } from "react";
 
+type GameModeChoice = "Tractor" | "FindingFriends";
+
 interface IProps {
   name: string;
   room_name: string;
   setName: (name: string) => void;
   setRoomName: (name: string) => void;
+  gameMode?: GameModeChoice;
 }
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [editable, setEditable] = React.useState<boolean>(false);
   const [shouldGenerate, setShouldGenerate] = React.useState<boolean>(
+    props.room_name.length !== 16,
+  );
+  const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
     props.room_name.length !== 16,
   );
   const { send } = React.useContext(WebsocketContext);
@@ -25,8 +31,10 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
     props.setName(event.target.value.trim());
 
-  const handleRoomChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
+  const handleRoomChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    setCreatingNewRoom(false);
     props.setRoomName(event.target.value.trim());
+  };
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
     event.preventDefault();
@@ -36,6 +44,23 @@ const JoinRoom = (props: IProps): JSX.Element => {
         name: props.name,
         disable_compression: !isWasmAvailable(),
       });
+
+      if (creatingNewRoom) {
+        const gameMode = props.gameMode ?? "Tractor";
+        if (gameMode === "Tractor") {
+          send({ Action: { SetGameMode: "Tractor" } });
+        } else {
+          send({
+            Action: {
+              SetGameMode: {
+                FindingFriends: {
+                  num_friends: null,
+                },
+              },
+            },
+          });
+        }
+      }
     }
   };
 
@@ -64,6 +89,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
     const arr = new Uint8Array(8);
     window.crypto.getRandomValues(arr);
     setShouldGenerate(false);
+    setCreatingNewRoom(true);
     props.setRoomName(
       Array.from(arr, (d) => ("0" + d.toString(16)).substr(-2)).join(""),
     );
@@ -116,7 +142,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
       </form>
       <div>
         <p>
-          欢迎来到升级游戏！在上方输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
+          欢迎来到升级 / 找朋友游戏！在上方输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
         </p>
         <p>
           如果您还不熟悉玩法，可以先阅读{" "}
@@ -127,7 +153,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
         </p>
         <p>进入游戏后，把房间链接发给至少三位朋友，就可以开始打牌。</p>
         <p>
-          升级各地玩法差异很多，请在开始前查看游戏设置，确认是否已经选择您习惯的规则。页面顶部的齿轮按钮还可以调整个人显示方式。
+          各地玩法差异很多，请在开始前查看游戏设置，确认是否已经选择您习惯的规则。页面顶部的齿轮按钮还可以调整个人显示方式。
         </p>
       </div>
       <PublicRoomsPane setRoomName={props.setRoomName} />
