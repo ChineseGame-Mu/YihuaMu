@@ -19,7 +19,7 @@ const renderMessage = (message: Message): JSX.Element => {
     case "MadeBid":
       return (
         <span>
-          {message.data?.actor_name} bid{" "}
+          {message.data?.actor_name} 叫主：{" "}
           {ArrayUtil.range(variant.count, (i) => (
             <InlineCard card={variant.card} key={i} />
           ))}
@@ -28,7 +28,7 @@ const renderMessage = (message: Message): JSX.Element => {
     case "PlayedCards":
       return (
         <span>
-          {message.data?.actor_name} played{" "}
+          {message.data?.actor_name} 出牌：{" "}
           {variant.cards.map((card, i) => (
             <InlineCard card={card} key={i} />
           ))}
@@ -37,10 +37,10 @@ const renderMessage = (message: Message): JSX.Element => {
     case "EndOfGameKittyReveal":
       return (
         <span>
+          底牌：{" "}
           {variant.cards.map((card, i) => (
             <InlineCard card={card} key={i} />
-          ))}{" "}
-          in kitty
+          ))}
         </span>
       );
     case "GameScoringParametersChanged":
@@ -60,7 +60,7 @@ const renderScoringMessage = (message: Message): JSX.Element => {
     ) {
       changes.push(
         <span key={changes.length}>
-          step size: {variant.parameters.step_size_per_deck}分 per deck
+          每副牌计分步长：{variant.parameters.step_size_per_deck} 分
         </span>,
       );
     }
@@ -69,7 +69,7 @@ const renderScoringMessage = (message: Message): JSX.Element => {
     ) {
       changes.push(
         <span key={changes.length}>
-          non-leveling steps: {variant.parameters.deadzone_size}{" "}
+          不升级区间：{variant.parameters.deadzone_size}{" "}
         </span>,
       );
     }
@@ -79,7 +79,7 @@ const renderScoringMessage = (message: Message): JSX.Element => {
     ) {
       changes.push(
         <span key={changes.length}>
-          steps to turnover:{" "}
+          闲家翻庄所需步数：{" "}
           {variant.parameters.num_steps_to_non_landlord_turnover}{" "}
         </span>,
       );
@@ -89,7 +89,7 @@ const renderScoringMessage = (message: Message): JSX.Element => {
       if (adj !== variant.old_parameters.step_adjustments[k]) {
         changes.push(
           <span key={changes.length}>
-            step size adjustment for {k} decks set to {adj}{" "}
+            {k} 副牌步长调整为 {adj}{" "}
           </span>,
         );
       }
@@ -98,7 +98,7 @@ const renderScoringMessage = (message: Message): JSX.Element => {
       const adj = variant.parameters.step_adjustments[k];
       if (adj === undefined || adj === null || adj === 0) {
         changes.push(
-          <span key={changes.length}>adjustment for {k} decks removed </span>,
+          <span key={changes.length}>已取消 {k} 副牌的步长调整 </span>,
         );
       }
     }
@@ -110,18 +110,14 @@ const renderScoringMessage = (message: Message): JSX.Element => {
         variant.parameters.bonus_level_policy ===
         "BonusLevelForSmallerLandlordTeam"
       ) {
-        changes.push(
-          <span key={changes.length}>small-team bonus enabled</span>,
-        );
+        changes.push(<span key={changes.length}>已开启少人数庄家队奖励</span>);
       } else {
-        changes.push(
-          <span key={changes.length}>small-team bonus disabled</span>,
-        );
+        changes.push(<span key={changes.length}>已关闭少人数庄家队奖励</span>);
       }
     }
     return (
       <span>
-        {message.data?.actor_name} updated the scoring parameters: {changes}
+        {message.data?.actor_name} 更新了计分设置：{changes}
       </span>
     );
   } else {
