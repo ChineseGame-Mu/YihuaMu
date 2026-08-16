@@ -61,12 +61,12 @@ const AutoPlayButton = (props: IProps): JSX.Element => {
   return (
     <button className="big" onClick={handleClick} disabled={!canSubmit}>
       {isCurrentPlayerTurn
-        ? `Play selected cards${
-            playDescription !== null ? " (" + playDescription + ")" : ""
+        ? `出所选的牌${
+            playDescription !== null ? "（" + playDescription + "）" : ""
           }`
         : autoplay !== null
-          ? "Don't autoplay selected cards"
-          : "Autoplay selected cards"}
+          ? "取消自动出所选的牌"
+          : "轮到我时自动出所选的牌"}
     </button>
   );
 };
