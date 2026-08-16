@@ -102,10 +102,8 @@ const Points = (props: IProps): JSX.Element => {
   React.useEffect(() => {
     setIsLoading(true);
 
-    // Load both computeScore and explainScoring in parallel
     const loadData = async () => {
       try {
-        // Check cache for explainScoring
         const scoringKey = getExplainScoringKey(
           props.gameScoringParameters,
           props.smallerTeamSize,
@@ -148,7 +146,6 @@ const Points = (props: IProps): JSX.Element => {
         setIsLoading(false);
       } catch (error) {
         console.error("Error computing score:", error);
-        // Fallback to defaults
         setScoreData({
           score: {
             landlord_won: false,
@@ -174,7 +171,7 @@ const Points = (props: IProps): JSX.Element => {
   ]);
 
   if (isLoading || !scoreData) {
-    return <div>Loading scores...</div>;
+    return <div>正在计算分数……</div>;
   }
 
   const { score, next_threshold: nextThreshold } = scoreData;
@@ -201,30 +198,25 @@ const Points = (props: IProps): JSX.Element => {
     }
   });
 
-  // TODO: Pass the landlord as a Player object instead of numeric ID
   const landlord = props.players.find((p) => p.id === props.landlord);
 
   let thresholdStr = "";
   if (score.landlord_won) {
-    thresholdStr = `${landlord?.name}'s team will go up ${
-      score.landlord_delta
-    } level${score.landlord_delta === 1 ? "" : "s"}`;
+    thresholdStr = `${landlord?.name} 所在庄家方将升 ${score.landlord_delta} 级`;
     if (score.landlord_bonus) {
-      thresholdStr += ", including a small-team bonus";
+      thresholdStr += "（包含少人数奖励）";
     }
   } else if (score.non_landlord_delta === 0) {
-    thresholdStr = "Neither team will go up a level";
+    thresholdStr = "双方都不升级";
   } else {
-    thresholdStr = `The attacking team will go up ${
-      score.non_landlord_delta
-    } level${score.non_landlord_delta === 1 ? "" : "s"}`;
+    thresholdStr = `闲家方将升 ${score.non_landlord_delta} 级`;
   }
 
-  thresholdStr += ` (next threshold: ${nextThreshold}分)`;
+  thresholdStr += `（下一分界：${nextThreshold}分）`;
 
   return (
     <div className="points">
-      <h2>Points</h2>
+      <h2>分数</h2>
       {!settings.showPointsAboveGame && (
         <ProgressBar
           checkpoints={scoreTransitions
@@ -237,11 +229,12 @@ const Points = (props: IProps): JSX.Element => {
         />
       )}
       <p>
+        闲家方已从 {landlord?.name} 所在庄家方拿到{" "}
         {penaltyDelta === 0
           ? nonLandlordPoints
           : `${nonLandlordPoints} + ${penaltyDelta}`}
-        分{props.hideLandlordPoints ? null : ` / ${totalPointsPlayed}分`} stolen
-        from {landlord?.name}&apos;s team. {thresholdStr}
+        分{props.hideLandlordPoints ? null : ` / 已出现总分 ${totalPointsPlayed}分`}。{" "}
+        {thresholdStr}
       </p>
       {playerPointElements}
     </div>
@@ -272,7 +265,6 @@ export const ProgressBarDisplay = (props: IProps): JSX.Element => {
 
     const loadScoring = async () => {
       try {
-        // Check cache first
         const scoringKey = getExplainScoringKey(
           props.gameScoringParameters,
           props.smallerTeamSize,
@@ -295,7 +287,7 @@ export const ProgressBarDisplay = (props: IProps): JSX.Element => {
       } catch (error) {
         console.error("Error explaining scoring:", error);
         setScoreTransitions([]);
-        setTotalPoints(100); // Default total
+        setTotalPoints(100);
         setIsLoading(false);
       }
     };
@@ -304,7 +296,7 @@ export const ProgressBarDisplay = (props: IProps): JSX.Element => {
   }, [props.gameScoringParameters, props.smallerTeamSize, props.decks, engine]);
 
   if (isLoading) {
-    return <div>Loading progress bar...</div>;
+    return <div>正在加载分数进度……</div>;
   }
 
   return (
