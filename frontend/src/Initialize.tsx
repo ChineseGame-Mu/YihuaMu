@@ -1095,25 +1095,24 @@ const Initialize = (props: IProps): JSX.Element => {
           <code>{window.location.href}</code>
         </a>
       </p>
-      {props.state.propagated.players.length >= 4 ? (
-        <>
-          <button
-            className="big"
-            disabled={
-              props.state.propagated.game_start_policy ===
-                "AllowLandlordOnly" &&
-              landlordIndex !== -1 &&
-              props.state.propagated.players[landlordIndex].name !== props.name
-            }
-            onClick={startGame}
-          >
-            开始游戏
-          </button>
-          <ReadyCheck />
-        </>
-      ) : (
-        <h2>等待其他玩家加入……</h2>
-      )}
+      <>
+        <button
+          className="big"
+          disabled={
+            props.state.propagated.game_start_policy ===
+              "AllowLandlordOnly" &&
+            landlordIndex !== -1 &&
+            props.state.propagated.players[landlordIndex].name !== props.name
+          }
+          onClick={startGame}
+        >
+          开始游戏
+        </button>
+        <ReadyCheck />
+        {props.state.propagated.players.length < 4 ? (
+          <p>试用模式：当前少于 4 名玩家，按钮仍保持显示。</p>
+        ) : null}
+      </>
       <RandomizePlayersButton players={props.state.propagated.players}>
         随机排列玩家顺序
       </RandomizePlayersButton>
