@@ -4,6 +4,7 @@
 
 pub mod compare;
 pub mod deck;
+pub mod game;
 pub mod rules;
 pub mod team;
 pub mod trick;
