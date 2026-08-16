@@ -48,7 +48,7 @@ const ChatInput = (props: IProps): JSX.Element => {
       <ChatBox>
         <Input
           type="text"
-          placeholder="type message here"
+          placeholder="在这里输入聊天内容"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
         />
@@ -60,6 +60,7 @@ const ChatInput = (props: IProps): JSX.Element => {
             margin: "auto",
           }}
           disabled={disabled}
+          aria-label="发送消息"
         >
           <PaperPlane width="16px" />
         </IconButton>
