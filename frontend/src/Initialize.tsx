@@ -845,6 +845,12 @@ const Initialize = (props: IProps): JSX.Element => {
     send({ Action: { SetHidePlayedCards: evt.target.value === "hide" } });
   };
 
+  const cleanRoomUrl = (): string => {
+    const url = new URL(window.location.href);
+    url.search = "";
+    return url.toString();
+  };
+
   const startGame = (evt: React.SyntheticEvent): void => {
     evt.preventDefault();
     send({ Action: "StartGame" });
@@ -1091,27 +1097,29 @@ const Initialize = (props: IProps): JSX.Element => {
       />
       <p>
         把下面的链接发给其他玩家，让他们加入本局：{" "}
-        <a href={window.location.href} target="_blank" rel="noreferrer">
-          <code>{window.location.href}</code>
+        <a href={cleanRoomUrl()} target="_blank" rel="noreferrer">
+          <code>{cleanRoomUrl()}</code>
         </a>
       </p>
-      <>
-        <button
-          className="big"
-          disabled={
-            props.state.propagated.game_start_policy === "AllowLandlordOnly" &&
-            landlordIndex !== -1 &&
-            props.state.propagated.players[landlordIndex].name !== props.name
-          }
-          onClick={startGame}
-        >
-          开始游戏
-        </button>
-        <ReadyCheck />
-        {props.state.propagated.players.length < 4 ? (
-          <p>试用模式：当前少于 4 名玩家，按钮仍保持显示。</p>
-        ) : null}
-      </>
+      {props.state.propagated.players.length >= 4 ? (
+        <>
+          <button
+            className="big"
+            disabled={
+              props.state.propagated.game_start_policy ===
+                "AllowLandlordOnly" &&
+              landlordIndex !== -1 &&
+              props.state.propagated.players[landlordIndex].name !== props.name
+            }
+            onClick={startGame}
+          >
+            开始游戏
+          </button>
+          <ReadyCheck />
+        </>
+      ) : (
+        <h2>等待其他玩家加入……</h2>
+      )}
       <RandomizePlayersButton players={props.state.propagated.players}>
         随机排列玩家顺序
       </RandomizePlayersButton>
