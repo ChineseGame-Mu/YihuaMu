@@ -56,140 +56,140 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
     <>
       <div>
         <label>
-          Friend selection restriction:{" "}
+          找朋友选牌限制：{" "}
           <select
             value={props.state.propagated.friend_selection_policy}
             onChange={props.setFriendSelectionPolicy}
           >
-            <option value="Unrestricted">Non-trump cards</option>
-            <option value="TrumpsIncluded">All cards, including trumps</option>
+            <option value="Unrestricted">只能选副牌</option>
+            <option value="TrumpsIncluded">所有牌，包括主牌</option>
             <option value="HighestCardNotAllowed">
-              Non-trump cards, except the highest
+              副牌，但不能选该花色最高牌
             </option>
             <option value="PointCardNotAllowed">
-              Non-trump, non-point cards (except K when playing A)
+              非主、非分牌（打 A 时 K 除外）
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Multiple joining policy:{" "}
+          重复加入庄家方规则：{" "}
           <select
             value={props.state.propagated.multiple_join_policy}
             onChange={props.setMultipleJoinPolicy}
           >
             <option value="Unrestricted">
-              Players can join the defending team multiple times.
+              同一玩家可多次加入庄家方
             </option>
             <option value="NoDoubleJoin">
-              Each player can only join the defending team once.
+              每位玩家最多只能加入庄家方一次
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Rank advancement policy:{" "}
+          升级规则：{" "}
           <select
             value={props.state.propagated.advancement_policy}
             onChange={props.setAdvancementPolicy}
           >
-            <option value="Unrestricted">A must be defended</option>
-            <option value="FullyUnrestricted">Unrestricted</option>
+            <option value="Unrestricted">A 必须守住</option>
+            <option value="FullyUnrestricted">无限制</option>
             <option value="DefendPoints">
-              Points (5, 10, K) and A must be defended
+              分牌（5、10、K）和 A 必须守住
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Max rank:{" "}
+          最高级别：{" "}
           <select
             value={props.state.propagated.max_rank}
             onChange={props.setMaxRank}
           >
-            <option value="NT">No trump</option>
+            <option value="NT">无主</option>
             <option value="A">A</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Point visibility:{" "}
+          分数显示：{" "}
           <select
             value={
               props.state.propagated.hide_landlord_points ? "hide" : "show"
             }
             onChange={props.setHideLandlordsPoints}
           >
-            <option value="show">Show all players&apos; points</option>
-            <option value="hide">Hide defending team&apos;s points</option>
+            <option value="show">显示所有玩家分数</option>
+            <option value="hide">隐藏庄家方分数</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Played card visibility (in chat):{" "}
+          聊天区已出牌显示：{" "}
           <select
             value={props.state.propagated.hide_played_cards ? "hide" : "show"}
             onChange={props.setHidePlayedCards}
           >
-            <option value="show">Show played cards in chat</option>
-            <option value="hide">Hide played cards in chat</option>
+            <option value="show">在聊天区显示已出牌</option>
+            <option value="hide">在聊天区隐藏已出牌</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Penalty for points left in the bottom:{" "}
+          底牌分数惩罚：{" "}
           <select
             value={props.state.propagated.kitty_penalty}
             onChange={props.setKittyPenalty}
           >
-            <option value="Times">Twice the size of the last trick</option>
+            <option value="Times">按最后一墩张数的两倍计算</option>
             <option value="Power">
-              Two to the power of the size of the last trick
+              按 2 的“最后一墩张数”次方计算
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Penalty for incorrect throws:{" "}
+          甩牌失败惩罚：{" "}
           <select
             value={props.state.propagated.throw_penalty}
             onChange={props.setThrowPenalty}
           >
-            <option value="None">No penalty</option>
+            <option value="None">无惩罚</option>
             <option value="TenPointsPerAttempt">
-              Ten points per bad throw
+              每次错误甩牌罚 10 分
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Play takeback:{" "}
+          出牌撤回：{" "}
           <select
             value={props.state.propagated.play_takeback_policy}
             onChange={props.setPlayTakebackPolicy}
           >
-            <option value="AllowPlayTakeback">Allow taking back plays</option>
-            <option value="NoPlayTakeback">Disallow taking back plays</option>
+            <option value="AllowPlayTakeback">允许撤回出牌</option>
+            <option value="NoPlayTakeback">不允许撤回出牌</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Bid takeback:{" "}
+          叫主撤回：{" "}
           <select
             value={props.state.propagated.bid_takeback_policy}
             onChange={props.setBidTakebackPolicy}
           >
-            <option value="AllowBidTakeback">Allow bid takeback</option>
-            <option value="NoBidTakeback">No bid takeback</option>
+            <option value="AllowBidTakeback">允许撤回叫主</option>
+            <option value="NoBidTakeback">不允许撤回叫主</option>
           </select>
         </label>
       </div>
@@ -199,7 +199,7 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
   return (
     <div>
       <label>
-        Difficulty settings:{" "}
+        难度与限制设置：{" "}
         <button
           className="normal"
           onClick={(evt) => {
@@ -207,7 +207,7 @@ const DifficultySettings = (props: IDifficultyProps): JSX.Element => {
             setModalOpen(true);
           }}
         >
-          Open
+          打开
         </button>
         <ReactModal
           isOpen={modalOpen}
@@ -233,7 +233,6 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
   const isNotDefault = (d: Deck): boolean =>
     !(d.min === "2" && !d.exclude_big_joker && !d.exclude_small_joker);
   const onChange = (decks: Deck[]): void => {
-    // exclude the decks that are the same as default
     const filtered = decks.filter((d) => isNotDefault(d));
     props.setSpecialDecks(filtered);
   };
@@ -271,11 +270,11 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
             margin: "5px",
           }}
         >
-          Deck {i + 1}
-          {isNotDefault(d) ? " (modified)" : " (standard)"}
+          第 {i + 1} 副牌
+          {isNotDefault(d) ? "（已修改）" : "（标准）"}
           <form>
             <label style={{ display: "block" }}>
-              Include HJ (大王){" "}
+              包含大王{" "}
               <input
                 type="checkbox"
                 checked={!d.exclude_big_joker}
@@ -288,7 +287,7 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
               />
             </label>
             <label style={{ display: "block" }}>
-              Include LJ (小王){" "}
+              包含小王{" "}
               <input
                 type="checkbox"
                 checked={!d.exclude_small_joker}
@@ -301,7 +300,7 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
               />
             </label>
             <label>
-              Minimum card:{" "}
+              最小点数：{" "}
               <select
                 value={d.min}
                 onChange={(evt) =>
@@ -324,7 +323,7 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
   return (
     <div>
       <label>
-        More deck customization:{" "}
+        更多牌组自定义：{" "}
         <button
           className="normal"
           onClick={(evt) => {
@@ -332,7 +331,7 @@ const DeckSettings = (props: IDeckSettings): JSX.Element => {
             setModalOpen(true);
           }}
         >
-          Open
+          打开
         </button>
         <ReactModal
           isOpen={modalOpen}
@@ -359,7 +358,7 @@ const TractorRequirementsE = (
 ): JSX.Element => {
   return (
     <div>
-      <label>Tractor requirements: </label>
+      <label>拖拉机最低要求：</label>
       <input
         type="number"
         style={{ width: "3em" }}
@@ -373,7 +372,7 @@ const TractorRequirementsE = (
         min="2"
         max={props.numDecks}
       />
-      <label> cards wide by </label>
+      <label> 张一组 × </label>
       <input
         type="number"
         style={{ width: "3em" }}
@@ -387,7 +386,7 @@ const TractorRequirementsE = (
         min="2"
         max="12"
       />
-      <label> tuples long</label>
+      <label> 组连续牌</label>
     </div>
   );
 };
@@ -401,7 +400,7 @@ const ScoringSettings = (props: IScoringSettings): JSX.Element => {
   return (
     <div>
       <label>
-        Scoring settings:{" "}
+        计分设置：{" "}
         <button
           className="normal"
           onClick={(evt) => {
@@ -409,7 +408,7 @@ const ScoringSettings = (props: IScoringSettings): JSX.Element => {
             setModalOpen(true);
           }}
         >
-          Open
+          打开
         </button>
         <ReactModal
           isOpen={modalOpen}
@@ -456,122 +455,117 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
     <>
       <div>
         <label>
-          Game shadowing policy:{" "}
+          同名玩家旁观/接管规则：{" "}
           <select
             value={props.state.propagated.game_shadowing_policy}
             onChange={props.setGameShadowingPolicy}
           >
             <option value="AllowMultipleSessions">
-              Allow players to be shadowed by joining with the same name
+              允许用相同名字加入并旁观/接管同一玩家
             </option>
             <option value="SingleSessionOnly">
-              Do not allow players to be shadowed
+              不允许同名玩家重复加入
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Game start policy:{" "}
+          开局权限：{" "}
           <select
             value={props.state.propagated.game_start_policy}
             onChange={props.setGameStartPolicy}
           >
-            <option value="AllowAnyPlayer">
-              Allow any player to start a game
-            </option>
-            <option value="AllowLandlordOnly">
-              Allow only landlord to start a game
-            </option>
+            <option value="AllowAnyPlayer">任何玩家都可开始游戏</option>
+            <option value="AllowLandlordOnly">只有庄家可以开始游戏</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Landlord selection from bid:{" "}
+          首局庄家确定方式：{" "}
           <select
             value={props.state.propagated.first_landlord_selection_policy}
             onChange={props.setFirstLandlordSelectionPolicy}
           >
             <option value="ByWinningBid">
-              Winning bid decides both landlord and trump
+              最终叫主者同时决定庄家和主牌
             </option>
             <option value="ByFirstBid">
-              First bid decides landlord, winning bid decides trump
+              第一个叫主者成为庄家，最终叫主决定主牌
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Trump policy for cards revealed from the bottom:{" "}
+          翻底牌定主规则：{" "}
           <select
             value={props.state.propagated.kitty_bid_policy}
             onChange={props.setKittyBidPolicy}
           >
-            <option value="FirstCard">First card revealed</option>
+            <option value="FirstCard">以第一张翻出的牌为准</option>
             <option value="FirstCardOfLevelOrHighest">
-              First card revealed of the appropriate rank
+              以第一张符合当前级别的牌为准
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Bid policy:{" "}
+          叫主压制规则：{" "}
           <select
             value={props.state.propagated.bid_policy}
             onChange={props.setBidPolicy}
           >
             <option value="JokerOrHigherSuit">
-              Joker or higher suit bids to outbid non-joker bids with the same
-              number of cards
+              同张数时，大王/小王或更高花色可压过普通叫主
             </option>
             <option value="JokerOrGreaterLength">
-              Joker bids to outbid non-joker bids with the same number of cards
+              同张数时只有王可以压普通叫主，否则必须增加张数
             </option>
             <option value="GreaterLength">
-              All bids must have more cards than the previous bids
+              每次叫主都必须比前一次使用更多张牌
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Bid reinforcement policy:{" "}
+          加固叫主规则：{" "}
           <select
             value={props.state.propagated.bid_reinforcement_policy}
             onChange={props.setBidReinforcementPolicy}
           >
             <option value="ReinforceWhileWinning">
-              The current winning bid can be reinforced
+              当前领先的叫主可以继续加固
             </option>
             <option value="ReinforceWhileEquivalent">
-              A bid can be reinforced after it is overturned
+              被反压后仍可用同类牌加固
             </option>
             <option value="OverturnOrReinforceWhileWinning">
-              The current winning bid can be overturned by the same bidder
+              当前领先者可以用自己的更强叫主替换原叫主
             </option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Joker bid policy:{" "}
+          王叫无主规则：{" "}
           <select
             value={props.state.propagated.joker_bid_policy}
             onChange={props.setJokerBidPolicy}
           >
             <option value="BothTwoOrMore">
-              At least two jokers (or number of decks) to bid no trump
+              至少两张王（或达到副牌数）可叫无主
             </option>
             <option value="BothNumDecks">
-              All the low or high jokers to bid no trump
+              集齐全部小王或全部大王才能叫无主
             </option>
             <option value="LJNumDecksHJNumDecksLessOne">
-              All the low jokers or all but one high joker to bid no trump
+              集齐全部小王，或除一张外的全部大王，可叫无主
             </option>
-            <option value="Disabled">No trump / joker bids disabled</option>
+            <option value="Disabled">禁用无主/王叫主</option>
           </select>
         </label>
       </div>
@@ -583,17 +577,17 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
       {props.numDecksEffective >= 4 && (
         <div>
           <label>
-            Bomb cards (4+ identical cards beat any play of the same size):{" "}
+            炸弹（4 张或以上完全相同的牌可压同张数牌型）：{" "}
             <select
               value={props.state.propagated.bomb_policy ?? "NoBombs"}
               onChange={props.setBombPolicy}
             >
-              <option value="NoBombs">Disabled</option>
+              <option value="NoBombs">关闭</option>
               <option value="AllowBombs">
-                Enabled (any suit, no suit-following required)
+                开启（任何花色，不要求跟花色）
               </option>
               <option value="AllowBombsSuitFollowing">
-                Enabled (must follow suit)
+                开启（仍必须跟花色）
               </option>
             </select>
           </label>
@@ -601,7 +595,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
       )}
       <div>
         <label>
-          Rainbow tricks (same rank across ≥4 suits):{" "}
+          彩虹牌型（同点数、横跨至少 4 种花色）：{" "}
           <select
             value={
               props.state.propagated.compound_formats?.rainbows != null
@@ -620,14 +614,14 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
               }
             }}
           >
-            <option value="disabled">Disabled</option>
-            <option value="enabled">Enabled</option>
+            <option value="disabled">关闭</option>
+            <option value="enabled">开启</option>
           </select>
         </label>
         {props.state.propagated.compound_formats?.rainbows != null && (
           <label>
             {" "}
-            Minimum cards:{" "}
+            最少张数：{" "}
             <input
               type="number"
               min={4}
@@ -644,7 +638,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
       </div>
       <div>
         <label>
-          Should reveal kitty at end of game:{" "}
+          本局结束时公开底牌：{" "}
           <select
             value={
               props.state.propagated.should_reveal_kitty_at_end_of_game
@@ -653,45 +647,36 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
             }
             onChange={props.setShouldRevealKittyAtEndOfGame}
           >
-            <option value="hide">
-              Do not reveal contents of the kitty at the end of the game in chat
-            </option>
-            <option value="show">
-              Reveal contents of the kitty at the end of the game in chat
-            </option>
+            <option value="hide">结束时不在聊天区公开底牌</option>
+            <option value="show">结束时在聊天区公开底牌</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Show player which defeats throw:{" "}
+          显示阻止甩牌的玩家：{" "}
           <select
             value={
               props.state.propagated.hide_throw_halting_player ? "hide" : "show"
             }
             onChange={props.setHideThrowHaltingPlayer}
           >
-            <option value="hide">
-              Hide the player who defeats a potential throw
-            </option>
-            <option value="show">
-              Show the player who defeats a potential throw
-            </option>
+            <option value="hide">隐藏阻止甩牌的玩家</option>
+            <option value="show">显示阻止甩牌的玩家</option>
           </select>
         </label>
       </div>
       <div>
         <label>
-          Jacks variation:{" "}
+          J 特殊规则：{" "}
           <select
             value={props.state.propagated.jack_variation}
             onChange={props.setJackVariation}
           >
             <option value="SingleJack">
-              Winning the last trick with a single J will set the leader's team
-              to rank 2
+              最后一墩用单张 J 获胜时，首家所在队伍降/定到 2 级
             </option>
-            <option value="Disabled">Disable the J variation</option>
+            <option value="Disabled">关闭 J 特殊规则</option>
           </select>
         </label>
       </div>
@@ -700,7 +685,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
   return (
     <div>
       <label>
-        More game settings:{" "}
+        更多游戏设置：{" "}
         <button
           className="normal"
           onClick={(evt) => {
@@ -708,7 +693,7 @@ const UncommonSettings = (props: IUncommonSettings): JSX.Element => {
             setModalOpen(true);
           }}
         >
-          Open
+          打开
         </button>
         <ReactModal
           isOpen={modalOpen}
@@ -949,164 +934,75 @@ const Initialize = (props: IProps): JSX.Element => {
       for (const [key, value] of Object.entries(gameSettings)) {
         switch (key) {
           case "game_mode":
-            send({
-              Action: {
-                SetGameMode: value,
-              },
-            });
+            send({ Action: { SetGameMode: value } });
             break;
           case "num_decks":
-            send({
-              Action: {
-                SetNumDecks: value,
-              },
-            });
+            send({ Action: { SetNumDecks: value } });
             if (kittySizeSet) {
-              // reset the size again, as setting deck num resets kitty_size to default
-              send({
-                Action: {
-                  SetKittySize: kittySize,
-                },
-              });
+              send({ Action: { SetKittySize: kittySize } });
             }
             break;
           case "special_decks":
-            send({
-              Action: {
-                SetSpecialDecks: value,
-              },
-            });
+            send({ Action: { SetSpecialDecks: value } });
             break;
           case "kitty_size":
-            send({
-              Action: {
-                SetKittySize: value,
-              },
-            });
+            send({ Action: { SetKittySize: value } });
             kittySizeSet = true;
             kittySize = value;
             break;
           case "friend_selection_policy":
-            send({
-              Action: {
-                SetFriendSelectionPolicy: value,
-              },
-            });
+            send({ Action: { SetFriendSelectionPolicy: value } });
             break;
           case "multiple_join_policy":
-            send({
-              Action: {
-                SetMultipleJoinPolicy: value,
-              },
-            });
+            send({ Action: { SetMultipleJoinPolicy: value } });
             break;
           case "first_landlord_selection_policy":
-            send({
-              Action: {
-                SetFirstLandlordSelectionPolicy: value,
-              },
-            });
+            send({ Action: { SetFirstLandlordSelectionPolicy: value } });
             break;
           case "hide_landlord_points":
-            send({
-              Action: {
-                SetHideLandlordsPoints: value,
-              },
-            });
+            send({ Action: { SetHideLandlordsPoints: value } });
             break;
           case "hide_played_cards":
             send({ Action: { SetHidePlayedCards: value } });
             break;
           case "advancement_policy":
-            send({
-              Action: {
-                SetAdvancementPolicy: value,
-              },
-            });
+            send({ Action: { SetAdvancementPolicy: value } });
             break;
           case "max_rank":
-            send({
-              Action: {
-                SetMaxRank: value,
-              },
-            });
+            send({ Action: { SetMaxRank: value } });
             break;
           case "kitty_bid_policy":
-            send({
-              Action: {
-                SetKittyBidPolicy: value,
-              },
-            });
+            send({ Action: { SetKittyBidPolicy: value } });
             break;
           case "kitty_penalty":
-            send({
-              Action: {
-                SetKittyPenalty: value,
-              },
-            });
+            send({ Action: { SetKittyPenalty: value } });
             break;
           case "kitty_theft_policy":
-            send({
-              Action: {
-                SetKittyTheftPolicy: value,
-              },
-            });
+            send({ Action: { SetKittyTheftPolicy: value } });
             break;
           case "throw_penalty":
-            send({
-              Action: {
-                SetThrowPenalty: value,
-              },
-            });
+            send({ Action: { SetThrowPenalty: value } });
             break;
           case "trick_draw_policy":
-            send({
-              Action: {
-                SetTrickDrawPolicy: value,
-              },
-            });
+            send({ Action: { SetTrickDrawPolicy: value } });
             break;
           case "throw_evaluation_policy":
-            send({
-              Action: {
-                SetThrowEvaluationPolicy: value,
-              },
-            });
+            send({ Action: { SetThrowEvaluationPolicy: value } });
             break;
           case "landlord_emoji":
-            send({
-              Action: {
-                SetLandlordEmoji: value,
-              },
-            });
+            send({ Action: { SetLandlordEmoji: value } });
             break;
           case "bid_policy":
-            send({
-              Action: {
-                SetBidPolicy: value,
-              },
-            });
+            send({ Action: { SetBidPolicy: value } });
             break;
           case "bid_reinforcement_policy":
-            send({
-              Action: {
-                SetBidReinforcementPolicy: value,
-              },
-            });
+            send({ Action: { SetBidReinforcementPolicy: value } });
             break;
           case "joker_bid_policy":
-            send({
-              Action: {
-                SetJokerBidPolicy: value,
-              },
-            });
+            send({ Action: { SetJokerBidPolicy: value } });
             break;
           case "should_reveal_kitty_at_end_of_game":
-            send({
-              Action: {
-                SetShouldRevealKittyAtEndOfGame: value,
-              },
-            });
+            send({ Action: { SetShouldRevealKittyAtEndOfGame: value } });
             break;
           case "hide_throw_halting_player":
             send({ Action: { SetHideThrowHaltingPlayer: value } });
@@ -1115,60 +1011,28 @@ const Initialize = (props: IProps): JSX.Element => {
             send({ Action: { SetJackVariation: value } });
             break;
           case "game_scoring_parameters":
-            send({
-              Action: {
-                SetGameScoringParameters: value,
-              },
-            });
+            send({ Action: { SetGameScoringParameters: value } });
             break;
           case "play_takeback_policy":
-            send({
-              Action: {
-                SetPlayTakebackPolicy: value,
-              },
-            });
+            send({ Action: { SetPlayTakebackPolicy: value } });
             break;
           case "bid_takeback_policy":
-            send({
-              Action: {
-                SetBidTakebackPolicy: value,
-              },
-            });
+            send({ Action: { SetBidTakebackPolicy: value } });
             break;
           case "game_shadowing_policy":
-            send({
-              Action: {
-                SetGameShadowingPolicy: value,
-              },
-            });
+            send({ Action: { SetGameShadowingPolicy: value } });
             break;
           case "game_start_policy":
-            send({
-              Action: {
-                SetGameStartPolicy: value,
-              },
-            });
+            send({ Action: { SetGameStartPolicy: value } });
             break;
           case "tractor_requirements":
-            send({
-              Action: {
-                SetTractorRequirements: value,
-              },
-            });
+            send({ Action: { SetTractorRequirements: value } });
             break;
           case "game_visibility":
-            send({
-              Action: {
-                SetGameVisibility: value,
-              },
-            });
+            send({ Action: { SetGameVisibility: value } });
             break;
           case "compound_formats":
-            send({
-              Action: {
-                SetCompoundFormats: value,
-              },
-            });
+            send({ Action: { SetCompoundFormats: value } });
             break;
         }
       }
@@ -1242,7 +1106,7 @@ const Initialize = (props: IProps): JSX.Element => {
         name={props.name}
       />
       <p>
-        Send link to other players to allow them to join the game:{" "}
+        把下面的链接发给其他玩家，让他们加入本局：{" "}
         <a href={window.location.href} target="_blank" rel="noreferrer">
           <code>{window.location.href}</code>
         </a>
@@ -1259,37 +1123,37 @@ const Initialize = (props: IProps): JSX.Element => {
             }
             onClick={startGame}
           >
-            Start game
+            开始游戏
           </button>
           <ReadyCheck />
         </>
       ) : (
-        <h2>Waiting for players...</h2>
+        <h2>等待其他玩家加入……</h2>
       )}
       <RandomizePlayersButton players={props.state.propagated.players}>
-        Randomize player order
+        随机排列玩家顺序
       </RandomizePlayersButton>
       <Kicker
         players={props.state.propagated.players}
         onKick={(playerId: number) => send({ Kick: playerId })}
       />
       <div className="game-settings">
-        <h3>Game settings</h3>
+        <h3>游戏设置</h3>
         <div>
           <label>
-            Game mode:{" "}
+            游戏模式：{" "}
             <select value={modeAsString} onChange={setGameMode}>
-              <option value="Tractor">升级 / Tractor</option>
-              <option value="FindingFriends">找朋友 / Finding Friends</option>
+              <option value="Tractor">升级</option>
+              <option value="FindingFriends">找朋友</option>
             </select>
           </label>
         </div>
         <div>
           {props.state.propagated.game_mode !== "Tractor" ? (
             <label>
-              Number of friends:{" "}
+              朋友人数：{" "}
               <select value={numFriends} onChange={setNumFriends}>
-                <option value="">default</option>
+                <option value="">默认</option>
                 {ArrayUtils.range(
                   Math.max(
                     Math.floor(props.state.propagated.players.length / 2) - 1,
@@ -1326,56 +1190,49 @@ const Initialize = (props: IProps): JSX.Element => {
         />
         <div>
           <label>
-            Bids after cards are exchanged from the bottom:{" "}
+            埋底后允许继续反主（炒地皮）：{" "}
             <select
               value={props.state.propagated.kitty_theft_policy}
               onChange={setKittyTheftPolicy}
             >
-              <option value="AllowKittyTheft">Allowed (炒地皮)</option>
-              <option value="NoKittyTheft">Not allowed</option>
+              <option value="AllowKittyTheft">允许</option>
+              <option value="NoKittyTheft">不允许</option>
             </select>
           </label>
         </div>
         <div>
           <label>
-            Card protection policy:{" "}
+            跟牌牌型保护：{" "}
             <select
               value={props.state.propagated.trick_draw_policy}
               onChange={setTrickDrawPolicy}
             >
-              <option value="NoProtections">No protections</option>
+              <option value="NoProtections">无保护</option>
               <option value="LongerTuplesProtected">
-                Longer tuple (triple) is protected from shorter (pair)
+                多张相同牌受保护（例如三张不被对子拆）
               </option>
               <option value="OnlyDrawTractorOnTractor">
-                Only tractors can draw tractors
+                只有拖拉机才能要求跟拖拉机
               </option>
               <option value="LongerTuplesProtectedAndOnlyDrawTractorOnTractor">
-                Longer tuples are protected from shorter, and only tractors can
-                draw tractors
+                多张相同牌受保护，并且只有拖拉机才能要求跟拖拉机
               </option>
               <option value="NoFormatBasedDraw">
-                No format-based requirements (pairs do not draw pairs)
+                不按牌型强制跟牌（对子不要求跟对子）
               </option>
             </select>
           </label>
         </div>
         <div>
           <label>
-            Multi-throw evaluation policy:{" "}
+            多组甩牌比较规则：{" "}
             <select
               value={props.state.propagated.throw_evaluation_policy}
               onChange={setThrowEvaluationPolicy}
             >
-              <option value="All">
-                Subsequent throw must beat all cards to win
-              </option>
-              <option value="Highest">
-                Subsequent throw must beat highest card to win
-              </option>
-              <option value="TrickUnitLength">
-                Subsequent throw must beat largest component to win
-              </option>
+              <option value="All">跟家必须压过所有组成部分才算赢</option>
+              <option value="Highest">跟家只需压过最高的一组</option>
+              <option value="TrickUnitLength">跟家必须压过张数最多的组成部分</option>
             </select>
           </label>
         </div>
@@ -1416,17 +1273,17 @@ const Initialize = (props: IProps): JSX.Element => {
         />
         <div>
           <label>
-            Game Visibility{" "}
+            房间可见性：{" "}
             <select
               value={props.state.propagated.game_visibility}
               onChange={setGameVisibility}
             >
-              <option value={"Unlisted"}>Unlisted</option>
-              <option value={"Public"}>Public</option>
+              <option value={"Unlisted"}>不公开列出</option>
+              <option value={"Public"}>公开房间</option>
             </select>
           </label>
         </div>
-        <h3>Continuation settings</h3>
+        <h3>续局设置</h3>
         <LandlordSelector
           players={props.state.propagated.players}
           landlordId={props.state.propagated.landlord}
@@ -1444,10 +1301,10 @@ const Initialize = (props: IProps): JSX.Element => {
             send({ Action: { SetMetaRank: newMetaRank } })
           }
         />
-        <h3>Misc settings</h3>
+        <h3>其他设置</h3>
         <div>
           <label>
-            Landlord label:{" "}
+            庄家标记：{" "}
             {props.state.propagated.landlord_emoji !== null &&
             props.state.propagated.landlord_emoji !== undefined &&
             props.state.propagated.landlord_emoji !== ""
@@ -1459,7 +1316,7 @@ const Initialize = (props: IProps): JSX.Element => {
                 setShowPicker(!showPicker);
               }}
             >
-              {showPicker ? "Hide" : "Pick"}
+              {showPicker ? "隐藏" : "选择"}
             </button>
             <button
               className="normal"
@@ -1468,7 +1325,7 @@ const Initialize = (props: IProps): JSX.Element => {
                 send({ Action: { SetLandlordEmoji: null } });
               }}
             >
-              Default
+              默认
             </button>
             {showPicker ? (
               <React.Suspense fallback={"..."}>
@@ -1482,33 +1339,33 @@ const Initialize = (props: IProps): JSX.Element => {
         </div>
         <div>
           <label>
-            Setting Management:
+            设置管理：
             <button
               className="normal"
               data-tooltip-id="saveTip"
-              data-tooltip-content="Save game settings"
+              data-tooltip-content="保存当前游戏设置"
               onClick={saveGameSettings}
             >
-              Save
+              保存
             </button>
             <Tooltip id="saveTip" place="top" />
             <button
               className="normal"
               data-tooltip-id="loadTip"
-              data-tooltip-content={"Load saved game settings"}
+              data-tooltip-content={"载入已保存的游戏设置"}
               onClick={loadGameSettings}
             >
-              Load
+              载入
             </button>
             <Tooltip id="loadTip" place="top" />
             <button
               className="normal"
               data-tooltip-id="resetTip"
-              data-tooltip-content="Reset game settings to defaults"
+              data-tooltip-content="恢复默认游戏设置"
               data-ti="resetTip"
               onClick={resetGameSettings}
             >
-              Reset
+              恢复默认
             </button>
             <Tooltip id="resetTip" place="top" />
           </label>
