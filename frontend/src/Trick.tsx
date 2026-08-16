@@ -44,8 +44,6 @@ const TrickE = (props: IProps): JSX.Element => {
       ? props.trick.played_card_mappings[idx]
       : undefined;
     if (m !== undefined && m !== null && m.length > 0) {
-      // We should coalesce blocks of `Repeated` of count 1 together, since
-      // that displays more nicely.
       const mapping: string[][] = [];
       const singles: string[] = [];
 
@@ -82,7 +80,7 @@ const TrickE = (props: IProps): JSX.Element => {
     <div className="trick">
       {isRainbow && (
         <div style={{ fontWeight: "bold", marginBottom: "4px" }}>
-          🌈 Rainbow trick — play same rank across ≥4 suits to counter
+          🌈 彩虹牌型——用至少四种花色的同点数牌反制
         </div>
       )}
       {playOrder.map((id) => {
@@ -95,7 +93,7 @@ const TrickE = (props: IProps): JSX.Element => {
             <Tooltip id="winningTip" place="bottom" />
             <span
               data-tooltip-id="winningTip"
-              data-tooltip-content="Current winner of trick"
+              data-tooltip-content="当前这一墩领先的玩家"
             >
               (<code>!</code>)
             </span>
@@ -106,7 +104,7 @@ const TrickE = (props: IProps): JSX.Element => {
             <Tooltip id="betterTip" place="bottom" />
             <span
               data-tooltip-id="betterTip"
-              data-tooltip-content="First player who can prevent the attempted throw"
+              data-tooltip-content="第一个能够阻止甩牌的玩家"
             >
               (<code>-</code>)
             </span>
