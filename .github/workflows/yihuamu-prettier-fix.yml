@@ -19,8 +19,11 @@ jobs:
         with:
           node-version: 20
           cache: yarn
+          cache-dependency-path: frontend/yarn.lock
       - run: yarn install --frozen-lockfile
+        working-directory: frontend
       - run: yarn prettier src/Credits.tsx --write
+        working-directory: frontend
       - name: Commit formatting
         run: |
           git config user.name "github-actions[bot]"
