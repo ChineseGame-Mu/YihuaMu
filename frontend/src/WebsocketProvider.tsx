@@ -52,7 +52,7 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
 });
 
 const getBlobArrayBuffer: () => IBlobToArrayBufferQueue = memoize(() => {
-  const queue: Array<{ blob: Blob, handler: (arr: ArrayBuffer) => void }> = [];
+  const queue: Array<{ blob: Blob; handler: (arr: ArrayBuffer) => void }> = [];
   const inflight: number[] = [];
   const onload = (arr: ArrayBuffer): void => {
     const next = queue.shift();
