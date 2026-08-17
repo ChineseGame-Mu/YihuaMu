@@ -1,0 +1,18 @@
+name: Prettier debug
+on:
+  push:
+    branches:
+      - master
+jobs:
+  prettier-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install
+      - name: Show exact Prettier diff for JoinRoom
+        working-directory: frontend
+        run: |
+          yarn prettier src/JoinRoom.tsx --write
+          git diff -- src/JoinRoom.tsx
