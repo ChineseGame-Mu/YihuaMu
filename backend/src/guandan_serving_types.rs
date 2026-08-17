@@ -5,6 +5,7 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
+use shengji_core::guandan::CardFace;
 use storage::State;
 
 use crate::serving_types::VersionedRoom;
@@ -13,9 +14,9 @@ use crate::serving_types::VersionedRoom;
 pub struct GuandanGameState {
     pub started: bool,
     pub player_names: Vec<String>,
-    pub hands: Vec<Vec<usize>>,
+    pub hands: Vec<Vec<CardFace>>,
     pub turn: usize,
-    pub last_play: Vec<usize>,
+    pub last_play: Vec<CardFace>,
     pub last_player: Option<usize>,
     pub passes: usize,
 }
@@ -32,7 +33,7 @@ impl GuandanGameState {
 
     /// Produce the private hand payload for one seat. Public table state is
     /// broadcast separately; another player's cards are never returned here.
-    pub fn private_hand(&self, seat: usize) -> Option<&[usize]> {
+    pub fn private_hand(&self, seat: usize) -> Option<&[CardFace]> {
         self.hands.get(seat).map(Vec::as_slice)
     }
 }
@@ -62,6 +63,7 @@ pub fn new_guandan_room(room_name: Vec<u8>) -> VersionedGuandanGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shengji_core::guandan::{Rank, Suit};
 
     #[test]
     fn guandan_uses_shared_versioned_room() {
@@ -74,10 +76,12 @@ mod tests {
 
     #[test]
     fn private_hand_does_not_expose_other_seats() {
+        let c1 = CardFace::Suited { suit: Suit::Clubs, rank: Rank::Two };
+        let c2 = CardFace::Suited { suit: Suit::Hearts, rank: Rank::Ace };
         let mut state = GuandanGameState::default();
-        state.hands = vec![vec![1, 2], vec![3, 4]];
-        assert_eq!(state.private_hand(0), Some(&[1, 2][..]));
-        assert_eq!(state.private_hand(1), Some(&[3, 4][..]));
+        state.hands = vec![vec![c1], vec![c2]];
+        assert_eq!(state.private_hand(0), Some(&[c1][..]));
+        assert_eq!(state.private_hand(1), Some(&[c2][..]));
         assert_eq!(state.private_hand(2), None);
     }
 }
