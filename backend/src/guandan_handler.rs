@@ -12,14 +12,14 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strength_basic,
-    team::TeamLevels,
+    team::{team_for_seat, Team, TeamLevels},
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
 
 use crate::guandan_serving_types::{
-    GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
+    GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
 };
 
 #[derive(Clone, Debug, Deserialize)]
@@ -58,6 +58,9 @@ pub enum GuandanServerMessage {
         trick_complete: bool,
         level: Rank,
         team_levels: TeamLevels,
+        finish_order: Vec<usize>,
+        last_game_winner: Option<usize>,
+        last_game_winner_team: Option<Team>,
     },
     Error { message: String },
 }
@@ -101,7 +104,7 @@ fn send(tx: &mpsc::UnboundedSender<String>, message: &GuandanServerMessage) {
     }
 }
 
-fn advance_turn(game: &mut crate::guandan_serving_types::GuandanGameState) {
+fn advance_turn(game: &mut GuandanGameState) {
     if game.hands.is_empty() {
         return;
     }
@@ -113,7 +116,40 @@ fn advance_turn(game: &mut crate::guandan_serving_types::GuandanGameState) {
     }
 }
 
-fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> GuandanServerMessage {
+fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
+    let active_players = game.hands.iter().filter(|hand| !hand.is_empty()).count();
+    if active_players > 1 || game.finish_order.is_empty() {
+        return Ok(false);
+    }
+
+    let player_count = game.hands.len();
+    let table = validate_start(player_count)?;
+    let winner = game.finish_order[0];
+    let winner_team = team_for_seat(table, winner)?;
+    let next_level = game.team_levels.advance_winner(winner_team);
+
+    let mut deck = build_deck(table);
+    deck.shuffle(&mut thread_rng());
+    let (hands, remainder) = deal(table, &deck)?;
+    if !remainder.is_empty() {
+        return Err("next Guandan deal left undealt cards");
+    }
+
+    game.hands = hands;
+    game.turn = winner;
+    game.level = next_level;
+    game.last_game_winner = Some(winner);
+    game.last_game_winner_team = Some(winner_team);
+    game.finish_order.clear();
+    game.last_play.clear();
+    game.last_player = None;
+    game.table_plays.clear();
+    game.passes = 0;
+    game.trick_complete = false;
+    Ok(true)
+}
+
+fn state_message(game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
         players: game.player_names.clone(),
         turn: game.turn,
@@ -125,6 +161,9 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
         trick_complete: game.trick_complete,
         level: game.level,
         team_levels: game.team_levels,
+        finish_order: game.finish_order.clone(),
+        last_game_winner: game.last_game_winner,
+        last_game_winner_team: game.last_game_winner_team,
     }
 }
 
@@ -163,7 +202,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v12-team-levels",
+            protocol: "guandan-v13-auto-game-progression",
         },
     );
 
@@ -358,6 +397,9 @@ pub async fn websocket(
                         state.game.table_plays.clear();
                         state.game.passes = 0;
                         state.game.trick_complete = false;
+                        state.game.finish_order.clear();
+                        state.game.last_game_winner = None;
+                        state.game.last_game_winner_team = None;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -439,7 +481,18 @@ pub async fn websocket(
                             cards,
                         });
                         state.game.passes = 0;
-                        advance_turn(&mut state.game);
+
+                        if state.game.hands[seat].is_empty()
+                            && !state.game.finish_order.contains(&seat)
+                        {
+                            state.game.finish_order.push(seat);
+                        }
+
+                        let redealt = settle_and_redeal_if_complete(&mut state.game)
+                            .map_err(PlayError::Invalid)?;
+                        if !redealt {
+                            advance_turn(&mut state.game);
+                        }
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -522,6 +575,9 @@ pub async fn websocket(
                         }
                         let winner = state.game.last_player.ok_or(())?;
                         state.game.turn = winner;
+                        if state.game.hands[winner].is_empty() {
+                            advance_turn(&mut state.game);
+                        }
                         state.game.last_play.clear();
                         state.game.last_player = None;
                         state.game.table_plays.clear();
@@ -631,5 +687,22 @@ mod tests {
             Rank::Five,
         )
         .is_ok());
+    }
+
+    #[test]
+    fn completed_game_advances_winner_team_and_redeals() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
+        game.finish_order = vec![0, 2, 1];
+        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.last_game_winner, Some(0));
+        assert_eq!(game.last_game_winner_team, Some(Team::A));
+        assert_eq!(game.team_levels.team_a, Rank::Three);
+        assert_eq!(game.team_levels.team_b, Rank::Two);
+        assert_eq!(game.level, Rank::Three);
+        assert_eq!(game.turn, 0);
+        assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
     }
 }
