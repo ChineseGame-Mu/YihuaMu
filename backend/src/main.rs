@@ -21,6 +21,7 @@ use shengji_types::ZSTD_ZSTD_DICT;
 use storage::{HashMapStorage, Storage};
 
 mod guandan_handler;
+mod guandan_serving_types;
 mod serving_types;
 mod shengji_handler;
 mod state_dump;
