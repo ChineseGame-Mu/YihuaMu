@@ -1,4 +1,5 @@
 import * as React from "react";
+import "./welcome.css";
 
 import type { JSX } from "react";
 
@@ -12,7 +13,9 @@ const Welcome = (): JSX.Element => (
         <span>♣</span>
       </div>
 
-      <p className="welcome-eyebrow">在线多人纸牌游戏 · Online Multiplayer Card Game</p>
+      <p className="welcome-eyebrow">
+        在线多人纸牌游戏 · Online Multiplayer Card Game
+      </p>
       <h1 className="welcome-title">
         升级 <span>/ Tractor</span>
         <br />
