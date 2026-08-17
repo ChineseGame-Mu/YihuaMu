@@ -4,7 +4,7 @@ import Errors from "./Errors";
 import Initialize from "./Initialize";
 import Draw from "./Draw";
 import Exchange from "./Exchange";
-import JoinRoom from "./JoinRoom";
+import JoinRoom, { ROOM_CODE_LENGTH } from "./JoinRoom";
 import { AppStateContext } from "./AppStateProvider";
 import { TimerContext } from "./TimerProvider";
 import Credits from "./Credits";
@@ -69,7 +69,7 @@ const Root = (): JSX.Element => {
     </div>
   ) : null;
   if (state.connected) {
-    if (state.gameState === null || state.roomName.length !== 2) {
+    if (state.gameState === null || state.roomName.length !== ROOM_CODE_LENGTH) {
       if (selectedGameMode === null) {
         return (
           <div className="welcome-shell">
