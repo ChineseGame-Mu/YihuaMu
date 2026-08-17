@@ -42,7 +42,10 @@ const Welcome = (): JSX.Element => (
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
           </div>
         </div>
-        <div className="welcome-mode welcome-mode-coming-soon" aria-disabled="true">
+        <div
+          className="welcome-mode welcome-mode-coming-soon"
+          aria-disabled="true"
+        >
           <div className="welcome-mode-icon">🂠</div>
           <div>
             <h2>
