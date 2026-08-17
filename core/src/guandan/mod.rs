@@ -2,6 +2,8 @@
 //!
 //! This module is intentionally isolated from the existing Shengji game state.
 
+use serde::{Deserialize, Serialize};
+
 pub mod compare;
 pub mod deck;
 pub mod game;
@@ -23,13 +25,13 @@ impl TableConfig {
     pub fn is_even_table(self) -> bool { self.player_count.is_multiple_of(2) }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
 pub enum Rank { Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King, Ace }
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Suit { Clubs, Diamonds, Hearts, Spades }
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Joker { Small, Big }
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CardFace { Suited { suit: Suit, rank: Rank }, Joker(Joker) }
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PlayPattern { Single, Pair, Triple, TripleWithPair, Straight, ConsecutivePairs, ConsecutiveTriples, Bomb, StraightFlush, JokerBomb }
