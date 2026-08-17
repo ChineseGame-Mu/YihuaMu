@@ -9,10 +9,10 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
-    compare::beats,
+    compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strength_basic,
-    CardFace, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
+    CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -55,6 +55,7 @@ pub enum GuandanServerMessage {
         table_plays: Vec<GuandanTablePlay>,
         passes: usize,
         trick_complete: bool,
+        level: Rank,
     },
     Error { message: String },
 }
@@ -120,19 +121,21 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
         table_plays: game.table_plays.clone(),
         passes: game.passes,
         trick_complete: game.trick_complete,
+        level: game.level,
     }
 }
 
 fn validate_play_against_table(
     cards: &[CardFace],
     current: &[CardFace],
+    level: Rank,
 ) -> Result<(), &'static str> {
     let candidate = strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
     if current.is_empty() {
         return Ok(());
     }
     let table = strength_basic(current).ok_or("current table play is invalid")?;
-    if beats(candidate, table) {
+    if beats_at_level(candidate, table, level) {
         Ok(())
     } else {
         Err("play must beat the current table play")
@@ -157,7 +160,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v10-trick-comparison",
+            protocol: "guandan-v11-level-aware",
         },
     );
 
@@ -378,6 +381,7 @@ pub async fn websocket(
                         cards_per_player: CARDS_PER_PLAYER,
                     },
                 );
+                send(&tx, &state_message(&state.game));
                 if let Some(hand) = state.game.private_hand(seat) {
                     send(
                         &tx,
@@ -415,8 +419,12 @@ pub async fn websocket(
                             .iter()
                             .map(|&index| state.game.hands[seat][index])
                             .collect::<Vec<_>>();
-                        validate_play_against_table(&cards, &state.game.last_play)
-                            .map_err(PlayError::Invalid)?;
+                        validate_play_against_table(
+                            &cards,
+                            &state.game.last_play,
+                            state.game.level,
+                        )
+                        .map_err(PlayError::Invalid)?;
 
                         for &index in indexes.iter().rev() {
                             state.game.hands[seat].remove(index);
@@ -544,7 +552,7 @@ pub async fn websocket(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shengji_core::guandan::{Rank, Suit};
+    use shengji_core::guandan::Suit;
 
     fn card(suit: Suit, rank: Rank) -> CardFace {
         CardFace::Suited { suit, rank }
@@ -566,23 +574,30 @@ mod tests {
 
     #[test]
     fn accepts_opening_legal_play() {
-        assert!(validate_play_against_table(&[card(Suit::Spades, Rank::Ace)], &[]).is_ok());
-    }
-
-    #[test]
-    fn higher_single_beats_lower_single() {
         assert!(validate_play_against_table(
-            &[card(Suit::Spades, Rank::King)],
-            &[card(Suit::Clubs, Rank::Queen)],
+            &[card(Suit::Spades, Rank::Ace)],
+            &[],
+            Rank::Five,
         )
         .is_ok());
     }
 
     #[test]
-    fn lower_single_cannot_beat_higher_single() {
+    fn current_level_single_beats_ace() {
         assert!(validate_play_against_table(
-            &[card(Suit::Spades, Rank::Jack)],
-            &[card(Suit::Clubs, Rank::Queen)],
+            &[card(Suit::Spades, Rank::Five)],
+            &[card(Suit::Clubs, Rank::Ace)],
+            Rank::Five,
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn ace_cannot_beat_current_level_single() {
+        assert!(validate_play_against_table(
+            &[card(Suit::Spades, Rank::Ace)],
+            &[card(Suit::Clubs, Rank::Five)],
+            Rank::Five,
         )
         .is_err());
     }
@@ -595,6 +610,7 @@ mod tests {
                 card(Suit::Hearts, Rank::Ace),
             ],
             &[card(Suit::Clubs, Rank::Queen)],
+            Rank::Five,
         )
         .is_err());
     }
@@ -609,6 +625,7 @@ mod tests {
                 card(Suit::Spades, Rank::Three),
             ],
             &[card(Suit::Clubs, Rank::Ace)],
+            Rank::Five,
         )
         .is_ok());
     }
