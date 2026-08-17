@@ -6,6 +6,8 @@
 
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
+    compare::beats_at_level,
+    strength::strength_basic,
     team::{Team, TeamLevels},
     tribute::TributePlan,
     CardFace, Rank,
@@ -197,6 +199,96 @@ impl GuandanGameState {
         self.tribute_cards.len() == giver_count && self.return_cards.len() == receiver_count
     }
 
+    /// Move submitted tribute cards to the receiving hands and move each
+    /// receiver's return card back to the giver whose tribute that receiver got.
+    /// In double tribute, first place receives the stronger submitted tribute
+    /// card according to the current level-aware single-card ordering.
+    pub fn finalize_tribute_exchange(&mut self) -> Result<(), &'static str> {
+        if !self.tribute_exchange_complete() {
+            return Err("tribute exchange is not complete");
+        }
+        let plan = self
+            .pending_tribute
+            .clone()
+            .ok_or("there is no pending tribute exchange")?;
+        let tribute_cards = self.tribute_cards.clone();
+        let return_cards = self.return_cards.clone();
+
+        match plan {
+            TributePlan::Single { giver, receiver } => {
+                let tribute = tribute_cards
+                    .iter()
+                    .find(|entry| entry.player == giver)
+                    .ok_or("missing single tribute card")?
+                    .card;
+                let returned = return_cards
+                    .iter()
+                    .find(|entry| entry.player == receiver)
+                    .ok_or("missing single return card")?
+                    .card;
+                self.hands
+                    .get_mut(receiver)
+                    .ok_or("tribute receiver seat is invalid")?
+                    .push(tribute);
+                self.hands
+                    .get_mut(giver)
+                    .ok_or("tribute giver seat is invalid")?
+                    .push(returned);
+            }
+            TributePlan::Double { givers, receivers } => {
+                let first = tribute_cards
+                    .iter()
+                    .find(|entry| entry.player == givers[0])
+                    .ok_or("missing first double tribute card")?;
+                let second = tribute_cards
+                    .iter()
+                    .find(|entry| entry.player == givers[1])
+                    .ok_or("missing second double tribute card")?;
+                let first_strength = strength_basic(&[first.card])
+                    .ok_or("first tribute card has no comparable strength")?;
+                let second_strength = strength_basic(&[second.card])
+                    .ok_or("second tribute card has no comparable strength")?;
+                let second_is_stronger = beats_at_level(second_strength, first_strength, self.level);
+                let (high_giver, high_card, low_giver, low_card) = if second_is_stronger {
+                    (second.player, second.card, first.player, first.card)
+                } else {
+                    (first.player, first.card, second.player, second.card)
+                };
+
+                let first_return = return_cards
+                    .iter()
+                    .find(|entry| entry.player == receivers[0])
+                    .ok_or("missing first double return card")?
+                    .card;
+                let second_return = return_cards
+                    .iter()
+                    .find(|entry| entry.player == receivers[1])
+                    .ok_or("missing second double return card")?
+                    .card;
+
+                self.hands
+                    .get_mut(receivers[0])
+                    .ok_or("first tribute receiver seat is invalid")?
+                    .push(high_card);
+                self.hands
+                    .get_mut(high_giver)
+                    .ok_or("high tribute giver seat is invalid")?
+                    .push(first_return);
+                self.hands
+                    .get_mut(receivers[1])
+                    .ok_or("second tribute receiver seat is invalid")?
+                    .push(low_card);
+                self.hands
+                    .get_mut(low_giver)
+                    .ok_or("low tribute giver seat is invalid")?
+                    .push(second_return);
+            }
+        }
+
+        self.clear_tribute_exchange();
+        Ok(())
+    }
+
     pub fn clear_tribute_exchange(&mut self) {
         self.pending_tribute = None;
         self.tribute_cards.clear();
@@ -306,16 +398,25 @@ mod tests {
         assert!(state.submit_tribute_card(3, 0).is_err());
         assert_eq!(state.submit_return_card(0, 0), Ok(returned));
         assert!(state.tribute_exchange_complete());
+        assert!(state.finalize_tribute_exchange().is_ok());
+        assert_eq!(state.pending_tribute, None);
+        assert_eq!(state.hands[0], vec![tribute]);
+        assert_eq!(state.hands[3], vec![returned]);
+        assert!(!state.normal_play_blocked());
     }
 
     #[test]
     fn double_tribute_requires_one_submission_from_each_role() {
+        let low_tribute = card(Suit::Clubs, Rank::Nine);
+        let high_tribute = card(Suit::Spades, Rank::Ace);
+        let first_return = card(Suit::Clubs, Rank::Three);
+        let second_return = card(Suit::Diamonds, Rank::Four);
         let mut state = GuandanGameState::default();
         state.hands = vec![
-            vec![card(Suit::Clubs, Rank::Three)],
-            vec![card(Suit::Spades, Rank::Ace)],
-            vec![card(Suit::Diamonds, Rank::Four)],
-            vec![card(Suit::Hearts, Rank::King)],
+            vec![first_return],
+            vec![low_tribute],
+            vec![second_return],
+            vec![high_tribute],
         ];
         state.pending_tribute = Some(TributePlan::Double {
             givers: [1, 3],
@@ -328,6 +429,12 @@ mod tests {
         assert!(state.submit_return_card(0, 0).is_ok());
         assert!(state.submit_return_card(2, 0).is_ok());
         assert!(state.tribute_exchange_complete());
+        assert!(state.finalize_tribute_exchange().is_ok());
+        assert_eq!(state.pending_tribute, None);
+        assert_eq!(state.hands[0], vec![high_tribute]);
+        assert_eq!(state.hands[2], vec![low_tribute]);
+        assert_eq!(state.hands[3], vec![first_return]);
+        assert_eq!(state.hands[1], vec![second_return]);
     }
 
     #[test]
