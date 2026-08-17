@@ -6,6 +6,8 @@
 //! pay tribute to the two winners. Holding both big jokers on the tribute side
 //! resists tribute.
 
+use std::convert::TryInto;
+
 use super::{team::team_for_seat, CardFace, Joker, TableConfig};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
