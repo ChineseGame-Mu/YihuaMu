@@ -1,7 +1,7 @@
 //! Isolated Guandan websocket protocol for the desktop multiplayer test.
 
 use axum::extract::ws::{Message, WebSocket};
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{deck::CARDS_PER_PLAYER, TableConfig, MAX_PLAYERS, MIN_PLAYERS};
 
@@ -21,7 +21,6 @@ pub enum GuandanServerMessage {
     Joined { room: String, seat: usize },
     Waiting { players: Vec<String>, minimum_players: usize, maximum_players: usize },
     Started { player_count: usize, cards_per_player: usize },
-    Turn { seat: usize },
     Error { message: String },
 }
 
@@ -36,8 +35,6 @@ async fn send_json(socket: &mut WebSocket, message: GuandanServerMessage) -> Res
     socket.send(Message::Text(text)).await.map_err(|_| ())
 }
 
-/// First network milestone: an isolated websocket endpoint with the Guandan
-/// command schema. Room sharing/state synchronization is the next layer.
 pub async fn websocket(mut socket: WebSocket) {
     if send_json(&mut socket, GuandanServerMessage::Connected { protocol: "guandan-v1" }).await.is_err() { return; }
     while let Some(result) = socket.next().await {
@@ -56,15 +53,21 @@ pub async fn websocket(mut socket: WebSocket) {
             }
         };
         let response = match command {
-            GuandanClientMessage::Join { room, name } => GuandanServerMessage::Waiting {
-                players: vec![name], minimum_players: MIN_PLAYERS, maximum_players: MAX_PLAYERS,
-            },
+            GuandanClientMessage::Join { room, name } => {
+                let _ = name;
+                GuandanServerMessage::Joined { room, seat: 0 }
+            }
             GuandanClientMessage::Start { player_count } => match validate_start(player_count) {
                 Ok(table) => GuandanServerMessage::Started { player_count: table.player_count, cards_per_player: CARDS_PER_PLAYER },
                 Err(error) => GuandanServerMessage::Error { message: error.to_string() },
             },
-            GuandanClientMessage::Play { card_indexes: _ } | GuandanClientMessage::Pass =>
-                GuandanServerMessage::Error { message: "join a synchronized room before playing".to_string() },
+            GuandanClientMessage::Play { card_indexes } => {
+                let _selected_count = card_indexes.len();
+                GuandanServerMessage::Error { message: "join a synchronized room before playing".to_string() }
+            }
+            GuandanClientMessage::Pass => GuandanServerMessage::Waiting {
+                players: Vec::new(), minimum_players: MIN_PLAYERS, maximum_players: MAX_PLAYERS,
+            },
         };
         if send_json(&mut socket, response).await.is_err() { break; }
     }
