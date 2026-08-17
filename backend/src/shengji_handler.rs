@@ -71,7 +71,7 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
                     room_name,
                     name,
                     disable_compression,
-                }) if room_name.len() == 16 && name.len() < 32 => {
+                }) if room_name.len() == 2 && name.len() < 32 => {
                     break (room_name, name, disable_compression);
                 }
                 Ok(_) => GameMessage::Error("invalid room or name".to_string()),
