@@ -94,7 +94,9 @@ const Root = (): JSX.Element => {
             <p>
               当前模式：
               <strong>
-                {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
+                {selectedGameMode === "Tractor"
+                  ? "升级 / 拖拉机"
+                  : "找朋友"}
               </strong>{" "}
               <button
                 className="normal"
