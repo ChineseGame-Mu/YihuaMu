@@ -41,6 +41,8 @@ pub struct GuandanGameState {
     /// Winner of the most recently completed game. Preserved after the next deal.
     pub last_game_winner: Option<usize>,
     pub last_game_winner_team: Option<Team>,
+    /// Number of levels awarded for the most recently completed game.
+    pub last_promotion_steps: Option<usize>,
     /// Final winner of the whole match. A team must win while already playing A.
     /// Once set, no automatic redeal occurs and normal play is stopped.
     pub match_winner: Option<Team>,
@@ -63,6 +65,7 @@ impl Default for GuandanGameState {
             finish_order: Vec::new(),
             last_game_winner: None,
             last_game_winner_team: None,
+            last_promotion_steps: None,
             match_winner: None,
         }
     }
@@ -124,6 +127,7 @@ mod tests {
         assert!(room.game.finish_order.is_empty());
         assert_eq!(room.game.last_game_winner, None);
         assert_eq!(room.game.last_game_winner_team, None);
+        assert_eq!(room.game.last_promotion_steps, None);
         assert_eq!(room.game.match_winner, None);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
