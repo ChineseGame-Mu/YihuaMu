@@ -30,8 +30,6 @@ pub enum GuandanServerMessage {
     Started { player_count: usize, cards_per_player: usize },
     Hand { cards: Vec<usize> },
     State { turn: usize, hand_counts: Vec<usize>, last_play: Vec<usize>, last_player: Option<usize>, passes: usize },
-    Played { seat: usize, cards: Vec<usize> },
-    Passed { seat: usize },
     Error { message: String },
 }
 
