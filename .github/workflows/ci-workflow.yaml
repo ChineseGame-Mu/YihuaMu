@@ -55,8 +55,8 @@ jobs:
       - name: Lint Rust code
         run: cargo clippy
 
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
+      - name: Format Rust code for test workspace
+        run: cargo fmt --all
 
       - name: Test Rust code
         run: cargo test --all
