@@ -6,7 +6,7 @@ use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
-use shengji_core::guandan::{deck::CARDS_PER_PLAYER, TableConfig, MAX_PLAYERS, MIN_PLAYERS};
+use shengji_core::guandan::{deck::{build_deck, deal, CARDS_PER_PLAYER}, CardFace, TableConfig, MAX_PLAYERS, MIN_PLAYERS};
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
 
@@ -28,8 +28,8 @@ pub enum GuandanServerMessage {
     Joined { room: String, seat: usize },
     Waiting { players: Vec<String>, minimum_players: usize, maximum_players: usize },
     Started { player_count: usize, cards_per_player: usize },
-    Hand { cards: Vec<usize> },
-    State { turn: usize, hand_counts: Vec<usize>, last_play: Vec<usize>, last_player: Option<usize>, passes: usize },
+    Hand { cards: Vec<CardFace> },
+    State { turn: usize, hand_counts: Vec<usize>, last_play: Vec<CardFace>, last_player: Option<usize>, passes: usize },
     Error { message: String },
 }
 
@@ -78,7 +78,7 @@ pub async fn websocket(socket: WebSocket, storage: HashMapStorage<VersionedGuand
         }
     });
 
-    send(&tx, &GuandanServerMessage::Connected { protocol: "guandan-v4-storage" });
+    send(&tx, &GuandanServerMessage::Connected { protocol: "guandan-v5-cardface" });
     let mut joined_room: Option<Vec<u8>> = None;
     let mut joined_seat: Option<usize> = None;
     let mut subscription_task = None;
@@ -136,11 +136,10 @@ pub async fn websocket(socket: WebSocket, storage: HashMapStorage<VersionedGuand
                 let table = match validate_start(player_count) { Ok(t) => t, Err(e) => { send(&tx, &GuandanServerMessage::Error { message: e.to_string() }); continue; } };
                 let result = storage.clone().execute_operation_with_messages(key.clone(), move |mut state| {
                     if state.game.player_names.len() != table.player_count { return Err(()); }
-                    let total_cards = table.player_count * CARDS_PER_PLAYER;
-                    let mut deck: Vec<usize> = (0..total_cards).collect(); deck.shuffle(&mut thread_rng());
-                    let mut hands = vec![Vec::with_capacity(CARDS_PER_PLAYER); table.player_count];
-                    for (index, card) in deck.into_iter().enumerate() { hands[index % table.player_count].push(card); }
-                    for hand in &mut hands { hand.sort_unstable(); }
+                    let mut deck = build_deck(table);
+                    deck.shuffle(&mut thread_rng());
+                    let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;
+                    if !remainder.is_empty() { return Err(()); }
                     state.game.started = true; state.game.hands = hands; state.game.turn = 0; state.game.last_play.clear(); state.game.last_player = None; state.game.passes = 0; state.bump_version();
                     Ok((state, vec![GuandanStorageMessage::StateChanged]))
                 }).await;
