@@ -15,6 +15,7 @@ use shengji_core::guandan::{
     team::{
         four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels,
     },
+    tribute::TributePlan,
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
@@ -63,6 +64,8 @@ pub enum GuandanServerMessage {
         finish_order: Vec<usize>,
         last_game_winner: Option<usize>,
         last_game_winner_team: Option<Team>,
+        pending_tribute: Option<TributePlan>,
+        tribute_resisted: bool,
         match_winner: Option<Team>,
     },
     Error { message: String },
@@ -194,6 +197,8 @@ fn state_message(game: &GuandanGameState) -> GuandanServerMessage {
         finish_order: game.finish_order.clone(),
         last_game_winner: game.last_game_winner,
         last_game_winner_team: game.last_game_winner_team,
+        pending_tribute: game.pending_tribute.clone(),
+        tribute_resisted: game.tribute_resisted,
         match_winner: game.match_winner,
     }
 }
@@ -233,7 +238,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v15-finish-order-promotion",
+            protocol: "guandan-v16-tribute-state",
         },
     );
 
@@ -431,6 +436,8 @@ pub async fn websocket(
                         state.game.finish_order.clear();
                         state.game.last_game_winner = None;
                         state.game.last_game_winner_team = None;
+                        state.game.pending_tribute = None;
+                        state.game.tribute_resisted = false;
                         state.game.match_winner = None;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
@@ -480,8 +487,10 @@ pub async fn websocket(
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.match_winner.is_some() {
-                            return Err(PlayError::Invalid("match is already complete"));
+                        if state.game.normal_play_blocked() {
+                            return Err(PlayError::Invalid(
+                                "normal play is blocked until tribute is resolved",
+                            ));
                         }
                         if !state.game.started
                             || state.game.trick_complete
@@ -564,7 +573,7 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
-                        if state.game.match_winner.is_some()
+                        if state.game.normal_play_blocked()
                             || !state.game.started
                             || state.game.trick_complete
                             || state.game.turn != seat
@@ -606,7 +615,7 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
-                        if state.game.match_winner.is_some()
+                        if state.game.normal_play_blocked()
                             || !state.game.started
                             || !state.game.trick_complete
                         {
@@ -726,6 +735,19 @@ mod tests {
             Rank::Five,
         )
         .is_ok());
+    }
+
+    #[test]
+    fn state_message_exposes_tribute_phase() {
+        let mut game = GuandanGameState::default();
+        game.pending_tribute = Some(TributePlan::Single {
+            giver: 3,
+            receiver: 0,
+        });
+        game.tribute_resisted = false;
+        let json = encode(&state_message(&game)).unwrap();
+        assert!(json.contains("pending_tribute"));
+        assert!(json.contains("tribute_resisted"));
     }
 
     #[test]
