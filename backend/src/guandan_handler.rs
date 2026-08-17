@@ -8,6 +8,7 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     deck::{build_deck, deal, CARDS_PER_PLAYER},
+    rules::classify_basic,
     CardFace, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
@@ -98,6 +99,10 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
     }
 }
 
+fn basic_play_is_legal(cards: &[CardFace]) -> bool {
+    classify_basic(cards).is_some()
+}
+
 pub async fn websocket(
     socket: WebSocket,
     storage: HashMapStorage<VersionedGuandanGame>,
@@ -116,7 +121,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v8-player-names",
+            protocol: "guandan-v9-pattern-validation",
         },
     );
     let mut joined_room: Option<Vec<u8>> = None;
@@ -346,12 +351,15 @@ pub async fn websocket(
                             || indexes.last().copied().unwrap_or(0)
                                 >= state.game.hands[seat].len()
                         {
-                            return Err(());
+                            return Err("not your turn or invalid card selection");
                         }
                         let cards = indexes
                             .iter()
                             .map(|&i| state.game.hands[seat][i])
                             .collect::<Vec<_>>();
+                        if !basic_play_is_legal(&cards) {
+                            return Err("selected cards are not a legal Guandan pattern");
+                        }
                         for &i in indexes.iter().rev() {
                             state.game.hands[seat].remove(i);
                         }
@@ -367,11 +375,11 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
-                if result.is_err() {
+                if let Err(message) = result {
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "invalid play, trick is complete, or not your turn".to_string(),
+                            message: message.to_string(),
                         },
                     );
                     continue;
@@ -468,6 +476,11 @@ pub async fn websocket(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use shengji_core::guandan::{Rank, Suit};
+
+    fn card(suit: Suit, rank: Rank) -> CardFace {
+        CardFace::Suited { suit, rank }
+    }
 
     #[test]
     fn accepts_even_test_tables() {
@@ -481,5 +494,28 @@ mod tests {
         for count in [5usize, 7, 9, 11, 13] {
             assert!(validate_start(count).is_err());
         }
+    }
+
+    #[test]
+    fn accepts_basic_legal_play_patterns() {
+        assert!(basic_play_is_legal(&[card(Suit::Spades, Rank::Ace)]));
+        assert!(basic_play_is_legal(&[
+            card(Suit::Clubs, Rank::King),
+            card(Suit::Hearts, Rank::King),
+        ]));
+        assert!(basic_play_is_legal(&[
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Diamonds, Rank::Nine),
+            card(Suit::Hearts, Rank::Nine),
+            card(Suit::Spades, Rank::Nine),
+        ]));
+    }
+
+    #[test]
+    fn rejects_mixed_cards_that_are_not_a_guandan_pattern() {
+        assert!(!basic_play_is_legal(&[
+            card(Suit::Clubs, Rank::Three),
+            card(Suit::Hearts, Rank::Eight),
+        ]));
     }
 }
