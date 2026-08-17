@@ -171,7 +171,7 @@ const WebsocketProvider: React.FunctionComponent<
         if (
           hasJoinedRoomRef.current &&
           current.name.length > 0 &&
-          current.roomName.length === 16
+          current.roomName.length === 2
         ) {
           ws.send(
             JSON.stringify({
