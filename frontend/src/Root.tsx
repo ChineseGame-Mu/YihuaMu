@@ -70,6 +70,18 @@ const Root = (): JSX.Element => {
   ) : null;
   if (state.connected) {
     if (state.gameState === null || state.roomName.length !== 16) {
+      if (selectedGameMode === null) {
+        return (
+          <div className="welcome-shell">
+            {headerMessages}
+            <Errors errors={state.errors} />
+            <Welcome connected onSelectGameMode={setSelectedGameMode} />
+            <Credits />
+            <TitleHandler playerName={state.name} />
+          </div>
+        );
+      }
+
       return (
         <div>
           {headerMessages}
@@ -79,52 +91,30 @@ const Root = (): JSX.Element => {
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
             </h1>
-            {selectedGameMode === null ? (
-              <div className="game-settings">
-                <h2>请选择游戏模式</h2>
-                <p>
-                  <button
-                    className="big"
-                    onClick={() => setSelectedGameMode("Tractor")}
-                  >
-                    升级 / 拖拉机
-                  </button>{" "}
-                  <button
-                    className="big"
-                    onClick={() => setSelectedGameMode("FindingFriends")}
-                  >
-                    找朋友
-                  </button>
-                </p>
-              </div>
-            ) : (
-              <>
-                <p>
-                  当前模式：
-                  <strong>
-                    {selectedGameMode === "Tractor"
-                      ? "升级 / 拖拉机"
-                      : "找朋友"}
-                  </strong>{" "}
-                  <button
-                    className="normal"
-                    onClick={() => setSelectedGameMode(null)}
-                  >
-                    重新选择
-                  </button>
-                </p>
-                <JoinRoom
-                  name={state.name}
-                  room_name={state.roomName}
-                  gameMode={selectedGameMode}
-                  setName={(name: string) => updateState({ name })}
-                  setRoomName={(roomName: string) => {
-                    updateState({ roomName });
-                    window.location.hash = roomName;
-                  }}
-                />
-              </>
-            )}
+            <p>
+              当前模式：
+              <strong>
+                {selectedGameMode === "Tractor"
+                  ? "升级 / 拖拉机"
+                  : "找朋友"}
+              </strong>{" "}
+              <button
+                className="normal"
+                onClick={() => setSelectedGameMode(null)}
+              >
+                重新选择
+              </button>
+            </p>
+            <JoinRoom
+              name={state.name}
+              room_name={state.roomName}
+              gameMode={selectedGameMode}
+              setName={(name: string) => updateState({ name })}
+              setRoomName={(roomName: string) => {
+                updateState({ roomName });
+                window.location.hash = roomName;
+              }}
+            />
           </div>
           <hr />
           <Credits />
