@@ -17,6 +17,5 @@ jobs:
       - name: Format welcome CSS exactly
         working-directory: frontend
         run: npx prettier@3.4.1 src/welcome.css --write
-      - name: Print formatted CSS
-        working-directory: frontend
-        run: cat src/welcome.css
+      - name: Show exact formatted diff
+        run: git diff -- frontend/src/welcome.css
