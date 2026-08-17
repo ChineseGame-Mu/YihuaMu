@@ -5,7 +5,7 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
-use shengji_core::guandan::{team::TeamLevels, CardFace, Rank};
+use shengji_core::guandan::{team::{Team, TeamLevels}, CardFace, Rank};
 use storage::State;
 
 use crate::serving_types::VersionedRoom;
@@ -33,6 +33,11 @@ pub struct GuandanGameState {
     pub level: Rank,
     /// Persistent progression for the two alternating teams across games.
     pub team_levels: TeamLevels,
+    /// Players who have emptied their hands in the current game, first place first.
+    pub finish_order: Vec<usize>,
+    /// Winner of the most recently completed game. Preserved after the next deal.
+    pub last_game_winner: Option<usize>,
+    pub last_game_winner_team: Option<Team>,
 }
 
 impl Default for GuandanGameState {
@@ -49,6 +54,9 @@ impl Default for GuandanGameState {
             trick_complete: false,
             level: Rank::Two,
             team_levels: TeamLevels::default(),
+            finish_order: Vec::new(),
+            last_game_winner: None,
+            last_game_winner_team: None,
         }
     }
 }
@@ -106,6 +114,9 @@ mod tests {
         assert_eq!(room.game.level, Rank::Two);
         assert_eq!(room.game.team_levels.level_for(Team::A), Rank::Two);
         assert_eq!(room.game.team_levels.level_for(Team::B), Rank::Two);
+        assert!(room.game.finish_order.is_empty());
+        assert_eq!(room.game.last_game_winner, None);
+        assert_eq!(room.game.last_game_winner_team, None);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
