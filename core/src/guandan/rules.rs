@@ -8,19 +8,19 @@ pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
     match cards.len() {
         0 => None,
         1 => Some(PlayPattern::Single),
-        2 => same_rank(cards).then_some(PlayPattern::Pair),
-        3 => same_rank(cards).then_some(PlayPattern::Triple),
+        2 => same_face_rank(cards).then_some(PlayPattern::Pair),
+        3 => same_face_rank(cards).then_some(PlayPattern::Triple),
         4 => {
             if all_jokers(cards) {
                 Some(PlayPattern::JokerBomb)
-            } else if same_rank(cards) {
+            } else if same_face_rank(cards) {
                 Some(PlayPattern::Bomb)
             } else {
                 None
             }
         }
         5 => {
-            if same_rank(cards) {
+            if same_face_rank(cards) {
                 Some(PlayPattern::Bomb)
             } else if is_straight_flush(cards) {
                 Some(PlayPattern::StraightFlush)
@@ -33,7 +33,7 @@ pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
             }
         }
         6 => {
-            if same_rank(cards) {
+            if same_face_rank(cards) {
                 Some(PlayPattern::Bomb)
             } else if is_consecutive_pairs(cards) {
                 Some(PlayPattern::ConsecutivePairs)
@@ -43,7 +43,7 @@ pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
                 None
             }
         }
-        _ if same_rank(cards) => Some(PlayPattern::Bomb),
+        _ if same_face_rank(cards) => Some(PlayPattern::Bomb),
         _ => None,
     }
 }
@@ -62,12 +62,20 @@ fn suit_of(card: CardFace) -> Option<Suit> {
     }
 }
 
-fn same_rank(cards: &[CardFace]) -> bool {
-    if cards.is_empty() {
+/// Same suited rank or the same joker face. This allows two small jokers or two
+/// big jokers from the duplicated deck to form a legal pair.
+fn same_face_rank(cards: &[CardFace]) -> bool {
+    let Some(first) = cards.first().copied() else {
         return false;
+    };
+    match first {
+        CardFace::Suited { rank, .. } => cards.iter().all(|card| {
+            matches!(card, CardFace::Suited { rank: other, .. } if *other == rank)
+        }),
+        CardFace::Joker(joker) => cards
+            .iter()
+            .all(|card| matches!(card, CardFace::Joker(other) if *other == joker)),
     }
-    let first = rank_of(cards[0]);
-    first.is_some() && cards.iter().all(|card| rank_of(*card) == first)
 }
 
 fn all_jokers(cards: &[CardFace]) -> bool {
@@ -130,7 +138,8 @@ fn is_straight(cards: &[CardFace]) -> bool {
     let Some(counts) = rank_counts(cards) else {
         return false;
     };
-    counts.values().all(|count| *count == 1) && consecutive(&counts.keys().copied().collect::<Vec<_>>())
+    counts.values().all(|count| *count == 1)
+        && consecutive(&counts.keys().copied().collect::<Vec<_>>())
 }
 
 fn is_straight_flush(cards: &[CardFace]) -> bool {
@@ -178,43 +187,135 @@ mod tests {
 
     #[test]
     fn classifies_single_pair_and_triple() {
-        assert_eq!(classify_basic(&[card(Suit::Clubs, Rank::Ace)]), Some(PlayPattern::Single));
-        assert_eq!(classify_basic(&[card(Suit::Clubs, Rank::Ace), card(Suit::Hearts, Rank::Ace)]), Some(PlayPattern::Pair));
-        assert_eq!(classify_basic(&[card(Suit::Clubs, Rank::King), card(Suit::Hearts, Rank::King), card(Suit::Spades, Rank::King)]), Some(PlayPattern::Triple));
+        assert_eq!(
+            classify_basic(&[card(Suit::Clubs, Rank::Ace)]),
+            Some(PlayPattern::Single)
+        );
+        assert_eq!(
+            classify_basic(&[
+                card(Suit::Clubs, Rank::Ace),
+                card(Suit::Hearts, Rank::Ace),
+            ]),
+            Some(PlayPattern::Pair)
+        );
+        assert_eq!(
+            classify_basic(&[
+                card(Suit::Clubs, Rank::King),
+                card(Suit::Hearts, Rank::King),
+                card(Suit::Spades, Rank::King),
+            ]),
+            Some(PlayPattern::Triple)
+        );
+    }
+
+    #[test]
+    fn classifies_same_joker_pairs() {
+        assert_eq!(
+            classify_basic(&[
+                CardFace::Joker(Joker::Small),
+                CardFace::Joker(Joker::Small),
+            ]),
+            Some(PlayPattern::Pair)
+        );
+        assert_eq!(
+            classify_basic(&[
+                CardFace::Joker(Joker::Big),
+                CardFace::Joker(Joker::Big),
+            ]),
+            Some(PlayPattern::Pair)
+        );
+        assert_eq!(
+            classify_basic(&[
+                CardFace::Joker(Joker::Small),
+                CardFace::Joker(Joker::Big),
+            ]),
+            None
+        );
     }
 
     #[test]
     fn classifies_bombs_and_joker_bomb() {
-        let four = [card(Suit::Clubs, Rank::Nine), card(Suit::Diamonds, Rank::Nine), card(Suit::Hearts, Rank::Nine), card(Suit::Spades, Rank::Nine)];
+        let four = [
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Diamonds, Rank::Nine),
+            card(Suit::Hearts, Rank::Nine),
+            card(Suit::Spades, Rank::Nine),
+        ];
         assert_eq!(classify_basic(&four), Some(PlayPattern::Bomb));
-        let jokers = [CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)];
+        let jokers = [
+            CardFace::Joker(Joker::Small),
+            CardFace::Joker(Joker::Small),
+            CardFace::Joker(Joker::Big),
+            CardFace::Joker(Joker::Big),
+        ];
         assert_eq!(classify_basic(&jokers), Some(PlayPattern::JokerBomb));
     }
 
     #[test]
     fn classifies_triple_with_pair() {
-        let cards = [card(Suit::Clubs, Rank::Ten), card(Suit::Diamonds, Rank::Ten), card(Suit::Hearts, Rank::Ten), card(Suit::Clubs, Rank::Queen), card(Suit::Diamonds, Rank::Queen)];
+        let cards = [
+            card(Suit::Clubs, Rank::Ten),
+            card(Suit::Diamonds, Rank::Ten),
+            card(Suit::Hearts, Rank::Ten),
+            card(Suit::Clubs, Rank::Queen),
+            card(Suit::Diamonds, Rank::Queen),
+        ];
         assert_eq!(classify_basic(&cards), Some(PlayPattern::TripleWithPair));
     }
 
     #[test]
     fn classifies_straight_and_straight_flush() {
-        let straight = [card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Four), card(Suit::Hearts, Rank::Five), card(Suit::Spades, Rank::Six), card(Suit::Clubs, Rank::Seven)];
+        let straight = [
+            card(Suit::Clubs, Rank::Three),
+            card(Suit::Diamonds, Rank::Four),
+            card(Suit::Hearts, Rank::Five),
+            card(Suit::Spades, Rank::Six),
+            card(Suit::Clubs, Rank::Seven),
+        ];
         assert_eq!(classify_basic(&straight), Some(PlayPattern::Straight));
-        let flush = [card(Suit::Hearts, Rank::Nine), card(Suit::Hearts, Rank::Ten), card(Suit::Hearts, Rank::Jack), card(Suit::Hearts, Rank::Queen), card(Suit::Hearts, Rank::King)];
+        let flush = [
+            card(Suit::Hearts, Rank::Nine),
+            card(Suit::Hearts, Rank::Ten),
+            card(Suit::Hearts, Rank::Jack),
+            card(Suit::Hearts, Rank::Queen),
+            card(Suit::Hearts, Rank::King),
+        ];
         assert_eq!(classify_basic(&flush), Some(PlayPattern::StraightFlush));
     }
 
     #[test]
     fn classifies_consecutive_pairs_and_triples() {
-        let pairs = [card(Suit::Clubs, Rank::Five), card(Suit::Hearts, Rank::Five), card(Suit::Clubs, Rank::Six), card(Suit::Hearts, Rank::Six), card(Suit::Clubs, Rank::Seven), card(Suit::Hearts, Rank::Seven)];
+        let pairs = [
+            card(Suit::Clubs, Rank::Five),
+            card(Suit::Hearts, Rank::Five),
+            card(Suit::Clubs, Rank::Six),
+            card(Suit::Hearts, Rank::Six),
+            card(Suit::Clubs, Rank::Seven),
+            card(Suit::Hearts, Rank::Seven),
+        ];
         assert_eq!(classify_basic(&pairs), Some(PlayPattern::ConsecutivePairs));
-        let triples = [card(Suit::Clubs, Rank::Eight), card(Suit::Hearts, Rank::Eight), card(Suit::Spades, Rank::Eight), card(Suit::Clubs, Rank::Nine), card(Suit::Hearts, Rank::Nine), card(Suit::Spades, Rank::Nine)];
-        assert_eq!(classify_basic(&triples), Some(PlayPattern::ConsecutiveTriples));
+        let triples = [
+            card(Suit::Clubs, Rank::Eight),
+            card(Suit::Hearts, Rank::Eight),
+            card(Suit::Spades, Rank::Eight),
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Hearts, Rank::Nine),
+            card(Suit::Spades, Rank::Nine),
+        ];
+        assert_eq!(
+            classify_basic(&triples),
+            Some(PlayPattern::ConsecutiveTriples)
+        );
     }
 
     #[test]
     fn rejects_mismatched_basic_plays() {
-        assert_eq!(classify_basic(&[card(Suit::Clubs, Rank::Three), card(Suit::Clubs, Rank::Four)]), None);
+        assert_eq!(
+            classify_basic(&[
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Clubs, Rank::Four),
+            ]),
+            None
+        );
     }
 }
