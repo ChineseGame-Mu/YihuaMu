@@ -2,23 +2,43 @@
 
 use std::cmp::Ordering;
 
-use super::{level::level_rank_value, PlayPattern, Rank};
+use super::{level::level_rank_value, Joker, PlayPattern, Rank};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PlayStrength {
     pub pattern: PlayPattern,
     pub main_rank: Rank,
     pub card_count: usize,
+    /// Present for single/pair joker plays. Ordinary suited plays leave this None.
+    pub joker: Option<Joker>,
 }
 
 impl PlayStrength {
     pub fn new(pattern: PlayPattern, main_rank: Rank, card_count: usize) -> Self {
-        Self { pattern, main_rank, card_count }
+        Self {
+            pattern,
+            main_rank,
+            card_count,
+            joker: None,
+        }
+    }
+
+    pub fn with_joker(pattern: PlayPattern, joker: Joker, card_count: usize) -> Self {
+        Self {
+            pattern,
+            // Joker comparisons use `joker_power`; this rank is only a harmless placeholder.
+            main_rank: Rank::Ace,
+            card_count,
+            joker: Some(joker),
+        }
     }
 }
 
 fn is_bomb_family(pattern: PlayPattern) -> bool {
-    matches!(pattern, PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb)
+    matches!(
+        pattern,
+        PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb
+    )
 }
 
 fn natural_rank_value(rank: Rank) -> u8 {
@@ -40,14 +60,30 @@ fn natural_rank_value(rank: Rank) -> u8 {
 }
 
 fn sequence_pattern(pattern: PlayPattern) -> bool {
-    matches!(pattern, PlayPattern::Straight | PlayPattern::StraightFlush | PlayPattern::ConsecutivePairs | PlayPattern::ConsecutiveTriples)
+    matches!(
+        pattern,
+        PlayPattern::Straight
+            | PlayPattern::StraightFlush
+            | PlayPattern::ConsecutivePairs
+            | PlayPattern::ConsecutiveTriples
+    )
+}
+
+/// Ordering for ordinary/joker main values:
+/// ordinary ranks < active level < small joker < big joker.
+fn main_power(play: PlayStrength, level: Rank) -> u8 {
+    match play.joker {
+        Some(Joker::Small) => 16,
+        Some(Joker::Big) => 17,
+        None => level_rank_value(play.main_rank, level),
+    }
 }
 
 fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {
     if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
         natural_rank_value(candidate.main_rank).cmp(&natural_rank_value(current.main_rank))
     } else {
-        level_rank_value(candidate.main_rank, level).cmp(&level_rank_value(current.main_rank, level))
+        main_power(candidate, level).cmp(&main_power(current, level))
     }
 }
 
@@ -64,7 +100,11 @@ fn bomb_tier(play: PlayStrength) -> usize {
     }
 }
 
-pub fn compare_at_level(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Option<Ordering> {
+pub fn compare_at_level(
+    candidate: PlayStrength,
+    current: PlayStrength,
+    level: Rank,
+) -> Option<Ordering> {
     let candidate_bomb = is_bomb_family(candidate.pattern);
     let current_bomb = is_bomb_family(current.pattern);
 
@@ -76,10 +116,14 @@ pub fn compare_at_level(candidate: PlayStrength, current: PlayStrength, level: R
             if tier_cmp != Ordering::Equal {
                 return Some(tier_cmp);
             }
-            if candidate.pattern == PlayPattern::StraightFlush && current.pattern == PlayPattern::StraightFlush {
+            if candidate.pattern == PlayPattern::StraightFlush
+                && current.pattern == PlayPattern::StraightFlush
+            {
                 return Some(compare_main_rank(candidate, current, level));
             }
-            if candidate.pattern == PlayPattern::JokerBomb && current.pattern == PlayPattern::JokerBomb {
+            if candidate.pattern == PlayPattern::JokerBomb
+                && current.pattern == PlayPattern::JokerBomb
+            {
                 return Some(Ordering::Equal);
             }
             if candidate.pattern == PlayPattern::Bomb
@@ -121,6 +165,16 @@ mod tests {
         let ace = PlayStrength::new(PlayPattern::Single, Rank::Ace, 1);
         assert!(beats_at_level(five, ace, Rank::Five));
         assert!(!beats_at_level(ace, five, Rank::Five));
+    }
+
+    #[test]
+    fn jokers_are_above_level_in_correct_order() {
+        let level = PlayStrength::new(PlayPattern::Single, Rank::Nine, 1);
+        let small = PlayStrength::with_joker(PlayPattern::Single, Joker::Small, 1);
+        let big = PlayStrength::with_joker(PlayPattern::Single, Joker::Big, 1);
+        assert!(beats_at_level(small, level, Rank::Nine));
+        assert!(beats_at_level(big, small, Rank::Nine));
+        assert!(!beats_at_level(level, small, Rank::Nine));
     }
 
     #[test]
