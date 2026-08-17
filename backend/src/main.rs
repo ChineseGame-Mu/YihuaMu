@@ -264,16 +264,38 @@ async fn handle_websocket(
         let ws_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
         let logger = ROOT_LOGGER.new(o!("ws_id" => ws_id));
         info!(logger, "Websocket connection initialized");
-        // Split the socket into a sender and receive of messages.
+        // Split the socket into a sender and receiver of messages.
         let (mut user_ws_tx, mut user_ws_rx) = ws.split();
 
-        // Use an unbounded channel to handle buffering and flushing of messages
-        // to the websocket...
+        // Buffer game messages and send a websocket heartbeat every 30 seconds.
+        // The browser automatically answers Ping frames with Pong frames, which
+        // keeps otherwise-idle game rooms alive through proxies and load balancers.
         let logger_ = logger.clone();
         let (tx, mut rx) = mpsc::unbounded_channel();
         tokio::task::spawn(async move {
-            while let Some(v) = rx.recv().await {
-                let _ = user_ws_tx.send(Message::Binary(v)).await;
+            let mut heartbeat =
+                tokio::time::interval(tokio::time::Duration::from_secs(30));
+            heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+            heartbeat.tick().await;
+
+            loop {
+                tokio::select! {
+                    maybe_v = rx.recv() => {
+                        match maybe_v {
+                            Some(v) => {
+                                if user_ws_tx.send(Message::Binary(v)).await.is_err() {
+                                    break;
+                                }
+                            }
+                            None => break,
+                        }
+                    }
+                    _ = heartbeat.tick() => {
+                        if user_ws_tx.send(Message::Ping(Vec::new())).await.is_err() {
+                            break;
+                        }
+                    }
+                }
             }
             debug!(logger_, "Ending tx task");
         });
