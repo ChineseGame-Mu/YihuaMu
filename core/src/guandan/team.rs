@@ -37,6 +37,13 @@ impl TeamLevels {
         }
     }
 
+    /// Winning while already playing Ace ends the whole match. Reaching Ace
+    /// from King only advances the team to Ace; that team must then win an Ace
+    /// game to become the final match winner.
+    pub fn wins_match(self, winner: Team) -> bool {
+        self.level_for(winner) == Rank::Ace
+    }
+
     /// Advance exactly the winning team by one level. The losing team's level
     /// is unchanged. Ace remains terminal via `next_level`.
     pub fn advance_winner(&mut self, winner: Team) -> Rank {
@@ -102,6 +109,8 @@ mod tests {
         let levels = TeamLevels::default();
         assert_eq!(levels.level_for(Team::A), Rank::Two);
         assert_eq!(levels.level_for(Team::B), Rank::Two);
+        assert!(!levels.wins_match(Team::A));
+        assert!(!levels.wins_match(Team::B));
     }
 
     #[test]
@@ -114,6 +123,17 @@ mod tests {
         assert_eq!(levels.advance_winner(Team::B), Rank::Three);
         assert_eq!(levels.team_a, Rank::Three);
         assert_eq!(levels.team_b, Rank::Three);
+    }
+
+    #[test]
+    fn reaching_ace_does_not_end_match_until_ace_is_won() {
+        let mut levels = TeamLevels {
+            team_a: Rank::King,
+            team_b: Rank::Two,
+        };
+        assert!(!levels.wins_match(Team::A));
+        assert_eq!(levels.advance_winner(Team::A), Rank::Ace);
+        assert!(levels.wins_match(Team::A));
     }
 
     #[test]
@@ -135,6 +155,7 @@ mod tests {
         ] {
             assert_eq!(levels.advance_winner(Team::A), expected);
         }
+        assert!(levels.wins_match(Team::A));
         assert_eq!(levels.advance_winner(Team::A), Rank::Ace);
         assert_eq!(levels.team_b, Rank::Two);
     }
