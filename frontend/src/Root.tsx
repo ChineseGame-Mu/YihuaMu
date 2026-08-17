@@ -13,6 +13,7 @@ import Play from "./Play";
 import DebugInfo from "./DebugInfo";
 import TitleHandler from "./TitleHandler";
 import ResetButton from "./ResetButton";
+import Welcome from "./Welcome";
 
 import type { JSX } from "react";
 
@@ -205,23 +206,8 @@ const Root = (): JSX.Element => {
     );
   } else {
     return (
-      <div>
-        <div className="game">
-          <h1>
-            升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
-            <span className="red">Finding Friends</span>
-          </h1>
-          <p>
-            Welcome! This website helps you play 升级 / Tractor / 找朋友 /
-            Finding Friends with other people online.
-          </p>
-          <p>
-            If you&apos;re not familiar with the rules, check them out{" "}
-            <a href="rules.html">here</a>!
-          </p>
-          <p>Connecting to the server...</p>
-        </div>
-        <hr />
+      <div className="welcome-shell">
+        <Welcome />
         <Credits />
         <TitleHandler playerName={state.name} />
       </div>
