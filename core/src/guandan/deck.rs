@@ -7,7 +7,7 @@ pub const CARDS_PER_PLAYER: usize = 27;
 /// Number of standard 54-card decks required so every player receives 27 cards.
 /// Even tables consume the full deck set; odd tables leave 27 undealt cards.
 pub fn deck_count(table: TableConfig) -> usize {
-    (table.player_count + 1) / 2
+    table.player_count.div_ceil(2)
 }
 
 pub fn build_deck(table: TableConfig) -> Vec<CardFace> {
