@@ -1,0 +1,21 @@
+name: Prettier debug
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/prettier-debug.yml'
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install
+      - name: Format welcome CSS with project Prettier
+        working-directory: frontend
+        run: yarn prettier src/welcome.css --write
+      - name: Show exact formatted diff
+        run: git diff -- frontend/src/welcome.css
