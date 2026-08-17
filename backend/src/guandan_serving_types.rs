@@ -5,7 +5,7 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
-use shengji_core::guandan::CardFace;
+use shengji_core::guandan::{CardFace, Rank};
 use storage::State;
 
 use crate::serving_types::VersionedRoom;
@@ -16,7 +16,7 @@ pub struct GuandanTablePlay {
     pub cards: Vec<CardFace>,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
     pub player_names: Vec<String>,
@@ -29,6 +29,25 @@ pub struct GuandanGameState {
     /// True once every other active player has passed. The completed trick
     /// remains visible on the table until someone confirms "end round".
     pub trick_complete: bool,
+    /// Rank currently being played. This rank is the strongest non-joker rank.
+    pub level: Rank,
+}
+
+impl Default for GuandanGameState {
+    fn default() -> Self {
+        Self {
+            started: false,
+            player_names: Vec::new(),
+            hands: Vec::new(),
+            turn: 0,
+            last_play: Vec::new(),
+            last_player: None,
+            table_plays: Vec::new(),
+            passes: 0,
+            trick_complete: false,
+            level: Rank::Two,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -81,6 +100,7 @@ mod tests {
         assert_eq!(room.monotonic_id, 0);
         assert!(!room.game.started);
         assert!(!room.game.trick_complete);
+        assert_eq!(room.game.level, Rank::Two);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
