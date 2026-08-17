@@ -37,7 +37,9 @@ const JoinRoom = (props: IProps): JSX.Element => {
     event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
     setCreatingNewRoom(false);
-    props.setRoomName(event.target.value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH));
+    props.setRoomName(
+      event.target.value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH),
+    );
   };
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
