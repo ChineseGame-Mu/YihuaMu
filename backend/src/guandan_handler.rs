@@ -61,6 +61,7 @@ pub enum GuandanServerMessage {
         finish_order: Vec<usize>,
         last_game_winner: Option<usize>,
         last_game_winner_team: Option<Team>,
+        match_winner: Option<Team>,
     },
     Error { message: String },
 }
@@ -126,8 +127,18 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     let table = validate_start(player_count)?;
     let winner = game.finish_order[0];
     let winner_team = team_for_seat(table, winner)?;
-    let next_level = game.team_levels.advance_winner(winner_team);
+    let winner_level = game.team_levels.level_for(winner_team);
 
+    game.last_game_winner = Some(winner);
+    game.last_game_winner_team = Some(winner_team);
+
+    if winner_level == Rank::Ace {
+        game.match_winner = Some(winner_team);
+        game.trick_complete = true;
+        return Ok(true);
+    }
+
+    let next_level = game.team_levels.advance_winner(winner_team);
     let mut deck = build_deck(table);
     deck.shuffle(&mut thread_rng());
     let (hands, remainder) = deal(table, &deck)?;
@@ -138,8 +149,6 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     game.hands = hands;
     game.turn = winner;
     game.level = next_level;
-    game.last_game_winner = Some(winner);
-    game.last_game_winner_team = Some(winner_team);
     game.finish_order.clear();
     game.last_play.clear();
     game.last_player = None;
@@ -164,6 +173,7 @@ fn state_message(game: &GuandanGameState) -> GuandanServerMessage {
         finish_order: game.finish_order.clone(),
         last_game_winner: game.last_game_winner,
         last_game_winner_team: game.last_game_winner_team,
+        match_winner: game.match_winner,
     }
 }
 
@@ -202,7 +212,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v13-auto-game-progression",
+            protocol: "guandan-v14-terminal-match",
         },
     );
 
@@ -400,6 +410,7 @@ pub async fn websocket(
                         state.game.finish_order.clear();
                         state.game.last_game_winner = None;
                         state.game.last_game_winner_team = None;
+                        state.game.match_winner = None;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -448,6 +459,9 @@ pub async fn websocket(
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
+                        if state.game.match_winner.is_some() {
+                            return Err(PlayError::Invalid("match is already complete"));
+                        }
                         if !state.game.started
                             || state.game.trick_complete
                             || state.game.turn != seat
@@ -488,9 +502,9 @@ pub async fn websocket(
                             state.game.finish_order.push(seat);
                         }
 
-                        let redealt = settle_and_redeal_if_complete(&mut state.game)
+                        let settled = settle_and_redeal_if_complete(&mut state.game)
                             .map_err(PlayError::Invalid)?;
-                        if !redealt {
+                        if !settled {
                             advance_turn(&mut state.game);
                         }
                         state.bump_version();
@@ -529,7 +543,8 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
-                        if !state.game.started
+                        if state.game.match_winner.is_some()
+                            || !state.game.started
                             || state.game.trick_complete
                             || state.game.turn != seat
                             || state.game.last_player.is_none()
@@ -570,7 +585,10 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
-                        if !state.game.started || !state.game.trick_complete {
+                        if state.game.match_winner.is_some()
+                            || !state.game.started
+                            || !state.game.trick_complete
+                        {
                             return Err(());
                         }
                         let winner = state.game.last_player.ok_or(())?;
@@ -704,5 +722,24 @@ mod tests {
         assert_eq!(game.level, Rank::Three);
         assert_eq!(game.turn, 0);
         assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+        assert_eq!(game.match_winner, None);
+    }
+
+    #[test]
+    fn ace_level_win_ends_match_without_redeal() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.team_levels.team_a = Rank::Ace;
+        game.level = Rank::Ace;
+        game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
+        game.finish_order = vec![0, 2, 1];
+
+        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.match_winner, Some(Team::A));
+        assert_eq!(game.last_game_winner, Some(0));
+        assert_eq!(game.last_game_winner_team, Some(Team::A));
+        assert_eq!(game.team_levels.team_a, Rank::Ace);
+        assert_eq!(game.hands[3].len(), 1);
     }
 }
