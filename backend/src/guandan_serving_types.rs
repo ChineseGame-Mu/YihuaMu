@@ -10,6 +10,12 @@ use storage::State;
 
 use crate::serving_types::VersionedRoom;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct GuandanTablePlay {
+    pub player: usize,
+    pub cards: Vec<CardFace>,
+}
+
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
@@ -18,6 +24,7 @@ pub struct GuandanGameState {
     pub turn: usize,
     pub last_play: Vec<CardFace>,
     pub last_player: Option<usize>,
+    pub table_plays: Vec<GuandanTablePlay>,
     pub passes: usize,
 }
 
@@ -76,8 +83,14 @@ mod tests {
 
     #[test]
     fn private_hand_does_not_expose_other_seats() {
-        let c1 = CardFace::Suited { suit: Suit::Clubs, rank: Rank::Two };
-        let c2 = CardFace::Suited { suit: Suit::Hearts, rank: Rank::Ace };
+        let c1 = CardFace::Suited {
+            suit: Suit::Clubs,
+            rank: Rank::Two,
+        };
+        let c2 = CardFace::Suited {
+            suit: Suit::Hearts,
+            rank: Rank::Ace,
+        };
         let mut state = GuandanGameState::default();
         state.hands = vec![vec![c1], vec![c2]];
         assert_eq!(state.private_hand(0), Some(&[c1][..]));
