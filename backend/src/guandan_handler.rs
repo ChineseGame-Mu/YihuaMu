@@ -24,18 +24,14 @@ pub enum GuandanClientMessage {
     Start { player_count: usize },
     Play { card_indexes: Vec<usize> },
     Pass,
+    EndRound,
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GuandanServerMessage {
-    Connected {
-        protocol: &'static str,
-    },
-    Joined {
-        room: String,
-        seat: usize,
-    },
+    Connected { protocol: &'static str },
+    Joined { room: String, seat: usize },
     Waiting {
         players: Vec<String>,
         minimum_players: usize,
@@ -45,9 +41,7 @@ pub enum GuandanServerMessage {
         player_count: usize,
         cards_per_player: usize,
     },
-    Hand {
-        cards: Vec<CardFace>,
-    },
+    Hand { cards: Vec<CardFace> },
     State {
         turn: usize,
         hand_counts: Vec<usize>,
@@ -55,10 +49,9 @@ pub enum GuandanServerMessage {
         last_player: Option<usize>,
         table_plays: Vec<GuandanTablePlay>,
         passes: usize,
+        trick_complete: bool,
     },
-    Error {
-        message: String,
-    },
+    Error { message: String },
 }
 
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
@@ -99,6 +92,7 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
         last_player: game.last_player,
         table_plays: game.table_plays.clone(),
         passes: game.passes,
+        trick_complete: game.trick_complete,
     }
 }
 
@@ -120,7 +114,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v6-table-plays",
+            protocol: "guandan-v7-end-round",
         },
     );
     let mut joined_room: Option<Vec<u8>> = None;
@@ -301,6 +295,7 @@ pub async fn websocket(
                         state.game.last_player = None;
                         state.game.table_plays.clear();
                         state.game.passes = 0;
+                        state.game.trick_complete = false;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -343,6 +338,7 @@ pub async fn websocket(
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
                         if !state.game.started
+                            || state.game.trick_complete
                             || state.game.turn != seat
                             || indexes.is_empty()
                             || indexes.last().copied().unwrap_or(0)
@@ -373,7 +369,7 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "invalid play or not your turn".to_string(),
+                            message: "invalid play, trick is complete, or not your turn".to_string(),
                         },
                     );
                     continue;
@@ -397,6 +393,7 @@ pub async fn websocket(
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
                         if !state.game.started
+                            || state.game.trick_complete
                             || state.game.turn != seat
                             || state.game.last_player.is_none()
                         {
@@ -406,10 +403,7 @@ pub async fn websocket(
                         let active = state.game.hands.iter().filter(|h| !h.is_empty()).count();
                         if state.game.passes + 1 >= active {
                             state.game.turn = state.game.last_player.unwrap();
-                            state.game.last_play.clear();
-                            state.game.last_player = None;
-                            state.game.table_plays.clear();
-                            state.game.passes = 0;
+                            state.game.trick_complete = true;
                         } else {
                             advance_turn(&mut state.game);
                         }
@@ -422,6 +416,37 @@ pub async fn websocket(
                         &tx,
                         &GuandanServerMessage::Error {
                             message: "cannot pass now".to_string(),
+                        },
+                    );
+                }
+            }
+            GuandanClientMessage::EndRound => {
+                let key = match joined_room.clone() {
+                    Some(k) => k,
+                    None => continue,
+                };
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if !state.game.started || !state.game.trick_complete {
+                            return Err(());
+                        }
+                        let winner = state.game.last_player.ok_or(())?;
+                        state.game.turn = winner;
+                        state.game.last_play.clear();
+                        state.game.last_player = None;
+                        state.game.table_plays.clear();
+                        state.game.passes = 0;
+                        state.game.trick_complete = false;
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "round is not ready to end".to_string(),
                         },
                     );
                 }
