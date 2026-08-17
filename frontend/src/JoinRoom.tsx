@@ -31,7 +31,9 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
     props.setName(event.target.value.trim());
 
-  const handleRoomChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
+  const handleRoomChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ): void => {
     setCreatingNewRoom(false);
     props.setRoomName(event.target.value.trim());
   };
