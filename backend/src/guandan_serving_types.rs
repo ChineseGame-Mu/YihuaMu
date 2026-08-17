@@ -5,7 +5,7 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
-use shengji_core::guandan::{CardFace, Rank};
+use shengji_core::guandan::{team::TeamLevels, CardFace, Rank};
 use storage::State;
 
 use crate::serving_types::VersionedRoom;
@@ -31,6 +31,8 @@ pub struct GuandanGameState {
     pub trick_complete: bool,
     /// Rank currently being played. This rank is the strongest non-joker rank.
     pub level: Rank,
+    /// Persistent progression for the two alternating teams across games.
+    pub team_levels: TeamLevels,
 }
 
 impl Default for GuandanGameState {
@@ -46,6 +48,7 @@ impl Default for GuandanGameState {
             passes: 0,
             trick_complete: false,
             level: Rank::Two,
+            team_levels: TeamLevels::default(),
         }
     }
 }
@@ -92,7 +95,7 @@ pub fn new_guandan_room(room_name: Vec<u8>) -> VersionedGuandanGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shengji_core::guandan::{Rank, Suit};
+    use shengji_core::guandan::{team::Team, Rank, Suit};
 
     #[test]
     fn guandan_uses_shared_versioned_room() {
@@ -101,6 +104,8 @@ mod tests {
         assert!(!room.game.started);
         assert!(!room.game.trick_complete);
         assert_eq!(room.game.level, Rank::Two);
+        assert_eq!(room.game.team_levels.level(Team::A), Rank::Two);
+        assert_eq!(room.game.team_levels.level(Team::B), Rank::Two);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
