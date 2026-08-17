@@ -20,6 +20,12 @@ pub struct GuandanTablePlay {
     pub cards: Vec<CardFace>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct GuandanTributeCard {
+    pub player: usize,
+    pub card: CardFace,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
@@ -46,6 +52,10 @@ pub struct GuandanGameState {
     pub last_promotion_steps: Option<usize>,
     /// Pending tribute obligations for the newly dealt game, if any.
     pub pending_tribute: Option<TributePlan>,
+    /// Tribute cards already submitted by the obligated giver seats.
+    pub tribute_cards: Vec<GuandanTributeCard>,
+    /// Return cards already selected by the receiving seats.
+    pub return_cards: Vec<GuandanTributeCard>,
     /// True when the pending tribute was cancelled by the big-joker resistance rule.
     pub tribute_resisted: bool,
     /// Final winner of the whole match. A team must win while already playing A.
@@ -72,6 +82,8 @@ impl Default for GuandanGameState {
             last_game_winner_team: None,
             last_promotion_steps: None,
             pending_tribute: None,
+            tribute_cards: Vec::new(),
+            return_cards: Vec::new(),
             tribute_resisted: false,
             match_winner: None,
         }
@@ -98,6 +110,12 @@ impl GuandanGameState {
     /// A resisted tribute has no pending plan, so play may continue normally.
     pub fn normal_play_blocked(&self) -> bool {
         self.pending_tribute.is_some() || self.match_winner.is_some()
+    }
+
+    pub fn clear_tribute_exchange(&mut self) {
+        self.pending_tribute = None;
+        self.tribute_cards.clear();
+        self.return_cards.clear();
     }
 }
 
@@ -142,6 +160,8 @@ mod tests {
         assert_eq!(room.game.last_game_winner_team, None);
         assert_eq!(room.game.last_promotion_steps, None);
         assert_eq!(room.game.pending_tribute, None);
+        assert!(room.game.tribute_cards.is_empty());
+        assert!(room.game.return_cards.is_empty());
         assert!(!room.game.tribute_resisted);
         assert_eq!(room.game.match_winner, None);
         assert!(!room.game.normal_play_blocked());
@@ -151,14 +171,8 @@ mod tests {
 
     #[test]
     fn private_hand_does_not_expose_other_seats() {
-        let c1 = CardFace::Suited {
-            suit: Suit::Clubs,
-            rank: Rank::Two,
-        };
-        let c2 = CardFace::Suited {
-            suit: Suit::Hearts,
-            rank: Rank::Ace,
-        };
+        let c1 = CardFace::Suited { suit: Suit::Clubs, rank: Rank::Two };
+        let c2 = CardFace::Suited { suit: Suit::Hearts, rank: Rank::Ace };
         let mut state = GuandanGameState::default();
         state.hands = vec![vec![c1], vec![c2]];
         assert_eq!(state.private_hand(0), Some(&[c1][..]));
@@ -169,14 +183,24 @@ mod tests {
     #[test]
     fn pending_tribute_blocks_normal_play_until_resolved() {
         let mut state = GuandanGameState::default();
-        state.pending_tribute = Some(TributePlan::Single {
-            giver: 3,
-            receiver: 0,
-        });
+        state.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
         assert!(state.normal_play_blocked());
-        state.pending_tribute = None;
+        state.clear_tribute_exchange();
         state.tribute_resisted = true;
         assert!(!state.normal_play_blocked());
+    }
+
+    #[test]
+    fn tribute_exchange_cards_can_be_cleared_together() {
+        let card = CardFace::Suited { suit: Suit::Spades, rank: Rank::Ace };
+        let mut state = GuandanGameState::default();
+        state.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
+        state.tribute_cards.push(GuandanTributeCard { player: 3, card });
+        state.return_cards.push(GuandanTributeCard { player: 0, card });
+        state.clear_tribute_exchange();
+        assert_eq!(state.pending_tribute, None);
+        assert!(state.tribute_cards.is_empty());
+        assert!(state.return_cards.is_empty());
     }
 
     #[test]
