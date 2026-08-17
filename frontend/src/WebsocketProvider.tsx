@@ -42,8 +42,7 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
       queue.push({ blob, handler });
       if (
         queue.length > 0 &&
-        (fr.readyState === FileReader.EMPTY ||
-          fr.readyState === FileReader.DONE)
+        (fr.readyState === FileReader.EMPTY || fr.readyState === FileReader.DONE)
       ) {
         fr.readAsArrayBuffer(queue[0].blob);
       }
@@ -76,9 +75,9 @@ const getBlobArrayBuffer: () => IBlobToArrayBufferQueue = memoize(() => {
   };
 });
 
-const WebsocketProvider: React.FunctionComponent<
-  React.PropsWithChildren<IProps>
-> = (props: IProps) => {
+const WebsocketProvider: React.FunctionComponent<React.PropsWithChildren<IProps>> = (
+  props: IProps,
+) => {
   const { state, updateState } = React.useContext(AppStateContext);
   const { decodeWireFormat } = React.useContext(WasmContext);
   const { setTimeout, clearTimeout } = React.useContext(TimerContext);
@@ -124,9 +123,7 @@ const WebsocketProvider: React.FunctionComponent<
           (location.pathname.endsWith("/") ? "api" : "/api");
 
     const reconnect = (): void => {
-      if (!mountedRef.current || intentionallyKickedRef.current) {
-        return;
-      }
+      if (!mountedRef.current || intentionallyKickedRef.current) return;
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
@@ -148,30 +145,24 @@ const WebsocketProvider: React.FunctionComponent<
         connected: true,
         everConnected: true,
         ...websocketHandler(stateRef.current, message, (msg) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify(msg));
-          }
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
         }),
       });
     };
 
     const connect = (): void => {
-      if (!mountedRef.current) {
-        return;
-      }
-
+      if (!mountedRef.current) return;
       const ws = new WebSocket(uri);
       websocketRef.current = ws;
 
       ws.addEventListener("open", () => {
         reconnectAttemptRef.current = 0;
         updateStateRef.current({ connected: true, everConnected: true });
-
         const current = stateRef.current;
         if (
           hasJoinedRoomRef.current &&
           current.name.length > 0 &&
-          current.roomName.length === 16
+          current.roomName.length === 4
         ) {
           ws.send(
             JSON.stringify({
@@ -184,25 +175,18 @@ const WebsocketProvider: React.FunctionComponent<
       });
 
       ws.addEventListener("close", () => {
-        if (websocketRef.current === ws) {
-          websocketRef.current = null;
-        }
+        if (websocketRef.current === ws) websocketRef.current = null;
         updateStateRef.current({ connected: false });
         reconnect();
       });
 
       ws.addEventListener("error", () => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.close();
-        }
+        if (ws.readyState === WebSocket.OPEN) ws.close();
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
-        if (timerRef.current !== null) {
-          clearTimeoutRef.current(timerRef.current);
-        }
+        if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
         setTimerRef.current(null);
-
         if (typeof event.data === "string") {
           try {
             handleGameMessage(ws, JSON.parse(event.data) as GameMessage);
@@ -216,25 +200,19 @@ const WebsocketProvider: React.FunctionComponent<
               decodeWireFormat(new Uint8Array(buf)) as GameMessage,
             );
           };
-
           if (event.data.arrayBuffer !== undefined) {
-            const b2a = getBlobArrayBuffer();
-            b2a.enqueue(event.data, f);
+            getBlobArrayBuffer().enqueue(event.data, f);
           } else {
-            const frs = getFileReader();
-            frs.enqueue(event.data, f);
+            getFileReader().enqueue(event.data, f);
           }
         }
       });
     };
 
     connect();
-
     return () => {
       mountedRef.current = false;
-      if (timerRef.current !== null) {
-        clearTimeoutRef.current(timerRef.current);
-      }
+      if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
@@ -249,7 +227,6 @@ const WebsocketProvider: React.FunctionComponent<
       updateStateRef.current({ connected: false });
       return;
     }
-
     if (
       value !== null &&
       typeof value === "object" &&
@@ -259,24 +236,18 @@ const WebsocketProvider: React.FunctionComponent<
       hasJoinedRoomRef.current = true;
       intentionallyKickedRef.current = false;
     }
-
-    if (timerRef.current !== null) {
-      clearTimeoutRef.current(timerRef.current);
-    }
-
+    if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
     const localTimerRef = setTimeoutRef.current(() => {
       if (timerRef.current === localTimerRef) {
         updateStateRef.current({ connected: false });
         websocketRef.current?.close();
       }
     }, 5000);
-
     setTimerRef.current(localTimerRef);
     ws.send(JSON.stringify(value));
   };
 
   (window as any).send = send;
-
   return (
     <WebsocketContext.Provider value={{ send }}>
       {props.children}
