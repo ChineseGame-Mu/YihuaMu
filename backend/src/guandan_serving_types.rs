@@ -5,7 +5,10 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
-use shengji_core::guandan::{team::{Team, TeamLevels}, CardFace, Rank};
+use shengji_core::guandan::{
+    team::{Team, TeamLevels},
+    CardFace, Rank,
+};
 use storage::State;
 
 use crate::serving_types::VersionedRoom;
@@ -38,6 +41,9 @@ pub struct GuandanGameState {
     /// Winner of the most recently completed game. Preserved after the next deal.
     pub last_game_winner: Option<usize>,
     pub last_game_winner_team: Option<Team>,
+    /// Final winner of the whole match. A team must win while already playing A.
+    /// Once set, no automatic redeal occurs and normal play is stopped.
+    pub match_winner: Option<Team>,
 }
 
 impl Default for GuandanGameState {
@@ -57,6 +63,7 @@ impl Default for GuandanGameState {
             finish_order: Vec::new(),
             last_game_winner: None,
             last_game_winner_team: None,
+            match_winner: None,
         }
     }
 }
@@ -117,6 +124,7 @@ mod tests {
         assert!(room.game.finish_order.is_empty());
         assert_eq!(room.game.last_game_winner, None);
         assert_eq!(room.game.last_game_winner_team, None);
+        assert_eq!(room.game.match_winner, None);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
