@@ -69,7 +69,7 @@ const Root = (): JSX.Element => {
     </div>
   ) : null;
   if (state.connected) {
-    if (state.gameState === null || state.roomName.length !== 16) {
+    if (state.gameState === null || state.roomName.length !== 2) {
       if (selectedGameMode === null) {
         return (
           <div className="welcome-shell">
