@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>掼蛋多人测试</title>
   <style>
-    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:1180px;margin:24px auto;padding:0 16px;background:#174f2b;color:white}h1{text-align:center}.box{background:#fff;color:#222;padding:20px;border-radius:14px;box-shadow:0 8px 24px #0004}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}button,input,select{font-size:17px;padding:8px 10px;border-radius:7px;border:1px solid #aaa}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}.status{padding:10px 12px;background:#eef7ee;border-radius:8px;margin:12px 0}.table-title,.hand-title{font-size:20px;font-weight:700;margin:18px 0 8px}.table-plays{display:flex;flex-wrap:wrap;gap:12px;min-height:90px;padding:12px;background:#126b38;border-radius:12px}.table-play{background:#f6f1df;border-radius:10px;padding:8px;min-width:140px}.table-play-label{font-weight:700;margin-bottom:6px}.table-cards{display:flex;flex-wrap:wrap;gap:4px}.hand{display:flex;flex-wrap:wrap;gap:7px;min-height:132px;padding:12px;background:#0f6b35;border-radius:12px}.card{position:relative;width:74px;height:108px;border:2px solid #ddd;border-radius:9px;background:#fff;color:#111;box-shadow:0 3px 7px #0005;cursor:pointer;user-select:none;transition:.12s transform,.12s border}.card:hover{transform:translateY(-4px)}.card.selected{transform:translateY(-12px);border:3px solid #ffd000}.card.red{color:#d71920}.corner{position:absolute;left:7px;top:5px;font-size:20px;font-weight:800;line-height:20px}.suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:43px}.joker{display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;font-weight:900;padding:8px}.actions{text-align:center;margin:12px}.actions button{font-size:19px;padding:10px 24px}.end-round{font-weight:800}.mini-card{font-size:20px;background:white;color:#111;border-radius:5px;padding:4px 7px;border:1px solid #bbb}.mini-card.red{color:#d71920}#log{white-space:pre-wrap;background:#111;color:#9f9;padding:12px;min-height:130px;max-height:240px;overflow:auto;border-radius:8px;font-size:13px}@media(max-width:600px){.card{width:58px;height:88px}.suit{font-size:34px}.corner{font-size:17px}.hand{gap:4px;padding:8px}}
+    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:1180px;margin:24px auto;padding:0 16px;background:#174f2b;color:white}h1{text-align:center}.box{background:#fff;color:#222;padding:20px;border-radius:14px;box-shadow:0 8px 24px #0004}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}button,input,select{font-size:17px;padding:8px 10px;border-radius:7px;border:1px solid #aaa}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}.status{padding:10px 12px;background:#eef7ee;border-radius:8px;margin:12px 0}.players{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#f4f4f4;border-radius:9px;margin:10px 0}.player-chip{background:white;border:1px solid #bbb;border-radius:999px;padding:6px 10px;font-weight:700}.player-chip.me{border:2px solid #16803d}.table-title,.hand-title{font-size:20px;font-weight:700;margin:18px 0 8px}.table-plays{display:flex;flex-wrap:wrap;gap:12px;min-height:90px;padding:12px;background:#126b38;border-radius:12px}.table-play{background:#f6f1df;border-radius:10px;padding:8px;min-width:140px}.table-play-label{font-weight:700;margin-bottom:6px}.table-cards{display:flex;flex-wrap:wrap;gap:4px}.hand{display:flex;flex-wrap:wrap;gap:7px;min-height:132px;padding:12px;background:#0f6b35;border-radius:12px}.card{position:relative;width:74px;height:108px;border:2px solid #ddd;border-radius:9px;background:#fff;color:#111;box-shadow:0 3px 7px #0005;cursor:pointer;user-select:none;transition:.12s transform,.12s border}.card:hover{transform:translateY(-4px)}.card.selected{transform:translateY(-12px);border:3px solid #ffd000}.card.red{color:#d71920}.corner{position:absolute;left:7px;top:5px;font-size:20px;font-weight:800;line-height:20px}.suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:43px}.joker{display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;font-weight:900;padding:8px}.actions{text-align:center;margin:12px}.actions button{font-size:19px;padding:10px 24px}.end-round{font-weight:800}.mini-card{font-size:20px;background:white;color:#111;border-radius:5px;padding:4px 7px;border:1px solid #bbb}.mini-card.red{color:#d71920}#log{white-space:pre-wrap;background:#111;color:#9f9;padding:12px;min-height:130px;max-height:240px;overflow:auto;border-radius:8px;font-size:13px}@media(max-width:600px){.card{width:58px;height:88px}.suit{font-size:34px}.corner{font-size:17px}.hand{gap:4px;padding:8px}}
   </style>
 </head>
 <body>
@@ -14,6 +14,8 @@
     <div class="controls">房间 <input id="room" value="test1"> 名字 <input id="name" value="玩家1"><button onclick="joinRoom()">加入</button></div>
     <div class="controls">人数 <select id="count"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option></select><button onclick="startGame()">开始</button></div>
     <div id="status" class="status">正在连接服务器…</div>
+    <div><strong>当前参加玩家：</strong></div>
+    <div id="players" class="players"><span>尚未加入</span></div>
     <div class="table-title">桌面本轮所有已出牌</div>
     <div id="tablePlays" class="table-plays"><span>暂无出牌</span></div>
     <div class="actions"><button id="endRoundBtn" class="end-round" onclick="endRound()" disabled>结束本轮并开始下一轮</button></div>
@@ -23,8 +25,8 @@
     <details><summary>调试日志</summary><div id="log"></div></details>
   </div>
 <script>
-const log=document.getElementById('log'),handEl=document.getElementById('hand'),statusEl=document.getElementById('status'),tablePlaysEl=document.getElementById('tablePlays'),handCountEl=document.getElementById('handCount'),endRoundBtn=document.getElementById('endRoundBtn');
-let myHand=[],selected=new Set(),mySeat=null,currentTurn=null,trickComplete=false;
+const log=document.getElementById('log'),handEl=document.getElementById('hand'),statusEl=document.getElementById('status'),tablePlaysEl=document.getElementById('tablePlays'),handCountEl=document.getElementById('handCount'),endRoundBtn=document.getElementById('endRoundBtn'),playersEl=document.getElementById('players');
+let myHand=[],selected=new Set(),mySeat=null,currentTurn=null,trickComplete=false,playerNames=[];
 const backend='wss://chinesegame-yihua.onrender.com/api/guandan';
 const ws=new WebSocket(backend);
 ws.onopen=()=>{write('已连接掼蛋服务器');statusEl.textContent='服务器已连接，请加入房间';};
@@ -40,17 +42,20 @@ function clearSelection(){selected.clear();renderHand()}
 function playSelected(){const indexes=[...selected].sort((a,b)=>a-b);if(!indexes.length)return alert('请先选择要出的牌');send({type:'play',card_indexes:indexes});selected.clear()}
 function handleMessage(m){
   if(m.type==='connected'){statusEl.textContent='已连接：'+m.protocol}
-  if(m.type==='joined'){mySeat=m.seat;statusEl.textContent='已加入房间，座位 '+(m.seat+1)}
-  if(m.type==='waiting'){statusEl.textContent='等待玩家：'+m.players.join('、')+'（'+m.players.length+'/'+m.maximum_players+'）'}
+  if(m.type==='joined'){mySeat=m.seat;statusEl.textContent='已加入房间，座位 '+(m.seat+1);renderPlayers()}
+  if(m.type==='waiting'){playerNames=m.players||[];renderPlayers();statusEl.textContent='等待玩家：'+playerNames.join('、')+'（'+playerNames.length+'/'+m.maximum_players+'）'}
   if(m.type==='started'){statusEl.textContent='游戏开始：'+m.player_count+' 人，每人 '+m.cards_per_player+' 张'}
   if(m.type==='hand'){myHand=m.cards||[];selected.clear();renderHand()}
   if(m.type==='state'){
+    if(Array.isArray(m.players)){playerNames=m.players;renderPlayers()}
     currentTurn=m.turn;trickComplete=!!m.trick_complete;endRoundBtn.disabled=!trickComplete;
-    statusEl.textContent=trickComplete?'本轮已结束，桌面牌保留中；点击“结束本轮并开始下一轮”':'当前轮到座位 '+(m.turn+1)+(m.turn===mySeat?'（轮到你）':'')+' ｜ 手牌数：'+m.hand_counts.join(' / ');
+    statusEl.textContent=trickComplete?'本轮已结束，桌面牌保留中；点击“结束本轮并开始下一轮”':'当前轮到 '+playerLabel(m.turn)+(m.turn===mySeat?'（轮到你）':'')+' ｜ 手牌数：'+m.hand_counts.join(' / ');
     renderTablePlays(m.table_plays||[])
   }
   if(m.type==='error'){statusEl.textContent='错误：'+m.message}
 }
+function playerLabel(seat){return playerNames[seat]?playerNames[seat]+'（座位 '+(seat+1)+'）':'座位 '+(seat+1)}
+function renderPlayers(){playersEl.innerHTML='';if(!playerNames.length){playersEl.textContent='尚未加入';return}playerNames.forEach((name,i)=>{const chip=document.createElement('span');chip.className='player-chip'+(i===mySeat?' me':'');chip.textContent=(i+1)+'号 '+name+(i===mySeat?'（我）':'');playersEl.appendChild(chip)})}
 const rankMap={Two:'2',Three:'3',Four:'4',Five:'5',Six:'6',Seven:'7',Eight:'8',Nine:'9',Ten:'10',Jack:'J',Queen:'Q',King:'K',Ace:'A'};
 const suitMap={Clubs:'♣',Diamonds:'♦',Hearts:'♥',Spades:'♠'};
 function normalizeCard(card){
@@ -60,7 +65,7 @@ function normalizeCard(card){
 }
 function cardNode(card,index,mini=false){const c=normalizeCard(card),el=document.createElement('div');if(mini){el.className='mini-card'+(c.red?' red':'');el.textContent=c.joker?c.rank:c.suit+c.rank;return el}el.className='card'+(c.red?' red':'')+(selected.has(index)?' selected':'');if(c.joker){el.classList.add('joker');el.textContent=c.rank+' '+c.suit}else{el.innerHTML='<div class="corner">'+c.rank+'<br>'+c.suit+'</div><div class="suit">'+c.suit+'</div>'}el.onclick=()=>{selected.has(index)?selected.delete(index):selected.add(index);renderHand()};return el}
 function renderHand(){handEl.innerHTML='';myHand.forEach((card,i)=>handEl.appendChild(cardNode(card,i)));handCountEl.textContent=myHand.length?'（'+myHand.length+'张）':''}
-function renderTablePlays(plays){tablePlaysEl.innerHTML='';if(!plays.length){tablePlaysEl.textContent='暂无出牌';return}plays.forEach(play=>{const group=document.createElement('div');group.className='table-play';const label=document.createElement('div');label.className='table-play-label';label.textContent='座位 '+(play.player+1)+' 已出';const cards=document.createElement('div');cards.className='table-cards';(play.cards||[]).forEach(card=>cards.appendChild(cardNode(card,0,true)));group.appendChild(label);group.appendChild(cards);tablePlaysEl.appendChild(group)})}
+function renderTablePlays(plays){tablePlaysEl.innerHTML='';if(!plays.length){tablePlaysEl.textContent='暂无出牌';return}plays.forEach(play=>{const group=document.createElement('div');group.className='table-play';const label=document.createElement('div');label.className='table-play-label';label.textContent=playerLabel(play.player)+' 已出';const cards=document.createElement('div');cards.className='table-cards';(play.cards||[]).forEach(card=>cards.appendChild(cardNode(card,0,true)));group.appendChild(label);group.appendChild(cards);tablePlaysEl.appendChild(group)})}
 </script>
 </body>
 </html>
