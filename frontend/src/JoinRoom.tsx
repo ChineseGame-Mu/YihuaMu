@@ -16,7 +16,7 @@ interface IProps {
   gameMode?: GameModeChoice;
 }
 
-export const ROOM_CODE_LENGTH = 16;
+export const ROOM_CODE_LENGTH = 4;
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [editable, setEditable] = React.useState<boolean>(false);
@@ -33,10 +33,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   ): void => {
     setCreatingNewRoom(false);
     props.setRoomName(
-      event.target.value
-        .toLowerCase()
-        .replace(/[^0-9a-f]/g, "")
-        .slice(0, ROOM_CODE_LENGTH),
+      event.target.value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH),
     );
   };
 
@@ -71,15 +68,12 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const editableRoomName = (
     <input
       type="text"
-      inputMode="text"
-      pattern="[0-9a-fA-F]{16}"
-      placeholder="请输入16位房间代码"
+      inputMode="numeric"
+      pattern="[0-9]{4}"
+      placeholder="请输入4位房间代码"
       value={props.room_name}
       onChange={handleRoomChange}
       maxLength={ROOM_CODE_LENGTH}
-      autoCapitalize="none"
-      autoCorrect="off"
-      spellCheck={false}
     />
   );
   const nonEditableRoomName = (
@@ -95,11 +89,9 @@ const JoinRoom = (props: IProps): JSX.Element => {
   );
 
   const generateRoomName = React.useCallback((): void => {
-    const bytes = new Uint8Array(8);
-    window.crypto.getRandomValues(bytes);
-    const code = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
-      "",
-    );
+    const arr = new Uint32Array(1);
+    window.crypto.getRandomValues(arr);
+    const code = String(arr[0] % 10000).padStart(ROOM_CODE_LENGTH, "0");
     setCreatingNewRoom(true);
     setEditable(false);
     props.setRoomName(code);
@@ -154,7 +146,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
       </form>
       <div>
         <p>
-          欢迎来到升级 / 找朋友游戏！房间代码创建后会保持不变。把当前页面链接发给朋友，对方即可进入同一个房间。
+          欢迎来到升级 / 找朋友游戏！4位房间代码创建后会保持不变。把房间代码或当前页面链接发给朋友，对方即可进入同一个房间。
         </p>
         <p>
           如果您还不熟悉玩法，可以先阅读{" "}
