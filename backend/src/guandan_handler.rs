@@ -12,6 +12,7 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strength_basic,
+    team::TeamLevels,
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
@@ -56,6 +57,7 @@ pub enum GuandanServerMessage {
         passes: usize,
         trick_complete: bool,
         level: Rank,
+        team_levels: TeamLevels,
     },
     Error { message: String },
 }
@@ -122,6 +124,7 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
         passes: game.passes,
         trick_complete: game.trick_complete,
         level: game.level,
+        team_levels: game.team_levels,
     }
 }
 
@@ -160,7 +163,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v11-level-aware",
+            protocol: "guandan-v12-team-levels",
         },
     );
 
