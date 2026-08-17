@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub mod compare;
 pub mod deck;
 pub mod game;
+pub mod level;
 pub mod rules;
 pub mod strength;
 pub mod team;
