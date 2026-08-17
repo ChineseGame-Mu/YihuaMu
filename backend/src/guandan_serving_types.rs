@@ -5,6 +5,7 @@
 //! by Shengji and Find Friends.
 
 use serde::{Deserialize, Serialize};
+use storage::State;
 
 use crate::serving_types::VersionedRoom;
 
@@ -17,6 +18,11 @@ pub struct GuandanGameState {
     pub last_play: Vec<usize>,
     pub last_player: Option<usize>,
     pub passes: usize,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum GuandanStorageMessage {
+    StateChanged,
 }
 
 impl GuandanGameState {
@@ -33,6 +39,22 @@ impl GuandanGameState {
 
 pub type VersionedGuandanGame = VersionedRoom<GuandanGameState>;
 
+impl State for VersionedGuandanGame {
+    type Message = GuandanStorageMessage;
+
+    fn version(&self) -> u64 {
+        self.monotonic_id
+    }
+
+    fn key(&self) -> &[u8] {
+        &self.room_name
+    }
+
+    fn new_from_key(key: Vec<u8>) -> Self {
+        new_guandan_room(key)
+    }
+}
+
 pub fn new_guandan_room(room_name: Vec<u8>) -> VersionedGuandanGame {
     VersionedRoom::with_game(room_name, GuandanGameState::default())
 }
@@ -47,6 +69,7 @@ mod tests {
         assert_eq!(room.monotonic_id, 0);
         assert!(!room.game.started);
         assert!(room.associated_websockets.is_empty());
+        assert_eq!(room.key(), b"test-room");
     }
 
     #[test]
