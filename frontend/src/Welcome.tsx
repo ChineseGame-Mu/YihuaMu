@@ -3,7 +3,17 @@ import "./welcome.css";
 
 import type { JSX } from "react";
 
-const Welcome = (): JSX.Element => (
+type GameModeChoice = "Tractor" | "FindingFriends";
+
+type WelcomeProps = {
+  connected?: boolean;
+  onSelectGameMode?: (mode: GameModeChoice) => void;
+};
+
+const Welcome = ({
+  connected = false,
+  onSelectGameMode,
+}: WelcomeProps): JSX.Element => (
   <main className="welcome-page">
     <section className="welcome-card">
       <div className="welcome-suits" aria-hidden="true">
@@ -28,20 +38,42 @@ const Welcome = (): JSX.Element => (
       </p>
 
       <div className="welcome-modes">
-        <div className="welcome-mode">
+        <button
+          className="welcome-mode"
+          type="button"
+          disabled={!connected || onSelectGameMode === undefined}
+          onClick={() => onSelectGameMode?.("Tractor")}
+          style={{
+            font: "inherit",
+            color: "inherit",
+            textAlign: "left",
+            cursor: connected ? "pointer" : "default",
+          }}
+        >
           <div className="welcome-mode-icon">🃏</div>
           <div>
             <h2>升级 / 拖拉机</h2>
             <p>经典升级玩法，可创建房间与朋友一起在线游戏。</p>
           </div>
-        </div>
-        <div className="welcome-mode">
+        </button>
+        <button
+          className="welcome-mode"
+          type="button"
+          disabled={!connected || onSelectGameMode === undefined}
+          onClick={() => onSelectGameMode?.("FindingFriends")}
+          style={{
+            font: "inherit",
+            color: "inherit",
+            textAlign: "left",
+            cursor: connected ? "pointer" : "default",
+          }}
+        >
           <div className="welcome-mode-icon">🂡</div>
           <div>
             <h2>找朋友</h2>
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
           </div>
-        </div>
+        </button>
         <div
           className="welcome-mode welcome-mode-coming-soon"
           aria-disabled="true"
@@ -64,7 +96,9 @@ const Welcome = (): JSX.Element => (
 
       <div className="welcome-status" role="status" aria-live="polite">
         <span className="welcome-status-dot" />
-        正在连接服务器… Connecting to the server…
+        {connected
+          ? "服务器已连接 · Connected — 请选择游戏模式"
+          : "正在连接服务器… Connecting to the server…"}
       </div>
     </section>
   </main>
