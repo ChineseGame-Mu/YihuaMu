@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     team::{Team, TeamLevels},
+    tribute::TributePlan,
     CardFace, Rank,
 };
 use storage::State;
@@ -43,6 +44,10 @@ pub struct GuandanGameState {
     pub last_game_winner_team: Option<Team>,
     /// Number of levels awarded for the most recently completed game.
     pub last_promotion_steps: Option<usize>,
+    /// Pending tribute obligations for the newly dealt game, if any.
+    pub pending_tribute: Option<TributePlan>,
+    /// True when the pending tribute was cancelled by the big-joker resistance rule.
+    pub tribute_resisted: bool,
     /// Final winner of the whole match. A team must win while already playing A.
     /// Once set, no automatic redeal occurs and normal play is stopped.
     pub match_winner: Option<Team>,
@@ -66,6 +71,8 @@ impl Default for GuandanGameState {
             last_game_winner: None,
             last_game_winner_team: None,
             last_promotion_steps: None,
+            pending_tribute: None,
+            tribute_resisted: false,
             match_winner: None,
         }
     }
@@ -128,6 +135,8 @@ mod tests {
         assert_eq!(room.game.last_game_winner, None);
         assert_eq!(room.game.last_game_winner_team, None);
         assert_eq!(room.game.last_promotion_steps, None);
+        assert_eq!(room.game.pending_tribute, None);
+        assert!(!room.game.tribute_resisted);
         assert_eq!(room.game.match_winner, None);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
