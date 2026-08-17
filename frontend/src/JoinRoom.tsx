@@ -1,6 +1,5 @@
 import * as React from "react";
 import { WebsocketContext } from "./WebsocketProvider";
-import { TimerContext } from "./TimerProvider";
 import LabeledPlay from "./LabeledPlay";
 import PublicRoomsPane from "./PublicRoomsPane";
 import { isWasmAvailable } from "./detectWasm";
@@ -17,18 +16,14 @@ interface IProps {
   gameMode?: GameModeChoice;
 }
 
-const ROOM_CODE_LENGTH = 2;
+export const ROOM_CODE_LENGTH = 16;
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [editable, setEditable] = React.useState<boolean>(false);
-  const [shouldGenerate, setShouldGenerate] = React.useState<boolean>(
-    props.room_name.length !== ROOM_CODE_LENGTH,
-  );
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
     props.room_name.length !== ROOM_CODE_LENGTH,
   );
   const { send } = React.useContext(WebsocketContext);
-  const { setTimeout } = React.useContext(TimerContext);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
     props.setName(event.target.value.trim());
@@ -38,7 +33,10 @@ const JoinRoom = (props: IProps): JSX.Element => {
   ): void => {
     setCreatingNewRoom(false);
     props.setRoomName(
-      event.target.value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH),
+      event.target.value
+        .toLowerCase()
+        .replace(/[^0-9a-f]/g, "")
+        .slice(0, ROOM_CODE_LENGTH),
     );
   };
 
@@ -73,17 +71,20 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const editableRoomName = (
     <input
       type="text"
-      inputMode="numeric"
-      pattern="[0-9]{2}"
-      placeholder="请输入2位房间代码"
+      inputMode="text"
+      pattern="[0-9a-fA-F]{16}"
+      placeholder="请输入16位房间代码"
       value={props.room_name}
       onChange={handleRoomChange}
       maxLength={ROOM_CODE_LENGTH}
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
     />
   );
   const nonEditableRoomName = (
     <span
-      title="设置房间名称"
+      title="设置房间代码"
       onClick={(evt) => {
         evt.preventDefault();
         setEditable(true);
@@ -93,17 +94,22 @@ const JoinRoom = (props: IProps): JSX.Element => {
     </span>
   );
 
-  const generateRoomName = (): void => {
-    const arr = new Uint32Array(1);
-    window.crypto.getRandomValues(arr);
-    setShouldGenerate(false);
+  const generateRoomName = React.useCallback((): void => {
+    const bytes = new Uint8Array(8);
+    window.crypto.getRandomValues(bytes);
+    const code = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join(
+      "",
+    );
     setCreatingNewRoom(true);
-    props.setRoomName(String(arr[0] % 100).padStart(ROOM_CODE_LENGTH, "0"));
-  };
+    setEditable(false);
+    props.setRoomName(code);
+  }, [props.setRoomName]);
 
-  if (shouldGenerate) {
-    setTimeout(generateRoomName, 0);
-  }
+  React.useEffect(() => {
+    if (props.room_name.length === 0) {
+      generateRoomName();
+    }
+  }, [props.room_name.length, generateRoomName]);
 
   return (
     <div>
@@ -118,7 +124,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
             <label>
               <strong>房间代码：</strong>{" "}
               {editable ? editableRoomName : nonEditableRoomName}{" "}
-              <span title="生成新房间" onClick={() => generateRoomName()}>
+              <span title="生成新房间" onClick={generateRoomName}>
                 🎲
               </span>{" "}
             </label>
@@ -148,8 +154,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
       </form>
       <div>
         <p>
-          欢迎来到升级 /
-          找朋友游戏！在上方输入您的姓名即可创建新游戏；如果房间已经存在，也可以重新加入。
+          欢迎来到升级 / 找朋友游戏！房间代码创建后会保持不变。把当前页面链接发给朋友，对方即可进入同一个房间。
         </p>
         <p>
           如果您还不熟悉玩法，可以先阅读{" "}
