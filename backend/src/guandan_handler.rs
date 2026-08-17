@@ -12,7 +12,9 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strength_basic,
-    team::{team_for_seat, Team, TeamLevels},
+    team::{
+        four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels,
+    },
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
@@ -132,13 +134,32 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
 
+    let promotion_steps = if player_count == 4 {
+        four_player_promotion_steps(table, &game.finish_order)?
+    } else {
+        1
+    };
+
     if winner_level == Rank::Ace {
-        game.match_winner = Some(winner_team);
-        game.trick_complete = true;
-        return Ok(true);
+        let wins_match = if player_count == 4 {
+            four_player_ace_win(table, &game.finish_order)?
+        } else {
+            true
+        };
+        if wins_match {
+            game.match_winner = Some(winner_team);
+            game.trick_complete = true;
+            return Ok(true);
+        }
     }
 
-    let next_level = game.team_levels.advance_winner(winner_team);
+    let next_level = if winner_level == Rank::Ace {
+        Rank::Ace
+    } else {
+        game.team_levels
+            .advance_winner_by(winner_team, promotion_steps)
+    };
+
     let mut deck = build_deck(table);
     deck.shuffle(&mut thread_rng());
     let (hands, remainder) = deal(table, &deck)?;
@@ -212,7 +233,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v14-terminal-match",
+            protocol: "guandan-v15-finish-order-promotion",
         },
     );
 
@@ -708,7 +729,7 @@ mod tests {
     }
 
     #[test]
-    fn completed_game_advances_winner_team_and_redeals() {
+    fn one_two_finish_advances_three_levels_and_redeals() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
@@ -717,16 +738,28 @@ mod tests {
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
         assert_eq!(game.last_game_winner, Some(0));
         assert_eq!(game.last_game_winner_team, Some(Team::A));
-        assert_eq!(game.team_levels.team_a, Rank::Three);
+        assert_eq!(game.team_levels.team_a, Rank::Five);
         assert_eq!(game.team_levels.team_b, Rank::Two);
-        assert_eq!(game.level, Rank::Three);
+        assert_eq!(game.level, Rank::Five);
         assert_eq!(game.turn, 0);
         assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
         assert_eq!(game.match_winner, None);
     }
 
     #[test]
-    fn ace_level_win_ends_match_without_redeal() {
+    fn one_three_finish_advances_two_levels() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
+        game.finish_order = vec![0, 1, 2];
+        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.team_levels.team_a, Rank::Four);
+        assert_eq!(game.level, Rank::Four);
+    }
+
+    #[test]
+    fn ace_one_two_finish_ends_match_without_redeal() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
@@ -741,5 +774,22 @@ mod tests {
         assert_eq!(game.last_game_winner_team, Some(Team::A));
         assert_eq!(game.team_levels.team_a, Rank::Ace);
         assert_eq!(game.hands[3].len(), 1);
+    }
+
+    #[test]
+    fn ace_one_four_finish_stays_on_ace_and_redeals() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.team_levels.team_a = Rank::Ace;
+        game.level = Rank::Ace;
+        game.hands = vec![vec![], vec![], vec![card(Suit::Clubs, Rank::Two)], vec![]];
+        game.finish_order = vec![0, 1, 3];
+
+        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.match_winner, None);
+        assert_eq!(game.team_levels.team_a, Rank::Ace);
+        assert_eq!(game.level, Rank::Ace);
+        assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
     }
 }
