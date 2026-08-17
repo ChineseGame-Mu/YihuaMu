@@ -1,95 +1,26 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>掼蛋多人测试</title>
-  <style>
-    *{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:1180px;margin:24px auto;padding:0 16px;background:#174f2b;color:white}h1{text-align:center}.box{background:#fff;color:#222;padding:20px;border-radius:14px;box-shadow:0 8px 24px #0004}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}button,input,select{font-size:17px;padding:8px 10px;border-radius:7px;border:1px solid #aaa}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}.status{padding:10px 12px;background:#eef7ee;border-radius:8px;margin:12px 0}.game-result{padding:10px 12px;background:#e8f7ff;border:1px solid #7ab8d6;border-radius:8px;margin:10px 0;font-weight:800}.game-result.final{background:#fff0c8;border:2px solid #e4a400;font-size:22px;text-align:center}.promotion-result{padding:10px 12px;background:#f3edff;border:1px solid #9a7ad6;border-radius:8px;margin:10px 0;font-weight:800}.level-banner{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 12px;margin:10px 0;background:#fff4c2;border:2px solid #e5b400;border-radius:9px;font-size:18px;font-weight:800}.level-card{display:inline-flex;align-items:center;justify-content:center;min-width:42px;height:42px;border-radius:8px;background:white;border:2px solid #bd8700;font-size:24px}.team-levels{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}.team-level{padding:9px 12px;border-radius:9px;background:#eef3ff;border:1px solid #9db2e4;font-weight:800}.players{display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;background:#f4f4f4;border-radius:9px;margin:10px 0}.player-chip{background:white;border:1px solid #bbb;border-radius:999px;padding:6px 10px;font-weight:700}.player-chip.me{border:2px solid #16803d}.table-title,.hand-title{font-size:20px;font-weight:700;margin:18px 0 8px}.table-plays{display:flex;flex-wrap:wrap;gap:12px;min-height:90px;padding:12px;background:#126b38;border-radius:12px}.table-play{background:#f6f1df;border-radius:10px;padding:8px;min-width:140px}.table-play-label{font-weight:700;margin-bottom:6px}.table-cards{display:flex;flex-wrap:wrap;gap:4px}.hand{display:flex;flex-wrap:wrap;gap:7px;min-height:132px;padding:12px;background:#0f6b35;border-radius:12px}.card{position:relative;width:74px;height:108px;border:2px solid #ddd;border-radius:9px;background:#fff;color:#111;box-shadow:0 3px 7px #0005;cursor:pointer;user-select:none;transition:.12s transform,.12s border}.card:hover{transform:translateY(-4px)}.card.selected{transform:translateY(-12px);border:3px solid #ffd000}.card.red{color:#d71920}.corner{position:absolute;left:7px;top:5px;font-size:20px;font-weight:800;line-height:20px}.suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:43px}.joker{display:flex;align-items:center;justify-content:center;text-align:center;font-size:18px;font-weight:900;padding:8px}.actions{text-align:center;margin:12px}.actions button{font-size:19px;padding:10px 24px}.end-round{font-weight:800}.mini-card{font-size:20px;background:white;color:#111;border-radius:5px;padding:4px 7px;border:1px solid #bbb}.mini-card.red{color:#d71920}#log{white-space:pre-wrap;background:#111;color:#9f9;padding:12px;min-height:130px;max-height:240px;overflow:auto;border-radius:8px;font-size:13px}@media(max-width:600px){.card{width:58px;height:88px}.suit{font-size:34px}.corner{font-size:17px}.hand{gap:4px;padding:8px}}
-  </style>
-</head>
-<body>
-  <h1>掼蛋多人测试桌</h1>
-  <div class="box">
-    <div class="controls">房间 <input id="room" value="test1"> 名字 <input id="name" value="玩家1"><button onclick="joinRoom()">加入</button></div>
-    <div class="controls">人数 <select id="count"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option></select><button onclick="startGame()">开始</button></div>
-    <div id="status" class="status">正在连接服务器…</div>
-    <div class="team-levels">
-      <div class="team-level">A队：打 <span id="teamALevel">2</span></div>
-      <div class="team-level">B队：打 <span id="teamBLevel">2</span></div>
-    </div>
-    <div class="level-banner">本局级牌：<span id="levelCard" class="level-card">2</span><span>（仅次于大王、小王）</span></div>
-    <div id="gameResult" class="game-result">比赛进行中</div>
-    <div id="promotionResult" class="promotion-result">上一局升级：暂无</div>
-    <div><strong>当前参加玩家：</strong></div>
-    <div id="players" class="players"><span>尚未加入</span></div>
-    <div id="finishOrder" class="status">本局出完顺序：暂无</div>
-    <div class="table-title">桌面本轮所有已出牌</div>
-    <div id="tablePlays" class="table-plays"><span>暂无出牌</span></div>
-    <div class="actions"><button id="endRoundBtn" class="end-round" onclick="endRound()" disabled>结束本轮并开始下一轮</button></div>
-    <div class="hand-title">我的手牌 <span id="handCount"></span></div>
-    <div id="hand" class="hand"></div>
-    <div class="actions"><button id="playBtn" onclick="playSelected()">出牌</button><button id="passBtn" onclick="passTurn()">不要 / Pass</button><button onclick="clearSelection()">取消选择</button></div>
-    <details><summary>调试日志</summary><div id="log"></div></details>
-  </div>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>掼蛋多人测试</title>
+<style>*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;max-width:1180px;margin:24px auto;padding:0 16px;background:#174f2b;color:white}h1{text-align:center}.box{background:#fff;color:#222;padding:20px;border-radius:14px}.controls,.actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:8px;margin:10px 0}button,input,select{font-size:17px;padding:8px 10px;border-radius:7px;border:1px solid #aaa}button:disabled{opacity:.45}.status,.tribute{padding:10px 12px;background:#eef7ee;border-radius:8px;margin:10px 0}.tribute{background:#fff4c2;border:2px solid #e5b400;font-weight:800}.team-levels,.players{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.team-level,.player-chip{padding:7px 10px;background:#f4f4f4;border-radius:9px}.player-chip.me{border:2px solid #16803d}.level-banner{padding:10px;background:#fff4c2;border-radius:9px;font-weight:800}.table-title,.hand-title{font-size:20px;font-weight:700;margin:16px 0 8px}.table-plays,.hand{display:flex;flex-wrap:wrap;gap:7px;min-height:100px;padding:12px;background:#126b38;border-radius:12px}.table-play{background:#f6f1df;border-radius:10px;padding:8px;color:#222}.card{position:relative;width:74px;height:108px;border:2px solid #ddd;border-radius:9px;background:#fff;color:#111;cursor:pointer}.card.selected{transform:translateY(-10px);border:3px solid #ffd000}.card.red,.mini-card.red{color:#d71920}.corner{position:absolute;left:7px;top:5px;font-size:20px;font-weight:800}.suit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:43px}.joker{display:flex;align-items:center;justify-content:center;font-weight:900}.mini-card{background:white;padding:4px;border-radius:5px}#log{white-space:pre-wrap;background:#111;color:#9f9;padding:10px;max-height:220px;overflow:auto}</style></head>
+<body><h1>掼蛋多人测试桌</h1><div class="box">
+<div class="controls">房间 <input id="room" value="test1"> 名字 <input id="name" value="玩家1"><button onclick="joinRoom()">加入</button></div>
+<div class="controls">人数 <select id="count"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option></select><button onclick="startGame()">开始</button></div>
+<div id="status" class="status">正在连接服务器…</div><div class="team-levels"><div class="team-level">A队：打 <span id="teamALevel">2</span></div><div class="team-level">B队：打 <span id="teamBLevel">2</span></div></div>
+<div class="level-banner">本局级牌：<span id="levelCard">2</span>（仅次于大王、小王）</div><div id="tributeBox" class="tribute" hidden></div><div id="gameResult" class="status">比赛进行中</div><div id="promotionResult" class="status">上一局升级：暂无</div>
+<strong>当前参加玩家：</strong><div id="players" class="players">尚未加入</div><div id="finishOrder" class="status">本局出完顺序：暂无</div>
+<div class="table-title">桌面本轮所有已出牌</div><div id="tablePlays" class="table-plays">暂无出牌</div><div class="actions"><button id="endRoundBtn" onclick="endRound()" disabled>结束本轮并开始下一轮</button></div>
+<div class="hand-title">我的手牌 <span id="handCount"></span></div><div id="hand" class="hand"></div>
+<div class="actions"><button id="tributeBtn" onclick="submitTribute()" hidden>进贡所选牌</button><button id="returnBtn" onclick="submitReturn()" hidden>还贡所选牌</button><button id="playBtn" onclick="playSelected()">出牌</button><button id="passBtn" onclick="passTurn()">不要 / Pass</button><button onclick="clearSelection()">取消选择</button></div>
+<details><summary>调试日志</summary><div id="log"></div></details></div>
 <script>
-const log=document.getElementById('log'),handEl=document.getElementById('hand'),statusEl=document.getElementById('status'),tablePlaysEl=document.getElementById('tablePlays'),handCountEl=document.getElementById('handCount'),endRoundBtn=document.getElementById('endRoundBtn'),playBtn=document.getElementById('playBtn'),passBtn=document.getElementById('passBtn'),playersEl=document.getElementById('players'),levelCardEl=document.getElementById('levelCard'),teamALevelEl=document.getElementById('teamALevel'),teamBLevelEl=document.getElementById('teamBLevel'),gameResultEl=document.getElementById('gameResult'),promotionResultEl=document.getElementById('promotionResult'),finishOrderEl=document.getElementById('finishOrder');
-let myHand=[],selected=new Set(),mySeat=null,currentTurn=null,trickComplete=false,playerNames=[],currentLevel='Two',teamLevels={team_a:'Two',team_b:'Two'},previousTeamLevels=null,lastPromotionText='上一局升级：暂无',matchWinner=null;
-const backend='wss://chinesegame-yihua.onrender.com/api/guandan';
-const ws=new WebSocket(backend);
-ws.onopen=()=>{write('已连接掼蛋服务器');statusEl.textContent='服务器已连接，请加入房间';};
-ws.onmessage=e=>{write('服务器: '+e.data);let m;try{m=JSON.parse(e.data)}catch(_){return}handleMessage(m)};
-ws.onerror=()=>{write('连接错误');statusEl.textContent='连接服务器失败';};
-function write(s){log.textContent+=s+'\n';log.scrollTop=log.scrollHeight}
-function send(o){if(ws.readyState!==1)return write('尚未连接');ws.send(JSON.stringify(o));write('发送: '+JSON.stringify(o))}
-function joinRoom(){send({type:'join',room:document.getElementById('room').value,name:document.getElementById('name').value})}
-function startGame(){previousTeamLevels=null;lastPromotionText='上一局升级：暂无';renderPromotion();send({type:'start',player_count:Number(document.getElementById('count').value)})}
-function passTurn(){if(!matchWinner)send({type:'pass'})}
-function endRound(){if(!matchWinner)send({type:'end_round'})}
-function clearSelection(){selected.clear();renderHand()}
-function playSelected(){if(matchWinner)return;const indexes=[...selected].sort((a,b)=>a-b);if(!indexes.length)return alert('请先选择要出的牌');send({type:'play',card_indexes:indexes});selected.clear()}
-function handleMessage(m){
-  if(m.type==='connected'){statusEl.textContent='已连接：'+m.protocol}
-  if(m.type==='joined'){mySeat=m.seat;statusEl.textContent='已加入房间，座位 '+(m.seat+1);renderPlayers()}
-  if(m.type==='waiting'){playerNames=m.players||[];renderPlayers();statusEl.textContent='等待玩家：'+playerNames.join('、')+'（'+playerNames.length+'/'+m.maximum_players+'）'}
-  if(m.type==='started'){statusEl.textContent='游戏开始：'+m.player_count+' 人，每人 '+m.cards_per_player+' 张'}
-  if(m.type==='hand'){myHand=m.cards||[];selected.clear();renderHand()}
-  if(m.type==='state'){
-    if(Array.isArray(m.players)){playerNames=m.players;renderPlayers()}
-    if(m.level){currentLevel=m.level;renderLevel()}
-    if(m.team_levels){detectPromotion(m.team_levels,m.last_game_winner_team);teamLevels=m.team_levels;previousTeamLevels={...m.team_levels};renderTeamLevels();renderPromotion()}
-    matchWinner=m.match_winner||null;
-    renderFinishOrder(m.finish_order||[]);
-    renderGameResult(m.last_game_winner,m.last_game_winner_team,matchWinner);
-    currentTurn=m.turn;trickComplete=!!m.trick_complete;
-    const ended=!!matchWinner;endRoundBtn.disabled=ended||!trickComplete;playBtn.disabled=ended;passBtn.disabled=ended;
-    statusEl.textContent=ended?'比赛已经结束：'+teamName(matchWinner)+'最终获胜':trickComplete?'本轮已结束，桌面牌保留中；点击“结束本轮并开始下一轮”':'当前轮到 '+playerLabel(m.turn)+(m.turn===mySeat?'（轮到你）':'')+' ｜ 手牌数：'+m.hand_counts.join(' / ');
-    renderTablePlays(m.table_plays||[])
-  }
-  if(m.type==='error'){statusEl.textContent='错误：'+m.message}
-}
-function playerLabel(seat){return playerNames[seat]?playerNames[seat]+'（座位 '+(seat+1)+'）':'座位 '+(seat+1)}
-function teamName(team){return team==='A'?'A队':team==='B'?'B队':String(team||'')}
-function renderPlayers(){playersEl.innerHTML='';if(!playerNames.length){playersEl.textContent='尚未加入';return}playerNames.forEach((name,i)=>{const chip=document.createElement('span');chip.className='player-chip'+(i===mySeat?' me':'');chip.textContent=(i+1)+'号 '+name+(i===mySeat?'（我）':'');playersEl.appendChild(chip)})}
-const rankMap={Two:'2',Three:'3',Four:'4',Five:'5',Six:'6',Seven:'7',Eight:'8',Nine:'9',Ten:'10',Jack:'J',Queen:'Q',King:'K',Ace:'A'};
-const rankOrder=['Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Jack','Queen','King','Ace'];
-function renderLevel(){levelCardEl.textContent=rankMap[currentLevel]||currentLevel||'2'}
-function renderTeamLevels(){teamALevelEl.textContent=rankMap[teamLevels.team_a]||teamLevels.team_a||'2';teamBLevelEl.textContent=rankMap[teamLevels.team_b]||teamLevels.team_b||'2'}
-function promotionDistance(from,to){const a=rankOrder.indexOf(from),b=rankOrder.indexOf(to);return a>=0&&b>=0&&b>a?b-a:0}
-function detectPromotion(next,winnerTeam){if(!previousTeamLevels||!winnerTeam)return;const key=winnerTeam==='A'?'team_a':'team_b';const steps=promotionDistance(previousTeamLevels[key],next[key]);if(steps>0){lastPromotionText='上一局升级：'+teamName(winnerTeam)+'升'+steps+'级（'+(rankMap[previousTeamLevels[key]]||previousTeamLevels[key])+' → '+(rankMap[next[key]]||next[key])+'）'}}
-function renderPromotion(){promotionResultEl.textContent=lastPromotionText}
-function renderFinishOrder(order){finishOrderEl.textContent='本局出完顺序：'+(order.length?order.map((seat,i)=>(i+1)+'、'+playerLabel(seat)).join('　'):'暂无')}
-function renderGameResult(winner,team,finalWinner){gameResultEl.classList.toggle('final',!!finalWinner);if(finalWinner){gameResultEl.textContent='🏆 比赛结束：'+teamName(finalWinner)+'在A级再次获胜，取得整场比赛胜利';return}if(winner===null||winner===undefined){gameResultEl.textContent='比赛进行中';return}gameResultEl.textContent='上一局赢家：'+playerLabel(winner)+' ｜ '+teamName(team)+'获胜并升级 ｜ 已自动重新发牌，由赢家首出'}
-const suitMap={Clubs:'♣',Diamonds:'♦',Hearts:'♥',Spades:'♠'};
-function normalizeCard(card){
-  if(card&&card.Suited){const s=card.Suited.suit,r=card.Suited.rank;return{rank:rankMap[r]||r,suit:suitMap[s]||s,red:s==='Hearts'||s==='Diamonds',joker:false}}
-  if(card&&card.Joker){const big=card.Joker==='Big';return{rank:big?'大王':'小王',suit:big?'🃏':'JOKER',red:big,joker:true}}
-  return{rank:'?',suit:'',red:false,joker:false};
-}
-function cardNode(card,index,mini=false){const c=normalizeCard(card),el=document.createElement('div');if(mini){el.className='mini-card'+(c.red?' red':'');el.textContent=c.joker?c.rank:c.suit+c.rank;return el}el.className='card'+(c.red?' red':'')+(selected.has(index)?' selected':'');if(c.joker){el.classList.add('joker');el.textContent=c.rank+' '+c.suit}else{el.innerHTML='<div class="corner">'+c.rank+'<br>'+c.suit+'</div><div class="suit">'+c.suit+'</div>'}el.onclick=()=>{if(matchWinner)return;selected.has(index)?selected.delete(index):selected.add(index);renderHand()};return el}
-function renderHand(){handEl.innerHTML='';myHand.forEach((card,i)=>handEl.appendChild(cardNode(card,i)));handCountEl.textContent=myHand.length?'（'+myHand.length+'张）':''}
-function renderTablePlays(plays){tablePlaysEl.innerHTML='';if(!plays.length){tablePlaysEl.textContent='暂无出牌';return}plays.forEach(play=>{const group=document.createElement('div');group.className='table-play';const label=document.createElement('div');label.className='table-play-label';label.textContent=playerLabel(play.player)+' 已出';const cards=document.createElement('div');cards.className='table-cards';(play.cards||[]).forEach(card=>cards.appendChild(cardNode(card,0,true)));group.appendChild(label);group.appendChild(cards);tablePlaysEl.appendChild(group)})}
-renderLevel();renderTeamLevels();renderPromotion();
-</script>
-</body>
-</html>
+const $=id=>document.getElementById(id),log=$('log'),handEl=$('hand'),statusEl=$('status'),tablePlaysEl=$('tablePlays'),handCountEl=$('handCount'),endRoundBtn=$('endRoundBtn'),playBtn=$('playBtn'),passBtn=$('passBtn'),playersEl=$('players'),tributeBox=$('tributeBox'),tributeBtn=$('tributeBtn'),returnBtn=$('returnBtn');
+let myHand=[],selected=new Set(),mySeat=null,playerNames=[],currentLevel='Two',teamLevels={team_a:'Two',team_b:'Two'},previousTeamLevels=null,matchWinner=null,pendingTribute=null,tributeResisted=false;
+const ws=new WebSocket('wss://chinesegame-yihua.onrender.com/api/guandan');ws.onopen=()=>statusEl.textContent='服务器已连接，请加入房间';ws.onmessage=e=>{write('服务器: '+e.data);try{handleMessage(JSON.parse(e.data))}catch(_){}};function write(s){log.textContent+=s+'\n';log.scrollTop=log.scrollHeight}function send(o){if(ws.readyState===1){ws.send(JSON.stringify(o));write('发送: '+JSON.stringify(o))}}
+function joinRoom(){send({type:'join',room:$('room').value,name:$('name').value})}function startGame(){send({type:'start',player_count:Number($('count').value)})}function passTurn(){if(!pendingTribute&&!matchWinner)send({type:'pass'})}function endRound(){if(!pendingTribute&&!matchWinner)send({type:'end_round'})}function clearSelection(){selected.clear();renderHand()}function oneSelected(){const a=[...selected];if(a.length!==1){alert('进贡/还贡时请只选择一张牌');return null}return a[0]}function submitTribute(){const i=oneSelected();if(i!==null){send({type:'tribute_card',card_index:i});selected.clear()}}function submitReturn(){const i=oneSelected();if(i!==null){send({type:'return_tribute',card_index:i});selected.clear()}}function playSelected(){if(pendingTribute||matchWinner)return;const indexes=[...selected].sort((a,b)=>a-b);if(!indexes.length)return alert('请先选择要出的牌');send({type:'play',card_indexes:indexes});selected.clear()}
+function roles(plan){if(!plan)return{g:[],r:[]};if(plan.Single)return{g:[plan.Single.giver],r:[plan.Single.receiver]};if(plan.Double)return{g:plan.Double.givers||[],r:plan.Double.receivers||[]};return{g:[],r:[]}}
+function renderTribute(){if(tributeResisted){tributeBox.hidden=false;tributeBox.textContent='🃏 本局已抗贡，直接开始正常出牌';tributeBtn.hidden=true;returnBtn.hidden=true;return}if(!pendingTribute){tributeBox.hidden=true;tributeBtn.hidden=true;returnBtn.hidden=true;return}const x=roles(pendingTribute),isG=x.g.includes(mySeat),isR=x.r.includes(mySeat);tributeBox.hidden=false;tributeBox.textContent=isG?'轮到你进贡：请选择一张贡牌并点击“进贡所选牌”':isR?'你是受贡方；贡牌提交完成后请选择一张牌还贡':'正在进行进贡/还贡，请等待相关玩家完成';tributeBtn.hidden=!isG;returnBtn.hidden=!isR}
+function handleMessage(m){if(m.type==='connected')statusEl.textContent='已连接：'+m.protocol;if(m.type==='joined'){mySeat=m.seat;renderPlayers()}if(m.type==='waiting'){playerNames=m.players||[];renderPlayers()}if(m.type==='hand'){myHand=m.cards||[];selected.clear();renderHand()}if(m.type==='state'){playerNames=m.players||playerNames;currentLevel=m.level||currentLevel;teamLevels=m.team_levels||teamLevels;matchWinner=m.match_winner||null;pendingTribute=m.pending_tribute||null;tributeResisted=!!m.tribute_resisted;renderPlayers();renderLevels();renderTribute();renderFinish(m.finish_order||[]);renderTable(m.table_plays||[]);const blocked=!!pendingTribute||!!matchWinner;playBtn.disabled=blocked;passBtn.disabled=blocked;endRoundBtn.disabled=blocked||!m.trick_complete;statusEl.textContent=matchWinner?'比赛已经结束':pendingTribute?'当前处于进贡/还贡阶段':'当前轮到 '+playerLabel(m.turn)+(m.turn===mySeat?'（轮到你）':'')+' ｜ 手牌数：'+(m.hand_counts||[]).join(' / ')}if(m.type==='error')statusEl.textContent='错误：'+m.message}
+function playerLabel(i){return playerNames[i]?playerNames[i]+'（座位 '+(i+1)+'）':'座位 '+(i+1)}function renderPlayers(){playersEl.innerHTML='';playerNames.forEach((n,i)=>{const e=document.createElement('span');e.className='player-chip'+(i===mySeat?' me':'');e.textContent=(i+1)+'号 '+n+(i===mySeat?'（我）':'');playersEl.appendChild(e)})}
+const rankMap={Two:'2',Three:'3',Four:'4',Five:'5',Six:'6',Seven:'7',Eight:'8',Nine:'9',Ten:'10',Jack:'J',Queen:'Q',King:'K',Ace:'A'},suitMap={Clubs:'♣',Diamonds:'♦',Hearts:'♥',Spades:'♠'};function renderLevels(){$('levelCard').textContent=rankMap[currentLevel]||currentLevel;$('teamALevel').textContent=rankMap[teamLevels.team_a]||teamLevels.team_a;$('teamBLevel').textContent=rankMap[teamLevels.team_b]||teamLevels.team_b}function renderFinish(a){$('finishOrder').textContent='本局出完顺序：'+(a.length?a.map((s,i)=>(i+1)+'、'+playerLabel(s)).join('　'):'暂无')}
+function norm(c){if(c&&c.Suited){const s=c.Suited.suit,r=c.Suited.rank;return{r:rankMap[r]||r,s:suitMap[s]||s,red:s==='Hearts'||s==='Diamonds',j:false}}if(c&&c.Joker)return{r:c.Joker==='Big'?'大王':'小王',s:'🃏',red:c.Joker==='Big',j:true};return{r:'?',s:'',red:false,j:false}}function cardNode(card,i,mini=false){const c=norm(card),e=document.createElement('div');if(mini){e.className='mini-card'+(c.red?' red':'');e.textContent=c.s+c.r;return e}e.className='card'+(c.red?' red':'')+(selected.has(i)?' selected':'');e.innerHTML=c.j?c.r+' '+c.s:'<div class="corner">'+c.r+'<br>'+c.s+'</div><div class="suit">'+c.s+'</div>';e.onclick=()=>{if(matchWinner)return;selected.has(i)?selected.delete(i):selected.add(i);renderHand()};return e}function renderHand(){handEl.innerHTML='';myHand.forEach((c,i)=>handEl.appendChild(cardNode(c,i)));handCountEl.textContent=myHand.length?'（'+myHand.length+'张）':''}function renderTable(a){tablePlaysEl.innerHTML='';if(!a.length){tablePlaysEl.textContent='暂无出牌';return}a.forEach(p=>{const g=document.createElement('div');g.className='table-play';g.append(playerLabel(p.player)+' 已出 ');(p.cards||[]).forEach(c=>g.appendChild(cardNode(c,0,true)));tablePlaysEl.appendChild(g)})}renderLevels();
+</script></body></html>
