@@ -20,11 +20,20 @@ fn is_bomb_family(pattern: PlayPattern) -> bool {
     matches!(pattern, PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb)
 }
 
-fn bomb_class(pattern: PlayPattern) -> u8 {
-    match pattern {
-        PlayPattern::Bomb => 1,
-        PlayPattern::StraightFlush => 2,
-        PlayPattern::JokerBomb => 3,
+/// Guandan bomb ordering used by the multiplayer test:
+/// 4-card bomb < 5-card bomb < straight flush < 6-card bomb < 7-card bomb
+/// < 8-card bomb < ... < joker bomb.
+///
+/// Ordinary same-sized bombs are compared by their main rank.
+fn bomb_tier(play: PlayStrength) -> usize {
+    match play.pattern {
+        PlayPattern::JokerBomb => usize::MAX,
+        PlayPattern::StraightFlush => 5,
+        PlayPattern::Bomb => match play.card_count {
+            0..=4 => 3,
+            5 => 4,
+            count => count,
+        },
         _ => 0,
     }
 }
@@ -39,13 +48,35 @@ pub fn compare(candidate: PlayStrength, current: PlayStrength) -> Option<Orderin
         (true, false) => return Some(Ordering::Greater),
         (false, true) => return Some(Ordering::Less),
         (true, true) => {
-            let class_cmp = bomb_class(candidate.pattern).cmp(&bomb_class(current.pattern));
-            if class_cmp != Ordering::Equal { return Some(class_cmp); }
-            if candidate.pattern == PlayPattern::Bomb {
-                let count_cmp = candidate.card_count.cmp(&current.card_count);
-                if count_cmp != Ordering::Equal { return Some(count_cmp); }
+            let tier_cmp = bomb_tier(candidate).cmp(&bomb_tier(current));
+            if tier_cmp != Ordering::Equal {
+                return Some(tier_cmp);
             }
-            return Some(candidate.main_rank.cmp(&current.main_rank));
+
+            // A straight flush occupies its own tier. Two straight flushes
+            // compare by their highest/main rank.
+            if candidate.pattern == PlayPattern::StraightFlush
+                && current.pattern == PlayPattern::StraightFlush
+            {
+                return Some(candidate.main_rank.cmp(&current.main_rank));
+            }
+
+            // Joker bomb is the absolute top play. Equal joker bombs tie.
+            if candidate.pattern == PlayPattern::JokerBomb
+                && current.pattern == PlayPattern::JokerBomb
+            {
+                return Some(Ordering::Equal);
+            }
+
+            // Same-sized ordinary bombs compare by rank.
+            if candidate.pattern == PlayPattern::Bomb
+                && current.pattern == PlayPattern::Bomb
+                && candidate.card_count == current.card_count
+            {
+                return Some(candidate.main_rank.cmp(&current.main_rank));
+            }
+
+            return Some(Ordering::Equal);
         }
         (false, false) => {}
     }
@@ -97,11 +128,44 @@ mod tests {
     }
 
     #[test]
-    fn straight_flush_beats_ordinary_bomb_and_joker_bomb_beats_it() {
-        let bomb = PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 4);
+    fn five_bomb_beats_four_bomb() {
+        assert!(beats(
+            PlayStrength::new(PlayPattern::Bomb, Rank::Three, 5),
+            PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 4)
+        ));
+    }
+
+    #[test]
+    fn straight_flush_sits_between_five_and_six_bombs() {
+        let five = PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 5);
         let flush = PlayStrength::new(PlayPattern::StraightFlush, Rank::Six, 5);
+        let six = PlayStrength::new(PlayPattern::Bomb, Rank::Three, 6);
+        assert!(beats(flush, five));
+        assert!(beats(six, flush));
+    }
+
+    #[test]
+    fn longer_bombs_keep_climbing() {
+        let six = PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 6);
+        let seven = PlayStrength::new(PlayPattern::Bomb, Rank::Two, 7);
+        let eight = PlayStrength::new(PlayPattern::Bomb, Rank::Two, 8);
+        assert!(beats(seven, six));
+        assert!(beats(eight, seven));
+    }
+
+    #[test]
+    fn same_size_bombs_compare_rank() {
+        assert!(beats(
+            PlayStrength::new(PlayPattern::Bomb, Rank::King, 6),
+            PlayStrength::new(PlayPattern::Bomb, Rank::Queen, 6)
+        ));
+    }
+
+    #[test]
+    fn joker_bomb_is_absolute_top() {
+        let eight = PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 8);
         let joker = PlayStrength::new(PlayPattern::JokerBomb, Rank::Ace, 4);
-        assert!(beats(flush, bomb));
-        assert!(beats(joker, flush));
+        assert!(beats(joker, eight));
+        assert!(!beats(eight, joker));
     }
 }
