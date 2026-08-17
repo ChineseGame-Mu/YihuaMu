@@ -13,7 +13,9 @@ use shengji_core::guandan::{
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
 
-use crate::guandan_serving_types::{GuandanStorageMessage, VersionedGuandanGame};
+use crate::guandan_serving_types::{
+    GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
+};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -51,6 +53,7 @@ pub enum GuandanServerMessage {
         hand_counts: Vec<usize>,
         last_play: Vec<CardFace>,
         last_player: Option<usize>,
+        table_plays: Vec<GuandanTablePlay>,
         passes: usize,
     },
     Error {
@@ -94,6 +97,7 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
         hand_counts: game.hand_counts(),
         last_play: game.last_play.clone(),
         last_player: game.last_player,
+        table_plays: game.table_plays.clone(),
         passes: game.passes,
     }
 }
@@ -116,7 +120,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v5-cardface",
+            protocol: "guandan-v6-table-plays",
         },
     );
     let mut joined_room: Option<Vec<u8>> = None;
@@ -295,6 +299,7 @@ pub async fn websocket(
                         state.game.turn = 0;
                         state.game.last_play.clear();
                         state.game.last_player = None;
+                        state.game.table_plays.clear();
                         state.game.passes = 0;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
@@ -352,8 +357,12 @@ pub async fn websocket(
                         for &i in indexes.iter().rev() {
                             state.game.hands[seat].remove(i);
                         }
-                        state.game.last_play = cards;
+                        state.game.last_play = cards.clone();
                         state.game.last_player = Some(seat);
+                        state.game.table_plays.push(GuandanTablePlay {
+                            player: seat,
+                            cards,
+                        });
                         state.game.passes = 0;
                         advance_turn(&mut state.game);
                         state.bump_version();
@@ -399,6 +408,7 @@ pub async fn websocket(
                             state.game.turn = state.game.last_player.unwrap();
                             state.game.last_play.clear();
                             state.game.last_player = None;
+                            state.game.table_plays.clear();
                             state.game.passes = 0;
                         } else {
                             advance_turn(&mut state.game);
