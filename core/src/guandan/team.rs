@@ -11,7 +11,7 @@ pub enum Team { A, B }
 pub fn team_for_seat(table: TableConfig, seat: usize) -> Result<Team, &'static str> {
     if seat >= table.player_count { return Err("seat is outside the table"); }
     if !table.is_even_table() { return Err("team mode requires an even player count"); }
-    Ok(if seat % 2 == 0 { Team::A } else { Team::B })
+    Ok(if seat.is_multiple_of(2) { Team::A } else { Team::B })
 }
 
 pub fn teammates(table: TableConfig, seat: usize) -> Result<Vec<usize>, &'static str> {
