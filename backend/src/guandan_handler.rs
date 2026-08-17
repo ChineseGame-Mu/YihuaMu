@@ -105,10 +105,9 @@ pub async fn websocket(socket: WebSocket, storage: HashMapStorage<VersionedGuand
                 let name_for_state = name.clone();
                 let seat_result = storage.clone().execute_operation_with_messages(key.clone(), move |mut state| {
                     if state.game.started || state.game.player_names.len() >= MAX_PLAYERS { return Err(()); }
-                    let seat = state.game.player_names.len();
                     state.game.player_names.push(name_for_state);
                     state.bump_version();
-                    Ok((state, vec![GuandanStorageMessage::StateChanged])).map(|pair| (seat, pair))
+                    Ok((state, vec![GuandanStorageMessage::StateChanged]))
                 }).await;
                 let seat = match seat_result {
                     Ok(_) => {
