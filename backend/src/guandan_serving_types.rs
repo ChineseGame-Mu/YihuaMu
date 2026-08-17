@@ -201,8 +201,7 @@ impl GuandanGameState {
 
     /// Move submitted tribute cards to the receiving hands and move each
     /// receiver's return card back to the giver whose tribute that receiver got.
-    /// In double tribute, first place receives the stronger submitted tribute
-    /// card according to the current level-aware single-card ordering.
+    /// The player who paid the top tribute leads the first trick after exchange.
     pub fn finalize_tribute_exchange(&mut self) -> Result<(), &'static str> {
         if !self.tribute_exchange_complete() {
             return Err("tribute exchange is not complete");
@@ -234,6 +233,7 @@ impl GuandanGameState {
                     .get_mut(giver)
                     .ok_or("tribute giver seat is invalid")?
                     .push(returned);
+                self.turn = giver;
             }
             TributePlan::Double { givers, receivers } => {
                 let first = tribute_cards
@@ -282,6 +282,7 @@ impl GuandanGameState {
                     .get_mut(low_giver)
                     .ok_or("low tribute giver seat is invalid")?
                     .push(second_return);
+                self.turn = high_giver;
             }
         }
 
@@ -385,7 +386,7 @@ mod tests {
     }
 
     #[test]
-    fn single_tribute_submission_enforces_roles_and_order() {
+    fn single_tribute_submission_enforces_roles_order_and_opening_turn() {
         let tribute = card(Suit::Spades, Rank::Ace);
         let returned = card(Suit::Clubs, Rank::Three);
         let mut state = GuandanGameState::default();
@@ -402,11 +403,12 @@ mod tests {
         assert_eq!(state.pending_tribute, None);
         assert_eq!(state.hands[0], vec![tribute]);
         assert_eq!(state.hands[3], vec![returned]);
+        assert_eq!(state.turn, 3);
         assert!(!state.normal_play_blocked());
     }
 
     #[test]
-    fn double_tribute_requires_one_submission_from_each_role() {
+    fn double_tribute_requires_roles_and_top_tribute_opens() {
         let low_tribute = card(Suit::Clubs, Rank::Nine);
         let high_tribute = card(Suit::Spades, Rank::Ace);
         let first_return = card(Suit::Clubs, Rank::Three);
@@ -435,6 +437,32 @@ mod tests {
         assert_eq!(state.hands[2], vec![low_tribute]);
         assert_eq!(state.hands[3], vec![first_return]);
         assert_eq!(state.hands[1], vec![second_return]);
+        assert_eq!(state.turn, 3);
+    }
+
+    #[test]
+    fn equal_double_tribute_uses_first_mapped_giver_as_opener() {
+        let first_tribute = card(Suit::Clubs, Rank::Ace);
+        let second_tribute = card(Suit::Spades, Rank::Ace);
+        let first_return = card(Suit::Clubs, Rank::Three);
+        let second_return = card(Suit::Diamonds, Rank::Four);
+        let mut state = GuandanGameState::default();
+        state.hands = vec![
+            vec![first_return],
+            vec![first_tribute],
+            vec![second_return],
+            vec![second_tribute],
+        ];
+        state.pending_tribute = Some(TributePlan::Double {
+            givers: [1, 3],
+            receivers: [0, 2],
+        });
+        state.submit_tribute_card(1, 0).unwrap();
+        state.submit_tribute_card(3, 0).unwrap();
+        state.submit_return_card(0, 0).unwrap();
+        state.submit_return_card(2, 0).unwrap();
+        state.finalize_tribute_exchange().unwrap();
+        assert_eq!(state.turn, 1);
     }
 
     #[test]
