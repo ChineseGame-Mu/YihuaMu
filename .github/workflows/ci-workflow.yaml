@@ -48,8 +48,10 @@ jobs:
       - name: Check frontend formatting
         run: |
           yarn prettier --write
-          git diff -- frontend/src/JoinRoom.tsx
+          git diff -- src/JoinRoom.tsx
           git diff --exit-code
+        working-directory: ./frontend
+
       - name: Lint Rust code
         run: cargo clippy
 
