@@ -28,6 +28,7 @@ mod state_dump;
 mod utils;
 mod wasm_rpc_handler;
 
+use guandan_serving_types::VersionedGuandanGame;
 use serving_types::{CardsBlob, VersionedGame};
 use state_dump::InMemoryStats;
 static NEXT_USER_ID: AtomicUsize = AtomicUsize::new(1);
@@ -64,6 +65,7 @@ async fn runtime_settings() -> impl IntoResponse {
 async fn main() -> Result<(), anyhow::Error> {
     ctrlc::set_handler(move || { info!(ROOT_LOGGER, "Received SIGTERM, shutting down"); std::process::exit(0); }).unwrap();
     let (backend_storage, stats) = state_dump::load_state().await?;
+    let guandan_storage = HashMapStorage::<VersionedGuandanGame>::new(ROOT_LOGGER.new(o!("game" => "guandan")));
     tokio::task::spawn(periodically_dump_state(backend_storage.clone(), stats.clone()));
     let app = Router::new()
         .route("/api", get(handle_websocket))
@@ -91,7 +93,7 @@ async fn main() -> Result<(), anyhow::Error> {
             else { info!(ROOT_LOGGER, "CORS origins configured: {:?}", origins); CorsLayer::new().allow_origin(AllowOrigin::list(origins)).allow_methods([Method::GET, Method::POST, Method::OPTIONS]).allow_headers(tower_http::cors::Any) }
         }
     };
-    let app = app.layer(cors).layer(Extension(backend_storage)).layer(Extension(stats));
+    let app = app.layer(cors).layer(Extension(backend_storage)).layer(Extension(guandan_storage)).layer(Extension(stats));
     let port = std::env::var("PORT").ok().and_then(|value| value.parse::<u16>().ok()).unwrap_or(3030);
     let address = SocketAddr::from(([0, 0, 0, 0], port));
     info!(ROOT_LOGGER, "Listening"; "address" => address.to_string());
@@ -111,8 +113,12 @@ async fn periodically_dump_state(backend_storage: HashMapStorage<VersionedGame>,
     loop { interval.tick().await; let _ = state_dump::dump_state(Extension(backend_storage.clone()), Extension(stats.clone())).await; }
 }
 
-async fn handle_guandan_websocket(ws: WebSocketUpgrade) -> impl IntoResponse {
-    ws.on_upgrade(guandan_handler::websocket)
+async fn handle_guandan_websocket(
+    ws: WebSocketUpgrade,
+    Extension(guandan_storage): Extension<HashMapStorage<VersionedGuandanGame>>,
+) -> impl IntoResponse {
+    let subscriber_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
+    ws.on_upgrade(move |socket| guandan_handler::websocket(socket, guandan_storage, subscriber_id))
 }
 
 async fn handle_websocket(ws: WebSocketUpgrade, Extension(backend_storage): Extension<HashMapStorage<VersionedGame>>, Extension(stats): Extension<Arc<Mutex<InMemoryStats>>>) -> impl IntoResponse {
