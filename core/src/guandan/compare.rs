@@ -1,6 +1,7 @@
 //! Comparison primitives for Guandan plays.
 
 use std::cmp::Ordering;
+
 use super::{PlayPattern, Rank};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -12,12 +13,43 @@ pub struct PlayStrength {
 
 impl PlayStrength {
     pub fn new(pattern: PlayPattern, main_rank: Rank, card_count: usize) -> Self {
-        Self { pattern, main_rank, card_count }
+        Self {
+            pattern,
+            main_rank,
+            card_count,
+        }
     }
 }
 
 fn is_bomb_family(pattern: PlayPattern) -> bool {
-    matches!(pattern, PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb)
+    matches!(
+        pattern,
+        PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb
+    )
+}
+
+/// Natural Guandan rank order before level-card promotion is applied:
+/// 3 < 4 < ... < K < A < 2.
+fn rank_power(rank: Rank) -> u8 {
+    match rank {
+        Rank::Three => 3,
+        Rank::Four => 4,
+        Rank::Five => 5,
+        Rank::Six => 6,
+        Rank::Seven => 7,
+        Rank::Eight => 8,
+        Rank::Nine => 9,
+        Rank::Ten => 10,
+        Rank::Jack => 11,
+        Rank::Queen => 12,
+        Rank::King => 13,
+        Rank::Ace => 14,
+        Rank::Two => 15,
+    }
+}
+
+fn compare_rank(candidate: Rank, current: Rank) -> Ordering {
+    rank_power(candidate).cmp(&rank_power(current))
 }
 
 /// Guandan bomb ordering used by the multiplayer test:
@@ -58,7 +90,7 @@ pub fn compare(candidate: PlayStrength, current: PlayStrength) -> Option<Orderin
             if candidate.pattern == PlayPattern::StraightFlush
                 && current.pattern == PlayPattern::StraightFlush
             {
-                return Some(candidate.main_rank.cmp(&current.main_rank));
+                return Some(compare_rank(candidate.main_rank, current.main_rank));
             }
 
             // Joker bomb is the absolute top play. Equal joker bombs tie.
@@ -73,7 +105,7 @@ pub fn compare(candidate: PlayStrength, current: PlayStrength) -> Option<Orderin
                 && current.pattern == PlayPattern::Bomb
                 && candidate.card_count == current.card_count
             {
-                return Some(candidate.main_rank.cmp(&current.main_rank));
+                return Some(compare_rank(candidate.main_rank, current.main_rank));
             }
 
             return Some(Ordering::Equal);
@@ -84,7 +116,7 @@ pub fn compare(candidate: PlayStrength, current: PlayStrength) -> Option<Orderin
     if candidate.pattern != current.pattern || candidate.card_count != current.card_count {
         return None;
     }
-    Some(candidate.main_rank.cmp(&current.main_rank))
+    Some(compare_rank(candidate.main_rank, current.main_rank))
 }
 
 pub fn beats(candidate: PlayStrength, current: PlayStrength) -> bool {
@@ -104,11 +136,26 @@ mod tests {
     }
 
     #[test]
+    fn two_is_above_ace_in_natural_guandan_order() {
+        assert!(beats(
+            PlayStrength::new(PlayPattern::Single, Rank::Two, 1),
+            PlayStrength::new(PlayPattern::Single, Rank::Ace, 1)
+        ));
+        assert!(!beats(
+            PlayStrength::new(PlayPattern::Single, Rank::Ace, 1),
+            PlayStrength::new(PlayPattern::Single, Rank::Two, 1)
+        ));
+    }
+
+    #[test]
     fn unrelated_normal_patterns_are_not_comparable() {
-        assert_eq!(compare(
-            PlayStrength::new(PlayPattern::Triple, Rank::Nine, 3),
-            PlayStrength::new(PlayPattern::Pair, Rank::Ace, 2)
-        ), None);
+        assert_eq!(
+            compare(
+                PlayStrength::new(PlayPattern::Triple, Rank::Nine, 3),
+                PlayStrength::new(PlayPattern::Pair, Rank::Ace, 2)
+            ),
+            None
+        );
     }
 
     #[test]
@@ -154,10 +201,10 @@ mod tests {
     }
 
     #[test]
-    fn same_size_bombs_compare_rank() {
+    fn same_size_bombs_compare_rank_with_two_high() {
         assert!(beats(
-            PlayStrength::new(PlayPattern::Bomb, Rank::King, 6),
-            PlayStrength::new(PlayPattern::Bomb, Rank::Queen, 6)
+            PlayStrength::new(PlayPattern::Bomb, Rank::Two, 6),
+            PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 6)
         ));
     }
 
