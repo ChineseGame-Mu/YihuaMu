@@ -11,6 +11,7 @@ pub mod level;
 pub mod rules;
 pub mod strength;
 pub mod team;
+pub mod tribute;
 pub mod trick;
 
 pub const MIN_PLAYERS: usize = 4;
