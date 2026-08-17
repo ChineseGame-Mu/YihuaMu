@@ -104,8 +104,8 @@ mod tests {
         assert!(!room.game.started);
         assert!(!room.game.trick_complete);
         assert_eq!(room.game.level, Rank::Two);
-        assert_eq!(room.game.team_levels.level(Team::A), Rank::Two);
-        assert_eq!(room.game.team_levels.level(Team::B), Rank::Two);
+        assert_eq!(room.game.team_levels.level_for(Team::A), Rank::Two);
+        assert_eq!(room.game.team_levels.level_for(Team::B), Rank::Two);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
