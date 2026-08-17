@@ -8,9 +8,11 @@
 
 use std::convert::TryInto;
 
+use serde::{Deserialize, Serialize};
+
 use super::{team::team_for_seat, CardFace, Joker, TableConfig};
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub enum TributePlan {
     /// Last place pays tribute to first place.
     Single { giver: usize, receiver: usize },
