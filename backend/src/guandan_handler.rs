@@ -31,6 +31,8 @@ pub enum GuandanClientMessage {
     Join { room: String, name: String },
     Start { player_count: usize },
     Play { card_indexes: Vec<usize> },
+    TributeCard { card_index: usize },
+    ReturnTribute { card_index: usize },
     Pass,
     EndRound,
 }
@@ -238,7 +240,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v16-tribute-state",
+            protocol: "guandan-v17-tribute-commands",
         },
     );
 
@@ -437,6 +439,8 @@ pub async fn websocket(
                         state.game.last_game_winner = None;
                         state.game.last_game_winner_team = None;
                         state.game.pending_tribute = None;
+                        state.game.tribute_cards.clear();
+                        state.game.return_cards.clear();
                         state.game.tribute_resisted = false;
                         state.game.match_winner = None;
                         state.bump_version();
@@ -561,6 +565,68 @@ pub async fn websocket(
                         &tx,
                         &GuandanServerMessage::Hand {
                             cards: hand.to_vec(),
+                        },
+                    );
+                }
+            }
+            GuandanClientMessage::TributeCard { card_index } => {
+                let (key, seat) = match (joined_room.clone(), joined_seat) {
+                    (Some(key), Some(seat)) => (key, seat),
+                    _ => continue,
+                };
+                let result: Result<u64, PlayError> = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if !state.game.started || state.game.match_winner.is_some() {
+                            return Err(PlayError::Invalid("tribute is not available now"));
+                        }
+                        state
+                            .game
+                            .submit_tribute_card(seat, card_index)
+                            .map_err(PlayError::Invalid)?;
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if let Err(error) = result {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: error.to_string(),
+                        },
+                    );
+                }
+            }
+            GuandanClientMessage::ReturnTribute { card_index } => {
+                let (key, seat) = match (joined_room.clone(), joined_seat) {
+                    (Some(key), Some(seat)) => (key, seat),
+                    _ => continue,
+                };
+                let result: Result<u64, PlayError> = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if !state.game.started || state.game.match_winner.is_some() {
+                            return Err(PlayError::Invalid("return tribute is not available now"));
+                        }
+                        state
+                            .game
+                            .submit_return_card(seat, card_index)
+                            .map_err(PlayError::Invalid)?;
+                        if state.game.tribute_exchange_complete() {
+                            state
+                                .game
+                                .finalize_tribute_exchange()
+                                .map_err(PlayError::Invalid)?;
+                        }
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if let Err(error) = result {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: error.to_string(),
                         },
                     );
                 }
@@ -735,6 +801,22 @@ mod tests {
             Rank::Five,
         )
         .is_ok());
+    }
+
+    #[test]
+    fn tribute_commands_deserialize() {
+        let tribute: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"tribute_card","card_index":3}"#).unwrap();
+        assert!(matches!(
+            tribute,
+            GuandanClientMessage::TributeCard { card_index: 3 }
+        ));
+        let returned: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"return_tribute","card_index":2}"#).unwrap();
+        assert!(matches!(
+            returned,
+            GuandanClientMessage::ReturnTribute { card_index: 2 }
+        ));
     }
 
     #[test]
