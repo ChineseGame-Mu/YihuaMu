@@ -112,6 +112,91 @@ impl GuandanGameState {
         self.pending_tribute.is_some() || self.match_winner.is_some()
     }
 
+    fn tribute_givers(&self) -> Option<Vec<usize>> {
+        match self.pending_tribute.as_ref()? {
+            TributePlan::Single { giver, .. } => Some(vec![*giver]),
+            TributePlan::Double { givers, .. } => Some(givers.to_vec()),
+        }
+    }
+
+    fn tribute_receivers(&self) -> Option<Vec<usize>> {
+        match self.pending_tribute.as_ref()? {
+            TributePlan::Single { receiver, .. } => Some(vec![*receiver]),
+            TributePlan::Double { receivers, .. } => Some(receivers.to_vec()),
+        }
+    }
+
+    pub fn submit_tribute_card(
+        &mut self,
+        player: usize,
+        card_index: usize,
+    ) -> Result<CardFace, &'static str> {
+        let givers = self
+            .tribute_givers()
+            .ok_or("there is no pending tribute exchange")?;
+        if !givers.contains(&player) {
+            return Err("this player is not required to pay tribute");
+        }
+        if self.tribute_cards.iter().any(|entry| entry.player == player) {
+            return Err("this player has already submitted a tribute card");
+        }
+        let hand = self
+            .hands
+            .get_mut(player)
+            .ok_or("tribute player seat is invalid")?;
+        if card_index >= hand.len() {
+            return Err("tribute card selection is invalid");
+        }
+        let card = hand.remove(card_index);
+        self.tribute_cards.push(GuandanTributeCard { player, card });
+        Ok(card)
+    }
+
+    pub fn submit_return_card(
+        &mut self,
+        player: usize,
+        card_index: usize,
+    ) -> Result<CardFace, &'static str> {
+        let receivers = self
+            .tribute_receivers()
+            .ok_or("there is no pending tribute exchange")?;
+        let expected_tribute_count = self
+            .tribute_givers()
+            .map(|givers| givers.len())
+            .ok_or("there is no pending tribute exchange")?;
+        if self.tribute_cards.len() != expected_tribute_count {
+            return Err("all tribute cards must be submitted before return cards");
+        }
+        if !receivers.contains(&player) {
+            return Err("this player is not required to return a card");
+        }
+        if self.return_cards.iter().any(|entry| entry.player == player) {
+            return Err("this player has already submitted a return card");
+        }
+        let hand = self
+            .hands
+            .get_mut(player)
+            .ok_or("return-card player seat is invalid")?;
+        if card_index >= hand.len() {
+            return Err("return card selection is invalid");
+        }
+        let card = hand.remove(card_index);
+        self.return_cards.push(GuandanTributeCard { player, card });
+        Ok(card)
+    }
+
+    pub fn tribute_exchange_complete(&self) -> bool {
+        let giver_count = match self.tribute_givers() {
+            Some(givers) => givers.len(),
+            None => return false,
+        };
+        let receiver_count = match self.tribute_receivers() {
+            Some(receivers) => receivers.len(),
+            None => return false,
+        };
+        self.tribute_cards.len() == giver_count && self.return_cards.len() == receiver_count
+    }
+
     pub fn clear_tribute_exchange(&mut self) {
         self.pending_tribute = None;
         self.tribute_cards.clear();
@@ -146,6 +231,10 @@ mod tests {
     use super::*;
     use shengji_core::guandan::{team::Team, tribute::TributePlan, Rank, Suit};
 
+    fn card(suit: Suit, rank: Rank) -> CardFace {
+        CardFace::Suited { suit, rank }
+    }
+
     #[test]
     fn guandan_uses_shared_versioned_room() {
         let room = new_guandan_room(b"test-room".to_vec());
@@ -171,8 +260,8 @@ mod tests {
 
     #[test]
     fn private_hand_does_not_expose_other_seats() {
-        let c1 = CardFace::Suited { suit: Suit::Clubs, rank: Rank::Two };
-        let c2 = CardFace::Suited { suit: Suit::Hearts, rank: Rank::Ace };
+        let c1 = card(Suit::Clubs, Rank::Two);
+        let c2 = card(Suit::Hearts, Rank::Ace);
         let mut state = GuandanGameState::default();
         state.hands = vec![vec![c1], vec![c2]];
         assert_eq!(state.private_hand(0), Some(&[c1][..]));
@@ -192,15 +281,53 @@ mod tests {
 
     #[test]
     fn tribute_exchange_cards_can_be_cleared_together() {
-        let card = CardFace::Suited { suit: Suit::Spades, rank: Rank::Ace };
+        let c = card(Suit::Spades, Rank::Ace);
         let mut state = GuandanGameState::default();
         state.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
-        state.tribute_cards.push(GuandanTributeCard { player: 3, card });
-        state.return_cards.push(GuandanTributeCard { player: 0, card });
+        state.tribute_cards.push(GuandanTributeCard { player: 3, card: c });
+        state.return_cards.push(GuandanTributeCard { player: 0, card: c });
         state.clear_tribute_exchange();
         assert_eq!(state.pending_tribute, None);
         assert!(state.tribute_cards.is_empty());
         assert!(state.return_cards.is_empty());
+    }
+
+    #[test]
+    fn single_tribute_submission_enforces_roles_and_order() {
+        let tribute = card(Suit::Spades, Rank::Ace);
+        let returned = card(Suit::Clubs, Rank::Three);
+        let mut state = GuandanGameState::default();
+        state.hands = vec![vec![returned], vec![], vec![], vec![tribute]];
+        state.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
+
+        assert!(state.submit_return_card(0, 0).is_err());
+        assert!(state.submit_tribute_card(0, 0).is_err());
+        assert_eq!(state.submit_tribute_card(3, 0), Ok(tribute));
+        assert!(state.submit_tribute_card(3, 0).is_err());
+        assert_eq!(state.submit_return_card(0, 0), Ok(returned));
+        assert!(state.tribute_exchange_complete());
+    }
+
+    #[test]
+    fn double_tribute_requires_one_submission_from_each_role() {
+        let mut state = GuandanGameState::default();
+        state.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Spades, Rank::Ace)],
+            vec![card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Hearts, Rank::King)],
+        ];
+        state.pending_tribute = Some(TributePlan::Double {
+            givers: [1, 3],
+            receivers: [0, 2],
+        });
+
+        assert!(state.submit_tribute_card(1, 0).is_ok());
+        assert!(state.submit_return_card(0, 0).is_err());
+        assert!(state.submit_tribute_card(3, 0).is_ok());
+        assert!(state.submit_return_card(0, 0).is_ok());
+        assert!(state.submit_return_card(2, 0).is_ok());
+        assert!(state.tribute_exchange_complete());
     }
 
     #[test]
