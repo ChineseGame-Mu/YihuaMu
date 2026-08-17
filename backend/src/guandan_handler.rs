@@ -1,14 +1,17 @@
 //! Guandan websocket protocol backed by the same HashMapStorage abstraction
 //! used by the existing Shengji/Find-Friends server.
 
+use std::fmt;
+
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
+    compare::beats,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
-    rules::classify_basic,
+    strength::strength_basic,
     CardFace, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
 use storage::{HashMapStorage, Storage};
@@ -56,10 +59,31 @@ pub enum GuandanServerMessage {
     Error { message: String },
 }
 
+#[derive(Debug)]
+enum PlayError {
+    Storage,
+    Invalid(&'static str),
+}
+
+impl From<()> for PlayError {
+    fn from(_: ()) -> Self {
+        Self::Storage
+    }
+}
+
+impl fmt::Display for PlayError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Storage => write!(f, "temporary room storage error"),
+            Self::Invalid(message) => write!(f, "{message}"),
+        }
+    }
+}
+
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
     let table = TableConfig::new(player_count)?;
     if !table.is_even_table() {
-        return Err("first multiplayer test supports even tables: 4, 6, 8, 10, 12, 14");
+        return Err("Guandan supports even tables: 4, 6, 8, 10, 12, 14");
     }
     Ok(table)
 }
@@ -99,8 +123,20 @@ fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> Guand
     }
 }
 
-fn basic_play_is_legal(cards: &[CardFace]) -> bool {
-    classify_basic(cards).is_some()
+fn validate_play_against_table(
+    cards: &[CardFace],
+    current: &[CardFace],
+) -> Result<(), &'static str> {
+    let candidate = strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
+    if current.is_empty() {
+        return Ok(());
+    }
+    let table = strength_basic(current).ok_or("current table play is invalid")?;
+    if beats(candidate, table) {
+        Ok(())
+    } else {
+        Err("play must beat the current table play")
+    }
 }
 
 pub async fn websocket(
@@ -121,9 +157,10 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v9-pattern-validation",
+            protocol: "guandan-v10-trick-comparison",
         },
     );
+
     let mut joined_room: Option<Vec<u8>> = None;
     let mut joined_seat: Option<usize> = None;
     let mut subscription_task = None;
@@ -166,6 +203,7 @@ pub async fn websocket(
                     );
                     continue;
                 }
+
                 let key = room.as_bytes().to_vec();
                 let name_for_state = name.clone();
                 let seat_result = storage
@@ -179,17 +217,18 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
+
                 let seat = match seat_result {
                     Ok(_) => {
                         let state = match storage.clone().get(key.clone()).await {
-                            Ok(s) => s,
+                            Ok(state) => state,
                             Err(_) => continue,
                         };
                         state
                             .game
                             .player_names
                             .iter()
-                            .position(|n| n == &name)
+                            .position(|player_name| player_name == &name)
                             .unwrap_or(state.game.player_names.len().saturating_sub(1))
                     }
                     Err(_) => {
@@ -202,10 +241,15 @@ pub async fn websocket(
                         continue;
                     }
                 };
+
                 joined_room = Some(key.clone());
                 joined_seat = Some(seat);
                 send(&tx, &GuandanServerMessage::Joined { room, seat });
-                let state = storage.clone().get(key.clone()).await.unwrap();
+
+                let state = match storage.clone().get(key.clone()).await {
+                    Ok(state) => state,
+                    Err(_) => continue,
+                };
                 send(
                     &tx,
                     &GuandanServerMessage::Waiting {
@@ -214,11 +258,15 @@ pub async fn websocket(
                         maximum_players: MAX_PLAYERS,
                     },
                 );
-                let mut sub = storage
+
+                let mut sub = match storage
                     .clone()
                     .subscribe(key.clone(), subscriber_id)
                     .await
-                    .unwrap();
+                {
+                    Ok(sub) => sub,
+                    Err(_) => continue,
+                };
                 let tx_sub = tx.clone();
                 let storage_sub = storage.clone();
                 let seat_sub = seat;
@@ -251,7 +299,7 @@ pub async fn websocket(
             }
             GuandanClientMessage::Start { player_count } => {
                 let (key, seat) = match (joined_room.clone(), joined_seat) {
-                    (Some(k), Some(s)) => (k, s),
+                    (Some(key), Some(seat)) => (key, seat),
                     _ => {
                         send(
                             &tx,
@@ -272,17 +320,18 @@ pub async fn websocket(
                     continue;
                 }
                 let table = match validate_start(player_count) {
-                    Ok(t) => t,
-                    Err(e) => {
+                    Ok(table) => table,
+                    Err(message) => {
                         send(
                             &tx,
                             &GuandanServerMessage::Error {
-                                message: e.to_string(),
+                                message: message.to_string(),
                             },
                         );
                         continue;
                     }
                 };
+
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
@@ -307,6 +356,7 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
+
                 if result.is_err() {
                     send(
                         &tx,
@@ -316,7 +366,11 @@ pub async fn websocket(
                     );
                     continue;
                 }
-                let state = storage.clone().get(key).await.unwrap();
+
+                let state = match storage.clone().get(key).await {
+                    Ok(state) => state,
+                    Err(_) => continue,
+                };
                 send(
                     &tx,
                     &GuandanServerMessage::Started {
@@ -335,13 +389,14 @@ pub async fn websocket(
             }
             GuandanClientMessage::Play { mut card_indexes } => {
                 let (key, seat) = match (joined_room.clone(), joined_seat) {
-                    (Some(k), Some(s)) => (k, s),
+                    (Some(key), Some(seat)) => (key, seat),
                     _ => continue,
                 };
+
                 card_indexes.sort_unstable();
                 card_indexes.dedup();
-                let indexes = card_indexes.clone();
-                let result = storage
+                let indexes = card_indexes;
+                let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
                         if !state.game.started
@@ -351,17 +406,20 @@ pub async fn websocket(
                             || indexes.last().copied().unwrap_or(0)
                                 >= state.game.hands[seat].len()
                         {
-                            return Err("not your turn or invalid card selection");
+                            return Err(PlayError::Invalid(
+                                "not your turn or invalid card selection",
+                            ));
                         }
+
                         let cards = indexes
                             .iter()
-                            .map(|&i| state.game.hands[seat][i])
+                            .map(|&index| state.game.hands[seat][index])
                             .collect::<Vec<_>>();
-                        if !basic_play_is_legal(&cards) {
-                            return Err("selected cards are not a legal Guandan pattern");
-                        }
-                        for &i in indexes.iter().rev() {
-                            state.game.hands[seat].remove(i);
+                        validate_play_against_table(&cards, &state.game.last_play)
+                            .map_err(PlayError::Invalid)?;
+
+                        for &index in indexes.iter().rev() {
+                            state.game.hands[seat].remove(index);
                         }
                         state.game.last_play = cards.clone();
                         state.game.last_player = Some(seat);
@@ -375,16 +433,21 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
-                if let Err(message) = result {
+
+                if let Err(error) = result {
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: message.to_string(),
+                            message: error.to_string(),
                         },
                     );
                     continue;
                 }
-                let state = storage.clone().get(key).await.unwrap();
+
+                let state = match storage.clone().get(key).await {
+                    Ok(state) => state,
+                    Err(_) => continue,
+                };
                 if let Some(hand) = state.game.private_hand(seat) {
                     send(
                         &tx,
@@ -396,7 +459,7 @@ pub async fn websocket(
             }
             GuandanClientMessage::Pass => {
                 let (key, seat) = match (joined_room.clone(), joined_seat) {
-                    (Some(k), Some(s)) => (k, s),
+                    (Some(key), Some(seat)) => (key, seat),
                     _ => continue,
                 };
                 let result = storage
@@ -410,9 +473,14 @@ pub async fn websocket(
                             return Err(());
                         }
                         state.game.passes += 1;
-                        let active = state.game.hands.iter().filter(|h| !h.is_empty()).count();
-                        if state.game.passes + 1 >= active {
-                            state.game.turn = state.game.last_player.unwrap();
+                        let active_players = state
+                            .game
+                            .hands
+                            .iter()
+                            .filter(|hand| !hand.is_empty())
+                            .count();
+                        if state.game.passes + 1 >= active_players {
+                            state.game.turn = state.game.last_player.unwrap_or(state.game.turn);
                             state.game.trick_complete = true;
                         } else {
                             advance_turn(&mut state.game);
@@ -432,7 +500,7 @@ pub async fn websocket(
             }
             GuandanClientMessage::EndRound => {
                 let key = match joined_room.clone() {
-                    Some(k) => k,
+                    Some(key) => key,
                     None => continue,
                 };
                 let result = storage
@@ -490,32 +558,58 @@ mod tests {
     }
 
     #[test]
-    fn rejects_odd_tables_for_first_network_test() {
+    fn rejects_odd_tables() {
         for count in [5usize, 7, 9, 11, 13] {
             assert!(validate_start(count).is_err());
         }
     }
 
     #[test]
-    fn accepts_basic_legal_play_patterns() {
-        assert!(basic_play_is_legal(&[card(Suit::Spades, Rank::Ace)]));
-        assert!(basic_play_is_legal(&[
-            card(Suit::Clubs, Rank::King),
-            card(Suit::Hearts, Rank::King),
-        ]));
-        assert!(basic_play_is_legal(&[
-            card(Suit::Clubs, Rank::Nine),
-            card(Suit::Diamonds, Rank::Nine),
-            card(Suit::Hearts, Rank::Nine),
-            card(Suit::Spades, Rank::Nine),
-        ]));
+    fn accepts_opening_legal_play() {
+        assert!(validate_play_against_table(&[card(Suit::Spades, Rank::Ace)], &[]).is_ok());
     }
 
     #[test]
-    fn rejects_mixed_cards_that_are_not_a_guandan_pattern() {
-        assert!(!basic_play_is_legal(&[
-            card(Suit::Clubs, Rank::Three),
-            card(Suit::Hearts, Rank::Eight),
-        ]));
+    fn higher_single_beats_lower_single() {
+        assert!(validate_play_against_table(
+            &[card(Suit::Spades, Rank::King)],
+            &[card(Suit::Clubs, Rank::Queen)],
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn lower_single_cannot_beat_higher_single() {
+        assert!(validate_play_against_table(
+            &[card(Suit::Spades, Rank::Jack)],
+            &[card(Suit::Clubs, Rank::Queen)],
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn pair_cannot_beat_single() {
+        assert!(validate_play_against_table(
+            &[
+                card(Suit::Spades, Rank::Ace),
+                card(Suit::Hearts, Rank::Ace),
+            ],
+            &[card(Suit::Clubs, Rank::Queen)],
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn four_card_bomb_beats_normal_play() {
+        assert!(validate_play_against_table(
+            &[
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                card(Suit::Hearts, Rank::Three),
+                card(Suit::Spades, Rank::Three),
+            ],
+            &[card(Suit::Clubs, Rank::Ace)],
+        )
+        .is_ok());
     }
 }
