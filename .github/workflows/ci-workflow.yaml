@@ -46,8 +46,10 @@ jobs:
         working-directory: ./frontend
 
       - name: Check frontend formatting
-        run: yarn prettier --check
-        working-directory: ./frontend
+        run: |
+          yarn prettier --write
+          git diff -- frontend/src/JoinRoom.tsx
+          git diff --exit-code
       - name: Lint Rust code
         run: cargo clippy
 
