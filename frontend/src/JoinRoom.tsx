@@ -17,13 +17,15 @@ interface IProps {
   gameMode?: GameModeChoice;
 }
 
+const ROOM_CODE_LENGTH = 2;
+
 const JoinRoom = (props: IProps): JSX.Element => {
   const [editable, setEditable] = React.useState<boolean>(false);
   const [shouldGenerate, setShouldGenerate] = React.useState<boolean>(
-    props.room_name.length !== 16,
+    props.room_name.length !== ROOM_CODE_LENGTH,
   );
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
-    props.room_name.length !== 16,
+    props.room_name.length !== ROOM_CODE_LENGTH,
   );
   const { send } = React.useContext(WebsocketContext);
   const { setTimeout } = React.useContext(TimerContext);
@@ -35,12 +37,12 @@ const JoinRoom = (props: IProps): JSX.Element => {
     event: React.ChangeEvent<HTMLInputElement>,
   ): void => {
     setCreatingNewRoom(false);
-    props.setRoomName(event.target.value.trim());
+    props.setRoomName(event.target.value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH));
   };
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
     event.preventDefault();
-    if (props.name.length > 0 && props.room_name.length === 16) {
+    if (props.name.length > 0 && props.room_name.length === ROOM_CODE_LENGTH) {
       send({
         room_name: props.room_name,
         name: props.name,
@@ -69,10 +71,12 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const editableRoomName = (
     <input
       type="text"
-      placeholder="请输入房间代码"
+      inputMode="numeric"
+      pattern="[0-9]{2}"
+      placeholder="请输入2位房间代码"
       value={props.room_name}
       onChange={handleRoomChange}
-      maxLength={16}
+      maxLength={ROOM_CODE_LENGTH}
     />
   );
   const nonEditableRoomName = (
@@ -88,13 +92,11 @@ const JoinRoom = (props: IProps): JSX.Element => {
   );
 
   const generateRoomName = (): void => {
-    const arr = new Uint8Array(8);
+    const arr = new Uint32Array(1);
     window.crypto.getRandomValues(arr);
     setShouldGenerate(false);
     setCreatingNewRoom(true);
-    props.setRoomName(
-      Array.from(arr, (d) => ("0" + d.toString(16)).substr(-2)).join(""),
-    );
+    props.setRoomName(String(arr[0] % 100).padStart(ROOM_CODE_LENGTH, "0"));
   };
 
   if (shouldGenerate) {
@@ -135,7 +137,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
             type="submit"
             value="加入（或创建）游戏"
             disabled={
-              props.room_name.length !== 16 ||
+              props.room_name.length !== ROOM_CODE_LENGTH ||
               props.name.length === 0 ||
               props.name.length > 32
             }
