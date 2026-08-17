@@ -26,6 +26,9 @@ pub struct GuandanGameState {
     pub last_player: Option<usize>,
     pub table_plays: Vec<GuandanTablePlay>,
     pub passes: usize,
+    /// True once every other active player has passed. The completed trick
+    /// remains visible on the table until someone confirms "end round".
+    pub trick_complete: bool,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -77,6 +80,7 @@ mod tests {
         let room = new_guandan_room(b"test-room".to_vec());
         assert_eq!(room.monotonic_id, 0);
         assert!(!room.game.started);
+        assert!(!room.game.trick_complete);
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
