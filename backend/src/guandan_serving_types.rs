@@ -93,6 +93,12 @@ impl GuandanGameState {
     pub fn private_hand(&self, seat: usize) -> Option<&[CardFace]> {
         self.hands.get(seat).map(Vec::as_slice)
     }
+
+    /// Normal trick play must pause while a tribute exchange is outstanding.
+    /// A resisted tribute has no pending plan, so play may continue normally.
+    pub fn normal_play_blocked(&self) -> bool {
+        self.pending_tribute.is_some() || self.match_winner.is_some()
+    }
 }
 
 pub type VersionedGuandanGame = VersionedRoom<GuandanGameState>;
@@ -120,7 +126,7 @@ pub fn new_guandan_room(room_name: Vec<u8>) -> VersionedGuandanGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use shengji_core::guandan::{team::Team, Rank, Suit};
+    use shengji_core::guandan::{team::Team, tribute::TributePlan, Rank, Suit};
 
     #[test]
     fn guandan_uses_shared_versioned_room() {
@@ -138,6 +144,7 @@ mod tests {
         assert_eq!(room.game.pending_tribute, None);
         assert!(!room.game.tribute_resisted);
         assert_eq!(room.game.match_winner, None);
+        assert!(!room.game.normal_play_blocked());
         assert!(room.associated_websockets.is_empty());
         assert_eq!(room.key(), b"test-room");
     }
@@ -157,5 +164,25 @@ mod tests {
         assert_eq!(state.private_hand(0), Some(&[c1][..]));
         assert_eq!(state.private_hand(1), Some(&[c2][..]));
         assert_eq!(state.private_hand(2), None);
+    }
+
+    #[test]
+    fn pending_tribute_blocks_normal_play_until_resolved() {
+        let mut state = GuandanGameState::default();
+        state.pending_tribute = Some(TributePlan::Single {
+            giver: 3,
+            receiver: 0,
+        });
+        assert!(state.normal_play_blocked());
+        state.pending_tribute = None;
+        state.tribute_resisted = true;
+        assert!(!state.normal_play_blocked());
+    }
+
+    #[test]
+    fn finished_match_blocks_normal_play() {
+        let mut state = GuandanGameState::default();
+        state.match_winner = Some(Team::A);
+        assert!(state.normal_play_blocked());
     }
 }
