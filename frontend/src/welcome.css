@@ -183,8 +183,7 @@
 }
 
 @keyframes welcomePulse {
-  0%,
-  100% {
+  0%, 100% {
     opacity: 0.55;
   }
   50% {
