@@ -20,7 +20,7 @@ impl TableConfig {
         Ok(Self { player_count })
     }
     pub fn seat_numbers(self) -> impl Iterator<Item = usize> { 0..self.player_count }
-    pub fn is_even_table(self) -> bool { self.player_count % 2 == 0 }
+    pub fn is_even_table(self) -> bool { self.player_count.is_multiple_of(2) }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
