@@ -83,6 +83,12 @@
   background: #fafafa;
 }
 
+.welcome-mode-coming-soon {
+  grid-column: 1 / -1;
+  border-style: dashed;
+  background: #f5f5f7;
+}
+
 .welcome-mode-icon {
   width: 42px;
   height: 42px;
@@ -105,6 +111,18 @@
   font-size: 14px;
   line-height: 1.55;
   color: #696b73;
+}
+
+.welcome-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #ececf1;
+  color: #666872;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: 2px;
 }
 
 .welcome-actions {
@@ -191,7 +209,9 @@
     grid-template-columns: 1fr;
   }
 
-  .welcome-mode {
+  .welcome-mode,
+  .welcome-mode-coming-soon {
+    grid-column: auto;
     padding: 15px;
   }
 }
@@ -221,9 +241,18 @@
   color: #d7d9df;
 }
 
+.dark-mode .welcome-mode-coming-soon {
+  background: #1d1e22;
+}
+
 .dark-mode .welcome-mode-icon {
   background: #18191d;
   border-color: #30323a;
+}
+
+.dark-mode .welcome-badge {
+  background: #30323a;
+  color: #c7c9d0;
 }
 
 .dark-mode .welcome-rules-button {
