@@ -43,6 +43,7 @@ pub enum GuandanServerMessage {
     },
     Hand { cards: Vec<CardFace> },
     State {
+        players: Vec<String>,
         turn: usize,
         hand_counts: Vec<usize>,
         last_play: Vec<CardFace>,
@@ -86,6 +87,7 @@ fn advance_turn(game: &mut crate::guandan_serving_types::GuandanGameState) {
 
 fn state_message(game: &crate::guandan_serving_types::GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
+        players: game.player_names.clone(),
         turn: game.turn,
         hand_counts: game.hand_counts(),
         last_play: game.last_play.clone(),
@@ -114,7 +116,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v7-end-round",
+            protocol: "guandan-v8-player-names",
         },
     );
     let mut joined_room: Option<Vec<u8>> = None;
