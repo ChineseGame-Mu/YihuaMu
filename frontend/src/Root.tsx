@@ -68,9 +68,12 @@ const Root = (): JSX.Element => {
       ))}
     </div>
   ) : null;
+
   if (state.connected) {
     if (state.gameState === null || state.roomName.length !== ROOM_CODE_LENGTH) {
-      if (selectedGameMode === null) {
+      const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
+
+      if (selectedGameMode === null && !hasSharedRoom) {
         return (
           <div className="welcome-shell">
             {headerMessages}
@@ -91,22 +94,30 @@ const Root = (): JSX.Element => {
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
             </h1>
-            <p>
-              当前模式：
-              <strong>
-                {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
-              </strong>{" "}
-              <button
-                className="normal"
-                onClick={() => setSelectedGameMode(null)}
-              >
-                重新选择
-              </button>
-            </p>
+            {hasSharedRoom && selectedGameMode === null ? (
+              <p>
+                正在进入朋友分享的房间：<strong>{state.roomName}</strong>
+              </p>
+            ) : (
+              <p>
+                当前模式：
+                <strong>
+                  {selectedGameMode === "Tractor"
+                    ? "升级 / 拖拉机"
+                    : "找朋友"}
+                </strong>{" "}
+                <button
+                  className="normal"
+                  onClick={() => setSelectedGameMode(null)}
+                >
+                  重新选择
+                </button>
+              </p>
+            )}
             <JoinRoom
               name={state.name}
               room_name={state.roomName}
-              gameMode={selectedGameMode}
+              gameMode={selectedGameMode ?? undefined}
               setName={(name: string) => updateState({ name })}
               setRoomName={(roomName: string) => {
                 updateState({ roomName });
