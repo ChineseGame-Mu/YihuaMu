@@ -166,7 +166,11 @@ impl GuandanGameState {
         if !givers.contains(&player) {
             return Err("this player is not required to pay tribute");
         }
-        if self.tribute_cards.iter().any(|entry| entry.player == player) {
+        if self
+            .tribute_cards
+            .iter()
+            .any(|entry| entry.player == player)
+        {
             return Err("this player has already submitted a tribute card");
         }
         let hand = self
@@ -388,10 +392,7 @@ mod tests {
             vec![],
             vec![],
             vec![],
-            vec![
-                card(Suit::Clubs, Rank::King),
-                card(Suit::Spades, Rank::Ace),
-            ],
+            vec![card(Suit::Clubs, Rank::King), card(Suit::Spades, Rank::Ace)],
         ];
         state.pending_tribute = Some(TributePlan::Single {
             giver: 3,
@@ -436,10 +437,7 @@ mod tests {
             vec![],
             vec![],
             vec![],
-            vec![
-                card(Suit::Spades, Rank::Ace),
-                card(Suit::Clubs, Rank::Five),
-            ],
+            vec![card(Suit::Spades, Rank::Ace), card(Suit::Clubs, Rank::Five)],
         ];
         state.pending_tribute = Some(TributePlan::Single {
             giver: 3,
@@ -485,10 +483,7 @@ mod tests {
         let mut state = GuandanGameState::default();
         state.level = Rank::Five;
         state.hands = vec![
-            vec![
-                card(Suit::Clubs, Rank::Five),
-                card(Suit::Clubs, Rank::Four),
-            ],
+            vec![card(Suit::Clubs, Rank::Five), card(Suit::Clubs, Rank::Four)],
             vec![],
             vec![],
             vec![],
