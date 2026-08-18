@@ -178,4 +178,34 @@ mod tests {
         ];
         assert!(can_resist_tribute(&plan, &hands));
     }
+
+    #[test]
+    fn double_tribute_does_not_resist_with_only_one_big_joker() {
+        let plan = TributePlan::Double {
+            givers: [1, 3],
+            receivers: [0, 2],
+        };
+        let hands = vec![
+            vec![],
+            vec![CardFace::Joker(Joker::Big)],
+            vec![],
+            vec![card(Suit::Clubs, Rank::Ace)],
+        ];
+        assert!(!can_resist_tribute(&plan, &hands));
+    }
+
+    #[test]
+    fn double_tribute_resists_when_one_giver_holds_both_big_jokers() {
+        let plan = TributePlan::Double {
+            givers: [1, 3],
+            receivers: [0, 2],
+        };
+        let hands = vec![
+            vec![],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+            vec![],
+            vec![card(Suit::Spades, Rank::King)],
+        ];
+        assert!(can_resist_tribute(&plan, &hands));
+    }
 }
