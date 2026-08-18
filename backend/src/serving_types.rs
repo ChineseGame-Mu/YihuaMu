@@ -7,13 +7,33 @@ use shengji_mechanics::types::{CardInfo, PlayerID};
 use shengji_types::GameMessage;
 use storage::State;
 
+/// Shared versioned-room shape. Shengji/Find-Friends and Guandan can use the
+/// same room identity, websocket ownership, versioning and storage machinery
+/// while keeping their rule engines separate.
 #[derive(Serialize, Deserialize, Clone)]
-pub struct VersionedGame {
+pub struct VersionedRoom<G> {
     pub(crate) room_name: Vec<u8>,
-    pub(crate) game: shengji_core::game_state::GameState,
+    pub(crate) game: G,
     pub(crate) associated_websockets: HashMap<PlayerID, Vec<usize>>,
     pub(crate) monotonic_id: u64,
 }
+
+impl<G> VersionedRoom<G> {
+    pub(crate) fn with_game(room_name: Vec<u8>, game: G) -> Self {
+        Self {
+            room_name,
+            game,
+            associated_websockets: HashMap::new(),
+            monotonic_id: 0,
+        }
+    }
+
+    pub(crate) fn bump_version(&mut self) {
+        self.monotonic_id = self.monotonic_id.saturating_add(1);
+    }
+}
+
+pub type VersionedGame = VersionedRoom<shengji_core::game_state::GameState>;
 
 impl State for VersionedGame {
     type Message = GameMessage;
@@ -27,14 +47,12 @@ impl State for VersionedGame {
     }
 
     fn new_from_key(key: Vec<u8>) -> Self {
-        VersionedGame {
-            room_name: key,
-            game: shengji_core::game_state::GameState::Initialize(
+        VersionedRoom::with_game(
+            key,
+            shengji_core::game_state::GameState::Initialize(
                 shengji_core::game_state::initialize_phase::InitializePhase::new(),
             ),
-            associated_websockets: HashMap::new(),
-            monotonic_id: 0,
-        }
+        )
     }
 }
 
