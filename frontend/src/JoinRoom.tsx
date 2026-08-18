@@ -19,7 +19,6 @@ interface IProps {
 export const ROOM_CODE_LENGTH = 4;
 
 const JoinRoom = (props: IProps): JSX.Element => {
-  const [editable, setEditable] = React.useState<boolean>(false);
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
     props.room_name.length !== ROOM_CODE_LENGTH,
   );
@@ -65,35 +64,11 @@ const JoinRoom = (props: IProps): JSX.Element => {
     }
   };
 
-  const editableRoomName = (
-    <input
-      type="text"
-      inputMode="numeric"
-      pattern="[0-9]{4}"
-      placeholder="请输入4位房间代码"
-      value={props.room_name}
-      onChange={handleRoomChange}
-      maxLength={ROOM_CODE_LENGTH}
-    />
-  );
-  const nonEditableRoomName = (
-    <span
-      title="设置房间代码"
-      onClick={(evt) => {
-        evt.preventDefault();
-        setEditable(true);
-      }}
-    >
-      {props.room_name}
-    </span>
-  );
-
   const generateRoomName = React.useCallback((): void => {
     const arr = new Uint32Array(1);
     window.crypto.getRandomValues(arr);
     const code = String(arr[0] % 10000).padStart(ROOM_CODE_LENGTH, "0");
     setCreatingNewRoom(true);
-    setEditable(false);
     props.setRoomName(code);
   }, [props.setRoomName]);
 
@@ -115,12 +90,23 @@ const JoinRoom = (props: IProps): JSX.Element => {
           <h2>
             <label>
               <strong>房间代码：</strong>{" "}
-              {editable ? editableRoomName : nonEditableRoomName}{" "}
-              <span title="生成新房间" onClick={generateRoomName}>
-                🎲
-              </span>{" "}
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{4}"
+                aria-label="4位房间代码"
+                placeholder="输入4位房间号"
+                value={props.room_name}
+                onChange={handleRoomChange}
+                maxLength={ROOM_CODE_LENGTH}
+                style={{ width: "5em", fontSize: "1em" }}
+              />{" "}
+              <button type="button" className="normal" onClick={generateRoomName}>
+                新房间 🎲
+              </button>
             </label>
           </h2>
+          <p>加入朋友的房间：直接把上面的4位号码改成朋友给您的房间号。</p>
         </div>
         <div>
           <label>
