@@ -1,6 +1,10 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::fmt;
+use std::{
+    collections::HashMap,
+    fmt,
+    sync::Mutex,
+};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
@@ -24,11 +28,17 @@ use crate::guandan_serving_types::{
     GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
 };
 
+lazy_static::lazy_static! {
+    static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
+        Mutex::new(HashMap::new());
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GuandanClientMessage {
     Join { room: String, name: String },
     ReorderPlayers { order: [usize; 2] },
+    SetParticipation { active: bool },
     Start { player_count: usize },
     Play { card_indexes: Vec<usize> },
     TributeCard { card_index: usize },
@@ -44,6 +54,7 @@ pub enum GuandanServerMessage {
     Joined { room: String, seat: usize },
     Waiting {
         players: Vec<String>,
+        observers: Vec<String>,
         minimum_players: usize,
         maximum_players: usize,
     },
@@ -51,6 +62,7 @@ pub enum GuandanServerMessage {
     Hand { cards: Vec<CardFace> },
     State {
         players: Vec<String>,
+        observers: Vec<String>,
         turn: usize,
         hand_counts: Vec<usize>,
         last_play: Vec<CardFace>,
@@ -110,6 +122,18 @@ fn send(tx: &mpsc::UnboundedSender<String>, message: &GuandanServerMessage) {
     }
 }
 
+fn observers_for(key: &[u8]) -> Vec<String> {
+    GUANDAN_OBSERVERS
+        .lock()
+        .ok()
+        .and_then(|observers| observers.get(key).cloned())
+        .unwrap_or_default()
+}
+
+fn is_observer(key: &[u8], name: &str) -> bool {
+    observers_for(key).iter().any(|observer| observer == name)
+}
+
 async fn current_seat(
     storage: &HashMapStorage<VersionedGuandanGame>,
     key: &[u8],
@@ -124,6 +148,38 @@ async fn current_seat(
         .player_names
         .iter()
         .position(|player_name| player_name == name)
+}
+
+fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
+    GuandanServerMessage::Waiting {
+        players: game.player_names.clone(),
+        observers: observers_for(key),
+        minimum_players: MIN_PLAYERS,
+        maximum_players: MAX_PLAYERS,
+    }
+}
+
+fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
+    GuandanServerMessage::State {
+        players: game.player_names.clone(),
+        observers: observers_for(key),
+        turn: game.turn,
+        hand_counts: game.hand_counts(),
+        last_play: game.last_play.clone(),
+        last_player: game.last_player,
+        table_plays: game.table_plays.clone(),
+        passes: game.passes,
+        trick_complete: game.trick_complete,
+        level: game.level,
+        team_levels: game.team_levels,
+        finish_order: game.finish_order.clone(),
+        last_game_winner: game.last_game_winner,
+        last_game_winner_team: game.last_game_winner_team,
+        last_promotion_steps: game.last_promotion_steps,
+        pending_tribute: game.pending_tribute.clone(),
+        tribute_resisted: game.tribute_resisted,
+        match_winner: game.match_winner,
+    }
 }
 
 fn advance_turn(game: &mut GuandanGameState) {
@@ -214,28 +270,6 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     Ok(true)
 }
 
-fn state_message(game: &GuandanGameState) -> GuandanServerMessage {
-    GuandanServerMessage::State {
-        players: game.player_names.clone(),
-        turn: game.turn,
-        hand_counts: game.hand_counts(),
-        last_play: game.last_play.clone(),
-        last_player: game.last_player,
-        table_plays: game.table_plays.clone(),
-        passes: game.passes,
-        trick_complete: game.trick_complete,
-        level: game.level,
-        team_levels: game.team_levels,
-        finish_order: game.finish_order.clone(),
-        last_game_winner: game.last_game_winner,
-        last_game_winner_team: game.last_game_winner_team,
-        last_promotion_steps: game.last_promotion_steps,
-        pending_tribute: game.pending_tribute.clone(),
-        tribute_resisted: game.tribute_resisted,
-        match_winner: game.match_winner,
-    }
-}
-
 fn validate_play_against_table(
     cards: &[CardFace],
     current: &[CardFace],
@@ -272,7 +306,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v19-seat-reorder",
+            protocol: "guandan-v20-player-observers",
         },
     );
 
@@ -318,7 +352,18 @@ pub async fn websocket(
                     );
                     continue;
                 }
+
                 let key = room.as_bytes().to_vec();
+                if is_observer(&key, &name) {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "name is already in use".to_string(),
+                        },
+                    );
+                    continue;
+                }
+
                 let name_for_state = name.clone();
                 let seat_result = storage
                     .clone()
@@ -338,6 +383,7 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
+
                 let seat = match seat_result {
                     Ok(_) => match current_seat(&storage, &key, &name).await {
                         Some(seat) => seat,
@@ -347,8 +393,9 @@ pub async fn websocket(
                         send(
                             &tx,
                             &GuandanServerMessage::Error {
-                                message: "room is full, game already started, or name is already in use"
-                                    .to_string(),
+                                message:
+                                    "room is full, game already started, or name is already in use"
+                                        .to_string(),
                             },
                         );
                         continue;
@@ -358,15 +405,9 @@ pub async fn websocket(
                 joined_room = Some(key.clone());
                 joined_name = Some(name.clone());
                 send(&tx, &GuandanServerMessage::Joined { room, seat });
+
                 if let Ok(state) = storage.clone().get(key.clone()).await {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Waiting {
-                            players: state.game.player_names.clone(),
-                            minimum_players: MIN_PLAYERS,
-                            maximum_players: MAX_PLAYERS,
-                        },
-                    );
+                    send(&tx, &waiting_message(&key, &state.game));
                 }
 
                 let mut sub = match storage.clone().subscribe(key.clone(), subscriber_id).await {
@@ -385,7 +426,7 @@ pub async fn websocket(
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
-                                send(&tx_sub, &state_message(&state.game));
+                                send(&tx_sub, &state_message(&key, &state.game));
                                 if let Some(seat_sub) = seat_sub {
                                     if let Some(hand) = state.game.private_hand(seat_sub) {
                                         send(
@@ -397,18 +438,70 @@ pub async fn websocket(
                                     }
                                 }
                             } else {
-                                send(
-                                    &tx_sub,
-                                    &GuandanServerMessage::Waiting {
-                                        players: state.game.player_names.clone(),
-                                        minimum_players: MIN_PLAYERS,
-                                        maximum_players: MAX_PLAYERS,
-                                    },
-                                );
+                                send(&tx_sub, &waiting_message(&key, &state.game));
                             }
                         }
                     }
                 }));
+            }
+            GuandanClientMessage::SetParticipation { active } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+
+                let key_for_state = key.clone();
+                let name_for_state = name.clone();
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key.clone(), move |mut state| {
+                        if state.game.started {
+                            return Err(());
+                        }
+
+                        let mut observers = GUANDAN_OBSERVERS.lock().map_err(|_| ())?;
+                        let room_observers = observers.entry(key_for_state.clone()).or_default();
+
+                        if active {
+                            if state.game.player_names.iter().any(|n| n == &name_for_state) {
+                                return Ok((state, vec![]));
+                            }
+                            let observer_index = room_observers
+                                .iter()
+                                .position(|n| n == &name_for_state)
+                                .ok_or(())?;
+                            if state.game.player_names.len() >= MAX_PLAYERS {
+                                return Err(());
+                            }
+                            room_observers.remove(observer_index);
+                            state.game.player_names.push(name_for_state);
+                        } else {
+                            let player_index = state
+                                .game
+                                .player_names
+                                .iter()
+                                .position(|n| n == &name_for_state)
+                                .ok_or(())?;
+                            let removed = state.game.player_names.remove(player_index);
+                            if !room_observers.iter().any(|n| n == &removed) {
+                                room_observers.push(removed);
+                            }
+                        }
+
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "participation can only be changed before the game starts"
+                                .to_string(),
+                        },
+                    );
+                }
             }
             GuandanClientMessage::ReorderPlayers { order } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
@@ -444,8 +537,9 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "players can only swap with an adjacent seat before the game starts"
-                                .to_string(),
+                            message:
+                                "players can only swap with an adjacent seat before the game starts"
+                                    .to_string(),
                         },
                     );
                 }
@@ -457,7 +551,15 @@ pub async fn websocket(
                 };
                 let seat = match current_seat(&storage, &key, &name).await {
                     Some(seat) => seat,
-                    None => continue,
+                    None => {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: "observers cannot start the game".to_string(),
+                            },
+                        );
+                        continue;
+                    }
                 };
                 if seat != 0 {
                     send(
@@ -517,12 +619,12 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "player count does not match room".to_string(),
+                            message: "selected player count must match active players".to_string(),
                         },
                     );
                     continue;
                 }
-                if let Ok(state) = storage.clone().get(key).await {
+                if let Ok(state) = storage.clone().get(key.clone()).await {
                     send(
                         &tx,
                         &GuandanServerMessage::Started {
@@ -530,7 +632,7 @@ pub async fn websocket(
                             cards_per_player: CARDS_PER_PLAYER,
                         },
                     );
-                    send(&tx, &state_message(&state.game));
+                    send(&tx, &state_message(&key, &state.game));
                     if let Some(hand) = state.game.private_hand(seat) {
                         send(
                             &tx,
@@ -801,13 +903,21 @@ mod tests {
 
     #[test]
     fn seat_reorder_command_deserializes() {
-        let command: GuandanClientMessage = serde_json::from_str(
-            r#"{"type":"reorder_players","order":[0,1]}"#,
-        )
-        .unwrap();
+        let command: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"reorder_players","order":[0,1]}"#).unwrap();
         assert!(matches!(
             command,
             GuandanClientMessage::ReorderPlayers { order: [0, 1] }
+        ));
+    }
+
+    #[test]
+    fn participation_command_deserializes() {
+        let command: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"set_participation","active":false}"#).unwrap();
+        assert!(matches!(
+            command,
+            GuandanClientMessage::SetParticipation { active: false }
         ));
     }
 
@@ -828,14 +938,20 @@ mod tests {
     }
 
     #[test]
-    fn state_message_exposes_tribute_and_promotion() {
+    fn state_message_exposes_observers_tribute_and_promotion() {
+        let key = b"test-room";
+        if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+            observers.insert(key.to_vec(), vec!["Watcher".into()]);
+        }
         let mut game = GuandanGameState::default();
         game.pending_tribute = Some(TributePlan::Single {
             giver: 3,
             receiver: 0,
         });
         game.last_promotion_steps = Some(1);
-        let json = encode(&state_message(&game)).unwrap();
+        let json = encode(&state_message(key, &game)).unwrap();
+        assert!(json.contains("observers"));
+        assert!(json.contains("Watcher"));
         assert!(json.contains("pending_tribute"));
         assert!(json.contains("last_promotion_steps"));
     }
