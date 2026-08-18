@@ -1,0 +1,1 @@
+Trigger the one-time Guandan rustfmt workflow on feature/guandan-clean-sync.
