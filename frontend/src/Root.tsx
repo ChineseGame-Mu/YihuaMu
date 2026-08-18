@@ -69,10 +69,10 @@ const Root = (): JSX.Element => {
     </div>
   ) : null;
 
-  if (state.connected) {
-    if (state.gameState === null || state.roomName.length !== ROOM_CODE_LENGTH) {
-      const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
+  const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
 
+  if (state.connected) {
+    if (state.gameState === null || !hasSharedRoom) {
       if (selectedGameMode === null && !hasSharedRoom) {
         return (
           <div className="welcome-shell">
@@ -130,70 +130,72 @@ const Root = (): JSX.Element => {
           <TitleHandler playerName={state.name} />
         </div>
       );
-    } else {
-      return (
-        <div
-          className={classNames(
-            state.settings.fourColor ? "four-color" : null,
-            state.settings.showCardLabels ? "always-show-labels" : null,
-            state.settings.hideChatBox ? "hide-chat-box" : null,
-          )}
-        >
-          {headerMessages}
-          <Errors errors={state.errors} />
-          {state.confetti !== null ? (
-            <React.Suspense fallback={null}>
-              <Confetti
-                confetti={state.confetti}
-                clearConfetti={() => updateState({ confetti: null })}
-              />
-            </React.Suspense>
-          ) : null}
-          <div className="game">
-            {"Initialize" in state.gameState ? null : (
-              <ResetButton state={state.gameState} name={state.name} />
-            )}
-            {"Initialize" in state.gameState ? (
-              <Initialize
-                state={state.gameState.Initialize}
-                name={state.name}
-              />
-            ) : null}
-            {"Draw" in state.gameState ? (
-              <Draw
-                state={state.gameState.Draw}
-                playDrawCardSound={state.settings.playDrawCardSound}
-                autodrawSpeedMs={state.settings.autodrawSpeedMs}
-                name={state.name}
-                setTimeout={timerContext.setTimeout}
-                clearTimeout={timerContext.clearTimeout}
-              />
-            ) : null}
-            {"Exchange" in state.gameState ? (
-              <Exchange state={state.gameState.Exchange} name={state.name} />
-            ) : null}
-            {"Play" in state.gameState ? (
-              <Play
-                playPhase={state.gameState.Play}
-                name={state.name}
-                showLastTrick={state.settings.showLastTrick}
-                unsetAutoPlayWhenWinnerChanges={
-                  state.settings.unsetAutoPlayWhenWinnerChanges
-                }
-                showTrickInPlayerOrder={state.settings.showTrickInPlayerOrder}
-                beepOnTurn={state.settings.beepOnTurn}
-              />
-            ) : null}
-            {state.settings.showDebugInfo ? <DebugInfo /> : null}
-          </div>
-          <Chat messages={state.messages} />
-          <hr />
-          <Credits />
-          <TitleHandler playerName={state.name} />
-        </div>
-      );
     }
-  } else if (state.everConnected) {
+
+    return (
+      <div
+        className={classNames(
+          state.settings.fourColor ? "four-color" : null,
+          state.settings.showCardLabels ? "always-show-labels" : null,
+          state.settings.hideChatBox ? "hide-chat-box" : null,
+        )}
+      >
+        {headerMessages}
+        <Errors errors={state.errors} />
+        {state.confetti !== null ? (
+          <React.Suspense fallback={null}>
+            <Confetti
+              confetti={state.confetti}
+              clearConfetti={() => updateState({ confetti: null })}
+            />
+          </React.Suspense>
+        ) : null}
+        <div className="game">
+          {"Initialize" in state.gameState ? null : (
+            <ResetButton state={state.gameState} name={state.name} />
+          )}
+          {"Initialize" in state.gameState ? (
+            <Initialize
+              state={state.gameState.Initialize}
+              name={state.name}
+            />
+          ) : null}
+          {"Draw" in state.gameState ? (
+            <Draw
+              state={state.gameState.Draw}
+              playDrawCardSound={state.settings.playDrawCardSound}
+              autodrawSpeedMs={state.settings.autodrawSpeedMs}
+              name={state.name}
+              setTimeout={timerContext.setTimeout}
+              clearTimeout={timerContext.clearTimeout}
+            />
+          ) : null}
+          {"Exchange" in state.gameState ? (
+            <Exchange state={state.gameState.Exchange} name={state.name} />
+          ) : null}
+          {"Play" in state.gameState ? (
+            <Play
+              playPhase={state.gameState.Play}
+              name={state.name}
+              showLastTrick={state.settings.showLastTrick}
+              unsetAutoPlayWhenWinnerChanges={
+                state.settings.unsetAutoPlayWhenWinnerChanges
+              }
+              showTrickInPlayerOrder={state.settings.showTrickInPlayerOrder}
+              beepOnTurn={state.settings.beepOnTurn}
+            />
+          ) : null}
+          {state.settings.showDebugInfo ? <DebugInfo /> : null}
+        </div>
+        <Chat messages={state.messages} />
+        <hr />
+        <Credits />
+        <TitleHandler playerName={state.name} />
+      </div>
+    );
+  }
+
+  if (state.everConnected) {
     return (
       <>
         <p>
@@ -203,15 +205,43 @@ const Root = (): JSX.Element => {
         </p>
       </>
     );
-  } else {
+  }
+
+  if (hasSharedRoom) {
     return (
-      <div className="welcome-shell">
-        <Welcome />
+      <div>
+        <div className="game">
+          <h1>
+            升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
+            <span className="red">Finding Friends</span>
+          </h1>
+          <p>
+            正在连接朋友分享的房间：<strong>{state.roomName}</strong>
+          </p>
+          <JoinRoom
+            name={state.name}
+            room_name={state.roomName}
+            setName={(name: string) => updateState({ name })}
+            setRoomName={(roomName: string) => {
+              updateState({ roomName });
+              window.location.hash = roomName;
+            }}
+          />
+        </div>
+        <hr />
         <Credits />
         <TitleHandler playerName={state.name} />
       </div>
     );
   }
+
+  return (
+    <div className="welcome-shell">
+      <Welcome />
+      <Credits />
+      <TitleHandler playerName={state.name} />
+    </div>
+  );
 };
 
 export default Root;
