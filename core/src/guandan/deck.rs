@@ -11,8 +11,21 @@ pub fn deck_count(table: TableConfig) -> usize {
 }
 
 pub fn build_deck(table: TableConfig) -> Vec<CardFace> {
-    let ranks = [Rank::Two, Rank::Three, Rank::Four, Rank::Five, Rank::Six, Rank::Seven,
-        Rank::Eight, Rank::Nine, Rank::Ten, Rank::Jack, Rank::Queen, Rank::King, Rank::Ace];
+    let ranks = [
+        Rank::Two,
+        Rank::Three,
+        Rank::Four,
+        Rank::Five,
+        Rank::Six,
+        Rank::Seven,
+        Rank::Eight,
+        Rank::Nine,
+        Rank::Ten,
+        Rank::Jack,
+        Rank::Queen,
+        Rank::King,
+        Rank::Ace,
+    ];
     let suits = [Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
     let mut deck = Vec::with_capacity(deck_count(table) * 54);
     for _ in 0..deck_count(table) {
@@ -29,7 +42,10 @@ pub fn build_deck(table: TableConfig) -> Vec<CardFace> {
 
 /// Deals 27 cards per seat from an already shuffled deck.
 /// The caller owns shuffling so deterministic tests remain simple.
-pub fn deal(table: TableConfig, deck: &[CardFace]) -> Result<(Vec<Vec<CardFace>>, Vec<CardFace>), &'static str> {
+pub fn deal(
+    table: TableConfig,
+    deck: &[CardFace],
+) -> Result<(Vec<Vec<CardFace>>, Vec<CardFace>), &'static str> {
     let required = table.player_count * CARDS_PER_PLAYER;
     if deck.len() < required {
         return Err("deck does not contain enough cards for this table");

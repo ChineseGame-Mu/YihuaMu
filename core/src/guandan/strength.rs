@@ -1,11 +1,7 @@
 //! Convert a validated basic Guandan play into a comparable strength.
 //! Wild-card substitution is intentionally handled later.
 
-use super::{
-    compare::PlayStrength,
-    rules::classify_basic,
-    CardFace, Joker, PlayPattern, Rank,
-};
+use super::{compare::PlayStrength, rules::classify_basic, CardFace, Joker, PlayPattern, Rank};
 
 fn rank_of(card: CardFace) -> Option<Rank> {
     match card {
@@ -46,7 +42,10 @@ fn triple_rank(cards: &[CardFace]) -> Option<Rank> {
 pub fn strength_basic(cards: &[CardFace]) -> Option<PlayStrength> {
     let pattern = classify_basic(cards)?;
 
-    if matches!(pattern, PlayPattern::Single | PlayPattern::Pair | PlayPattern::Triple) {
+    if matches!(
+        pattern,
+        PlayPattern::Single | PlayPattern::Pair | PlayPattern::Triple
+    ) {
         if let Some(joker) = joker_of(*cards.first()?) {
             return Some(PlayStrength::with_joker(pattern, joker, cards.len()));
         }
@@ -59,10 +58,9 @@ pub fn strength_basic(cards: &[CardFace]) -> Option<PlayStrength> {
         | PlayPattern::StraightFlush
         | PlayPattern::ConsecutivePairs
         | PlayPattern::ConsecutiveTriples => highest_rank(cards)?,
-        PlayPattern::Single
-        | PlayPattern::Pair
-        | PlayPattern::Triple
-        | PlayPattern::Bomb => rank_of(*cards.first()?)?,
+        PlayPattern::Single | PlayPattern::Pair | PlayPattern::Triple | PlayPattern::Bomb => {
+            rank_of(*cards.first()?)?
+        }
     };
     Some(PlayStrength::new(pattern, main_rank, cards.len()))
 }
@@ -99,11 +97,8 @@ mod tests {
 
     #[test]
     fn supports_same_joker_pairs() {
-        let play = strength_basic(&[
-            CardFace::Joker(Joker::Small),
-            CardFace::Joker(Joker::Small),
-        ])
-        .unwrap();
+        let play = strength_basic(&[CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Small)])
+            .unwrap();
         assert_eq!(play.pattern, PlayPattern::Pair);
         assert_eq!(play.joker, Some(Joker::Small));
     }

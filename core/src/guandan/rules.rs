@@ -69,9 +69,9 @@ fn same_face_rank(cards: &[CardFace]) -> bool {
         return false;
     };
     match first {
-        CardFace::Suited { rank, .. } => cards.iter().all(|card| {
-            matches!(card, CardFace::Suited { rank: other, .. } if *other == rank)
-        }),
+        CardFace::Suited { rank, .. } => cards
+            .iter()
+            .all(|card| matches!(card, CardFace::Suited { rank: other, .. } if *other == rank)),
         CardFace::Joker(joker) => cards
             .iter()
             .all(|card| matches!(card, CardFace::Joker(other) if *other == joker)),
@@ -113,7 +113,10 @@ fn consecutive(ranks: &[Rank]) -> bool {
     if ranks.is_empty() {
         return false;
     }
-    let mut values = ranks.iter().map(|rank| rank_value(*rank)).collect::<Vec<_>>();
+    let mut values = ranks
+        .iter()
+        .map(|rank| rank_value(*rank))
+        .collect::<Vec<_>>();
     values.sort_unstable();
     values.dedup();
     if values.len() != ranks.len() {
@@ -192,10 +195,7 @@ mod tests {
             Some(PlayPattern::Single)
         );
         assert_eq!(
-            classify_basic(&[
-                card(Suit::Clubs, Rank::Ace),
-                card(Suit::Hearts, Rank::Ace),
-            ]),
+            classify_basic(&[card(Suit::Clubs, Rank::Ace), card(Suit::Hearts, Rank::Ace),]),
             Some(PlayPattern::Pair)
         );
         assert_eq!(
@@ -211,24 +211,15 @@ mod tests {
     #[test]
     fn classifies_same_joker_pairs() {
         assert_eq!(
-            classify_basic(&[
-                CardFace::Joker(Joker::Small),
-                CardFace::Joker(Joker::Small),
-            ]),
+            classify_basic(&[CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Small),]),
             Some(PlayPattern::Pair)
         );
         assert_eq!(
-            classify_basic(&[
-                CardFace::Joker(Joker::Big),
-                CardFace::Joker(Joker::Big),
-            ]),
+            classify_basic(&[CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big),]),
             Some(PlayPattern::Pair)
         );
         assert_eq!(
-            classify_basic(&[
-                CardFace::Joker(Joker::Small),
-                CardFace::Joker(Joker::Big),
-            ]),
+            classify_basic(&[CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Big),]),
             None
         );
     }

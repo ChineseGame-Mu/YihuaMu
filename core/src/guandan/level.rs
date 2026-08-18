@@ -110,7 +110,9 @@ mod tests {
 
     #[test]
     fn two_is_low_when_it_is_not_the_level() {
-        assert!(level_rank_value(Rank::Three, Rank::Five) > level_rank_value(Rank::Two, Rank::Five));
+        assert!(
+            level_rank_value(Rank::Three, Rank::Five) > level_rank_value(Rank::Two, Rank::Five)
+        );
         assert!(level_rank_value(Rank::Ace, Rank::Five) > level_rank_value(Rank::Two, Rank::Five));
     }
 }

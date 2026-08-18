@@ -1,7 +1,10 @@
 //! Minimal playable-round state used by the first desktop multiplayer test.
 
-use super::{deck::{build_deck, deal}, CardFace, TableConfig};
 use super::trick::TrickState;
+use super::{
+    deck::{build_deck, deal},
+    CardFace, TableConfig,
+};
 
 #[derive(Clone, Debug)]
 pub struct RoundState {
@@ -18,20 +21,47 @@ impl RoundState {
         Self::from_deck(table, leader, build_deck(table))
     }
 
-    pub fn from_deck(table: TableConfig, leader: usize, deck: Vec<CardFace>) -> Result<Self, &'static str> {
+    pub fn from_deck(
+        table: TableConfig,
+        leader: usize,
+        deck: Vec<CardFace>,
+    ) -> Result<Self, &'static str> {
         let (hands, _) = deal(table, &deck)?;
-        Ok(Self { table, hands, finish_order: Vec::new(), trick: TrickState::new(table, leader)? })
+        Ok(Self {
+            table,
+            hands,
+            finish_order: Vec::new(),
+            trick: TrickState::new(table, leader)?,
+        })
     }
 
-    pub fn play_cards(&mut self, player: usize, mut indexes: Vec<usize>) -> Result<Vec<CardFace>, &'static str> {
-        if player != self.trick.current_player() { return Err("not this player's turn"); }
-        if indexes.is_empty() { return Err("play must contain at least one card"); }
+    pub fn play_cards(
+        &mut self,
+        player: usize,
+        mut indexes: Vec<usize>,
+    ) -> Result<Vec<CardFace>, &'static str> {
+        if player != self.trick.current_player() {
+            return Err("not this player's turn");
+        }
+        if indexes.is_empty() {
+            return Err("play must contain at least one card");
+        }
         indexes.sort_unstable();
         indexes.dedup();
-        if indexes.iter().any(|index| *index >= self.hands[player].len()) { return Err("card index is outside the hand"); }
+        if indexes
+            .iter()
+            .any(|index| *index >= self.hands[player].len())
+        {
+            return Err("card index is outside the hand");
+        }
 
-        let played = indexes.iter().map(|index| self.hands[player][*index]).collect::<Vec<_>>();
-        for index in indexes.into_iter().rev() { self.hands[player].remove(index); }
+        let played = indexes
+            .iter()
+            .map(|index| self.hands[player][*index])
+            .collect::<Vec<_>>();
+        for index in indexes.into_iter().rev() {
+            self.hands[player].remove(index);
+        }
         self.trick.mark_play(player)?;
 
         if self.hands[player].is_empty() {
@@ -41,9 +71,13 @@ impl RoundState {
         Ok(played)
     }
 
-    pub fn pass(&mut self, player: usize) -> Result<bool, &'static str> { self.trick.pass(player) }
+    pub fn pass(&mut self, player: usize) -> Result<bool, &'static str> {
+        self.trick.pass(player)
+    }
 
-    pub fn is_finished(&self) -> bool { self.finish_order.len() + 1 >= self.table.player_count }
+    pub fn is_finished(&self) -> bool {
+        self.finish_order.len() + 1 >= self.table.player_count
+    }
 }
 
 #[cfg(test)]

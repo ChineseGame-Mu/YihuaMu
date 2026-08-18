@@ -82,9 +82,7 @@ pub fn teammates(table: TableConfig, seat: usize) -> Result<Vec<usize>, &'static
     let team = team_for_seat(table, seat)?;
     Ok(table
         .seat_numbers()
-        .filter(|other| {
-            *other != seat && team_for_seat(table, *other).ok() == Some(team)
-        })
+        .filter(|other| *other != seat && team_for_seat(table, *other).ok() == Some(team))
         .collect())
 }
 
