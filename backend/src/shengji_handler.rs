@@ -71,7 +71,7 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
                     room_name,
                     name,
                     disable_compression,
-                }) if room_name.len() == 2 && name.len() < 32 => {
+                }) if room_name.len() == 4 && name.len() < 32 => {
                     break (room_name, name, disable_compression);
                 }
                 Ok(_) => GameMessage::Error("invalid room or name".to_string()),
@@ -102,8 +102,6 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
         }
     };
 
-    // Subscribe to messages for the room. After this point, we should
-    // no longer use tx! It's owned by the backend storage.
     let (subscribe_player_id_tx, subscribe_player_id_rx) = oneshot::channel::<PlayerID>();
     tokio::task::spawn(player_subscribe_task(
         logger.clone(),
@@ -140,8 +138,6 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
     )
     .await;
 
-    // user_ws_rx stream will keep processing as long as the user stays
-    // connected. Once they disconnect, then...
     user_disconnected(room, ws_id, backend_storage, logger, join_span).await;
     Ok(())
 }
@@ -214,8 +210,6 @@ async fn register_user<S: Storage<VersionedGame, E>, E: std::fmt::Debug + Send>(
             info!(logger_, "Joining room"; "player_id" => assigned_player_id.0);
             let mut clients_to_disconnect = vec![];
             let clients = associated_websockets.entry(assigned_player_id).or_default();
-            // If the same user joined before, remove the previous entries
-            // from the state-store.
             if !g.allows_multiple_sessions_per_user() {
                 std::mem::swap(&mut clients_to_disconnect, clients);
             }
@@ -278,7 +272,6 @@ async fn run_game_for_player<S: Storage<VersionedGame, E>, E: Send + std::fmt::D
     mut rx: mpsc::UnboundedReceiver<Vec<u8>>,
 ) {
     debug!(logger, "Entering main game loop");
-    // Handle the main game loop
     while let Some(result) = rx.recv().await {
         match serde_json::from_slice::<UserMessage>(&result) {
             Ok(msg) => {
