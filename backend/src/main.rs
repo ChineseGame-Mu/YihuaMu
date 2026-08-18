@@ -35,12 +35,15 @@ use shengji_mechanics::types::FULL_DECK;
 use shengji_types::ZSTD_ZSTD_DICT;
 use storage::{HashMapStorage, Storage};
 
+mod guandan_handler;
+mod guandan_serving_types;
 mod serving_types;
 mod shengji_handler;
 mod state_dump;
 mod utils;
 mod wasm_rpc_handler;
 
+use guandan_serving_types::VersionedGuandanGame;
 use serving_types::{CardsBlob, VersionedGame};
 use state_dump::InMemoryStats;
 
@@ -113,6 +116,9 @@ async fn main() -> Result<(), anyhow::Error> {
     .unwrap();
 
     let (backend_storage, stats) = state_dump::load_state().await?;
+    let guandan_storage = HashMapStorage::<VersionedGuandanGame>::new(
+        ROOT_LOGGER.new(o!("game" => "guandan")),
+    );
 
     tokio::task::spawn(periodically_dump_state(
         backend_storage.clone(),
@@ -121,6 +127,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let app = Router::new()
         .route("/api", get(handle_websocket))
+        .route("/api/guandan", get(handle_guandan_websocket))
         .route("/api/rpc", post(wasm_rpc_handler::handle_wasm_rpc))
         .route(
             "/default_settings.json",
@@ -195,6 +202,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let app = app
         .layer(cors)
         .layer(Extension(backend_storage))
+        .layer(Extension(guandan_storage))
         .layer(Extension(stats));
 
     // Render provides the public HTTP port through PORT. Keep 3030 as the
@@ -253,6 +261,16 @@ async fn periodically_dump_state(
             state_dump::dump_state(Extension(backend_storage.clone()), Extension(stats.clone()))
                 .await;
     }
+}
+
+async fn handle_guandan_websocket(
+    ws: WebSocketUpgrade,
+    Extension(guandan_storage): Extension<HashMapStorage<VersionedGuandanGame>>,
+) -> impl IntoResponse {
+    let subscriber_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
+    ws.on_upgrade(move |socket| {
+        guandan_handler::websocket(socket, guandan_storage, subscriber_id)
+    })
 }
 
 async fn handle_websocket(
