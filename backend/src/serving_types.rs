@@ -27,6 +27,10 @@ impl<G> VersionedRoom<G> {
             monotonic_id: 0,
         }
     }
+
+    pub(crate) fn bump_version(&mut self) {
+        self.monotonic_id = self.monotonic_id.saturating_add(1);
+    }
 }
 
 pub type VersionedGame = VersionedRoom<shengji_core::game_state::GameState>;
