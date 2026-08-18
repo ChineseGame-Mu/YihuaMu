@@ -1,0 +1,147 @@
+name: One-time Guandan reconnect seat fix
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch Guandan reconnect logic
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("backend/src/guandan_handler.rs")
+          text = path.read_text()
+
+          old_duplicate = '''                if joined_room.is_some() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "already joined a guandan room".to_string(),
+                        },
+                    );
+                    continue;
+                }
+'''
+          new_duplicate = '''                if joined_room.is_some() {
+                    // The frontend may replay Join after reconnect effects settle.
+                    // Ignore duplicate Join commands on the same websocket instead
+                    // of surfacing an error that sends the player back to join UI.
+                    continue;
+                }
+'''
+          if old_duplicate not in text:
+              raise SystemExit("duplicate-join block not found")
+          text = text.replace(old_duplicate, new_duplicate, 1)
+
+          old_seat = '''                let name_for_state = name.clone();
+                let seat_result = storage
+                    .clone()
+                    .execute_operation_with_messages(key.clone(), move |mut state| {
+                        if state.game.started
+                            || state.game.player_names.len() >= MAX_PLAYERS
+                            || state
+                                .game
+                                .player_names
+                                .iter()
+                                .any(|existing| existing == &name_for_state)
+                        {
+                            return Err(());
+                        }
+                        state.game.player_names.push(name_for_state);
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+
+                let seat = match seat_result {
+                    Ok(_) => match current_seat(&storage, &key, &name).await {
+                        Some(seat) => seat,
+                        None => continue,
+                    },
+                    Err(_) => {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message:
+                                    "room is full, game already started, or name is already in use"
+                                        .to_string(),
+                            },
+                        );
+                        continue;
+                    }
+                };
+'''
+          new_seat = '''                // A room/name pair owns exactly one seat. If this player
+                // reconnects, restore that existing seat (and therefore the same
+                // private hand) instead of attempting to allocate a new seat.
+                let seat = if let Some(existing_seat) = current_seat(&storage, &key, &name).await {
+                    existing_seat
+                } else {
+                    let name_for_state = name.clone();
+                    let seat_result = storage
+                        .clone()
+                        .execute_operation_with_messages(key.clone(), move |mut state| {
+                            if state.game.started || state.game.player_names.len() >= MAX_PLAYERS {
+                                return Err(());
+                            }
+                            // Re-check under the room operation so simultaneous
+                            // connections cannot create duplicate seats.
+                            if state
+                                .game
+                                .player_names
+                                .iter()
+                                .any(|existing| existing == &name_for_state)
+                            {
+                                return Ok((state, vec![]));
+                            }
+                            state.game.player_names.push(name_for_state);
+                            state.bump_version();
+                            Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                        })
+                        .await;
+
+                    if seat_result.is_err() {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: "room is full or game already started".to_string(),
+                            },
+                        );
+                        continue;
+                    }
+                    match current_seat(&storage, &key, &name).await {
+                        Some(seat) => seat,
+                        None => continue,
+                    }
+                };
+'''
+          if old_seat not in text:
+              raise SystemExit("seat allocation block not found")
+          text = text.replace(old_seat, new_seat, 1)
+          path.write_text(text)
+
+      - name: Format Rust
+        run: cargo fmt --all
+
+      - name: Test Guandan backend
+        run: cargo test -p backend guandan --no-fail-fast
+
+      - name: Remove one-time workflow and commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-guandan-reconnect-once.yml
+          git add backend/src/guandan_handler.rs
+          git commit -m "fix: restore Guandan player to existing seat on reconnect"
+          git push
