@@ -69,6 +69,7 @@ const Root = (): JSX.Element => {
     </div>
   ) : null;
 
+  // A valid room code in a shared URL always takes precedence over the welcome screen.
   const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
 
   if (state.connected) {
