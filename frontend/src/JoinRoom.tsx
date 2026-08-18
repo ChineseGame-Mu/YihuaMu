@@ -109,10 +109,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
                 onChange={handleRoomChange}
                 maxLength={ROOM_CODE_LENGTH}
                 style={{ width: "5em", fontSize: "1em" }}
-              />{" "}
-              <button type="button" className="normal" onClick={generateRoomName}>
-                新房间 🎲
-              </button>
+              />
             </label>
           </h2>
           <p>
