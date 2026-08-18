@@ -68,17 +68,6 @@ const SettingsPane = (props: IProps): JSX.Element => {
     <div className="settings">
       <div style={{ display: "table" }}>
         <Row>
-          <LabelCell>四色牌面模式</LabelCell>
-          <Cell>
-            <input
-              name="four-color-mode"
-              type="checkbox"
-              checked={settings.fourColor}
-              onChange={makeChangeHandler({ fourColor: !settings.fourColor })}
-            />
-          </Cell>
-        </Row>
-        <Row>
           <LabelCell>深色模式</LabelCell>
           <Cell>
             <input
@@ -234,8 +223,23 @@ const SettingsPane = (props: IProps): JSX.Element => {
         <Row>
           <LabelCell>自定义花色颜色</LabelCell>
           <Cell>
+            <div style={{ marginBottom: "6px" }}>
+              <label htmlFor="card-color-mode">牌面配色：</label>{" "}
+              <select
+                id="card-color-mode"
+                value={settings.fourColor ? "four" : "two"}
+                onChange={(event) =>
+                  makeChangeHandler({
+                    fourColor: event.target.value === "four",
+                  })()
+                }
+              >
+                <option value="two">二色（黑 / 红）</option>
+                <option value="four">四色（黑 / 红 / 蓝 / 绿）</option>
+              </select>
+            </div>
             {settings.svgCards ? (
-              "使用 SVG 扑克牌时不可用"
+              <span>使用 SVG 扑克牌时，自定义单个花色颜色不可用</span>
             ) : (
               <SuitOverrides
                 suitColors={settings.suitColorOverrides}
