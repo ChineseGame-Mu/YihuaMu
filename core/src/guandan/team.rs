@@ -182,6 +182,19 @@ mod tests {
     }
 
     #[test]
+    fn one_four_finish_advances_exactly_one_level() {
+        let t = TableConfig::new(4).unwrap();
+        let finish_order = [0, 1, 3];
+        let steps = four_player_promotion_steps(t, &finish_order).unwrap();
+        assert_eq!(steps, 1);
+
+        let mut levels = TeamLevels::default();
+        assert_eq!(levels.advance_winner_by(Team::A, steps), Rank::Three);
+        assert_eq!(levels.team_a, Rank::Three);
+        assert_eq!(levels.team_b, Rank::Two);
+    }
+
+    #[test]
     fn ace_requires_partner_not_last() {
         let t = TableConfig::new(4).unwrap();
         assert!(four_player_ace_win(t, &[0, 2]).unwrap());
