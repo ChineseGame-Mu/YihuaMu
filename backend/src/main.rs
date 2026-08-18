@@ -116,9 +116,8 @@ async fn main() -> Result<(), anyhow::Error> {
     .unwrap();
 
     let (backend_storage, stats) = state_dump::load_state().await?;
-    let guandan_storage = HashMapStorage::<VersionedGuandanGame>::new(
-        ROOT_LOGGER.new(o!("game" => "guandan")),
-    );
+    let guandan_storage =
+        HashMapStorage::<VersionedGuandanGame>::new(ROOT_LOGGER.new(o!("game" => "guandan")));
 
     tokio::task::spawn(periodically_dump_state(
         backend_storage.clone(),
@@ -268,9 +267,7 @@ async fn handle_guandan_websocket(
     Extension(guandan_storage): Extension<HashMapStorage<VersionedGuandanGame>>,
 ) -> impl IntoResponse {
     let subscriber_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
-    ws.on_upgrade(move |socket| {
-        guandan_handler::websocket(socket, guandan_storage, subscriber_id)
-    })
+    ws.on_upgrade(move |socket| guandan_handler::websocket(socket, guandan_storage, subscriber_id))
 }
 
 async fn handle_websocket(

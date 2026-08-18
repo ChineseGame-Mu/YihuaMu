@@ -1,10 +1,6 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{
-    collections::HashMap,
-    fmt,
-    sync::Mutex,
-};
+use std::{collections::HashMap, fmt, sync::Mutex};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
@@ -15,9 +11,7 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strength_basic,
-    team::{
-        four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels,
-    },
+    team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
 };
@@ -50,16 +44,26 @@ pub enum GuandanClientMessage {
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GuandanServerMessage {
-    Connected { protocol: &'static str },
-    Joined { room: String, seat: usize },
+    Connected {
+        protocol: &'static str,
+    },
+    Joined {
+        room: String,
+        seat: usize,
+    },
     Waiting {
         players: Vec<String>,
         observers: Vec<String>,
         minimum_players: usize,
         maximum_players: usize,
     },
-    Started { player_count: usize, cards_per_player: usize },
-    Hand { cards: Vec<CardFace> },
+    Started {
+        player_count: usize,
+        cards_per_player: usize,
+    },
+    Hand {
+        cards: Vec<CardFace>,
+    },
     State {
         players: Vec<String>,
         observers: Vec<String>,
@@ -80,7 +84,9 @@ pub enum GuandanServerMessage {
         tribute_resisted: bool,
         match_winner: Option<Team>,
     },
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -667,8 +673,7 @@ pub async fn websocket(
                             || state.game.trick_complete
                             || state.game.turn != seat
                             || indexes.is_empty()
-                            || indexes.last().copied().unwrap_or(0)
-                                >= state.game.hands[seat].len()
+                            || indexes.last().copied().unwrap_or(0) >= state.game.hands[seat].len()
                         {
                             return Err(PlayError::Invalid(
                                 "not your turn or invalid card selection",
@@ -689,10 +694,10 @@ pub async fn websocket(
                         }
                         state.game.last_play = cards.clone();
                         state.game.last_player = Some(seat);
-                        state
-                            .game
-                            .table_plays
-                            .push(GuandanTablePlay { player: seat, cards });
+                        state.game.table_plays.push(GuandanTablePlay {
+                            player: seat,
+                            cards,
+                        });
                         state.game.passes = 0;
                         if state.game.hands[seat].is_empty()
                             && !state.game.finish_order.contains(&seat)
@@ -762,9 +767,7 @@ pub async fn websocket(
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
                         if !state.game.started || state.game.match_winner.is_some() {
-                            return Err(PlayError::Invalid(
-                                "return tribute is not available now",
-                            ));
+                            return Err(PlayError::Invalid("return tribute is not available now"));
                         }
                         state
                             .game
@@ -817,8 +820,7 @@ pub async fn websocket(
                             .filter(|hand| !hand.is_empty())
                             .count();
                         if state.game.passes + 1 >= active {
-                            state.game.turn =
-                                state.game.last_player.unwrap_or(state.game.turn);
+                            state.game.turn = state.game.last_player.unwrap_or(state.game.turn);
                             state.game.trick_complete = true;
                         } else {
                             advance_turn(&mut state.game);
@@ -961,21 +963,13 @@ mod tests {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
-        game.hands = vec![
-            vec![],
-            vec![],
-            vec![],
-            vec![card(Suit::Clubs, Rank::Two)],
-        ];
+        game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 2, 1];
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
         assert_eq!(game.team_levels.team_a, Rank::Five);
         assert_eq!(game.last_promotion_steps, Some(3));
         assert!(game.pending_tribute.is_some() || game.tribute_resisted);
-        assert!(game
-            .hands
-            .iter()
-            .all(|hand| hand.len() == CARDS_PER_PLAYER));
+        assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
     }
 
     #[test]
@@ -983,12 +977,7 @@ mod tests {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
-        game.hands = vec![
-            vec![],
-            vec![],
-            vec![],
-            vec![card(Suit::Clubs, Rank::Two)],
-        ];
+        game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 1, 2];
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
         assert_eq!(game.team_levels.team_a, Rank::Four);
