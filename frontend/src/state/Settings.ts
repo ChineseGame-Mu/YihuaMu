@@ -39,7 +39,15 @@ export interface ISuitOverrides {
   "🂠"?: string;
 }
 
-const fourColor: State<boolean> = booleanLocalStorageState("four_color", true);
+// Four-color suits are the standard display for this fork. Always load the
+// setting as enabled so browsers that previously stored `four_color=off`
+// migrate automatically on their next visit. Persisting also remains enabled.
+const fourColor: State<boolean> = {
+  loadDefault: () => true,
+  persist: () => {
+    window.localStorage.setItem("four_color", "on");
+  },
+};
 const darkMode: State<boolean> = booleanLocalStorageState("dark_mode");
 const svgCards: State<boolean> = booleanLocalStorageState("svg_cards");
 const showCardLabels: State<boolean> =
