@@ -26,12 +26,17 @@ export interface AppState {
   changeLogLastViewed: number;
 }
 
+const roomNameFromLocation = (): string => {
+  const match = window.location.hash.slice(1).match(/^\d{4}/);
+  return match?.[0] ?? "";
+};
+
 const appState: State<AppState> = combineState({
   settings,
   gameStatistics,
   connected: noPersistence(() => false),
   everConnected: noPersistence(() => false),
-  roomName: noPersistence(() => window.location.hash.slice(1, 17)),
+  roomName: noPersistence(roomNameFromLocation),
   name: stringLocalStorageState("name"),
   changeLogLastViewed: numberLocalStorageState("change_log_last_viewed"),
   gameState: noPersistence<GameState | null>(() => null),
