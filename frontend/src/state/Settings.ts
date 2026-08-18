@@ -39,7 +39,7 @@ export interface ISuitOverrides {
   "🂠"?: string;
 }
 
-const fourColor: State<boolean> = booleanLocalStorageState("four_color");
+const fourColor: State<boolean> = booleanLocalStorageState("four_color", true);
 const darkMode: State<boolean> = booleanLocalStorageState("dark_mode");
 const svgCards: State<boolean> = booleanLocalStorageState("svg_cards");
 const showCardLabels: State<boolean> =
