@@ -42,7 +42,8 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
       queue.push({ blob, handler });
       if (
         queue.length > 0 &&
-        (fr.readyState === FileReader.EMPTY || fr.readyState === FileReader.DONE)
+        (fr.readyState === FileReader.EMPTY ||
+          fr.readyState === FileReader.DONE)
       ) {
         fr.readAsArrayBuffer(queue[0].blob);
       }
@@ -75,9 +76,9 @@ const getBlobArrayBuffer: () => IBlobToArrayBufferQueue = memoize(() => {
   };
 });
 
-const WebsocketProvider: React.FunctionComponent<React.PropsWithChildren<IProps>> = (
-  props: IProps,
-) => {
+const WebsocketProvider: React.FunctionComponent<
+  React.PropsWithChildren<IProps>
+> = (props: IProps) => {
   const { state, updateState } = React.useContext(AppStateContext);
   const { decodeWireFormat } = React.useContext(WasmContext);
   const { setTimeout, clearTimeout } = React.useContext(TimerContext);
@@ -185,7 +186,8 @@ const WebsocketProvider: React.FunctionComponent<React.PropsWithChildren<IProps>
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
-        if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
+        if (timerRef.current !== null)
+          clearTimeoutRef.current(timerRef.current);
         setTimerRef.current(null);
         if (typeof event.data === "string") {
           try {
