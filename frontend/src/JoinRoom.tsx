@@ -78,6 +78,15 @@ const JoinRoom = (props: IProps): JSX.Element => {
     }
   }, [props.room_name.length, generateRoomName]);
 
+  const canSubmit =
+    props.room_name.length === ROOM_CODE_LENGTH &&
+    props.name.length > 0 &&
+    props.name.length <= 32;
+
+  const submitLabel = creatingNewRoom
+    ? `创建并进入房间 ${props.room_name}`
+    : `进入指定房间 ${props.room_name}`;
+
   return (
     <div>
       <LabeledPlay
@@ -106,7 +115,10 @@ const JoinRoom = (props: IProps): JSX.Element => {
               </button>
             </label>
           </h2>
-          <p>加入朋友的房间：直接把上面的4位号码改成朋友给您的房间号。</p>
+          <p>
+            <strong>加入朋友的房间：</strong>
+            把上面的4位号码改成朋友给您的房间号，然后点击下面的“进入指定房间”按钮。
+          </p>
         </div>
         <div>
           <label>
@@ -119,15 +131,20 @@ const JoinRoom = (props: IProps): JSX.Element => {
               autoFocus={true}
             />
           </label>
-          <input
+        </div>
+        <div style={{ marginTop: "1em", marginBottom: "1em" }}>
+          <button
             type="submit"
-            value="加入（或创建）游戏"
-            disabled={
-              props.room_name.length !== ROOM_CODE_LENGTH ||
-              props.name.length === 0 ||
-              props.name.length > 32
-            }
-          />
+            disabled={!canSubmit}
+            style={{
+              fontSize: "1.15em",
+              fontWeight: 700,
+              padding: "0.6em 1em",
+              minWidth: "15em",
+            }}
+          >
+            {submitLabel}
+          </button>
         </div>
       </form>
       <div>
