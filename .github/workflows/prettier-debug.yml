@@ -1,10 +1,13 @@
-name: Prettier debug
+name: Prettier Draw fix
 
 on:
   push:
     branches: [master]
     paths:
       - '.github/workflows/prettier-debug.yml'
+
+permissions:
+  contents: write
 
 jobs:
   format:
@@ -14,8 +17,17 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install
-      - name: Format welcome CSS with project Prettier
+      - name: Format Draw.tsx with project Prettier
         working-directory: frontend
-        run: yarn prettier src/welcome.css --write
-      - name: Show exact formatted diff
-        run: git diff -- frontend/src/welcome.css
+        run: yarn prettier src/Draw.tsx --write
+      - name: Commit formatted Draw.tsx
+        run: |
+          if git diff --quiet -- frontend/src/Draw.tsx; then
+            echo "Draw.tsx already formatted"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/Draw.tsx
+          git commit -m "style: format Draw.tsx with project Prettier"
+          git push
