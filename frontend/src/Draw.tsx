@@ -52,7 +52,8 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
   }
 
   private canDraw(): boolean {
-    const player = this.props.state.propagated.players[this.props.state.position];
+    const player =
+      this.props.state.propagated.players[this.props.state.position];
     return (
       player !== undefined &&
       player.name === this.props.name &&
