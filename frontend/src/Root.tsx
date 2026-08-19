@@ -35,8 +35,7 @@ const reselectButtonStyle: React.CSSProperties = {
 const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
-  const [selectedGameMode, setSelectedGameMode] =
-    React.useState<GameModeChoice | null>(null);
+  const [selectedGameMode, setSelectedGameMode] = React.useState<GameModeChoice | null>(null);
 
   const [previousHeaderMessages, setPreviousHeaderMessages] = React.useState<
     string[]
