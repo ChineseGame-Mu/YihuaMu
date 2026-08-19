@@ -22,17 +22,6 @@ const returnToGameSelection = (): void => {
   window.location.href = `${window.location.origin}${window.location.pathname}`;
 };
 
-const reselectButtonStyle: React.CSSProperties = {
-  display: "block",
-  margin: "18px auto 24px",
-  padding: "14px 34px",
-  fontSize: "24px",
-  fontWeight: 700,
-  lineHeight: 1.2,
-  borderRadius: "12px",
-  cursor: "pointer",
-};
-
 const bootstrap = (): void => {
   Sentry.init({
     dsn: "https://dfdd871554eb4ab48de73a6575c1117a@o476591.ingest.sentry.io/5516535",
@@ -70,14 +59,16 @@ const bootstrap = (): void => {
         <GuandanWebsocketProvider>
           <GuandanStateProvider>
             <div>
-              <button
-                type="button"
-                className="normal"
-                style={reselectButtonStyle}
-                onClick={returnToGameSelection}
-              >
-                重新选择
-              </button>
+              <div className="guandan-topbar">
+                <h1>掼蛋</h1>
+                <button
+                  type="button"
+                  className="normal guandan-reselect-button"
+                  onClick={returnToGameSelection}
+                >
+                  重新选择
+                </button>
+              </div>
               <GuandanTable />
             </div>
           </GuandanStateProvider>
