@@ -18,6 +18,10 @@ const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
 );
 
+const returnToGameSelection = (): void => {
+  window.location.href = `${window.location.origin}${window.location.pathname}`;
+};
+
 const bootstrap = (): void => {
   Sentry.init({
     dsn: "https://dfdd871554eb4ab48de73a6575c1117a@o476591.ingest.sentry.io/5516535",
@@ -54,7 +58,18 @@ const bootstrap = (): void => {
       <Sentry.ErrorBoundary fallback={fallback}>
         <GuandanWebsocketProvider>
           <GuandanStateProvider>
-            <GuandanTable />
+            <div>
+              <div style={{ textAlign: "center", margin: "12px 0" }}>
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={returnToGameSelection}
+                >
+                  重新选择
+                </button>
+              </div>
+              <GuandanTable />
+            </div>
           </GuandanStateProvider>
         </GuandanWebsocketProvider>
       </Sentry.ErrorBoundary>,
