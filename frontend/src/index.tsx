@@ -44,8 +44,10 @@ const bootstrap = (): void => {
   );
   ReactModal.setAppElement(root!);
   const root_ = createRoot(root!);
-  const isGuandan =
-    new URLSearchParams(window.location.search).get("game") === "guandan";
+
+  const rawGame = new URLSearchParams(window.location.search).get("game") ?? "";
+  const game = rawGame.trim().toLowerCase().replace(/\/+$/, "");
+  const isGuandan = game === "guandan";
 
   if (isGuandan) {
     root_.render(
