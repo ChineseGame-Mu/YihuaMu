@@ -4,11 +4,15 @@ import ReactModal from "react-modal";
 import * as Sentry from "@sentry/react";
 
 import "./style.css";
+import "./guandan.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
 import TimerProvider from "./TimerProvider";
 import Root from "./Root";
+import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
+import GuandanStateProvider from "./GuandanStateProvider";
+import GuandanTable from "./GuandanTable";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -40,6 +44,21 @@ const bootstrap = (): void => {
   );
   ReactModal.setAppElement(root!);
   const root_ = createRoot(root!);
+  const isGuandan =
+    new URLSearchParams(window.location.search).get("game") === "guandan";
+
+  if (isGuandan) {
+    root_.render(
+      <Sentry.ErrorBoundary fallback={fallback}>
+        <GuandanWebsocketProvider>
+          <GuandanStateProvider>
+            <GuandanTable />
+          </GuandanStateProvider>
+        </GuandanWebsocketProvider>
+      </Sentry.ErrorBoundary>,
+    );
+    return;
+  }
 
   root_.render(
     <Sentry.ErrorBoundary fallback={fallback}>

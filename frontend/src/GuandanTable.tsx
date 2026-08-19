@@ -1,0 +1,659 @@
+import * as React from "react";
+
+import SvgCard from "./SvgCard";
+import { GuandanStateContext } from "./GuandanStateProvider";
+import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
+import type {
+  GuandanCard,
+  GuandanRank,
+  GuandanTributePlan,
+} from "./guandanProtocol";
+
+const rankLabel: Record<string, string> = {
+  Two: "2",
+  Three: "3",
+  Four: "4",
+  Five: "5",
+  Six: "6",
+  Seven: "7",
+  Eight: "8",
+  Nine: "9",
+  Ten: "10",
+  Jack: "J",
+  Queen: "Q",
+  King: "K",
+  Ace: "A",
+};
+
+const rankOrder: GuandanRank[] = [
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Jack",
+  "Queen",
+  "King",
+  "Ace",
+];
+
+const suitOrder: Record<string, number> = {
+  Clubs: 0,
+  Diamonds: 1,
+  Spades: 2,
+  Hearts: 3,
+};
+
+const unicodeCards: Record<string, Record<string, string>> = {
+  Diamonds: {
+    Ace: "🃁",
+    King: "🃎",
+    Queen: "🃍",
+    Jack: "🃋",
+    Ten: "🃊",
+    Nine: "🃉",
+    Eight: "🃈",
+    Seven: "🃇",
+    Six: "🃆",
+    Five: "🃅",
+    Four: "🃄",
+    Three: "🃃",
+    Two: "🃂",
+  },
+  Clubs: {
+    Ace: "🃑",
+    King: "🃞",
+    Queen: "🃝",
+    Jack: "🃛",
+    Ten: "🃚",
+    Nine: "🃙",
+    Eight: "🃘",
+    Seven: "🃗",
+    Six: "🃖",
+    Five: "🃕",
+    Four: "🃔",
+    Three: "🃓",
+    Two: "🃒",
+  },
+  Hearts: {
+    Ace: "🂱",
+    King: "🂾",
+    Queen: "🂽",
+    Jack: "🂻",
+    Ten: "🂺",
+    Nine: "🂹",
+    Eight: "🂸",
+    Seven: "🂷",
+    Six: "🂶",
+    Five: "🂵",
+    Four: "🂴",
+    Three: "🂳",
+    Two: "🂲",
+  },
+  Spades: {
+    Ace: "🂡",
+    King: "🂮",
+    Queen: "🂭",
+    Jack: "🂫",
+    Ten: "🂪",
+    Nine: "🂩",
+    Eight: "🂨",
+    Seven: "🂧",
+    Six: "🂦",
+    Five: "🂥",
+    Four: "🂤",
+    Three: "🂣",
+    Two: "🂢",
+  },
+};
+
+const cardGlyph = (card: GuandanCard): string =>
+  "Joker" in card
+    ? card.Joker === "Big"
+      ? "🃟"
+      : "🃏"
+    : (unicodeCards[card.Suited.suit]?.[card.Suited.rank] ?? "🂠");
+
+const cardSortValue = (
+  card: GuandanCard,
+  level: GuandanRank | null,
+): number => {
+  if ("Joker" in card) return card.Joker === "Small" ? 1000 : 1100;
+  const base = rankOrder.indexOf(card.Suited.rank);
+  return (
+    (level !== null && card.Suited.rank === level ? 900 : base * 10) +
+    (suitOrder[card.Suited.suit] ?? 0)
+  );
+};
+
+const tributeRole = (
+  plan: GuandanTributePlan | null,
+  seat: number | null,
+): "giver" | "receiver" | null => {
+  if (plan === null || seat === null) return null;
+  if ("Single" in plan) {
+    if (plan.Single.giver === seat) return "giver";
+    if (plan.Single.receiver === seat) return "receiver";
+    return null;
+  }
+  if (plan.Double.givers.includes(seat)) return "giver";
+  if (plan.Double.receivers.includes(seat)) return "receiver";
+  return null;
+};
+
+const DEAL_INTERVAL_MS = 120;
+const TRICK_CLEAR_DELAY_MS = 1000;
+
+const GuandanTable: React.FunctionComponent = () => {
+  const { state } = React.useContext(GuandanStateContext);
+  const { status, send } = React.useContext(GuandanWebsocketContext);
+  const query = React.useMemo(
+    () => new URLSearchParams(window.location.search),
+    [],
+  );
+  const [room, setRoom] = React.useState(() => query.get("room") ?? "");
+  const [name, setName] = React.useState(() => query.get("name") ?? "");
+  const [selected, setSelected] = React.useState<number[]>([]);
+  const [dealStep, setDealStep] = React.useState<number | null>(null);
+  const [startRequested, setStartRequested] = React.useState(false);
+  const [showSettings, setShowSettings] = React.useState(false);
+  const [fourColor, setFourColor] = React.useState(
+    () => window.localStorage.getItem("guandan_four_color") !== "off",
+  );
+  const autoJoinKeyRef = React.useRef<string | null>(null);
+  const joinPendingRef = React.useRef(false);
+  const lastAnimatedHandSizeRef = React.useRef(0);
+
+  const joined = state.room !== null && state.seat !== null;
+  const role = tributeRole(
+    state.pendingTribute as GuandanTributePlan | null,
+    state.seat,
+  );
+  const tributePending = state.pendingTribute !== null;
+  const testMode = query.get("test") === "1";
+  const playerCount = state.playerCount ?? state.players.length;
+  const cardsPerPlayer =
+    state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
+  const totalDealCards = playerCount > 0 ? playerCount * cardsPerPlayer : 0;
+  const dealing = dealStep !== null && dealStep < totalDealCards;
+  const serverDealt =
+    state.hand.length > 0 || state.handCounts.some((count) => count > 0);
+  const gameStarted = serverDealt || startRequested;
+  const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
+  const myTurn =
+    state.seat !== null &&
+    effectiveTurn === state.seat &&
+    gameStarted &&
+    !dealing;
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
+  }, [fourColor]);
+
+  React.useEffect(() => {
+    if (status !== "connected" || joined || joinPendingRef.current) return;
+    const r = room.trim();
+    const n = name.trim();
+    if (!r || !n) return;
+    const key = `${r}\u0000${n}`;
+    if (autoJoinKeyRef.current === key) return;
+    autoJoinKeyRef.current = key;
+    joinPendingRef.current = true;
+    if (!send({ type: "join", room: r, name: n })) {
+      joinPendingRef.current = false;
+      autoJoinKeyRef.current = null;
+    }
+  }, [status, joined, room, name, send]);
+
+  React.useEffect(() => {
+    if (joined) joinPendingRef.current = false;
+  }, [joined]);
+
+  React.useEffect(() => {
+    if (status !== "connected") {
+      autoJoinKeyRef.current = null;
+      joinPendingRef.current = false;
+    }
+  }, [status]);
+
+  React.useEffect(() => {
+    if (serverDealt) setStartRequested(true);
+  }, [serverDealt]);
+
+  React.useEffect(() => {
+    const shouldAnimate =
+      state.hand.length > 0 &&
+      state.hand.length !== lastAnimatedHandSizeRef.current &&
+      state.lastPlay.length === 0 &&
+      playerCount >= 4;
+    if (!shouldAnimate) return;
+    lastAnimatedHandSizeRef.current = state.hand.length;
+    setDealStep(0);
+  }, [state.hand.length, state.lastPlay.length, playerCount]);
+
+  React.useEffect(() => {
+    if (dealStep === null || totalDealCards <= 0) return;
+    if (dealStep >= totalDealCards) {
+      setDealStep(null);
+      return;
+    }
+    const timer = window.setTimeout(
+      () =>
+        setDealStep((current) =>
+          current === null ? null : Math.min(current + 1, totalDealCards),
+        ),
+      DEAL_INTERVAL_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [dealStep, totalDealCards]);
+
+  React.useEffect(() => {
+    if (
+      !state.trickComplete ||
+      state.lastPlayer === null ||
+      state.seat !== state.lastPlayer ||
+      tributePending ||
+      dealing
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(
+      () => send({ type: "end_round" }),
+      TRICK_CLEAR_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
+  }, [
+    state.trickComplete,
+    state.lastPlayer,
+    state.seat,
+    tributePending,
+    dealing,
+    send,
+  ]);
+
+  const joinRoom = (): void => {
+    const r = room.trim();
+    const n = name.trim();
+    if (!r || !n || joinPendingRef.current) return;
+    autoJoinKeyRef.current = `${r}\u0000${n}`;
+    joinPendingRef.current = true;
+    if (!send({ type: "join", room: r, name: n })) {
+      joinPendingRef.current = false;
+      autoJoinKeyRef.current = null;
+    }
+  };
+
+  const startGame = (): void => {
+    if (state.seat !== 0 || gameStarted || state.players.length < 4) return;
+    if (send({ type: "start", player_count: 4 })) {
+      setStartRequested(true);
+      setSelected([]);
+    }
+  };
+
+  const swapSeat = (targetSeat: number): void => {
+    if (gameStarted || state.seat === null || targetSeat === state.seat) return;
+    send({ type: "reorder_players", order: [state.seat, targetSeat] });
+  };
+
+  const testPlayerUrl = (player: number): string => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("game", "guandan");
+    url.searchParams.set("test", "1");
+    url.searchParams.set("room", room.trim() || "TEST");
+    url.searchParams.set("name", `测试玩家${player}`);
+    return url.toString();
+  };
+
+  const dealtCountForSeat = (seat: number): number => {
+    if (dealStep === null || playerCount <= 0) {
+      const explicit = state.handCounts[seat];
+      if (explicit !== undefined) return explicit;
+      if (seat === state.seat && state.hand.length > 0)
+        return state.hand.length;
+      return state.cardsPerPlayer ?? 0;
+    }
+    return Math.max(
+      0,
+      Math.min(
+        cardsPerPlayer,
+        Math.floor((dealStep + playerCount - 1 - seat) / playerCount),
+      ),
+    );
+  };
+
+  const visibleHand = React.useMemo(() => {
+    const count =
+      dealStep === null || state.seat === null
+        ? state.hand.length
+        : dealtCountForSeat(state.seat);
+    return state.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ originalIndex }) => originalIndex < count)
+      .sort(
+        (a, b) =>
+          cardSortValue(a.card, state.level) -
+            cardSortValue(b.card, state.level) ||
+          a.originalIndex - b.originalIndex,
+      );
+  }, [
+    dealStep,
+    state.hand,
+    state.seat,
+    playerCount,
+    cardsPerPlayer,
+    state.level,
+  ]);
+
+  const toggleCard = (index: number): void => {
+    if (!gameStarted || dealing) return;
+    setSelected((current) =>
+      current.includes(index)
+        ? current.filter((value) => value !== index)
+        : [...current, index].sort((a, b) => a - b),
+    );
+  };
+
+  const playSelected = (): void => {
+    if (
+      gameStarted &&
+      selected.length > 0 &&
+      !dealing &&
+      send({ type: "play", card_indexes: selected })
+    ) {
+      setSelected([]);
+    }
+  };
+
+  const sendSingleSelected = (
+    type: "tribute_card" | "return_tribute",
+  ): void => {
+    if (
+      gameStarted &&
+      selected.length === 1 &&
+      !dealing &&
+      send({ type, card_index: selected[0] as number })
+    ) {
+      setSelected([]);
+    }
+  };
+
+  const fullCard = (card: GuandanCard, height = 112): React.ReactNode => (
+    <SvgCard card={cardGlyph(card)} height={height} fourColor={fourColor} />
+  );
+
+  return (
+    <main className="guandan-table">
+      <header>
+        <h1>掼蛋</h1>
+        <div>连接状态：{status}</div>
+        {state.room !== null && <div>房间：{state.room}</div>}
+        {state.level !== null && <div>当前级牌：{rankLabel[state.level]}</div>}
+        <button
+          type="button"
+          className="normal"
+          onClick={() => setShowSettings((value) => !value)}
+        >
+          ⚙ 设置
+        </button>
+      </header>
+
+      {showSettings && (
+        <section className="guandan-settings">
+          <h2>掼蛋设置</h2>
+          <label htmlFor="guandan-card-color-mode">牌面配色：</label>{" "}
+          <select
+            id="guandan-card-color-mode"
+            value={fourColor ? "four" : "two"}
+            onChange={(event) => setFourColor(event.target.value === "four")}
+          >
+            <option value="two">二色（黑 / 红）</option>
+            <option value="four">四色（黑 / 红 / 蓝 / 绿）</option>
+          </select>
+          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>
+        </section>
+      )}
+
+      {!joined && (
+        <section>
+          <h2>加入牌桌</h2>
+          <input
+            aria-label="房间号"
+            placeholder="房间号"
+            value={room}
+            onChange={(event) => setRoom(event.target.value)}
+          />
+          <input
+            aria-label="姓名"
+            placeholder="姓名"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button
+            disabled={
+              status !== "connected" ||
+              !room.trim() ||
+              !name.trim() ||
+              joinPendingRef.current
+            }
+            onClick={joinRoom}
+          >
+            加入房间
+          </button>
+          {status === "connected" && room.trim() && name.trim() && (
+            <p>正在自动恢复房间…</p>
+          )}
+        </section>
+      )}
+
+      {testMode && !joined && (
+        <section>
+          <h2>四人联机测试</h2>
+          <div className="guandan-actions">
+            {[1, 2, 3, 4].map((player) => (
+              <a
+                key={player}
+                href={testPlayerUrl(player)}
+                target="_blank"
+                rel="noreferrer"
+              >
+                打开测试玩家 {player}
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {joined && (
+        <>
+          <section className="guandan-player-section">
+            <h2>玩家</h2>
+            <div className="guandan-players">
+              {state.players.map((player, index) => (
+                <div key={`${player}-${index}`}>
+                  <strong>
+                    {index === state.seat ? `${player}（我）` : player}
+                  </strong>
+                  <span>
+                    {effectiveTurn === index && gameStarted && !dealing
+                      ? " ← 当前出牌"
+                      : dealing
+                        ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                        : ""}
+                  </span>
+                  <div>剩余：{dealtCountForSeat(index)} 张</div>
+                  {!gameStarted &&
+                    state.seat !== null &&
+                    index !== state.seat && (
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={() => swapSeat(index)}
+                      >
+                        与我换位
+                      </button>
+                    )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {dealing && (
+            <section>
+              <strong>正在发牌：</strong>
+              按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
+            </section>
+          )}
+
+          {tributePending && (
+            <section>
+              <h2>进贡 / 还贡</h2>
+              <p>
+                {role === "giver"
+                  ? "请选择 1 张牌进贡。"
+                  : role === "receiver"
+                    ? "请选择 1 张牌还贡。"
+                    : "等待相关玩家完成进贡与还贡。"}
+              </p>
+            </section>
+          )}
+
+          <section>
+            <h2>桌面</h2>
+            {state.tablePlays.length === 0 ? (
+              <div>暂无出牌</div>
+            ) : (
+              <div className="guandan-trick-plays">
+                {state.tablePlays.map((play, playIndex) => (
+                  <div
+                    className="guandan-trick-play"
+                    key={`${play.player}-${playIndex}`}
+                  >
+                    <strong>
+                      {state.players[play.player] ?? `玩家${play.player + 1}`}：
+                    </strong>
+                    <span className="guandan-table-play">
+                      {play.cards.map((card, cardIndex) => (
+                        <span
+                          key={`${cardGlyph(card)}-${cardIndex}`}
+                          style={{ display: "inline-block", marginRight: -22 }}
+                        >
+                          {fullCard(card, 86)}
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {state.trickComplete && (
+              <div>
+                <strong>本轮结束，正在收牌…</strong>
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2>我的手牌（{visibleHand.length}）</h2>
+            <div
+              className="guandan-hand"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "flex-end",
+                gap: 4,
+              }}
+            >
+              {visibleHand.map(({ card, originalIndex }) => (
+                <button
+                  type="button"
+                  key={`${cardGlyph(card)}-${originalIndex}`}
+                  aria-pressed={selected.includes(originalIndex)}
+                  disabled={!gameStarted || dealing || state.trickComplete}
+                  onClick={() => toggleCard(originalIndex)}
+                  style={{
+                    padding: 0,
+                    border: selected.includes(originalIndex)
+                      ? "3px solid currentColor"
+                      : "2px solid transparent",
+                    borderRadius: 8,
+                    background: "transparent",
+                    transform: selected.includes(originalIndex)
+                      ? "translateY(-12px)"
+                      : "none",
+                  }}
+                >
+                  {fullCard(card)}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="guandan-actions guandan-play-actions">
+            {!gameStarted && (
+              <button
+                className="guandan-start-button"
+                disabled={state.seat !== 0 || state.players.length < 4}
+                onClick={startGame}
+              >
+                开始四人局
+              </button>
+            )}
+            {!gameStarted && state.seat !== 0 && <span>等待首位玩家开始</span>}
+            {!gameStarted && state.players.length < 4 && (
+              <span>等待四位玩家全部进入</span>
+            )}
+            {tributePending && role === "giver" && (
+              <button
+                disabled={!gameStarted || dealing || selected.length !== 1}
+                onClick={() => sendSingleSelected("tribute_card")}
+              >
+                进贡此牌
+              </button>
+            )}
+            {tributePending && role === "receiver" && (
+              <button
+                disabled={!gameStarted || dealing || selected.length !== 1}
+                onClick={() => sendSingleSelected("return_tribute")}
+              >
+                还贡此牌
+              </button>
+            )}
+            <button
+              disabled={
+                !gameStarted ||
+                state.trickComplete ||
+                tributePending ||
+                !myTurn ||
+                selected.length === 0
+              }
+              onClick={playSelected}
+            >
+              出牌
+            </button>
+            <button
+              disabled={
+                !gameStarted ||
+                state.trickComplete ||
+                tributePending ||
+                !myTurn ||
+                state.lastPlayer === null
+              }
+              onClick={() => send({ type: "pass" })}
+            >
+              过牌
+            </button>
+          </section>
+        </>
+      )}
+
+      {state.error !== null && <p role="alert">{state.error}</p>}
+    </main>
+  );
+};
+
+export default GuandanTable;

@@ -27,14 +27,12 @@ const Welcome = ({
         在线多人纸牌游戏 · Online Multiplayer Card Game
       </p>
       <h1 className="welcome-title">
-        升级 <span>/ Tractor</span>
-        <br />
-        找朋友 <span>/ Finding Friends</span>
+        中国纸牌游戏 <span>/ Chinese Card Games</span>
       </h1>
       <p className="welcome-subtitle">
-        和亲朋好友一起在线打升级、拖拉机或找朋友。
+        选择一种玩法，与亲朋好友一起在线游戏。
         <br />
-        Create a room, share the link, and play together anywhere.
+        Choose a game, create a room, and play together anywhere.
       </p>
 
       <div className="welcome-modes">
@@ -74,18 +72,23 @@ const Welcome = ({
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
           </div>
         </button>
-        <div
-          className="welcome-mode welcome-mode-coming-soon"
-          aria-disabled="true"
+        <a
+          className="welcome-mode"
+          href="?game=guandan"
+          style={{
+            font: "inherit",
+            color: "inherit",
+            textAlign: "left",
+            cursor: "pointer",
+            textDecoration: "none",
+          }}
         >
           <div className="welcome-mode-icon">🂠</div>
           <div>
-            <h2>
-              掼蛋 / Guandan <span className="welcome-badge">建设中</span>
-            </h2>
-            <p>掼蛋多人在线版本正在建设中，完成后将在这里开放入口。</p>
+            <h2>掼蛋 / Guandan</h2>
+            <p>四人掼蛋在线版，点击进入后创建或加入掼蛋房间。</p>
           </div>
-        </div>
+        </a>
       </div>
 
       <div className="welcome-actions">
