@@ -27,7 +27,9 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   constructor(props: IDrawProps) {
     super(props);
-    this.state = { autodraw: true };
+    this.state = {
+      autodraw: true,
+    };
     this.drawCard = this.drawCard.bind(this);
     this.pickUpKitty = this.pickUpKitty.bind(this);
     this.revealCard = this.revealCard.bind(this);
@@ -62,10 +64,13 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
     if (!this.state.autodraw || !this.canDraw() || this.timeout !== null) {
       return;
     }
-    this.timeout = this.props.setTimeout(() => {
-      this.timeout = null;
-      this.drawCard();
-    }, this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250);
+    this.timeout = this.props.setTimeout(
+      () => {
+        this.timeout = null;
+        this.drawCard();
+      },
+      this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250,
+    );
   }
 
   drawCard(): void {
