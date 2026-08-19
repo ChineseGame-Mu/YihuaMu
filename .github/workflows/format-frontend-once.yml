@@ -1,0 +1,36 @@
+name: One-time frontend format
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/format-frontend-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install
+      - name: Format all frontend source
+        working-directory: frontend
+        run: yarn prettier src --write
+      - name: Commit formatted frontend and remove one-time workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/format-frontend-once.yml
+          git add frontend/src
+          if git diff --cached --quiet; then
+            echo "No frontend formatting changes needed"
+            exit 0
+          fi
+          git commit -m "style: format frontend with project Prettier"
+          git push
