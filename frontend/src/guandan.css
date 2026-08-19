@@ -2,13 +2,8 @@
   min-height: 100vh;
   box-sizing: border-box;
   padding: 20px 20px 96px;
-  background: radial-gradient(
-    circle at center,
-    #177245 0%,
-    #0b4d2b 70%,
-    #08351f 100%
-  );
-  color: #f7f4e8;
+  background: #ffffff;
+  color: #1f2933;
 }
 
 .guandan-table header {
@@ -17,18 +12,25 @@
   align-items: center;
   gap: 12px 24px;
   margin-bottom: 18px;
+  padding: 14px 18px;
+  border: 2px solid #198754;
+  border-radius: 14px;
+  background: #ffffff;
 }
 
 .guandan-table header h1 {
   margin: 0;
   font-size: 2rem;
+  color: #137a43;
 }
 
 .guandan-table section {
   margin: 14px 0;
   padding: 14px;
+  border: 2px solid #198754;
   border-radius: 12px;
-  background: rgba(0, 0, 0, 0.18);
+  background: #ffffff;
+  color: #1f2933;
 }
 
 .guandan-table input,
@@ -39,15 +41,24 @@
 .guandan-table input {
   padding: 8px 10px;
   margin: 4px 8px 4px 0;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1.5px solid #4aa56c;
   border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
 }
 
 .guandan-table button {
   cursor: pointer;
   padding: 8px 12px;
-  border: 0;
+  border: 1.5px solid #198754;
   border-radius: 8px;
+  background: #ffffff;
+  color: #137a43;
+  font-weight: 700;
+}
+
+.guandan-table button:hover:not(:disabled) {
+  background: #edf9f1;
 }
 
 .guandan-table button:disabled {
@@ -55,7 +66,6 @@
   opacity: 0.45;
 }
 
-/* Compact player strip: roughly half the old box height/padding. */
 .guandan-player-section {
   padding: 7px 10px !important;
   margin: 7px 0 !important;
@@ -64,6 +74,7 @@
 .guandan-player-section h2 {
   margin: 0 0 5px;
   font-size: 1rem;
+  color: #137a43;
 }
 
 .guandan-players {
@@ -75,9 +86,9 @@
 .guandan-players > div {
   min-height: 34px;
   padding: 4px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid #74b98d;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.08);
+  background: #f8fffa;
   font-size: 0.88rem;
   line-height: 1.15;
 }
@@ -99,10 +110,8 @@
   padding: 0;
   border-radius: 7px;
   background: transparent;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
-  transition:
-    transform 120ms ease,
-    box-shadow 120ms ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
 .guandan-hand button:hover {
@@ -111,8 +120,8 @@
 
 .guandan-hand button[aria-pressed="true"] {
   transform: translateY(-12px);
-  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.3);
-  outline: 3px solid #f6c945;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+  outline: 3px solid #198754;
 }
 
 .guandan-actions {
@@ -133,26 +142,29 @@
   z-index: 20;
   margin-top: 10px;
   padding: 12px !important;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(8, 53, 31, 0.96) !important;
-  box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.28);
+  border: 2px solid #198754 !important;
+  background: #ffffff !important;
+  box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.12);
 }
 
 .guandan-play-actions button:not(:disabled) {
-  background: #fff;
-  color: #111;
+  background: #198754;
+  color: #ffffff;
 }
 
 .guandan-start-button {
   font-size: 1.05rem !important;
   padding: 10px 18px !important;
+  background: #198754 !important;
+  color: #ffffff !important;
 }
 
 .guandan-table [role="alert"] {
   padding: 10px 12px;
   border-radius: 8px;
-  background: #8f1d1d;
-  color: #fff;
+  border: 1px solid #b42318;
+  background: #fff5f5;
+  color: #8f1d1d;
 }
 
 @media (max-width: 700px) {
@@ -162,6 +174,7 @@
 
   .guandan-table header {
     gap: 8px 14px;
+    padding: 10px 12px;
   }
 
   .guandan-table section {
