@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - '.github/workflows/fix-guandan-deal-once.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,8 +23,6 @@ jobs:
         run: |
           from pathlib import Path
 
-          # Frontend: do not pretend the game has started merely because the
-          # Start command was sent. Wait for authoritative server state/hand.
           p = Path('frontend/src/GuandanTable.tsx')
           s = p.read_text()
           old = '''  const gameStarted = serverDealt || startRequested;\n'''
@@ -32,15 +31,6 @@ jobs:
               raise SystemExit('frontend gameStarted line not found')
           s = s.replace(old, new, 1)
 
-          old = '''    if (send({ type: "start", player_count: 4 })) {\n      setStartRequested(true);\n      setSelected([]);\n    }\n'''
-          new = '''    if (send({ type: "start", player_count: 4 })) {\n      setStartRequested(true);\n      setSelected([]);\n    }\n'''
-          # Keep startRequested as a request-in-flight indicator; authoritative
-          # gameStarted above no longer depends on it.
-          if old not in s:
-              raise SystemExit('frontend start block not found')
-
-          # Clear the in-flight flag if the server rejects start, so the host
-          # can retry instead of being stranded on an empty table.
           marker = '''  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'''
           replacement = '''  React.useEffect(() => {\n    if (serverDealt || state.playerCount !== null) setStartRequested(true);\n  }, [serverDealt, state.playerCount]);\n\n  React.useEffect(() => {\n    if (state.error !== null && state.hand.length === 0) {\n      setStartRequested(false);\n    }\n  }, [state.error, state.hand.length]);\n'''
           if marker not in s:
@@ -48,8 +38,6 @@ jobs:
           s = s.replace(marker, replacement, 1)
           p.write_text(s)
 
-          # Backend: every subscribed player should receive explicit Started
-          # metadata before State + their private Hand when a deal begins.
           p = Path('backend/src/guandan_handler.rs')
           s = p.read_text()
           old = '''                            if state.game.started {\n                                send(&tx_sub, &state_message(&key, &state.game));\n                                if let Some(seat_sub) = seat_sub {\n'''
@@ -77,11 +65,10 @@ jobs:
       - name: Test Guandan backend
         run: cargo test -p backend guandan --no-fail-fast
 
-      - name: Remove one-time workflow and commit fix
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm .github/workflows/fix-guandan-deal-once.yml
           git add frontend/src/GuandanTable.tsx backend/src/guandan_handler.rs
           git commit -m "fix: synchronize Guandan start and deal for all players"
           git push
