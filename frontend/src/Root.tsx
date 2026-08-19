@@ -231,9 +231,36 @@ const Root = (): JSX.Element => {
     );
   }
 
+  if (selectedGameMode !== null) {
+    return (
+      <div>
+        {headerMessages}
+        <Errors errors={state.errors} />
+        <div className="game">
+          <h1>
+            {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
+          </h1>
+          <p>
+            已选择游戏模式，正在连接服务器… 连接完成后会自动进入房间页面。
+          </p>
+          <button
+            className="normal"
+            type="button"
+            onClick={() => setSelectedGameMode(null)}
+          >
+            重新选择
+          </button>
+        </div>
+        <hr />
+        <Credits />
+        <TitleHandler playerName={state.name} />
+      </div>
+    );
+  }
+
   return (
     <div className="welcome-shell">
-      <Welcome />
+      <Welcome onSelectGameMode={setSelectedGameMode} />
       <Credits />
       <TitleHandler playerName={state.name} />
     </div>
