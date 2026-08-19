@@ -1,0 +1,87 @@
+name: One-time Guandan deal synchronization fix
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/fix-guandan-deal-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Patch Guandan start/deal synchronization
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Frontend: do not pretend the game has started merely because the
+          # Start command was sent. Wait for authoritative server state/hand.
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '''  const gameStarted = serverDealt || startRequested;\n'''
+          new = '''  const gameStarted = serverDealt || state.playerCount !== null;\n'''
+          if old not in s:
+              raise SystemExit('frontend gameStarted line not found')
+          s = s.replace(old, new, 1)
+
+          old = '''    if (send({ type: "start", player_count: 4 })) {\n      setStartRequested(true);\n      setSelected([]);\n    }\n'''
+          new = '''    if (send({ type: "start", player_count: 4 })) {\n      setStartRequested(true);\n      setSelected([]);\n    }\n'''
+          # Keep startRequested as a request-in-flight indicator; authoritative
+          # gameStarted above no longer depends on it.
+          if old not in s:
+              raise SystemExit('frontend start block not found')
+
+          # Clear the in-flight flag if the server rejects start, so the host
+          # can retry instead of being stranded on an empty table.
+          marker = '''  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'''
+          replacement = '''  React.useEffect(() => {\n    if (serverDealt || state.playerCount !== null) setStartRequested(true);\n  }, [serverDealt, state.playerCount]);\n\n  React.useEffect(() => {\n    if (state.error !== null && state.hand.length === 0) {\n      setStartRequested(false);\n    }\n  }, [state.error, state.hand.length]);\n'''
+          if marker not in s:
+              raise SystemExit('frontend serverDealt effect not found')
+          s = s.replace(marker, replacement, 1)
+          p.write_text(s)
+
+          # Backend: every subscribed player should receive explicit Started
+          # metadata before State + their private Hand when a deal begins.
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+          old = '''                            if state.game.started {\n                                send(&tx_sub, &state_message(&key, &state.game));\n                                if let Some(seat_sub) = seat_sub {\n'''
+          new = '''                            if state.game.started {\n                                send(\n                                    &tx_sub,\n                                    &GuandanServerMessage::Started {\n                                        player_count: state.game.player_names.len(),\n                                        cards_per_player: CARDS_PER_PLAYER,\n                                    },\n                                );\n                                send(&tx_sub, &state_message(&key, &state.game));\n                                if let Some(seat_sub) = seat_sub {\n'''
+          if old not in s:
+              raise SystemExit('backend subscription started block not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install
+
+      - name: Format frontend
+        working-directory: frontend
+        run: yarn prettier src/GuandanTable.tsx --write
+
+      - name: Format Rust
+        run: cargo fmt --all
+
+      - name: Test frontend
+        working-directory: frontend
+        run: yarn test --runInBand
+
+      - name: Test Guandan backend
+        run: cargo test -p backend guandan --no-fail-fast
+
+      - name: Remove one-time workflow and commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-guandan-deal-once.yml
+          git add frontend/src/GuandanTable.tsx backend/src/guandan_handler.rs
+          git commit -m "fix: synchronize Guandan start and deal for all players"
+          git push
