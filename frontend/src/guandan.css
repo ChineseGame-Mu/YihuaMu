@@ -1,3 +1,29 @@
+.guandan-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 20px 0;
+  background: #ffffff;
+  color: #1f2933;
+}
+
+.guandan-topbar h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: #137a43;
+}
+
+.guandan-reselect-button {
+  padding: 6px 14px !important;
+  border: 1.5px solid #198754 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #137a43 !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+}
+
 .guandan-table {
   min-height: 100vh;
   box-sizing: border-box;
@@ -19,9 +45,7 @@
 }
 
 .guandan-table header h1 {
-  margin: 0;
-  font-size: 2rem;
-  color: #137a43;
+  display: none;
 }
 
 .guandan-table section {
@@ -170,6 +194,18 @@
 }
 
 @media (max-width: 700px) {
+  .guandan-topbar {
+    padding: 10px 10px 0;
+  }
+
+  .guandan-topbar h1 {
+    font-size: 1.7rem;
+  }
+
+  .guandan-reselect-button {
+    font-size: 16px !important;
+  }
+
   .guandan-table {
     padding: 10px 10px 92px;
   }
