@@ -41,13 +41,13 @@ const Welcome = ({
         <button
           className="welcome-mode"
           type="button"
-          disabled={!connected || onSelectGameMode === undefined}
+          disabled={onSelectGameMode === undefined}
           onClick={() => onSelectGameMode?.("Tractor")}
           style={{
             font: "inherit",
             color: "inherit",
             textAlign: "left",
-            cursor: connected ? "pointer" : "default",
+            cursor: onSelectGameMode === undefined ? "default" : "pointer",
           }}
         >
           <div className="welcome-mode-icon">🃏</div>
@@ -59,13 +59,13 @@ const Welcome = ({
         <button
           className="welcome-mode"
           type="button"
-          disabled={!connected || onSelectGameMode === undefined}
+          disabled={onSelectGameMode === undefined}
           onClick={() => onSelectGameMode?.("FindingFriends")}
           style={{
             font: "inherit",
             color: "inherit",
             textAlign: "left",
-            cursor: connected ? "pointer" : "default",
+            cursor: onSelectGameMode === undefined ? "default" : "pointer",
           }}
         >
           <div className="welcome-mode-icon">🂡</div>
@@ -98,7 +98,7 @@ const Welcome = ({
         <span className="welcome-status-dot" />
         {connected
           ? "服务器已连接 · Connected — 请选择游戏模式"
-          : "正在连接服务器… Connecting to the server…"}
+          : "正在连接服务器… 可先选择游戏模式 · Connecting…"}
       </div>
     </section>
   </main>
