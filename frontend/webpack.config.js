@@ -80,6 +80,10 @@ module.exports = {
           to: "rules.html",
         },
         {
+          from: "static/runtime.js",
+          to: "runtime.js",
+        },
+        {
           from: "static/timer-worker.js",
           to: "timer-worker.js",
         },
