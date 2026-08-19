@@ -111,7 +111,9 @@
   border-radius: 7px;
   background: transparent;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .guandan-hand button:hover {
