@@ -21,14 +21,19 @@ const Confetti = React.lazy(async () => await import("./Confetti"));
 
 type GameModeChoice = "Tractor" | "FindingFriends";
 
+const titleRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "12px",
+};
+
 const reselectButtonStyle: React.CSSProperties = {
-  display: "block",
-  margin: "18px auto 24px",
-  padding: "14px 34px",
-  fontSize: "24px",
+  padding: "6px 14px",
+  fontSize: "18px",
   fontWeight: 700,
   lineHeight: 1.2,
-  borderRadius: "12px",
+  borderRadius: "8px",
   cursor: "pointer",
 };
 
@@ -82,8 +87,20 @@ const Root = (): JSX.Element => {
 
   const returnToGameSelection = (): void => {
     setSelectedGameMode(null);
+    updateState({ roomName: "" });
     window.history.replaceState({}, "", window.location.pathname);
   };
+
+  const reselectButton = (
+    <button
+      className="normal"
+      type="button"
+      style={reselectButtonStyle}
+      onClick={returnToGameSelection}
+    >
+      重新选择
+    </button>
+  );
 
   // A valid room code in a shared URL always takes precedence over the welcome screen.
   const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
@@ -107,20 +124,13 @@ const Root = (): JSX.Element => {
           {headerMessages}
           <Errors errors={state.errors} />
           <div className="game">
-            {!hasSharedRoom && (
-              <button
-                className="normal"
-                type="button"
-                style={reselectButtonStyle}
-                onClick={returnToGameSelection}
-              >
-                重新选择
-              </button>
-            )}
-            <h1>
-              升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
-              <span className="red">Finding Friends</span>
-            </h1>
+            <div style={titleRowStyle}>
+              <h1>
+                升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
+                <span className="red">Finding Friends</span>
+              </h1>
+              {reselectButton}
+            </div>
             {hasSharedRoom && selectedGameMode === null ? (
               <p>
                 正在进入朋友分享的房间：<strong>{state.roomName}</strong>
@@ -227,10 +237,13 @@ const Root = (): JSX.Element => {
     return (
       <div>
         <div className="game">
-          <h1>
-            升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
-            <span className="red">Finding Friends</span>
-          </h1>
+          <div style={titleRowStyle}>
+            <h1>
+              升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
+              <span className="red">Finding Friends</span>
+            </h1>
+            {reselectButton}
+          </div>
           <p>
             正在连接朋友分享的房间：<strong>{state.roomName}</strong>
           </p>
@@ -257,15 +270,12 @@ const Root = (): JSX.Element => {
         {headerMessages}
         <Errors errors={state.errors} />
         <div className="game">
-          <button
-            className="normal"
-            type="button"
-            style={reselectButtonStyle}
-            onClick={returnToGameSelection}
-          >
-            重新选择
-          </button>
-          <h1>{selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}</h1>
+          <div style={titleRowStyle}>
+            <h1>
+              {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
+            </h1>
+            {reselectButton}
+          </div>
           <p>已选择游戏模式，正在连接服务器… 连接完成后会自动进入房间页面。</p>
         </div>
         <hr />
