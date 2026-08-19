@@ -22,64 +22,37 @@ interface IDrawState {
   autodraw: boolean;
 }
 class Draw extends React.Component<IDrawProps, IDrawState> {
+  private could_draw: boolean = false;
   private timeout: number | null = null;
   private drawCardAudio: HTMLAudioElement | null = null;
 
   constructor(props: IDrawProps) {
     super(props);
-    this.state = { autodraw: true };
+    this.state = {
+      autodraw: true,
+    };
     this.drawCard = this.drawCard.bind(this);
     this.pickUpKitty = this.pickUpKitty.bind(this);
     this.revealCard = this.revealCard.bind(this);
     this.onAutodrawClicked = this.onAutodrawClicked.bind(this);
   }
 
-  componentDidMount(): void {
-    this.scheduleAutodrawIfNeeded();
-  }
-
-  componentDidUpdate(): void {
-    this.scheduleAutodrawIfNeeded();
-  }
-
-  componentWillUnmount(): void {
-    if (this.timeout !== null) {
-      this.props.clearTimeout(this.timeout);
-      this.timeout = null;
-    }
-  }
-
-  private canDraw(): boolean {
-    const player = this.props.state.propagated.players[this.props.state.position];
-    return (
-      player !== undefined &&
-      player.name === this.props.name &&
-      this.props.state.deck.length > 0
-    );
-  }
-
-  private scheduleAutodrawIfNeeded(): void {
-    if (!this.state.autodraw || !this.canDraw() || this.timeout !== null) {
-      return;
-    }
-    this.timeout = this.props.setTimeout(() => {
-      this.timeout = null;
-      this.drawCard();
-    }, this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250);
-  }
-
   drawCard(): void {
+    const canDraw =
+      this.props.state.propagated.players[this.props.state.position].name ===
+      this.props.name;
     if (this.timeout !== null) {
       this.props.clearTimeout(this.timeout);
       this.timeout = null;
     }
-    if (this.canDraw()) {
+    if (canDraw) {
       if (this.props.playDrawCardSound) {
         if (this.drawCardAudio === null) {
           this.drawCardAudio = new Audio(
             "434472_dersuperanton_taking-card.mp3",
           );
         }
+
         this.drawCardAudio.play();
       }
       (window as any).send({ Action: "DrawCard" });
@@ -97,19 +70,37 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
   }
 
   onAutodrawClicked(evt: React.ChangeEvent<HTMLInputElement>): void {
-    const autodraw = evt.target.checked;
-    this.setState({ autodraw }, () => {
-      if (autodraw) {
-        this.scheduleAutodrawIfNeeded();
-      } else if (this.timeout !== null) {
+    this.setState({
+      autodraw: evt.target.checked,
+    });
+    if (evt.target.checked) {
+      this.drawCard();
+    } else {
+      if (this.timeout !== null) {
         this.props.clearTimeout(this.timeout);
         this.timeout = null;
       }
-    });
+    }
   }
 
   render(): JSX.Element {
-    const canDraw = this.canDraw();
+    const canDraw =
+      this.props.state.propagated.players[this.props.state.position].name ===
+        this.props.name && this.props.state.deck.length > 0;
+    if (
+      canDraw &&
+      !this.could_draw &&
+      this.timeout === null &&
+      this.state.autodraw
+    ) {
+      this.timeout = this.props.setTimeout(
+        () => {
+          this.drawCard();
+        },
+        this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250,
+      );
+    }
+    this.could_draw = canDraw;
 
     let next =
       this.props.state.propagated.players[this.props.state.position].id;
@@ -124,7 +115,9 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
     let playerId = -1;
     this.props.state.propagated.players.forEach((p) => {
       players[p.id] = p;
-      if (p.name === this.props.name) playerId = p.id;
+      if (p.name === this.props.name) {
+        playerId = p.id;
+      }
     });
 
     const landlord = this.props.state.propagated.landlord;
