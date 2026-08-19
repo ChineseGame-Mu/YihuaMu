@@ -21,6 +21,17 @@ const Confetti = React.lazy(async () => await import("./Confetti"));
 
 type GameModeChoice = "Tractor" | "FindingFriends";
 
+const reselectButtonStyle: React.CSSProperties = {
+  display: "block",
+  margin: "18px auto 24px",
+  padding: "14px 34px",
+  fontSize: "24px",
+  fontWeight: 700,
+  lineHeight: 1.2,
+  borderRadius: "12px",
+  cursor: "pointer",
+};
+
 const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
@@ -69,6 +80,11 @@ const Root = (): JSX.Element => {
     </div>
   ) : null;
 
+  const returnToGameSelection = (): void => {
+    setSelectedGameMode(null);
+    window.history.replaceState({}, "", window.location.pathname);
+  };
+
   // A valid room code in a shared URL always takes precedence over the welcome screen.
   const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
 
@@ -91,6 +107,16 @@ const Root = (): JSX.Element => {
           {headerMessages}
           <Errors errors={state.errors} />
           <div className="game">
+            {!hasSharedRoom && (
+              <button
+                className="normal"
+                type="button"
+                style={reselectButtonStyle}
+                onClick={returnToGameSelection}
+              >
+                重新选择
+              </button>
+            )}
             <h1>
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
@@ -104,13 +130,7 @@ const Root = (): JSX.Element => {
                 当前模式：
                 <strong>
                   {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
-                </strong>{" "}
-                <button
-                  className="normal"
-                  onClick={() => setSelectedGameMode(null)}
-                >
-                  重新选择
-                </button>
+                </strong>
               </p>
             )}
             <JoinRoom
@@ -237,19 +257,20 @@ const Root = (): JSX.Element => {
         {headerMessages}
         <Errors errors={state.errors} />
         <div className="game">
+          <button
+            className="normal"
+            type="button"
+            style={reselectButtonStyle}
+            onClick={returnToGameSelection}
+          >
+            重新选择
+          </button>
           <h1>
             {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
           </h1>
           <p>
             已选择游戏模式，正在连接服务器… 连接完成后会自动进入房间页面。
           </p>
-          <button
-            className="normal"
-            type="button"
-            onClick={() => setSelectedGameMode(null)}
-          >
-            重新选择
-          </button>
         </div>
         <hr />
         <Credits />
