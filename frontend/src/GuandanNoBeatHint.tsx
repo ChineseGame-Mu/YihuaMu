@@ -22,6 +22,15 @@ interface Strength {
   joker: "Small" | "Big" | null;
 }
 
+interface SuggestionScore {
+  patternPenalty: number;
+  bombBreaks: number;
+  levelCards: number;
+  bombTier: number;
+  mainPower: number;
+  cardTotal: number;
+}
+
 const ranks: GuandanRank[] = [
   "Two",
   "Three",
@@ -299,6 +308,26 @@ const combinations = (
   return result;
 };
 
+const indexCombinations = (
+  length: number,
+  size: number,
+  start = 0,
+  chosen: number[] = [],
+): number[][] => {
+  if (chosen.length === size) return [chosen];
+  const result: number[][] = [];
+  for (
+    let index = start;
+    index <= length - (size - chosen.length);
+    index += 1
+  ) {
+    result.push(
+      ...indexCombinations(length, size, index + 1, chosen.concat(index)),
+    );
+  }
+  return result;
+};
+
 const hasAnyBomb = (hand: GuandanCard[]): boolean => {
   const suitedCounts = new Map<GuandanRank, number>();
   let jokers = 0;
@@ -377,27 +406,140 @@ const cardSortValue = (card: GuandanCard, level: GuandanRank): number => {
   );
 };
 
+const bombBreakPenalty = (
+  hand: GuandanCard[],
+  indexes: number[],
+): number => {
+  const handRanks = new Map<GuandanRank, number>();
+  const selectedRanks = new Map<GuandanRank, number>();
+  let handJokers = 0;
+  let selectedJokers = 0;
+  const selected = new Set(indexes);
+
+  hand.forEach((card, index) => {
+    if ("Joker" in card) {
+      handJokers += 1;
+      if (selected.has(index)) selectedJokers += 1;
+      return;
+    }
+    handRanks.set(card.Suited.rank, (handRanks.get(card.Suited.rank) ?? 0) + 1);
+    if (selected.has(index)) {
+      selectedRanks.set(
+        card.Suited.rank,
+        (selectedRanks.get(card.Suited.rank) ?? 0) + 1,
+      );
+    }
+  });
+
+  let penalty = 0;
+  Array.from(handRanks.entries()).forEach(([rank, count]) => {
+    const used = selectedRanks.get(rank) ?? 0;
+    if (count >= 4 && used > 0 && used < count) penalty += 1;
+  });
+  if (handJokers >= 4 && selectedJokers > 0 && selectedJokers < handJokers) {
+    penalty += 1;
+  }
+  return penalty;
+};
+
+const candidateMainPower = (
+  candidate: Strength,
+  level: GuandanRank,
+): number =>
+  candidate.pattern === "straight" ||
+  candidate.pattern === "straight_flush" ||
+  candidate.pattern === "consecutive_pairs" ||
+  candidate.pattern === "consecutive_triples"
+    ? sequencePower(candidate.mainRank, level)
+    : mainPower(candidate, level);
+
+const suggestionScore = (
+  hand: GuandanCard[],
+  indexes: number[],
+  candidate: Strength,
+  current: Strength,
+  level: GuandanRank,
+): SuggestionScore => ({
+  patternPenalty:
+    !isBombFamily(current.pattern) && candidate.pattern === current.pattern
+      ? 0
+      : 1,
+  bombBreaks: bombBreakPenalty(hand, indexes),
+  levelCards: indexes.filter((index) => rankOf(hand[index]) === level).length,
+  bombTier: isBombFamily(candidate.pattern) ? bombTier(candidate) : 0,
+  mainPower: candidateMainPower(candidate, level),
+  cardTotal: indexes.reduce(
+    (total, index) => total + cardSortValue(hand[index], level),
+    0,
+  ),
+});
+
+const compareSuggestionScores = (
+  left: SuggestionScore,
+  right: SuggestionScore,
+): number =>
+  left.patternPenalty - right.patternPenalty ||
+  left.bombBreaks - right.bombBreaks ||
+  left.levelCards - right.levelCards ||
+  left.bombTier - right.bombTier ||
+  left.mainPower - right.mainPower ||
+  left.cardTotal - right.cardTotal;
+
 const findSuggestedIndexes = (
   hand: GuandanCard[],
   currentCards: GuandanCard[],
   level: GuandanRank,
 ): number[] => {
-  let kept = hand.map((_, index) => index);
-  const removalOrder = kept
-    .slice()
-    .sort(
-      (a, b) => cardSortValue(hand[b], level) - cardSortValue(hand[a], level),
-    );
+  const current = strength(currentCards);
+  if (current === null) return [];
 
-  removalOrder.forEach((index) => {
-    const candidateIndexes = kept.filter((value) => value !== index);
-    if (candidateIndexes.length === 0) return;
-    const candidateHand = candidateIndexes.map((value) => hand[value]);
-    if (handCanBeat(candidateHand, currentCards, level))
-      kept = candidateIndexes;
+  const sizes: number[] = [];
+  const addSize = (size: number): void => {
+    if (size <= hand.length && !sizes.includes(size)) sizes.push(size);
+  };
+  if (!isBombFamily(current.pattern)) addSize(current.cardCount);
+  addSize(4);
+  addSize(5);
+  addSize(6);
+
+  const candidates: Array<{
+    indexes: number[];
+    strength: Strength;
+    score: SuggestionScore;
+  }> = [];
+  const addCandidate = (indexes: number[]): void => {
+    const cards = indexes.map((index) => hand[index]);
+    const candidate = strength(cards);
+    if (candidate === null || !beats(candidate, current, level)) return;
+    candidates.push({
+      indexes,
+      strength: candidate,
+      score: suggestionScore(hand, indexes, candidate, current, level),
+    });
+  };
+
+  sizes.forEach((size) => {
+    indexCombinations(hand.length, size).forEach(addCandidate);
   });
 
-  return kept;
+  const byRank = new Map<GuandanRank, number[]>();
+  hand.forEach((card, index) => {
+    if ("Suited" in card) {
+      const group = byRank.get(card.Suited.rank) ?? [];
+      group.push(index);
+      byRank.set(card.Suited.rank, group);
+    }
+  });
+  Array.from(byRank.values()).forEach((group) => {
+    for (let size = 7; size <= group.length; size += 1) {
+      addCandidate(group.slice(0, size));
+    }
+  });
+
+  candidates.sort((left, right) =>
+    compareSuggestionScores(left.score, right.score),
+  );
+  return candidates[0]?.indexes ?? [];
 };
 
 const selectSuggestedCards = (
