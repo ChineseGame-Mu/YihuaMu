@@ -103,3 +103,21 @@ describe("Guandan suggestion descriptions", () => {
     ).toBe("王炸");
   });
 });
+
+describe("Guandan suggestion interaction contract", () => {
+  test("keeps suggested selection and description in sync", () => {
+    const hand = [
+      suited("Nine", "Clubs"),
+      suited("Nine", "Diamonds"),
+      suited("Jack", "Clubs"),
+      suited("Jack", "Diamonds"),
+    ];
+    const current = [suited("Eight", "Clubs"), suited("Eight", "Diamonds")];
+
+    const indexes = findSuggestedIndexes(hand, current, "Two");
+    const suggestedCards = indexes.map((index) => hand[index]);
+
+    expect(indexes).toEqual([0, 1]);
+    expect(describeSuggestedCards(suggestedCards)).toBe("对9");
+  });
+});
