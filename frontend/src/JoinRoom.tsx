@@ -17,6 +17,7 @@ interface IProps {
 }
 
 export const ROOM_CODE_LENGTH = 4;
+export const DEFAULT_ROOM_CODE = "0001";
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
@@ -64,19 +65,12 @@ const JoinRoom = (props: IProps): JSX.Element => {
     }
   };
 
-  const generateRoomName = React.useCallback((): void => {
-    const arr = new Uint32Array(1);
-    window.crypto.getRandomValues(arr);
-    const code = String(arr[0] % 10000).padStart(ROOM_CODE_LENGTH, "0");
-    setCreatingNewRoom(true);
-    props.setRoomName(code);
-  }, [props.setRoomName]);
-
   React.useEffect(() => {
     if (props.room_name.length === 0) {
-      generateRoomName();
+      setCreatingNewRoom(true);
+      props.setRoomName(DEFAULT_ROOM_CODE);
     }
-  }, [props.room_name.length, generateRoomName]);
+  }, [props.room_name.length, props.setRoomName]);
 
   const canSubmit =
     props.room_name.length === ROOM_CODE_LENGTH &&
