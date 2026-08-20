@@ -406,10 +406,7 @@ const cardSortValue = (card: GuandanCard, level: GuandanRank): number => {
   );
 };
 
-const bombBreakPenalty = (
-  hand: GuandanCard[],
-  indexes: number[],
-): number => {
+const bombBreakPenalty = (hand: GuandanCard[], indexes: number[]): number => {
   const handRanks = new Map<GuandanRank, number>();
   const selectedRanks = new Map<GuandanRank, number>();
   let handJokers = 0;
@@ -442,10 +439,7 @@ const bombBreakPenalty = (
   return penalty;
 };
 
-const candidateMainPower = (
-  candidate: Strength,
-  level: GuandanRank,
-): number =>
+const candidateMainPower = (candidate: Strength, level: GuandanRank): number =>
   candidate.pattern === "straight" ||
   candidate.pattern === "straight_flush" ||
   candidate.pattern === "consecutive_pairs" ||
