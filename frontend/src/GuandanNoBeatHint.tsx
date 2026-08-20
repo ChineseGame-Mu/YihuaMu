@@ -42,6 +42,13 @@ const ranks: GuandanRank[] = [
   "Ace",
 ];
 
+const suitOrder: Record<GuandanSuit, number> = {
+  Clubs: 0,
+  Diamonds: 1,
+  Spades: 2,
+  Hearts: 3,
+};
+
 const naturalRankValue = (rank: GuandanRank): number => ranks.indexOf(rank) + 2;
 
 const rankOf = (card: GuandanCard): GuandanRank | null =>
@@ -65,9 +72,7 @@ const rankCounts = (cards: GuandanCard[]): Map<GuandanRank, number> | null => {
   const counts = new Map<GuandanRank, number>();
   cards.forEach((card) => {
     const rank = rankOf(card);
-    if (rank !== null) {
-      counts.set(rank, (counts.get(rank) ?? 0) + 1);
-    }
+    if (rank !== null) counts.set(rank, (counts.get(rank) ?? 0) + 1);
   });
   return cards.every((card) => rankOf(card) !== null) ? counts : null;
 };
@@ -139,15 +144,15 @@ const classify = (cards: GuandanCard[]): Pattern | null => {
       );
       if (
         entries.length === 3 &&
-        entries.every(([, count]) => count === 2) &&
-        consecutive(entries.map(([rank]) => rank))
+        entries.every((entry) => entry[1] === 2) &&
+        consecutive(entries.map((entry) => entry[0]))
       ) {
         return "consecutive_pairs";
       }
       if (
         entries.length === 2 &&
-        entries.every(([, count]) => count === 3) &&
-        consecutive(entries.map(([rank]) => rank))
+        entries.every((entry) => entry[1] === 3) &&
+        consecutive(entries.map((entry) => entry[0]))
       ) {
         return "consecutive_triples";
       }
@@ -160,6 +165,7 @@ const classify = (cards: GuandanCard[]): Pattern | null => {
 const strength = (cards: GuandanCard[]): Strength | null => {
   const pattern = classify(cards);
   if (pattern === null) return null;
+
   if (
     (pattern === "single" || pattern === "pair" || pattern === "triple") &&
     "Joker" in cards[0]
@@ -171,10 +177,12 @@ const strength = (cards: GuandanCard[]): Strength | null => {
       joker: cards[0].Joker,
     };
   }
+
   let mainRank: GuandanRank = "Ace";
   if (pattern === "triple_with_pair") {
     const counts = rankCounts(cards)!;
-    mainRank = Array.from(counts.entries()).find(([, count]) => count === 3)![0];
+    const triple = Array.from(counts.entries()).find((entry) => entry[1] === 3);
+    if (triple !== undefined) mainRank = triple[0];
   } else if (
     pattern === "straight" ||
     pattern === "straight_flush" ||
@@ -189,6 +197,7 @@ const strength = (cards: GuandanCard[]): Strength | null => {
   } else if (pattern !== "joker_bomb") {
     mainRank = rankOf(cards[0])!;
   }
+
   return { pattern, mainRank, cardCount: cards.length, joker: null };
 };
 
@@ -225,8 +234,10 @@ const beats = (
 ): boolean => {
   const candidateBomb = isBombFamily(candidate.pattern);
   const currentBomb = isBombFamily(current.pattern);
+
   if (candidateBomb && !currentBomb) return true;
   if (!candidateBomb && currentBomb) return false;
+
   if (candidateBomb && currentBomb) {
     const tierDifference = bombTier(candidate) - bombTier(current);
     if (tierDifference !== 0) return tierDifference > 0;
@@ -254,12 +265,14 @@ const beats = (
     }
     return false;
   }
+
   if (
     candidate.pattern !== current.pattern ||
     candidate.cardCount !== current.cardCount
   ) {
     return false;
   }
+
   const sequence =
     candidate.pattern === "straight" ||
     candidate.pattern === "consecutive_pairs" ||
@@ -284,7 +297,7 @@ const combinations = (
     index += 1
   ) {
     result.push(
-      ...combinations(cards, size, index + 1, [...chosen, cards[index]]),
+      ...combinations(cards, size, index + 1, chosen.concat(cards[index])),
     );
   }
   return result;
@@ -314,7 +327,6 @@ export const handCanBeat = (
 ): boolean => {
   const current = strength(currentCards);
   if (current === null) return true;
-
   if (!isBombFamily(current.pattern) && hasAnyBomb(hand)) return true;
 
   const sizes = new Set<number>();
@@ -362,6 +374,61 @@ export const handCanBeat = (
   return false;
 };
 
+const cardSortValue = (card: GuandanCard, level: GuandanRank): number => {
+  if ("Joker" in card) return card.Joker === "Small" ? 1000 : 1100;
+  const base = ranks.indexOf(card.Suited.rank);
+  return (
+    (card.Suited.rank === level ? 900 : base * 10) +
+    suitOrder[card.Suited.suit]
+  );
+};
+
+const findSuggestedIndexes = (
+  hand: GuandanCard[],
+  currentCards: GuandanCard[],
+  level: GuandanRank,
+): number[] => {
+  let kept = hand.map((_, index) => index);
+  const removalOrder = kept.slice().sort(
+    (a, b) => cardSortValue(hand[b], level) - cardSortValue(hand[a], level),
+  );
+
+  removalOrder.forEach((index) => {
+    const candidateIndexes = kept.filter((value) => value !== index);
+    if (candidateIndexes.length === 0) return;
+    const candidateHand = candidateIndexes.map((value) => hand[value]);
+    if (handCanBeat(candidateHand, currentCards, level)) kept = candidateIndexes;
+  });
+
+  return kept;
+};
+
+const selectSuggestedCards = (
+  hand: GuandanCard[],
+  indexes: number[],
+  level: GuandanRank,
+): void => {
+  const ordered = hand
+    .map((card, originalIndex) => ({ card, originalIndex }))
+    .sort(
+      (a, b) =>
+        cardSortValue(a.card, level) - cardSortValue(b.card, level) ||
+        a.originalIndex - b.originalIndex,
+    );
+  const desired = new Set(indexes);
+  const buttons = document.querySelectorAll<HTMLButtonElement>(
+    ".guandan-hand > button",
+  );
+
+  buttons.forEach((button, visibleIndex) => {
+    const originalIndex = ordered[visibleIndex]?.originalIndex;
+    if (originalIndex === undefined) return;
+    const shouldBeSelected = desired.has(originalIndex);
+    const isSelected = button.getAttribute("aria-pressed") === "true";
+    if (shouldBeSelected !== isSelected) button.click();
+  });
+};
+
 const GuandanNoBeatHint: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
   const shouldCheck =
@@ -382,22 +449,37 @@ const GuandanNoBeatHint: React.FunctionComponent = () => {
     [shouldCheck, state.hand, state.lastPlay, state.level],
   );
 
-  if (!shouldCheck || canBeat) return null;
+  if (!shouldCheck || state.level === null) return null;
+
+  if (!canBeat) {
+    return (
+      <div
+        role="status"
+        style={{
+          margin: "8px auto",
+          padding: "8px 12px",
+          maxWidth: "520px",
+          textAlign: "center",
+          fontWeight: 700,
+          border: "1px solid currentColor",
+          borderRadius: "8px",
+        }}
+      >
+        ⚠️ 你没有可大过的牌，请过牌
+      </div>
+    );
+  }
+
+  const showSuggestion = (): void => {
+    const indexes = findSuggestedIndexes(state.hand, state.lastPlay, state.level!);
+    selectSuggestedCards(state.hand, indexes, state.level!);
+  };
 
   return (
-    <div
-      role="status"
-      style={{
-        margin: "8px auto",
-        padding: "8px 12px",
-        maxWidth: "520px",
-        textAlign: "center",
-        fontWeight: 700,
-        border: "1px solid currentColor",
-        borderRadius: "8px",
-      }}
-    >
-      ⚠️ 你没有可大过的牌，请过牌
+    <div style={{ margin: "8px auto", textAlign: "center" }}>
+      <button type="button" className="normal" onClick={showSuggestion}>
+        提示出牌
+      </button>
     </div>
   );
 };
