@@ -1,4 +1,4 @@
-name: Add Guandan suggestion description once
+name: Add Guandan suggestion description once v2
 
 on:
   push:
@@ -30,29 +30,9 @@ jobs:
           path = Path("frontend/src/GuandanNoBeatHint.tsx")
           text = path.read_text()
 
-          old = '''const compareSuggestionScores = (
-            left: SuggestionScore,
-            right: SuggestionScore,
-          ): number =>
-            left.patternPenalty - right.patternPenalty ||
-            left.bombBreaks - right.bombBreaks ||
-            left.levelCards - right.levelCards ||
-            left.bombTier - right.bombTier ||
-            left.mainPower - right.mainPower ||
-            left.cardTotal - right.cardTotal;
-          '''
-          new = '''const compareSuggestionScores = (
-            left: SuggestionScore,
-            right: SuggestionScore,
-          ): number =>
-            left.patternPenalty - right.patternPenalty ||
-            left.bombBreaks - right.bombBreaks ||
-            left.levelCards - right.levelCards ||
-            left.bombTier - right.bombTier ||
-            left.mainPower - right.mainPower ||
-            left.cardTotal - right.cardTotal;
-
-          const rankLabels: Record<GuandanRank, string> = {
+          if "export const describeSuggestedCards" not in text:
+              marker = "export const findSuggestedIndexes = ("
+              addition = '''const rankLabels: Record<GuandanRank, string> = {
             Two: "2",
             Three: "3",
             Four: "4",
@@ -68,10 +48,17 @@ jobs:
             Ace: "A",
           };
 
-          const describeSuggestedCards = (cards: GuandanCard[]): string | null => {
+          export const describeSuggestedCards = (
+            cards: GuandanCard[],
+          ): string | null => {
             const play = strength(cards);
             if (play === null) return null;
-            const rank = play.joker === "Small" ? "小王" : play.joker === "Big" ? "大王" : rankLabels[play.mainRank];
+            const rank =
+              play.joker === "Small"
+                ? "小王"
+                : play.joker === "Big"
+                  ? "大王"
+                  : rankLabels[play.mainRank];
 
             switch (play.pattern) {
               case "single":
@@ -96,86 +83,61 @@ jobs:
                 return "王炸";
             }
           };
-          '''
-          if old not in text:
-              raise SystemExit("suggestion score insertion point not found")
-          text = text.replace(old, new, 1)
 
-          old = '''const GuandanNoBeatHint: React.FunctionComponent = () => {
-            const { state } = React.useContext(GuandanStateContext);
-            const shouldCheck =
           '''
-          new = '''const GuandanNoBeatHint: React.FunctionComponent = () => {
-            const { state } = React.useContext(GuandanStateContext);
-            const [suggestionText, setSuggestionText] = React.useState<string | null>(null);
-            const shouldCheck =
-          '''
-          if old not in text:
-              raise SystemExit("component state insertion point not found")
-          text = text.replace(old, new, 1)
+              if marker not in text:
+                  raise SystemExit("findSuggestedIndexes marker not found")
+              text = text.replace(marker, addition + marker, 1)
 
-          old = '''  const canBeat = React.useMemo(
-            () =>
-              !shouldCheck || state.level === null
-                ? true
-                : handCanBeat(state.hand, state.lastPlay, state.level),
-            [shouldCheck, state.hand, state.lastPlay, state.level],
-          );
+          state_marker = "  const { state } = React.useContext(GuandanStateContext);\n"
+          if "const [suggestionText, setSuggestionText]" not in text:
+              if state_marker not in text:
+                  raise SystemExit("component state marker not found")
+              text = text.replace(
+                  state_marker,
+                  state_marker + "  const [suggestionText, setSuggestionText] = React.useState<string | null>(null);\n",
+                  1,
+              )
 
-          if (!shouldCheck || state.level === null) return null;
-          '''
-          new = '''  const canBeat = React.useMemo(
-            () =>
-              !shouldCheck || state.level === null
-                ? true
-                : handCanBeat(state.hand, state.lastPlay, state.level),
-            [shouldCheck, state.hand, state.lastPlay, state.level],
-          );
+          reset_marker = "  if (!shouldCheck || state.level === null) return null;\n"
+          if "setSuggestionText(null);" not in text:
+              if reset_marker not in text:
+                  raise SystemExit("suggestion reset marker not found")
+              text = text.replace(
+                  reset_marker,
+                  "  React.useEffect(() => {\n    setSuggestionText(null);\n  }, [state.lastPlay, state.turn]);\n\n" + reset_marker,
+                  1,
+              )
 
-          React.useEffect(() => {
-            setSuggestionText(null);
-          }, [state.lastPlay, state.turn]);
+          select_marker = "    selectSuggestedCards(state.hand, indexes, state.level!);\n"
+          if "setSuggestionText(description);" not in text:
+              if select_marker not in text:
+                  raise SystemExit("suggestion selection marker not found")
+              text = text.replace(
+                  select_marker,
+                  select_marker
+                  + "    const description = describeSuggestedCards(\n"
+                  + "      indexes.map((index) => state.hand[index]),\n"
+                  + "    );\n"
+                  + "    setSuggestionText(description);\n",
+                  1,
+              )
 
-          if (!shouldCheck || state.level === null) return null;
-          '''
-          if old not in text:
-              raise SystemExit("suggestion reset insertion point not found")
-          text = text.replace(old, new, 1)
-
-          old = '''    selectSuggestedCards(state.hand, indexes, state.level!);
-            };
-          '''
-          new = '''    selectSuggestedCards(state.hand, indexes, state.level!);
-            const description = describeSuggestedCards(
-              indexes.map((index) => state.hand[index]),
-            );
-            setSuggestionText(description);
-            };
-          '''
-          if old not in text:
-              raise SystemExit("suggestion click insertion point not found")
-          text = text.replace(old, new, 1)
-
-          old = '''      <button type="button" className="normal" onClick={showSuggestion}>
-                提示出牌
-              </button>
-            </div>
-          );
-          '''
-          new = '''      <button type="button" className="normal" onClick={showSuggestion}>
-                提示出牌
-              </button>
-              {suggestionText !== null && (
-                <div role="status" style={{ marginTop: "6px", fontWeight: 700 }}>
-                  建议：{suggestionText}
-                </div>
-              )}
-            </div>
-          );
-          '''
-          if old not in text:
-              raise SystemExit("suggestion display insertion point not found")
-          text = text.replace(old, new, 1)
+          display_marker = "      </button>\n    </div>"
+          if "建议：{suggestionText}" not in text:
+              if display_marker not in text:
+                  raise SystemExit("suggestion display marker not found")
+              text = text.replace(
+                  display_marker,
+                  "      </button>\n"
+                  + "      {suggestionText !== null && (\n"
+                  + "        <div role=\"status\" style={{marginTop: \"6px\", fontWeight: 700}}>\n"
+                  + "          建议：{suggestionText}\n"
+                  + "        </div>\n"
+                  + "      )}\n"
+                  + "    </div>",
+                  1,
+              )
 
           path.write_text(text)
           PY
