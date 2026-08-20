@@ -125,6 +125,19 @@ fn consecutive(ranks: &[Rank]) -> bool {
     values.windows(2).all(|window| window[1] == window[0] + 1)
 }
 
+fn ace_low_straight(ranks: &[Rank]) -> bool {
+    if ranks.len() != 5 {
+        return false;
+    }
+    let mut values = ranks
+        .iter()
+        .map(|rank| rank_value(*rank))
+        .collect::<Vec<_>>();
+    values.sort_unstable();
+    values.dedup();
+    values == [2, 3, 4, 5, 14]
+}
+
 fn is_triple_with_pair(cards: &[CardFace]) -> bool {
     let Some(counts) = rank_counts(cards) else {
         return false;
@@ -141,8 +154,9 @@ fn is_straight(cards: &[CardFace]) -> bool {
     let Some(counts) = rank_counts(cards) else {
         return false;
     };
+    let ranks = counts.keys().copied().collect::<Vec<_>>();
     counts.values().all(|count| *count == 1)
-        && consecutive(&counts.keys().copied().collect::<Vec<_>>())
+        && (consecutive(&ranks) || ace_low_straight(&ranks))
 }
 
 fn is_straight_flush(cards: &[CardFace]) -> bool {
@@ -272,6 +286,36 @@ mod tests {
             card(Suit::Hearts, Rank::King),
         ];
         assert_eq!(classify_basic(&flush), Some(PlayPattern::StraightFlush));
+    }
+
+    #[test]
+    fn classifies_ace_low_straights_and_rejects_wraparound() {
+        let straight = [
+            card(Suit::Clubs, Rank::Ace),
+            card(Suit::Diamonds, Rank::Two),
+            card(Suit::Hearts, Rank::Three),
+            card(Suit::Spades, Rank::Four),
+            card(Suit::Clubs, Rank::Five),
+        ];
+        assert_eq!(classify_basic(&straight), Some(PlayPattern::Straight));
+
+        let flush = [
+            card(Suit::Hearts, Rank::Ace),
+            card(Suit::Hearts, Rank::Two),
+            card(Suit::Hearts, Rank::Three),
+            card(Suit::Hearts, Rank::Four),
+            card(Suit::Hearts, Rank::Five),
+        ];
+        assert_eq!(classify_basic(&flush), Some(PlayPattern::StraightFlush));
+
+        let wraparound = [
+            card(Suit::Clubs, Rank::Jack),
+            card(Suit::Diamonds, Rank::Queen),
+            card(Suit::Hearts, Rank::King),
+            card(Suit::Spades, Rank::Ace),
+            card(Suit::Clubs, Rank::Two),
+        ];
+        assert_eq!(classify_basic(&wraparound), None);
     }
 
     #[test]
