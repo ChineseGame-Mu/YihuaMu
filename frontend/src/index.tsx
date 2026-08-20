@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/react";
 
 import "./style.css";
 import "./guandan.css";
+import "./game-logos.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
