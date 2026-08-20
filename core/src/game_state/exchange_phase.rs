@@ -430,9 +430,7 @@ impl ExchangePhase {
     pub fn destructively_redact_for_player(&mut self, player: PlayerID) {
         self.hands.destructively_redact_except_for_player(player);
         if player != self.exchanger || self.finalized {
-            for card in &mut self.kitty {
-                *card = Card::Unknown;
-            }
+            self.kitty.fill(Card::Unknown);
         }
         if player != self.landlord {
             if let GameMode::FindingFriends {
