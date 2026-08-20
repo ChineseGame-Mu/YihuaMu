@@ -94,6 +94,18 @@ const consecutive = (input: GuandanRank[]): boolean => {
   );
 };
 
+const isAceLowStraightRanks = (input: GuandanRank[]): boolean => {
+  const ranks = new Set(input);
+  return (
+    ranks.size === 5 &&
+    ranks.has("Ace") &&
+    ranks.has("Two") &&
+    ranks.has("Three") &&
+    ranks.has("Four") &&
+    ranks.has("Five")
+  );
+};
+
 const isStraight = (cards: GuandanCard[]): boolean => {
   if (cards.length !== 5) return false;
   const counts = rankCounts(cards);
@@ -103,7 +115,8 @@ const isStraight = (cards: GuandanCard[]): boolean => {
   ) {
     return false;
   }
-  return consecutive(Array.from(counts.keys()));
+  const straightRanks = Array.from(counts.keys());
+  return consecutive(straightRanks) || isAceLowStraightRanks(straightRanks);
 };
 
 const classify = (cards: GuandanCard[]): Pattern | null => {
@@ -167,6 +180,14 @@ const classify = (cards: GuandanCard[]): Pattern | null => {
   return sameFaceRank(cards) ? "bomb" : null;
 };
 
+const sequenceMainRank = (cards: GuandanCard[]): GuandanRank | null => {
+  const cardRanks = cards
+    .map(rankOf)
+    .filter((rank): rank is GuandanRank => rank !== null);
+  if (isAceLowStraightRanks(cardRanks)) return "Five";
+  return cardRanks.sort((a, b) => naturalRankValue(a) - naturalRankValue(b)).at(-1) ?? null;
+};
+
 const strength = (cards: GuandanCard[]): Strength | null => {
   const pattern = classify(cards);
   if (pattern === null) return null;
@@ -194,11 +215,7 @@ const strength = (cards: GuandanCard[]): Strength | null => {
     pattern === "consecutive_pairs" ||
     pattern === "consecutive_triples"
   ) {
-    const orderedRanks = cards
-      .map(rankOf)
-      .filter((rank): rank is GuandanRank => rank !== null)
-      .sort((a, b) => naturalRankValue(a) - naturalRankValue(b));
-    mainRank = orderedRanks[orderedRanks.length - 1];
+    mainRank = sequenceMainRank(cards) ?? "Ace";
   } else if (pattern !== "joker_bomb") {
     mainRank = rankOf(cards[0])!;
   }
@@ -229,8 +246,7 @@ const mainPower = (play: Strength, level: GuandanRank): number => {
   return naturalRankValue(play.mainRank);
 };
 
-const sequencePower = (rank: GuandanRank, level: GuandanRank): number =>
-  level === "Two" && rank === "Two" ? 15 : naturalRankValue(rank);
+const sequencePower = (rank: GuandanRank): number => naturalRankValue(rank);
 
 const beats = (
   candidate: Strength,
@@ -256,10 +272,7 @@ const beats = (
       candidate.pattern === "straight_flush" &&
       current.pattern === "straight_flush"
     ) {
-      return (
-        sequencePower(candidate.mainRank, level) >
-        sequencePower(current.mainRank, level)
-      );
+      return sequencePower(candidate.mainRank) > sequencePower(current.mainRank);
     }
     if (
       candidate.pattern === "bomb" &&
@@ -283,8 +296,7 @@ const beats = (
     candidate.pattern === "consecutive_pairs" ||
     candidate.pattern === "consecutive_triples";
   return sequence
-    ? sequencePower(candidate.mainRank, level) >
-        sequencePower(current.mainRank, level)
+    ? sequencePower(candidate.mainRank) > sequencePower(current.mainRank)
     : mainPower(candidate, level) > mainPower(current, level);
 };
 
@@ -444,7 +456,7 @@ const candidateMainPower = (candidate: Strength, level: GuandanRank): number =>
   candidate.pattern === "straight_flush" ||
   candidate.pattern === "consecutive_pairs" ||
   candidate.pattern === "consecutive_triples"
-    ? sequencePower(candidate.mainRank, level)
+    ? sequencePower(candidate.mainRank)
     : mainPower(candidate, level);
 
 const suggestionScore = (
