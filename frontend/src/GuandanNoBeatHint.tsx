@@ -479,6 +479,56 @@ const compareSuggestionScores = (
   left.mainPower - right.mainPower ||
   left.cardTotal - right.cardTotal;
 
+const rankLabels: Record<GuandanRank, string> = {
+  Two: "2",
+  Three: "3",
+  Four: "4",
+  Five: "5",
+  Six: "6",
+  Seven: "7",
+  Eight: "8",
+  Nine: "9",
+  Ten: "10",
+  Jack: "J",
+  Queen: "Q",
+  King: "K",
+  Ace: "A",
+};
+
+export const describeSuggestedCards = (cards: GuandanCard[]): string | null => {
+  const play = strength(cards);
+  if (play === null) return null;
+  const rank =
+    play.joker === "Small"
+      ? "小王"
+      : play.joker === "Big"
+        ? "大王"
+        : rankLabels[play.mainRank];
+
+  switch (play.pattern) {
+    case "single":
+      return `单张${rank}`;
+    case "pair":
+      return `对${rank}`;
+    case "triple":
+      return `三张${rank}`;
+    case "triple_with_pair":
+      return `三带二（${rank}）`;
+    case "straight":
+      return `顺子（到${rank}）`;
+    case "straight_flush":
+      return `同花顺（到${rank}）`;
+    case "consecutive_pairs":
+      return `连对（到${rank}）`;
+    case "consecutive_triples":
+      return `连三张（到${rank}）`;
+    case "bomb":
+      return `${play.cardCount}炸${rank}`;
+    case "joker_bomb":
+      return "王炸";
+  }
+};
+
 export const findSuggestedIndexes = (
   hand: GuandanCard[],
   currentCards: GuandanCard[],
@@ -564,6 +614,9 @@ const selectSuggestedCards = (
 
 const GuandanNoBeatHint: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
+  const [suggestionText, setSuggestionText] = React.useState<string | null>(
+    null,
+  );
   const shouldCheck =
     state.seat !== null &&
     state.turn === state.seat &&
@@ -581,6 +634,10 @@ const GuandanNoBeatHint: React.FunctionComponent = () => {
         : handCanBeat(state.hand, state.lastPlay, state.level),
     [shouldCheck, state.hand, state.lastPlay, state.level],
   );
+
+  React.useEffect(() => {
+    setSuggestionText(null);
+  }, [state.lastPlay, state.turn]);
 
   if (!shouldCheck || state.level === null) return null;
 
@@ -610,6 +667,10 @@ const GuandanNoBeatHint: React.FunctionComponent = () => {
       state.level!,
     );
     selectSuggestedCards(state.hand, indexes, state.level!);
+    const description = describeSuggestedCards(
+      indexes.map((index) => state.hand[index]),
+    );
+    setSuggestionText(description);
   };
 
   return (
@@ -617,6 +678,11 @@ const GuandanNoBeatHint: React.FunctionComponent = () => {
       <button type="button" className="normal" onClick={showSuggestion}>
         提示出牌
       </button>
+      {suggestionText !== null && (
+        <div role="status" style={{ marginTop: "6px", fontWeight: 700 }}>
+          建议：{suggestionText}
+        </div>
+      )}
     </div>
   );
 };
