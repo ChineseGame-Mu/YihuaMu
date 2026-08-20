@@ -225,13 +225,15 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [serverDealt]);
 
   React.useEffect(() => {
+    const handSizeChanged =
+      state.hand.length !== lastAnimatedHandSizeRef.current;
     const shouldAnimate =
       state.hand.length > 0 &&
-      state.hand.length !== lastAnimatedHandSizeRef.current &&
+      handSizeChanged &&
       state.lastPlay.length === 0 &&
       playerCount >= 4;
-    if (!shouldAnimate) return;
     lastAnimatedHandSizeRef.current = state.hand.length;
+    if (!shouldAnimate) return;
     setDealStep(0);
   }, [state.hand.length, state.lastPlay.length, playerCount]);
 
