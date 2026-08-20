@@ -479,7 +479,7 @@ const compareSuggestionScores = (
   left.mainPower - right.mainPower ||
   left.cardTotal - right.cardTotal;
 
-const findSuggestedIndexes = (
+export const findSuggestedIndexes = (
   hand: GuandanCard[],
   currentCards: GuandanCard[],
   level: GuandanRank,
