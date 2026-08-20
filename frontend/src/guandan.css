@@ -114,14 +114,39 @@
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
+/*
+ * Keep equal-rank cards together without changing card indexes or game state.
+ * A 112px-tall card is about 72px wide; -48px overlap leaves roughly 28px
+ * visible, enough to read the next card's top-left rank and suit.
+ */
+.guandan-hand button:has(svg[class^="2"]:not([class^="2J_"]))
+  + button:has(svg[class^="2"]:not([class^="2J_"])),
+.guandan-hand button:has(svg[class^="3"]) + button:has(svg[class^="3"]),
+.guandan-hand button:has(svg[class^="4"]) + button:has(svg[class^="4"]),
+.guandan-hand button:has(svg[class^="5"]) + button:has(svg[class^="5"]),
+.guandan-hand button:has(svg[class^="6"]) + button:has(svg[class^="6"]),
+.guandan-hand button:has(svg[class^="7"]) + button:has(svg[class^="7"]),
+.guandan-hand button:has(svg[class^="8"]) + button:has(svg[class^="8"]),
+.guandan-hand button:has(svg[class^="9"]) + button:has(svg[class^="9"]),
+.guandan-hand button:has(svg[class^="T"]) + button:has(svg[class^="T"]),
+.guandan-hand button:has(svg[class^="J"]) + button:has(svg[class^="J"]),
+.guandan-hand button:has(svg[class^="Q"]) + button:has(svg[class^="Q"]),
+.guandan-hand button:has(svg[class^="K"]) + button:has(svg[class^="K"]),
+.guandan-hand button:has(svg[class^="A"]) + button:has(svg[class^="A"]) {
+  margin-left: -48px;
+  position: relative;
+}
+
 .guandan-hand button:hover {
   transform: translateY(-5px);
+  z-index: 2;
 }
 
 .guandan-hand button[aria-pressed="true"] {
   transform: translateY(-12px);
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
   outline: 3px solid #198754;
+  z-index: 3;
 }
 
 .guandan-actions {
