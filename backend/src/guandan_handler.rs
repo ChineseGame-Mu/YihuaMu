@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
-    strength::strength_basic,
+    strength::strengths_at_level,
     team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
     CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
@@ -285,13 +285,24 @@ fn validate_play_against_table(
     current: &[CardFace],
     level: Rank,
 ) -> Result<(), &'static str> {
-    let candidate =
-        strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
+    let candidates = strengths_at_level(cards, level);
+    if candidates.is_empty() {
+        return Err("selected cards are not a legal Guandan pattern");
+    }
     if current.is_empty() {
         return Ok(());
     }
-    let table = strength_basic(current).ok_or("current table play is invalid")?;
-    if beats_at_level(candidate, table, level) {
+
+    let table_strengths = strengths_at_level(current, level);
+    if table_strengths.is_empty() {
+        return Err("current table play is invalid");
+    }
+
+    if candidates.iter().any(|candidate| {
+        table_strengths
+            .iter()
+            .all(|table| beats_at_level(*candidate, *table, level))
+    }) {
         Ok(())
     } else {
         Err("play must beat the current table play")
