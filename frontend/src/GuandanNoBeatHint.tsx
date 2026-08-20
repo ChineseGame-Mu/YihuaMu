@@ -257,7 +257,7 @@ const hasAnyBomb = (hand: GuandanCard[]): boolean => {
   return jokers >= 4 || [...suitedCounts.values()].some((count) => count >= 4);
 };
 
-const handCanBeat = (
+export const handCanBeat = (
   hand: GuandanCard[],
   currentCards: GuandanCard[],
   level: GuandanRank,
