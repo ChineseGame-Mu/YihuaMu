@@ -64,6 +64,77 @@ describe('Guandan play suggestion strategy', () => {
   });
 });
 
+describe('Guandan bomb escalation suggestions', () => {
+  test('uses a seven-card bomb to beat a six-card bomb', () => {
+    const hand = [
+      suited('Eight', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Eight', 'Spades'),
+      suited('Eight', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Eight', 'Spades'),
+    ];
+    const current = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Nine', 'Spades'),
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+    ];
+
+    const indexes = findSuggestedIndexes(hand, current, 'Two');
+
+    expect(indexes).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(describeSuggestedCards(indexes.map((index) => hand[index]))).toBe(
+      '7炸8',
+    );
+  });
+
+  test('does not claim a five-card bomb can beat a six-card bomb', () => {
+    const hand = [
+      suited('Ten', 'Clubs'),
+      suited('Ten', 'Diamonds'),
+      suited('Ten', 'Hearts'),
+      suited('Ten', 'Spades'),
+      suited('Ten', 'Clubs'),
+    ];
+    const current = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Nine', 'Spades'),
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+    ];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(false);
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([]);
+  });
+
+  test('uses a joker bomb to beat a long same-rank bomb', () => {
+    const hand = [
+      joker('Small'),
+      joker('Small'),
+      joker('Big'),
+      joker('Big'),
+    ];
+    const current = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Nine', 'Spades'),
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+    ];
+
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3]);
+  });
+});
+
 describe('Guandan no-beat decisions', () => {
   test('returns false when no same-pattern play or bomb can beat', () => {
     const hand = [suited('Seven'), suited('Eight')];
