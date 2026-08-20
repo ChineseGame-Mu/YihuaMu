@@ -1,4 +1,4 @@
-name: Guandan level straight fix
+name: Format Guandan hint once
 
 on:
   push:
@@ -10,222 +10,32 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
         with:
-          components: rustfmt
-      - name: Apply level-aware straight fix
+          node-version-file: .node-version
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format Guandan hint with project Prettier
+        working-directory: frontend
+        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --write
+      - name: Verify Guandan hint formatting
+        working-directory: frontend
+        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --check
+      - name: Commit formatted Guandan hint
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-
-          compare = Path("core/src/guandan/compare.rs")
-          text = compare.read_text()
-          old = '''fn natural_rank_value(rank: Rank) -> u8 {
-              match rank {
-                  Rank::Two => 2,
-                  Rank::Three => 3,
-                  Rank::Four => 4,
-                  Rank::Five => 5,
-                  Rank::Six => 6,
-                  Rank::Seven => 7,
-                  Rank::Eight => 8,
-                  Rank::Nine => 9,
-                  Rank::Ten => 10,
-                  Rank::Jack => 11,
-                  Rank::Queen => 12,
-                  Rank::King => 13,
-                  Rank::Ace => 14,
-              }
-          }
-
-          '''
-          if old not in text:
-              raise SystemExit("compare.rs natural_rank_value block not found")
-          text = text.replace(old, "", 1)
-          old = '''    if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
-              natural_rank_value(candidate.main_rank).cmp(&natural_rank_value(current.main_rank))
-          } else {
-              main_power(candidate, level).cmp(&main_power(current, level))
-          }
-          '''
-          new = '''    if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
-              level_rank_value(candidate.main_rank, level)
-                  .cmp(&level_rank_value(current.main_rank, level))
-          } else {
-              main_power(candidate, level).cmp(&main_power(current, level))
-          }
-          '''
-          if old not in text:
-              raise SystemExit("compare.rs sequence comparison block not found")
-          text = text.replace(old, new, 1)
-          marker = '''    #[test]
-              fn sequence_high_card_keeps_natural_order() {
-          '''
-          if marker not in text:
-              raise SystemExit("compare.rs sequence test marker not found")
-          insert_after = '''    #[test]
-              fn sequence_high_card_keeps_natural_order() {
-                  assert!(beats_at_level(
-                      PlayStrength::new(PlayPattern::Straight, Rank::King, 5),
-                      PlayStrength::new(PlayPattern::Straight, Rank::Nine, 5),
-                      Rank::Nine,
-                  ));
-              }
-          '''
-          replacement = insert_after + '''
-              #[test]
-              fn active_level_is_highest_sequence_end_rank() {
-                  assert!(beats_at_level(
-                      PlayStrength::new(PlayPattern::Straight, Rank::Two, 5),
-                      PlayStrength::new(PlayPattern::Straight, Rank::Ace, 5),
-                      Rank::Two,
-                  ));
-              }
-          '''
-          if insert_after not in text:
-              raise SystemExit("compare.rs full sequence test not found")
-          text = text.replace(insert_after, replacement, 1)
-          compare.write_text(text)
-
-          handler = Path("backend/src/guandan_handler.rs")
-          text = handler.read_text()
-          old = '''    compare::beats_at_level,
-          '''
-          new = '''    compare::{beats_at_level, PlayStrength},
-          '''
-          if old not in text:
-              raise SystemExit("handler compare import not found")
-          text = text.replace(old, new, 1)
-          old = '''    CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
-          '''
-          new = '''    CardFace, PlayPattern, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
-          '''
-          if old not in text:
-              raise SystemExit("handler PlayPattern import location not found")
-          text = text.replace(old, new, 1)
-
-          marker = '''fn validate_play_against_table(
-          '''
-          helper = '''fn strength_for_level(cards: &[CardFace], level: Rank) -> Option<PlayStrength> {
-              if let Some(strength) = strength_basic(cards) {
-                  return Some(strength);
-              }
-              if level != Rank::Two || cards.len() != 5 {
-                  return None;
-              }
-
-              let mut ranks = Vec::with_capacity(cards.len());
-              let mut first_suit = None;
-              let mut same_suit = true;
-              for card in cards {
-                  let CardFace::Suited { suit, rank } = *card else {
-                      return None;
-                  };
-                  if let Some(first) = first_suit {
-                      same_suit &= first == suit;
-                  } else {
-                      first_suit = Some(suit);
-                  }
-                  ranks.push(rank);
-              }
-              ranks.sort_unstable();
-              ranks.dedup();
-              if ranks
-                  != vec![
-                      Rank::Two,
-                      Rank::Jack,
-                      Rank::Queen,
-                      Rank::King,
-                      Rank::Ace,
-                  ]
-              {
-                  return None;
-              }
-
-              let pattern = if same_suit {
-                  PlayPattern::StraightFlush
-              } else {
-                  PlayPattern::Straight
-              };
-              Some(PlayStrength::new(pattern, Rank::Two, cards.len()))
-          }
-
-          '''
-          if marker not in text:
-              raise SystemExit("handler validate marker not found")
-          if "fn strength_for_level(" not in text:
-              text = text.replace(marker, helper + marker, 1)
-          old = '''    let candidate =
-                  strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
-          '''
-          new = '''    let candidate = strength_for_level(cards, level)
-                  .ok_or("selected cards are not a legal Guandan pattern")?;
-          '''
-          if old not in text:
-              raise SystemExit("handler candidate strength call not found")
-          text = text.replace(old, new, 1)
-          old = '''    let table = strength_basic(current).ok_or("current table play is invalid")?;
-          '''
-          new = '''    let table = strength_for_level(current, level).ok_or("current table play is invalid")?;
-          '''
-          if old not in text:
-              raise SystemExit("handler table strength call not found")
-          text = text.replace(old, new, 1)
-
-          if "jqka_two_is_highest_straight_when_playing_twos" not in text:
-              text += '''
-
-          #[cfg(test)]
-          mod level_sequence_tests {
-              use super::*;
-              use shengji_core::guandan::Suit;
-
-              fn card(suit: Suit, rank: Rank) -> CardFace {
-                  CardFace::Suited { suit, rank }
-              }
-
-              #[test]
-              fn jqka_two_is_highest_straight_when_playing_twos() {
-                  let jqka_two = [
-                      card(Suit::Clubs, Rank::Jack),
-                      card(Suit::Diamonds, Rank::Queen),
-                      card(Suit::Hearts, Rank::King),
-                      card(Suit::Spades, Rank::Ace),
-                      card(Suit::Clubs, Rank::Two),
-                  ];
-                  let ten_to_ace = [
-                      card(Suit::Clubs, Rank::Ten),
-                      card(Suit::Diamonds, Rank::Jack),
-                      card(Suit::Hearts, Rank::Queen),
-                      card(Suit::Spades, Rank::King),
-                      card(Suit::Clubs, Rank::Ace),
-                  ];
-
-                  assert_eq!(
-                      strength_for_level(&jqka_two, Rank::Two).map(|play| play.pattern),
-                      Some(PlayPattern::Straight)
-                  );
-                  assert!(validate_play_against_table(&jqka_two, &ten_to_ace, Rank::Two).is_ok());
-                  assert!(validate_play_against_table(&ten_to_ace, &jqka_two, Rank::Two).is_err());
-              }
-          }
-          '''
-          handler.write_text(text)
-          PY
-      - name: Format Rust
-        run: cargo fmt --all
-      - name: Test Guandan core
-        run: cargo test -p shengji-core guandan
-      - name: Check backend
-        run: cargo check -p shengji
-      - name: Commit Guandan level straight fix
-        run: |
+          if git diff --quiet -- frontend/src/GuandanNoBeatHint.tsx; then
+            echo "GuandanNoBeatHint.tsx is already formatted"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add core/src/guandan/compare.rs backend/src/guandan_handler.rs
-          git commit -m "fix: make level two highest in Guandan straights"
+          git add frontend/src/GuandanNoBeatHint.tsx
+          git commit -m "style: format Guandan hint with project Prettier"
           git push
