@@ -210,7 +210,9 @@ mod tests {
     }
 
     #[test]
-    fn two_is_above_ace_for_sequences_only_when_twos_are_level() {
+    fn comparison_can_rank_two_high_sequence_if_rules_classify_it() {
+        // The basic rules layer currently does not classify J-Q-K-A-2 as a legal straight.
+        // This only verifies comparison behavior for a future rule layer that may emit one.
         let jqka_two = PlayStrength::new(PlayPattern::Straight, Rank::Two, 5);
         let ten_to_ace = PlayStrength::new(PlayPattern::Straight, Rank::Ace, 5);
         assert!(beats_at_level(jqka_two, ten_to_ace, Rank::Two));
