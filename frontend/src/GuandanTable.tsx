@@ -148,6 +148,7 @@ const tributeRole = (
 const DEAL_INTERVAL_MS = 120;
 const TRICK_CLEAR_DELAY_MS = 8000;
 const ROOM_CODE_LENGTH = 4;
+const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
 const isValidRoomCode = (value: string): boolean => /^\d{4}$/.test(value);
@@ -160,7 +161,7 @@ const GuandanTable: React.FunctionComponent = () => {
     [],
   );
   const [room, setRoom] = React.useState(() =>
-    normalizeRoomCode(query.get("room") ?? ""),
+    normalizeRoomCode(query.get("room") ?? DEFAULT_ROOM_CODE),
   );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
   const [selected, setSelected] = React.useState<number[]>([]);
@@ -312,7 +313,10 @@ const GuandanTable: React.FunctionComponent = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
     url.searchParams.set("test", "1");
-    url.searchParams.set("room", isValidRoomCode(room) ? room : "4160");
+    url.searchParams.set(
+      "room",
+      isValidRoomCode(room) ? room : DEFAULT_ROOM_CODE,
+    );
     url.searchParams.set("name", `测试玩家${player}`);
     return url.toString();
   };
