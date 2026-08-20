@@ -1,11 +1,7 @@
 import * as React from "react";
 
 import { GuandanStateContext } from "./GuandanStateProvider";
-import type {
-  GuandanCard,
-  GuandanRank,
-  GuandanSuit,
-} from "./guandanProtocol";
+import type { GuandanCard, GuandanRank, GuandanSuit } from "./guandanProtocol";
 
 type Pattern =
   | "single"
@@ -49,8 +45,7 @@ const suitOrder: Record<GuandanSuit, number> = {
   Hearts: 3,
 };
 
-const naturalRankValue = (rank: GuandanRank): number =>
-  ranks.indexOf(rank) + 2;
+const naturalRankValue = (rank: GuandanRank): number => ranks.indexOf(rank) + 2;
 
 const rankOf = (card: GuandanCard): GuandanRank | null =>
   "Suited" in card ? card.Suited.rank : null;
@@ -69,9 +64,7 @@ const sameFaceRank = (cards: GuandanCard[]): boolean => {
   );
 };
 
-const rankCounts = (
-  cards: GuandanCard[],
-): Map<GuandanRank, number> | null => {
+const rankCounts = (cards: GuandanCard[]): Map<GuandanRank, number> | null => {
   const counts = new Map<GuandanRank, number>();
   cards.forEach((card) => {
     const rank = rankOf(card);
@@ -127,9 +120,7 @@ const classify = (cards: GuandanCard[]): Pattern | null => {
     }
     const counts = rankCounts(cards);
     if (counts !== null) {
-      const multiplicities = Array.from(counts.values()).sort(
-        (a, b) => a - b,
-      );
+      const multiplicities = Array.from(counts.values()).sort((a, b) => a - b);
       if (
         multiplicities.length === 2 &&
         multiplicities[0] === 2 &&
@@ -186,9 +177,7 @@ const strength = (cards: GuandanCard[]): Strength | null => {
   let mainRank: GuandanRank = "Ace";
   if (pattern === "triple_with_pair") {
     const counts = rankCounts(cards)!;
-    const triple = Array.from(counts.entries()).find(
-      (entry) => entry[1] === 3,
-    );
+    const triple = Array.from(counts.entries()).find((entry) => entry[1] === 3);
     if (triple !== undefined) mainRank = triple[0];
   } else if (
     pattern === "straight" ||
@@ -322,8 +311,7 @@ const hasAnyBomb = (hand: GuandanCard[]): boolean => {
       );
   });
   return (
-    jokers >= 4 ||
-    Array.from(suitedCounts.values()).some((count) => count >= 4)
+    jokers >= 4 || Array.from(suitedCounts.values()).some((count) => count >= 4)
   );
 };
 
@@ -385,8 +373,7 @@ const cardSortValue = (card: GuandanCard, level: GuandanRank): number => {
   if ("Joker" in card) return card.Joker === "Small" ? 1000 : 1100;
   const base = ranks.indexOf(card.Suited.rank);
   return (
-    (card.Suited.rank === level ? 900 : base * 10) +
-    suitOrder[card.Suited.suit]
+    (card.Suited.rank === level ? 900 : base * 10) + suitOrder[card.Suited.suit]
   );
 };
 
@@ -396,9 +383,11 @@ const findSuggestedIndexes = (
   level: GuandanRank,
 ): number[] => {
   let kept = hand.map((_, index) => index);
-  const removalOrder = kept.slice().sort(
-    (a, b) => cardSortValue(hand[b], level) - cardSortValue(hand[a], level),
-  );
+  const removalOrder = kept
+    .slice()
+    .sort(
+      (a, b) => cardSortValue(hand[b], level) - cardSortValue(hand[a], level),
+    );
 
   removalOrder.forEach((index) => {
     const candidateIndexes = kept.filter((value) => value !== index);
