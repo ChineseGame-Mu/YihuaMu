@@ -168,7 +168,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const [startRequested, setStartRequested] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const [fourColor, setFourColor] = React.useState(
-    () => window.localStorage.getItem("guandan_four_color") !== "off",
+    () => window.localStorage.getItem("guandan_four_color") === "on",
   );
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
