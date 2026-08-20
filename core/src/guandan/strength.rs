@@ -21,6 +21,29 @@ fn highest_rank(cards: &[CardFace]) -> Option<Rank> {
     cards.iter().filter_map(|card| rank_of(*card)).max()
 }
 
+fn is_ace_low_straight(cards: &[CardFace]) -> bool {
+    if cards.len() != 5 {
+        return false;
+    }
+    let mut ranks = cards
+        .iter()
+        .filter_map(|card| rank_of(*card))
+        .collect::<Vec<_>>();
+    ranks.sort_unstable();
+    ranks.dedup();
+    ranks == [Rank::Two, Rank::Three, Rank::Four, Rank::Five, Rank::Ace]
+}
+
+fn sequence_high_rank(cards: &[CardFace], pattern: PlayPattern) -> Option<Rank> {
+    if matches!(pattern, PlayPattern::Straight | PlayPattern::StraightFlush)
+        && is_ace_low_straight(cards)
+    {
+        Some(Rank::Five)
+    } else {
+        highest_rank(cards)
+    }
+}
+
 fn triple_rank(cards: &[CardFace]) -> Option<Rank> {
     let mut ranks = cards
         .iter()
@@ -57,7 +80,7 @@ pub fn strength_basic(cards: &[CardFace]) -> Option<PlayStrength> {
         PlayPattern::Straight
         | PlayPattern::StraightFlush
         | PlayPattern::ConsecutivePairs
-        | PlayPattern::ConsecutiveTriples => highest_rank(cards)?,
+        | PlayPattern::ConsecutiveTriples => sequence_high_rank(cards, pattern)?,
         PlayPattern::Single | PlayPattern::Pair | PlayPattern::Triple | PlayPattern::Bomb => {
             rank_of(*cards.first()?)?
         }
@@ -127,6 +150,34 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(play.main_rank, Rank::Seven);
+    }
+
+    #[test]
+    fn ace_low_straight_is_five_high() {
+        let play = strength_basic(&[
+            card(Suit::Clubs, Rank::Ace),
+            card(Suit::Diamonds, Rank::Two),
+            card(Suit::Hearts, Rank::Three),
+            card(Suit::Spades, Rank::Four),
+            card(Suit::Clubs, Rank::Five),
+        ])
+        .unwrap();
+        assert_eq!(play.pattern, PlayPattern::Straight);
+        assert_eq!(play.main_rank, Rank::Five);
+    }
+
+    #[test]
+    fn ace_low_straight_flush_is_five_high() {
+        let play = strength_basic(&[
+            card(Suit::Hearts, Rank::Ace),
+            card(Suit::Hearts, Rank::Two),
+            card(Suit::Hearts, Rank::Three),
+            card(Suit::Hearts, Rank::Four),
+            card(Suit::Hearts, Rank::Five),
+        ])
+        .unwrap();
+        assert_eq!(play.pattern, PlayPattern::StraightFlush);
+        assert_eq!(play.main_rank, Rank::Five);
     }
 
     #[test]
