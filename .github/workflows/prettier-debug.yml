@@ -1,4 +1,4 @@
-name: Format Guandan hint once
+name: Format frontend src once
 
 on:
   push:
@@ -22,22 +22,22 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install --frozen-lockfile
-      - name: Format Guandan hint with project Prettier
+      - name: Format frontend src with project Prettier
         working-directory: frontend
-        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --write
-      - name: Verify Guandan hint formatting
+        run: ./node_modules/.bin/prettier src --write
+      - name: Verify frontend src formatting
         working-directory: frontend
-        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --check
-      - name: Commit formatted Guandan hint
+        run: ./node_modules/.bin/prettier src --check
+      - name: Commit formatted frontend src
         run: |
-          if git diff --quiet -- frontend/src/GuandanNoBeatHint.tsx; then
-            echo "GuandanNoBeatHint.tsx is already formatted"
+          if git diff --quiet -- frontend/src; then
+            echo "frontend/src is already formatted"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/GuandanNoBeatHint.tsx
-          git commit -m "style: format Guandan hint with project Prettier"
+          git add frontend/src
+          git commit -m "style: format frontend src with project Prettier"
           git push
 
-# Retriggered for 70aeabb formatting verification.
+# Retriggered to format all frontend/src files, including Guandan suggestion tests.
