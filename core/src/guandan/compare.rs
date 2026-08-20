@@ -69,6 +69,14 @@ fn sequence_pattern(pattern: PlayPattern) -> bool {
     )
 }
 
+fn sequence_rank_value(rank: Rank, level: Rank) -> u8 {
+    if level == Rank::Two && rank == Rank::Two {
+        15
+    } else {
+        natural_rank_value(rank)
+    }
+}
+
 /// Ordering for ordinary/joker main values:
 /// ordinary ranks < active level < small joker < big joker.
 fn main_power(play: PlayStrength, level: Rank) -> u8 {
@@ -81,7 +89,8 @@ fn main_power(play: PlayStrength, level: Rank) -> u8 {
 
 fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {
     if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
-        natural_rank_value(candidate.main_rank).cmp(&natural_rank_value(current.main_rank))
+        sequence_rank_value(candidate.main_rank, level)
+            .cmp(&sequence_rank_value(current.main_rank, level))
     } else {
         main_power(candidate, level).cmp(&main_power(current, level))
     }
@@ -198,6 +207,14 @@ mod tests {
             PlayStrength::new(PlayPattern::Straight, Rank::Nine, 5),
             Rank::Nine,
         ));
+    }
+
+    #[test]
+    fn two_is_above_ace_for_sequences_only_when_twos_are_level() {
+        let jqka_two = PlayStrength::new(PlayPattern::Straight, Rank::Two, 5);
+        let ten_to_ace = PlayStrength::new(PlayPattern::Straight, Rank::Ace, 5);
+        assert!(beats_at_level(jqka_two, ten_to_ace, Rank::Two));
+        assert!(!beats_at_level(jqka_two, ten_to_ace, Rank::Three));
     }
 
     #[test]
