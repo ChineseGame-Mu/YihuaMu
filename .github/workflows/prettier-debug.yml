@@ -1,10 +1,10 @@
-name: Prettier Draw fix
+name: Prettier Guandan fix
 
 on:
   push:
-    branches: [master]
+    branches: [feature/guandan-frontend]
     paths:
-      - '.github/workflows/prettier-debug.yml'
+      - ".github/workflows/prettier-debug.yml"
 
 permissions:
   contents: write
@@ -17,17 +17,17 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install
-      - name: Format Draw.tsx with project Prettier
+      - name: Format Guandan frontend files with project Prettier
         working-directory: frontend
-        run: yarn prettier src/Draw.tsx --write
-      - name: Commit formatted Draw.tsx
+        run: yarn prettier src/guandan.css src/GuandanTable.tsx src/Root.tsx --write
+      - name: Commit formatted frontend files
         run: |
-          if git diff --quiet -- frontend/src/Draw.tsx; then
-            echo "Draw.tsx already formatted"
+          if git diff --quiet -- frontend/src/guandan.css frontend/src/GuandanTable.tsx frontend/src/Root.tsx; then
+            echo "Frontend files already formatted"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/Draw.tsx
-          git commit -m "style: format Draw.tsx with project Prettier"
+          git add frontend/src/guandan.css frontend/src/GuandanTable.tsx frontend/src/Root.tsx
+          git commit -m "style: format Guandan frontend with project Prettier"
           git push
