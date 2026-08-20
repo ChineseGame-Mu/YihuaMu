@@ -23,14 +23,26 @@ const returnToGameSelection = (): void => {
   window.location.href = `${window.location.origin}${window.location.pathname}`;
 };
 
-const reselectButtonStyle: React.CSSProperties = {
-  display: "block",
-  margin: "18px auto 24px",
-  padding: "14px 34px",
-  fontSize: "24px",
-  fontWeight: 700,
+const guandanTopBarStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "10px",
+  margin: "8px auto 10px",
+};
+
+const guandanTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: "30px",
   lineHeight: 1.2,
-  borderRadius: "12px",
+};
+
+const reselectButtonStyle: React.CSSProperties = {
+  padding: "5px 10px",
+  fontSize: "14px",
+  fontWeight: 600,
+  lineHeight: 1.2,
+  borderRadius: "8px",
   cursor: "pointer",
 };
 
@@ -71,14 +83,18 @@ const bootstrap = (): void => {
         <GuandanWebsocketProvider>
           <GuandanStateProvider>
             <div>
-              <button
-                type="button"
-                className="normal"
-                style={reselectButtonStyle}
-                onClick={returnToGameSelection}
-              >
-                重新选择
-              </button>
+              <style>{`.guandan-table > header > h1 { display: none; }`}</style>
+              <div style={guandanTopBarStyle}>
+                <h1 style={guandanTitleStyle}>掼蛋</h1>
+                <button
+                  type="button"
+                  className="normal"
+                  style={reselectButtonStyle}
+                  onClick={returnToGameSelection}
+                >
+                  重新选择
+                </button>
+              </div>
               <GuandanTable />
             </div>
           </GuandanStateProvider>
