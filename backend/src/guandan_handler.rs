@@ -140,6 +140,10 @@ fn is_observer(key: &[u8], name: &str) -> bool {
     observers_for(key).iter().any(|observer| observer == name)
 }
 
+fn normalize_room_name(room: &str) -> String {
+    room.trim().trim_end_matches('/').trim_end().to_string()
+}
+
 async fn current_seat(
     storage: &HashMapStorage<VersionedGuandanGame>,
     key: &[u8],
@@ -312,7 +316,7 @@ pub async fn websocket(
     send(
         &tx,
         &GuandanServerMessage::Connected {
-            protocol: "guandan-v20-player-observers",
+            protocol: "guandan-v21-reconnect",
         },
     );
 
@@ -359,6 +363,18 @@ pub async fn websocket(
                     continue;
                 }
 
+                let room = normalize_room_name(&room);
+                let name = name.trim().to_string();
+                if room.is_empty() || name.is_empty() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "room and name are required".to_string(),
+                        },
+                    );
+                    continue;
+                }
+
                 let key = room.as_bytes().to_vec();
                 if is_observer(&key, &name) {
                     send(
@@ -370,50 +386,70 @@ pub async fn websocket(
                     continue;
                 }
 
-                let name_for_state = name.clone();
-                let seat_result = storage
-                    .clone()
-                    .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.started
-                            || state.game.player_names.len() >= MAX_PLAYERS
-                            || state
-                                .game
-                                .player_names
-                                .iter()
-                                .any(|existing| existing == &name_for_state)
-                        {
-                            return Err(());
-                        }
-                        state.game.player_names.push(name_for_state);
-                        state.bump_version();
-                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
-                    })
-                    .await;
+                let existing_seat = current_seat(&storage, &key, &name).await;
+                let seat = if let Some(seat) = existing_seat {
+                    seat
+                } else {
+                    let name_for_state = name.clone();
+                    let seat_result = storage
+                        .clone()
+                        .execute_operation_with_messages(key.clone(), move |mut state| {
+                            if state.game.started || state.game.player_names.len() >= MAX_PLAYERS {
+                                return Err(());
+                            }
+                            state.game.player_names.push(name_for_state);
+                            state.bump_version();
+                            Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                        })
+                        .await;
 
-                let seat = match seat_result {
-                    Ok(_) => match current_seat(&storage, &key, &name).await {
-                        Some(seat) => seat,
-                        None => continue,
-                    },
-                    Err(_) => {
+                    if seat_result.is_err() {
                         send(
                             &tx,
                             &GuandanServerMessage::Error {
-                                message:
-                                    "room is full, game already started, or name is already in use"
-                                        .to_string(),
+                                message: "room is full or game already started".to_string(),
                             },
                         );
                         continue;
+                    }
+
+                    match current_seat(&storage, &key, &name).await {
+                        Some(seat) => seat,
+                        None => continue,
                     }
                 };
 
                 joined_room = Some(key.clone());
                 joined_name = Some(name.clone());
-                send(&tx, &GuandanServerMessage::Joined { room, seat });
+                send(
+                    &tx,
+                    &GuandanServerMessage::Joined {
+                        room: room.clone(),
+                        seat,
+                    },
+                );
 
                 if let Ok(state) = storage.clone().get(key.clone()).await {
-                    send(&tx, &waiting_message(&key, &state.game));
+                    if state.game.started {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Started {
+                                player_count: state.game.hands.len(),
+                                cards_per_player: CARDS_PER_PLAYER,
+                            },
+                        );
+                        send(&tx, &state_message(&key, &state.game));
+                        if let Some(hand) = state.game.private_hand(seat) {
+                            send(
+                                &tx,
+                                &GuandanServerMessage::Hand {
+                                    cards: hand.to_vec(),
+                                },
+                            );
+                        }
+                    } else {
+                        send(&tx, &waiting_message(&key, &state.game));
+                    }
                 }
 
                 let mut sub = match storage.clone().subscribe(key.clone(), subscriber_id).await {
@@ -956,6 +992,12 @@ mod tests {
         assert!(json.contains("Watcher"));
         assert!(json.contains("pending_tribute"));
         assert!(json.contains("last_promotion_steps"));
+    }
+
+    #[test]
+    fn normalizes_room_names_for_reconnect() {
+        assert_eq!(normalize_room_name(" test415/ "), "test415");
+        assert_eq!(normalize_room_name("test415///"), "test415");
     }
 
     #[test]
