@@ -146,7 +146,7 @@ const tributeRole = (
 };
 
 const DEAL_INTERVAL_MS = 120;
-const TRICK_CLEAR_DELAY_MS = 1000;
+const TRICK_CLEAR_DELAY_MS = 8000;
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
@@ -552,7 +552,14 @@ const GuandanTable: React.FunctionComponent = () => {
             )}
             {state.trickComplete && (
               <div>
-                <strong>本轮结束，正在收牌…</strong>
+                <strong>本轮结束，可以收牌。</strong>{" "}
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={() => send({ type: "end_round" })}
+                >
+                  结束本轮 / 收牌
+                </button>
               </div>
             )}
           </section>
