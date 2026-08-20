@@ -849,15 +849,24 @@ pub async fn websocket(
                             return Err(());
                         }
                         state.game.passes += 1;
-                        let active = state
+                        let winner = state.game.last_player.unwrap_or(state.game.turn);
+                        let required_passes = state
                             .game
                             .hands
                             .iter()
-                            .filter(|hand| !hand.is_empty())
+                            .enumerate()
+                            .filter(|(index, hand)| *index != winner && !hand.is_empty())
                             .count();
-                        if state.game.passes + 1 >= active {
-                            state.game.turn = state.game.last_player.unwrap_or(state.game.turn);
-                            state.game.trick_complete = true;
+                        if state.game.passes >= required_passes {
+                            state.game.turn = winner;
+                            if state.game.hands[winner].is_empty() {
+                                advance_turn(&mut state.game);
+                            }
+                            state.game.last_play.clear();
+                            state.game.last_player = None;
+                            state.game.table_plays.clear();
+                            state.game.passes = 0;
+                            state.game.trick_complete = false;
                         } else {
                             advance_turn(&mut state.game);
                         }
