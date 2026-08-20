@@ -147,6 +147,10 @@ const tributeRole = (
 
 const DEAL_INTERVAL_MS = 120;
 const TRICK_CLEAR_DELAY_MS = 8000;
+const ROOM_CODE_LENGTH = 4;
+const normalizeRoomCode = (value: string): string =>
+  value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
+const isValidRoomCode = (value: string): boolean => /^\d{4}$/.test(value);
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
@@ -155,7 +159,9 @@ const GuandanTable: React.FunctionComponent = () => {
     () => new URLSearchParams(window.location.search),
     [],
   );
-  const [room, setRoom] = React.useState(() => query.get("room") ?? "");
+  const [room, setRoom] = React.useState(() =>
+    normalizeRoomCode(query.get("room") ?? ""),
+  );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
   const [selected, setSelected] = React.useState<number[]>([]);
   const [dealStep, setDealStep] = React.useState<number | null>(null);
@@ -198,7 +204,7 @@ const GuandanTable: React.FunctionComponent = () => {
     if (status !== "connected" || joined || joinPendingRef.current) return;
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n) return;
+    if (!isValidRoomCode(r) || !n) return;
     const key = `${r}\u0000${n}`;
     if (autoJoinKeyRef.current === key) return;
     autoJoinKeyRef.current = key;
@@ -280,7 +286,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinRoom = (): void => {
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n || joinPendingRef.current) return;
+    if (!isValidRoomCode(r) || !n || joinPendingRef.current) return;
     autoJoinKeyRef.current = `${r}\u0000${n}`;
     joinPendingRef.current = true;
     if (!send({ type: "join", room: r, name: n })) {
@@ -306,7 +312,7 @@ const GuandanTable: React.FunctionComponent = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
     url.searchParams.set("test", "1");
-    url.searchParams.set("room", room.trim() || "TEST");
+    url.searchParams.set("room", isValidRoomCode(room) ? room : "4160");
     url.searchParams.set("name", `测试玩家${player}`);
     return url.toString();
   };
@@ -425,9 +431,12 @@ const GuandanTable: React.FunctionComponent = () => {
           <h2>加入牌桌</h2>
           <input
             aria-label="房间号"
-            placeholder="房间号"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={ROOM_CODE_LENGTH}
+            placeholder="4位房间号"
             value={room}
-            onChange={(event) => setRoom(event.target.value)}
+            onChange={(event) => setRoom(normalizeRoomCode(event.target.value))}
           />
           <input
             aria-label="姓名"
@@ -438,7 +447,7 @@ const GuandanTable: React.FunctionComponent = () => {
           <button
             disabled={
               status !== "connected" ||
-              !room.trim() ||
+              !isValidRoomCode(room) ||
               !name.trim() ||
               joinPendingRef.current
             }
@@ -446,7 +455,7 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             加入房间
           </button>
-          {status === "connected" && room.trim() && name.trim() && (
+          {status === "connected" && isValidRoomCode(room) && name.trim() && (
             <p>正在自动恢复房间…</p>
           )}
         </section>
