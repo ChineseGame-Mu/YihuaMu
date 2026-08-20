@@ -1,4 +1,4 @@
-name: Format frontend src once
+name: Fix Rust manual slice fill once
 
 on:
   push:
@@ -10,34 +10,67 @@ permissions:
   contents: write
 
 jobs:
-  format:
+  fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-          cache: yarn
-          cache-dependency-path: frontend/yarn.lock
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: yarn install --frozen-lockfile
-      - name: Format frontend src with project Prettier
-        working-directory: frontend
-        run: ./node_modules/.bin/prettier src --write
-      - name: Verify frontend src formatting
-        working-directory: frontend
-        run: ./node_modules/.bin/prettier src --check
-      - name: Commit formatted frontend src
+      - name: Apply targeted Clippy fixes
         run: |
-          if git diff --quiet -- frontend/src; then
-            echo "frontend/src is already formatted"
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              "core/src/game_state/draw_phase.rs": [
+                  (
+                      "        for card in &mut self.kitty[self.revealed_cards..] {\n            *card = Card::Unknown;\n        }",
+                      "        self.kitty[self.revealed_cards..].fill(Card::Unknown);",
+                  ),
+                  (
+                      "        for card in &mut self.deck {\n            *card = Card::Unknown;\n        }",
+                      "        self.deck.fill(Card::Unknown);",
+                  ),
+              ],
+              "core/src/game_state/exchange_phase.rs": [
+                  (
+                      "            for card in &mut self.kitty {\n                *card = Card::Unknown;\n            }",
+                      "            self.kitty.fill(Card::Unknown);",
+                  ),
+              ],
+              "core/src/game_state/play_phase.rs": [
+                  (
+                      "                        for card in cards {\n                            *card = Card::Unknown;\n                        }",
+                      "                        cards.fill(Card::Unknown);",
+                  ),
+                  (
+                      "                        for card in original_cards {\n                            *card = Card::Unknown;\n                        }",
+                      "                        original_cards.fill(Card::Unknown);",
+                  ),
+                  (
+                      "            for card in &mut self.kitty {\n                *card = Card::Unknown;\n            }",
+                      "            self.kitty.fill(Card::Unknown);",
+                  ),
+              ],
+          }
+
+          for filename, edits in replacements.items():
+              path = Path(filename)
+              text = path.read_text()
+              for old, new in edits:
+                  if old not in text:
+                      raise SystemExit(f"expected Clippy pattern not found in {filename}")
+                  text = text.replace(old, new, 1)
+              path.write_text(text)
+          PY
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Commit Rust Clippy fixes
+        run: |
+          if git diff --quiet -- core/src/game_state/draw_phase.rs core/src/game_state/exchange_phase.rs core/src/game_state/play_phase.rs; then
+            echo "Rust Clippy fixes are already applied"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src
-          git commit -m "style: format frontend src with project Prettier"
+          git add core/src/game_state/draw_phase.rs core/src/game_state/exchange_phase.rs core/src/game_state/play_phase.rs
+          git commit -m "fix: use slice fill for card redaction"
           git push
-
-# Retriggered to format all frontend/src files, including Guandan suggestion tests.
