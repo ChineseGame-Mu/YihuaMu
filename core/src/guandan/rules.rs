@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
-use super::{CardFace, PlayPattern, Rank, Suit};
+use super::{level::is_level_wildcard, CardFace, PlayPattern, Rank, Suit};
 
 /// Classify a Guandan play without wild-card substitution.
-/// Heart-level wild cards are intentionally handled in a later layer.
 pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
     match cards.len() {
         0 => None,
@@ -46,6 +45,92 @@ pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
         _ if same_face_rank(cards) => Some(PlayPattern::Bomb),
         _ => None,
     }
+}
+
+/// Return every legal basic pattern obtainable by substituting the active
+/// heart-level card as any suited non-joker card. Returning all interpretations
+/// is important because the same physical cards can legitimately represent
+/// more than one pattern; the comparison layer can then choose the interpretation
+/// that actually beats the table play.
+pub fn classify_at_level(cards: &[CardFace], level: Rank) -> Vec<PlayPattern> {
+    if cards.is_empty() {
+        return Vec::new();
+    }
+
+    let wild_count = cards
+        .iter()
+        .filter(|card| is_level_wildcard(**card, level))
+        .count();
+    if wild_count == 0 {
+        return classify_basic(cards).into_iter().collect();
+    }
+
+    let fixed = cards
+        .iter()
+        .copied()
+        .filter(|card| !is_level_wildcard(*card, level))
+        .collect::<Vec<_>>();
+    let mut result = Vec::new();
+
+    let mut add = |pattern: PlayPattern, legal: bool| {
+        if legal && !result.contains(&pattern) {
+            result.push(pattern);
+        }
+    };
+
+    match cards.len() {
+        1 => add(PlayPattern::Single, true),
+        2 => add(
+            PlayPattern::Pair,
+            can_fill_same_rank(&fixed, wild_count, 2),
+        ),
+        3 => add(
+            PlayPattern::Triple,
+            can_fill_same_rank(&fixed, wild_count, 3),
+        ),
+        4 => add(
+            PlayPattern::Bomb,
+            can_fill_same_rank(&fixed, wild_count, 4),
+        ),
+        5 => {
+            add(
+                PlayPattern::Bomb,
+                can_fill_same_rank(&fixed, wild_count, 5),
+            );
+            add(
+                PlayPattern::StraightFlush,
+                can_fill_straight(&fixed, wild_count, true),
+            );
+            add(
+                PlayPattern::Straight,
+                can_fill_straight(&fixed, wild_count, false),
+            );
+            add(
+                PlayPattern::TripleWithPair,
+                can_fill_triple_with_pair(&fixed, wild_count),
+            );
+        }
+        6 => {
+            add(
+                PlayPattern::Bomb,
+                can_fill_same_rank(&fixed, wild_count, 6),
+            );
+            add(
+                PlayPattern::ConsecutivePairs,
+                can_fill_consecutive_groups(&fixed, wild_count, 3, 2),
+            );
+            add(
+                PlayPattern::ConsecutiveTriples,
+                can_fill_consecutive_groups(&fixed, wild_count, 2, 3),
+            );
+        }
+        count => add(
+            PlayPattern::Bomb,
+            can_fill_same_rank(&fixed, wild_count, count),
+        ),
+    }
+
+    result
 }
 
 fn rank_of(card: CardFace) -> Option<Rank> {
@@ -107,6 +192,129 @@ fn rank_value(rank: Rank) -> u8 {
         Rank::King => 13,
         Rank::Ace => 14,
     }
+}
+
+fn ranks_in_order() -> [Rank; 13] {
+    [
+        Rank::Two,
+        Rank::Three,
+        Rank::Four,
+        Rank::Five,
+        Rank::Six,
+        Rank::Seven,
+        Rank::Eight,
+        Rank::Nine,
+        Rank::Ten,
+        Rank::Jack,
+        Rank::Queen,
+        Rank::King,
+        Rank::Ace,
+    ]
+}
+
+fn straight_targets() -> Vec<[Rank; 5]> {
+    let ranks = ranks_in_order();
+    let mut targets = vec![[
+        Rank::Ace,
+        Rank::Two,
+        Rank::Three,
+        Rank::Four,
+        Rank::Five,
+    ]];
+    for start in 0..=8 {
+        targets.push([
+            ranks[start],
+            ranks[start + 1],
+            ranks[start + 2],
+            ranks[start + 3],
+            ranks[start + 4],
+        ]);
+    }
+    targets
+}
+
+fn can_fill_same_rank(fixed: &[CardFace], wild_count: usize, total: usize) -> bool {
+    if fixed.len() + wild_count != total {
+        return false;
+    }
+    let Some(counts) = rank_counts(fixed) else {
+        return false;
+    };
+    counts.len() <= 1
+}
+
+fn can_fill_targets(
+    fixed: &[CardFace],
+    wild_count: usize,
+    targets: &[(Rank, usize)],
+) -> bool {
+    let Some(counts) = rank_counts(fixed) else {
+        return false;
+    };
+    let mut missing = 0usize;
+    for (rank, needed) in targets {
+        let present = counts.get(rank).copied().unwrap_or(0);
+        if present > *needed {
+            return false;
+        }
+        missing += needed - present;
+    }
+    if counts
+        .keys()
+        .any(|rank| !targets.iter().any(|(target, _)| target == rank))
+    {
+        return false;
+    }
+    missing == wild_count
+}
+
+fn can_fill_straight(fixed: &[CardFace], wild_count: usize, same_suit: bool) -> bool {
+    if fixed.len() + wild_count != 5 {
+        return false;
+    }
+    if same_suit && !fixed.is_empty() {
+        let Some(suit) = suit_of(fixed[0]) else {
+            return false;
+        };
+        if fixed.iter().any(|card| suit_of(*card) != Some(suit)) {
+            return false;
+        }
+    }
+    straight_targets().iter().any(|target| {
+        let targets = target.map(|rank| (rank, 1));
+        can_fill_targets(fixed, wild_count, &targets)
+    })
+}
+
+fn can_fill_triple_with_pair(fixed: &[CardFace], wild_count: usize) -> bool {
+    if fixed.len() + wild_count != 5 {
+        return false;
+    }
+    let ranks = ranks_in_order();
+    ranks.iter().copied().any(|triple| {
+        ranks.iter().copied().any(|pair| {
+            triple != pair
+                && can_fill_targets(fixed, wild_count, &[(triple, 3), (pair, 2)])
+        })
+    })
+}
+
+fn can_fill_consecutive_groups(
+    fixed: &[CardFace],
+    wild_count: usize,
+    group_count: usize,
+    copies_per_rank: usize,
+) -> bool {
+    if fixed.len() + wild_count != group_count * copies_per_rank {
+        return false;
+    }
+    let ranks = ranks_in_order();
+    (0..=ranks.len() - group_count).any(|start| {
+        let targets = (0..group_count)
+            .map(|offset| (ranks[start + offset], copies_per_rank))
+            .collect::<Vec<_>>();
+        can_fill_targets(fixed, wild_count, &targets)
+    })
 }
 
 fn consecutive(ranks: &[Rank]) -> bool {
@@ -352,5 +560,62 @@ mod tests {
             ]),
             None
         );
+    }
+
+    #[test]
+    fn heart_level_wildcard_completes_pair_and_bomb() {
+        let wild = card(Suit::Hearts, Rank::Seven);
+        assert!(classify_at_level(&[card(Suit::Clubs, Rank::King), wild], Rank::Seven)
+            .contains(&PlayPattern::Pair));
+        assert!(classify_at_level(
+            &[
+                card(Suit::Clubs, Rank::King),
+                card(Suit::Diamonds, Rank::King),
+                card(Suit::Spades, Rank::King),
+                wild,
+            ],
+            Rank::Seven,
+        )
+        .contains(&PlayPattern::Bomb));
+    }
+
+    #[test]
+    fn heart_level_wildcard_completes_straight_and_straight_flush() {
+        let wild = card(Suit::Hearts, Rank::Nine);
+        let straight = [
+            card(Suit::Clubs, Rank::Five),
+            card(Suit::Diamonds, Rank::Six),
+            card(Suit::Hearts, Rank::Seven),
+            card(Suit::Spades, Rank::Eight),
+            wild,
+        ];
+        assert!(classify_at_level(&straight, Rank::Nine).contains(&PlayPattern::Straight));
+
+        let flush = [
+            card(Suit::Spades, Rank::Five),
+            card(Suit::Spades, Rank::Six),
+            card(Suit::Spades, Rank::Seven),
+            card(Suit::Spades, Rank::Eight),
+            wild,
+        ];
+        assert!(classify_at_level(&flush, Rank::Nine).contains(&PlayPattern::StraightFlush));
+    }
+
+    #[test]
+    fn non_heart_level_card_is_not_wild() {
+        let cards = [
+            card(Suit::Clubs, Rank::King),
+            card(Suit::Spades, Rank::Seven),
+        ];
+        assert!(!classify_at_level(&cards, Rank::Seven).contains(&PlayPattern::Pair));
+    }
+
+    #[test]
+    fn wildcard_never_substitutes_for_a_joker() {
+        let cards = [
+            CardFace::Joker(Joker::Small),
+            card(Suit::Hearts, Rank::Seven),
+        ];
+        assert!(classify_at_level(&cards, Rank::Seven).is_empty());
     }
 }
