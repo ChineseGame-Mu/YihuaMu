@@ -193,6 +193,50 @@ describe('Guandan bomb escalation suggestions', () => {
     expect(findSuggestedIndexes(aceBomb, levelBomb, 'Six')).toEqual([]);
   });
 
+  test('compares straight flushes by their high card', () => {
+    const aceHigh = [
+      suited('Ten', 'Hearts'),
+      suited('Jack', 'Hearts'),
+      suited('Queen', 'Hearts'),
+      suited('King', 'Hearts'),
+      suited('Ace', 'Hearts'),
+    ];
+    const kingHigh = [
+      suited('Nine', 'Spades'),
+      suited('Ten', 'Spades'),
+      suited('Jack', 'Spades'),
+      suited('Queen', 'Spades'),
+      suited('King', 'Spades'),
+    ];
+
+    expect(handCanBeat(aceHigh, kingHigh, 'Two')).toBe(true);
+    expect(findSuggestedIndexes(aceHigh, kingHigh, 'Two')).toEqual([0, 1, 2, 3, 4]);
+    expect(handCanBeat(kingHigh, aceHigh, 'Two')).toBe(false);
+    expect(findSuggestedIndexes(kingHigh, aceHigh, 'Two')).toEqual([]);
+  });
+
+  test('does not let any ordinary bomb beat a joker bomb', () => {
+    const hand = [
+      suited('Eight', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Eight', 'Spades'),
+      suited('Eight', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Eight', 'Spades'),
+    ];
+    const current = [
+      joker('Small'),
+      joker('Small'),
+      joker('Big'),
+      joker('Big'),
+    ];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(false);
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([]);
+  });
+
   test('uses a joker bomb to beat a long same-rank bomb', () => {
     const hand = [
       joker('Small'),
