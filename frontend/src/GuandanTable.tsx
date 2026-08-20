@@ -232,8 +232,11 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [serverDealt]);
 
   React.useEffect(() => {
-    const handSizeChanged =
-      state.hand.length !== lastAnimatedHandSizeRef.current;
+    const previousHandSize = lastAnimatedHandSizeRef.current;
+    const handSizeChanged = state.hand.length !== previousHandSize;
+    if (state.hand.length < previousHandSize) {
+      setSelected([]);
+    }
     const shouldAnimate =
       state.hand.length > 0 &&
       handSizeChanged &&
@@ -371,13 +374,8 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const playSelected = (): void => {
-    if (
-      gameStarted &&
-      selected.length > 0 &&
-      !dealing &&
-      send({ type: "play", card_indexes: selected })
-    ) {
-      setSelected([]);
+    if (gameStarted && selected.length > 0 && !dealing) {
+      send({ type: "play", card_indexes: selected });
     }
   };
 
