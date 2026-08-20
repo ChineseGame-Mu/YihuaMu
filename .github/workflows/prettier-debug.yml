@@ -39,3 +39,5 @@ jobs:
           git add frontend/src/GuandanNoBeatHint.tsx
           git commit -m "style: format Guandan hint with project Prettier"
           git push
+
+# Retriggered for 70aeabb formatting verification.
