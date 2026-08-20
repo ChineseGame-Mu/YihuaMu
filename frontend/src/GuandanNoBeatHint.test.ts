@@ -1,10 +1,15 @@
-import { findSuggestedIndexes } from "./GuandanNoBeatHint";
+import {
+  describeSuggestedCards,
+  findSuggestedIndexes,
+} from "./GuandanNoBeatHint";
 import type { GuandanCard, GuandanRank, GuandanSuit } from "./guandanProtocol";
 
 const suited = (
   rank: GuandanRank,
   suit: GuandanSuit = "Clubs",
 ): GuandanCard => ({ Suited: { suit, rank } });
+
+const joker = (value: "Small" | "Big"): GuandanCard => ({ Joker: value });
 
 describe("Guandan play suggestion strategy", () => {
   test("uses the smallest same-pattern play that beats the table", () => {
@@ -51,5 +56,50 @@ describe("Guandan play suggestion strategy", () => {
     const current = [suited("Ace", "Clubs"), suited("Ace", "Diamonds")];
 
     expect(findSuggestedIndexes(hand, current, "Two")).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe("Guandan suggestion descriptions", () => {
+  test("describes a pair", () => {
+    expect(
+      describeSuggestedCards([
+        suited("Nine", "Clubs"),
+        suited("Nine", "Diamonds"),
+      ]),
+    ).toBe("对9");
+  });
+
+  test("describes a straight by its high card", () => {
+    expect(
+      describeSuggestedCards([
+        suited("Seven", "Clubs"),
+        suited("Eight", "Diamonds"),
+        suited("Nine", "Hearts"),
+        suited("Ten", "Spades"),
+        suited("Jack", "Clubs"),
+      ]),
+    ).toBe("顺子（到J）");
+  });
+
+  test("describes a four-card bomb", () => {
+    expect(
+      describeSuggestedCards([
+        suited("Four", "Clubs"),
+        suited("Four", "Diamonds"),
+        suited("Four", "Hearts"),
+        suited("Four", "Spades"),
+      ]),
+    ).toBe("4炸4");
+  });
+
+  test("describes a joker bomb", () => {
+    expect(
+      describeSuggestedCards([
+        joker("Small"),
+        joker("Small"),
+        joker("Big"),
+        joker("Big"),
+      ]),
+    ).toBe("王炸");
   });
 });
