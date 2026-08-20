@@ -11,6 +11,9 @@ pub struct PlayStrength {
     pub card_count: usize,
     /// Present for single/pair joker plays. Ordinary suited plays leave this None.
     pub joker: Option<Joker>,
+    /// Marks the special J-Q-K-A-level sequence. Rules/classification decides when
+    /// a play qualifies; comparison always ranks it above ordinary sequences.
+    pub special_sequence: bool,
 }
 
 impl PlayStrength {
@@ -20,6 +23,7 @@ impl PlayStrength {
             main_rank,
             card_count,
             joker: None,
+            special_sequence: false,
         }
     }
 
@@ -30,6 +34,18 @@ impl PlayStrength {
             main_rank: Rank::Ace,
             card_count,
             joker: Some(joker),
+            special_sequence: false,
+        }
+    }
+
+    pub fn with_special_sequence(pattern: PlayPattern, card_count: usize) -> Self {
+        Self {
+            pattern,
+            // Special sequences compare by the explicit marker, not this placeholder rank.
+            main_rank: Rank::Ace,
+            card_count,
+            joker: None,
+            special_sequence: true,
         }
     }
 }
@@ -69,12 +85,8 @@ fn sequence_pattern(pattern: PlayPattern) -> bool {
     )
 }
 
-fn sequence_rank_value(rank: Rank, level: Rank) -> u8 {
-    if level == Rank::Two && rank == Rank::Two {
-        15
-    } else {
-        natural_rank_value(rank)
-    }
+fn sequence_rank_value(rank: Rank) -> u8 {
+    natural_rank_value(rank)
 }
 
 /// Ordering for ordinary/joker main values:
@@ -89,8 +101,11 @@ fn main_power(play: PlayStrength, level: Rank) -> u8 {
 
 fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {
     if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
-        sequence_rank_value(candidate.main_rank, level)
-            .cmp(&sequence_rank_value(current.main_rank, level))
+        match (candidate.special_sequence, current.special_sequence) {
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => sequence_rank_value(candidate.main_rank).cmp(&sequence_rank_value(current.main_rank)),
+        }
     } else {
         main_power(candidate, level).cmp(&main_power(current, level))
     }
@@ -210,13 +225,24 @@ mod tests {
     }
 
     #[test]
-    fn comparison_can_rank_two_high_sequence_if_rules_classify_it() {
-        // The basic rules layer currently does not classify J-Q-K-A-2 as a legal straight.
-        // This only verifies comparison behavior for a future rule layer that may emit one.
-        let jqka_two = PlayStrength::new(PlayPattern::Straight, Rank::Two, 5);
-        let ten_to_ace = PlayStrength::new(PlayPattern::Straight, Rank::Ace, 5);
-        assert!(beats_at_level(jqka_two, ten_to_ace, Rank::Two));
-        assert!(!beats_at_level(jqka_two, ten_to_ace, Rank::Three));
+    fn special_level_tail_straight_is_always_highest() {
+        let ordinary_ace_high = PlayStrength::new(PlayPattern::Straight, Rank::Ace, 5);
+        let special = PlayStrength::with_special_sequence(PlayPattern::Straight, 5);
+
+        assert!(beats_at_level(special, ordinary_ace_high, Rank::Two));
+        assert!(beats_at_level(special, ordinary_ace_high, Rank::Three));
+        assert!(beats_at_level(special, ordinary_ace_high, Rank::Ten));
+        assert!(!beats_at_level(ordinary_ace_high, special, Rank::Ten));
+    }
+
+    #[test]
+    fn special_level_tail_straight_flush_is_always_highest() {
+        let ordinary_ace_high = PlayStrength::new(PlayPattern::StraightFlush, Rank::Ace, 5);
+        let special = PlayStrength::with_special_sequence(PlayPattern::StraightFlush, 5);
+
+        assert!(beats_at_level(special, ordinary_ace_high, Rank::Two));
+        assert!(beats_at_level(special, ordinary_ace_high, Rank::Seven));
+        assert!(!beats_at_level(ordinary_ace_high, special, Rank::Seven));
     }
 
     #[test]
