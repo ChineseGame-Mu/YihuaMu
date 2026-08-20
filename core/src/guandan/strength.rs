@@ -149,7 +149,8 @@ fn wildcard_main_ranks(cards: &[CardFace], pattern: PlayPattern, level: Rank) ->
     match pattern {
         PlayPattern::Single => vec![level],
         PlayPattern::Pair | PlayPattern::Triple | PlayPattern::Bomb => rank_targets()
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|rank| target_fits(&fixed, &[(*rank, cards.len())], wild_count))
             .collect(),
         PlayPattern::Straight | PlayPattern::StraightFlush => straight_targets()
@@ -175,9 +176,10 @@ fn wildcard_main_ranks(cards: &[CardFace], pattern: PlayPattern, level: Rank) ->
             })
             .collect(),
         PlayPattern::TripleWithPair => rank_targets()
-            .into_iter()
+            .iter()
+            .copied()
             .filter(|triple| {
-                rank_targets().into_iter().any(|pair| {
+                rank_targets().iter().copied().any(|pair| {
                     pair != *triple
                         && target_fits(&fixed, &[(*triple, 3), (pair, 2)], wild_count)
                 })
