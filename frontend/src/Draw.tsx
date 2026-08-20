@@ -20,15 +20,20 @@ interface IDrawProps {
 }
 interface IDrawState {
   autodraw: boolean;
+  bidConfirmStep: number;
+  bidConfirmationReady: boolean;
 }
 class Draw extends React.Component<IDrawProps, IDrawState> {
   private timeout: number | null = null;
+  private bidConfirmTimeouts: number[] = [];
   private drawCardAudio: HTMLAudioElement | null = null;
 
   constructor(props: IDrawProps) {
     super(props);
     this.state = {
       autodraw: true,
+      bidConfirmStep: 0,
+      bidConfirmationReady: true,
     };
     this.drawCard = this.drawCard.bind(this);
     this.pickUpKitty = this.pickUpKitty.bind(this);
@@ -38,10 +43,34 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   componentDidMount(): void {
     this.scheduleAutodrawIfNeeded();
+    if (
+      this.props.state.deck.length === 0 &&
+      this.props.state.bids.length > 0
+    ) {
+      this.startBidConfirmation();
+    }
   }
 
-  componentDidUpdate(): void {
+  componentDidUpdate(prevProps: IDrawProps): void {
     this.scheduleAutodrawIfNeeded();
+
+    const confirmationActive =
+      this.props.state.deck.length === 0 && this.props.state.bids.length > 0;
+    const confirmationWasActive =
+      prevProps.state.deck.length === 0 && prevProps.state.bids.length > 0;
+    const bidChanged =
+      prevProps.state.bids.length !== this.props.state.bids.length;
+    const dealingJustFinished =
+      prevProps.state.deck.length > 0 && this.props.state.deck.length === 0;
+
+    if (
+      confirmationActive &&
+      (!confirmationWasActive || bidChanged || dealingJustFinished)
+    ) {
+      this.startBidConfirmation();
+    } else if (!confirmationActive && confirmationWasActive) {
+      this.clearBidConfirmation();
+    }
   }
 
   componentWillUnmount(): void {
@@ -49,6 +78,29 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
       this.props.clearTimeout(this.timeout);
       this.timeout = null;
     }
+    this.clearBidConfirmation();
+  }
+
+  private clearBidConfirmation(): void {
+    this.bidConfirmTimeouts.forEach((id) => this.props.clearTimeout(id));
+    this.bidConfirmTimeouts = [];
+  }
+
+  private startBidConfirmation(): void {
+    this.clearBidConfirmation();
+    this.setState({
+      bidConfirmStep: 1,
+      bidConfirmationReady: false,
+    });
+
+    this.bidConfirmTimeouts = [
+      this.props.setTimeout(() => this.setState({ bidConfirmStep: 2 }), 1000),
+      this.props.setTimeout(() => this.setState({ bidConfirmStep: 3 }), 2000),
+      this.props.setTimeout(
+        () => this.setState({ bidConfirmationReady: true }),
+        3000,
+      ),
+    ];
   }
 
   private canDraw(): boolean {
@@ -222,9 +274,23 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
           }
           suffixButtons={
             <>
+              {this.props.state.deck.length === 0 &&
+              this.props.state.bids.length > 0 ? (
+                <div role="status" aria-live="polite">
+                  <strong>
+                    叫牌确认 ⌛️ {this.state.bidConfirmStep || 1} / 3
+                  </strong>
+                  {this.state.bidConfirmationReady
+                    ? " —— 叫牌已确认"
+                    : " —— 如有人再叫牌将重新计时"}
+                </div>
+              ) : null}
               <button
                 onClick={this.pickUpKitty}
                 disabled={
+                  (this.props.state.deck.length === 0 &&
+                    this.props.state.bids.length > 0 &&
+                    !this.state.bidConfirmationReady) ||
                   this.props.state.deck.length > 0 ||
                   (this.props.state.bids.length === 0 &&
                     this.props.state.autobid === null &&
