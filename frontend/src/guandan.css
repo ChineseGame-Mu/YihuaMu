@@ -102,6 +102,8 @@
   flex-wrap: wrap;
   gap: 6px;
   align-items: flex-end;
+  box-sizing: border-box;
+  padding-left: 48px;
 }
 
 .guandan-hand button {
@@ -118,6 +120,7 @@
  * Keep equal-rank cards together without changing card indexes or game state.
  * A 112px-tall card is about 72px wide; -48px overlap leaves roughly 28px
  * visible, enough to read the next card's top-left rank and suit.
+ * The hand's matching 48px left padding keeps a wrapped overlap inside the frame.
  */
 .guandan-hand button:has(svg[class^="2"]:not([class^="2J_"]))
   + button:has(svg[class^="2"]:not([class^="2J_"])),
@@ -219,6 +222,7 @@
 
   .guandan-hand {
     gap: 4px;
+    padding-left: 48px;
   }
 
   .guandan-play-actions {
