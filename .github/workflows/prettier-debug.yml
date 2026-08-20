@@ -1,4 +1,4 @@
-name: Fix Rust manual slice fill once
+name: Add Guandan suggestion description once
 
 on:
   push:
@@ -10,67 +10,189 @@ permissions:
   contents: write
 
 jobs:
-  fix:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply targeted Clippy fixes
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Add suggestion description
         run: |
           python - <<'PY'
           from pathlib import Path
 
-          replacements = {
-              "core/src/game_state/draw_phase.rs": [
-                  (
-                      "        for card in &mut self.kitty[self.revealed_cards..] {\n            *card = Card::Unknown;\n        }",
-                      "        self.kitty[self.revealed_cards..].fill(Card::Unknown);",
-                  ),
-                  (
-                      "        for card in &mut self.deck {\n            *card = Card::Unknown;\n        }",
-                      "        self.deck.fill(Card::Unknown);",
-                  ),
-              ],
-              "core/src/game_state/exchange_phase.rs": [
-                  (
-                      "            for card in &mut self.kitty {\n                *card = Card::Unknown;\n            }",
-                      "            self.kitty.fill(Card::Unknown);",
-                  ),
-              ],
-              "core/src/game_state/play_phase.rs": [
-                  (
-                      "                        for card in cards {\n                            *card = Card::Unknown;\n                        }",
-                      "                        cards.fill(Card::Unknown);",
-                  ),
-                  (
-                      "                        for card in original_cards {\n                            *card = Card::Unknown;\n                        }",
-                      "                        original_cards.fill(Card::Unknown);",
-                  ),
-                  (
-                      "            for card in &mut self.kitty {\n                *card = Card::Unknown;\n            }",
-                      "            self.kitty.fill(Card::Unknown);",
-                  ),
-              ],
-          }
+          path = Path("frontend/src/GuandanNoBeatHint.tsx")
+          text = path.read_text()
 
-          for filename, edits in replacements.items():
-              path = Path(filename)
-              text = path.read_text()
-              for old, new in edits:
-                  if old not in text:
-                      raise SystemExit(f"expected Clippy pattern not found in {filename}")
-                  text = text.replace(old, new, 1)
-              path.write_text(text)
+          old = '''const compareSuggestionScores = (
+            left: SuggestionScore,
+            right: SuggestionScore,
+          ): number =>
+            left.patternPenalty - right.patternPenalty ||
+            left.bombBreaks - right.bombBreaks ||
+            left.levelCards - right.levelCards ||
+            left.bombTier - right.bombTier ||
+            left.mainPower - right.mainPower ||
+            left.cardTotal - right.cardTotal;
+          '''
+          new = '''const compareSuggestionScores = (
+            left: SuggestionScore,
+            right: SuggestionScore,
+          ): number =>
+            left.patternPenalty - right.patternPenalty ||
+            left.bombBreaks - right.bombBreaks ||
+            left.levelCards - right.levelCards ||
+            left.bombTier - right.bombTier ||
+            left.mainPower - right.mainPower ||
+            left.cardTotal - right.cardTotal;
+
+          const rankLabels: Record<GuandanRank, string> = {
+            Two: "2",
+            Three: "3",
+            Four: "4",
+            Five: "5",
+            Six: "6",
+            Seven: "7",
+            Eight: "8",
+            Nine: "9",
+            Ten: "10",
+            Jack: "J",
+            Queen: "Q",
+            King: "K",
+            Ace: "A",
+          };
+
+          const describeSuggestedCards = (cards: GuandanCard[]): string | null => {
+            const play = strength(cards);
+            if (play === null) return null;
+            const rank = play.joker === "Small" ? "小王" : play.joker === "Big" ? "大王" : rankLabels[play.mainRank];
+
+            switch (play.pattern) {
+              case "single":
+                return `单张${rank}`;
+              case "pair":
+                return `对${rank}`;
+              case "triple":
+                return `三张${rank}`;
+              case "triple_with_pair":
+                return `三带二（${rank}）`;
+              case "straight":
+                return `顺子（到${rank}）`;
+              case "straight_flush":
+                return `同花顺（到${rank}）`;
+              case "consecutive_pairs":
+                return `连对（到${rank}）`;
+              case "consecutive_triples":
+                return `连三张（到${rank}）`;
+              case "bomb":
+                return `${play.cardCount}炸${rank}`;
+              case "joker_bomb":
+                return "王炸";
+            }
+          };
+          '''
+          if old not in text:
+              raise SystemExit("suggestion score insertion point not found")
+          text = text.replace(old, new, 1)
+
+          old = '''const GuandanNoBeatHint: React.FunctionComponent = () => {
+            const { state } = React.useContext(GuandanStateContext);
+            const shouldCheck =
+          '''
+          new = '''const GuandanNoBeatHint: React.FunctionComponent = () => {
+            const { state } = React.useContext(GuandanStateContext);
+            const [suggestionText, setSuggestionText] = React.useState<string | null>(null);
+            const shouldCheck =
+          '''
+          if old not in text:
+              raise SystemExit("component state insertion point not found")
+          text = text.replace(old, new, 1)
+
+          old = '''  const canBeat = React.useMemo(
+            () =>
+              !shouldCheck || state.level === null
+                ? true
+                : handCanBeat(state.hand, state.lastPlay, state.level),
+            [shouldCheck, state.hand, state.lastPlay, state.level],
+          );
+
+          if (!shouldCheck || state.level === null) return null;
+          '''
+          new = '''  const canBeat = React.useMemo(
+            () =>
+              !shouldCheck || state.level === null
+                ? true
+                : handCanBeat(state.hand, state.lastPlay, state.level),
+            [shouldCheck, state.hand, state.lastPlay, state.level],
+          );
+
+          React.useEffect(() => {
+            setSuggestionText(null);
+          }, [state.lastPlay, state.turn]);
+
+          if (!shouldCheck || state.level === null) return null;
+          '''
+          if old not in text:
+              raise SystemExit("suggestion reset insertion point not found")
+          text = text.replace(old, new, 1)
+
+          old = '''    selectSuggestedCards(state.hand, indexes, state.level!);
+            };
+          '''
+          new = '''    selectSuggestedCards(state.hand, indexes, state.level!);
+            const description = describeSuggestedCards(
+              indexes.map((index) => state.hand[index]),
+            );
+            setSuggestionText(description);
+            };
+          '''
+          if old not in text:
+              raise SystemExit("suggestion click insertion point not found")
+          text = text.replace(old, new, 1)
+
+          old = '''      <button type="button" className="normal" onClick={showSuggestion}>
+                提示出牌
+              </button>
+            </div>
+          );
+          '''
+          new = '''      <button type="button" className="normal" onClick={showSuggestion}>
+                提示出牌
+              </button>
+              {suggestionText !== null && (
+                <div role="status" style={{ marginTop: "6px", fontWeight: 700 }}>
+                  建议：{suggestionText}
+                </div>
+              )}
+            </div>
+          );
+          '''
+          if old not in text:
+              raise SystemExit("suggestion display insertion point not found")
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
           PY
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
-      - name: Commit Rust Clippy fixes
+      - name: Format changed frontend file
+        working-directory: frontend
+        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --write
+      - name: Verify formatting
+        working-directory: frontend
+        run: ./node_modules/.bin/prettier src/GuandanNoBeatHint.tsx --check
+      - name: Commit suggestion description
         run: |
-          if git diff --quiet -- core/src/game_state/draw_phase.rs core/src/game_state/exchange_phase.rs core/src/game_state/play_phase.rs; then
-            echo "Rust Clippy fixes are already applied"
+          if git diff --quiet -- frontend/src/GuandanNoBeatHint.tsx; then
+            echo "Guandan suggestion description is already applied"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add core/src/game_state/draw_phase.rs core/src/game_state/exchange_phase.rs core/src/game_state/play_phase.rs
-          git commit -m "fix: use slice fill for card redaction"
+          git add frontend/src/GuandanNoBeatHint.tsx
+          git commit -m "feat: show Guandan suggestion description"
           git push
