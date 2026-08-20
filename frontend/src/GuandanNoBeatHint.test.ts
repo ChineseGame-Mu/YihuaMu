@@ -155,6 +155,44 @@ describe('Guandan bomb escalation suggestions', () => {
     expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([]);
   });
 
+  test('compares equal-size ordinary bombs by rank', () => {
+    const hand = [
+      suited('Ten', 'Clubs'),
+      suited('Ten', 'Diamonds'),
+      suited('Ten', 'Hearts'),
+      suited('Ten', 'Spades'),
+    ];
+    const current = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Nine', 'Spades'),
+    ];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(true);
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3]);
+  });
+
+  test('treats the active level bomb as higher than an ordinary equal-size bomb', () => {
+    const levelBomb = [
+      suited('Six', 'Clubs'),
+      suited('Six', 'Diamonds'),
+      suited('Six', 'Hearts'),
+      suited('Six', 'Spades'),
+    ];
+    const aceBomb = [
+      suited('Ace', 'Clubs'),
+      suited('Ace', 'Diamonds'),
+      suited('Ace', 'Hearts'),
+      suited('Ace', 'Spades'),
+    ];
+
+    expect(handCanBeat(levelBomb, aceBomb, 'Six')).toBe(true);
+    expect(findSuggestedIndexes(levelBomb, aceBomb, 'Six')).toEqual([0, 1, 2, 3]);
+    expect(handCanBeat(aceBomb, levelBomb, 'Six')).toBe(false);
+    expect(findSuggestedIndexes(aceBomb, levelBomb, 'Six')).toEqual([]);
+  });
+
   test('uses a joker bomb to beat a long same-rank bomb', () => {
     const hand = [
       joker('Small'),
