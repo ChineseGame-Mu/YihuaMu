@@ -49,7 +49,8 @@ const suitOrder: Record<GuandanSuit, number> = {
   Hearts: 3,
 };
 
-const naturalRankValue = (rank: GuandanRank): number => ranks.indexOf(rank) + 2;
+const naturalRankValue = (rank: GuandanRank): number =>
+  ranks.indexOf(rank) + 2;
 
 const rankOf = (card: GuandanCard): GuandanRank | null =>
   "Suited" in card ? card.Suited.rank : null;
@@ -68,7 +69,9 @@ const sameFaceRank = (cards: GuandanCard[]): boolean => {
   );
 };
 
-const rankCounts = (cards: GuandanCard[]): Map<GuandanRank, number> | null => {
+const rankCounts = (
+  cards: GuandanCard[],
+): Map<GuandanRank, number> | null => {
   const counts = new Map<GuandanRank, number>();
   cards.forEach((card) => {
     const rank = rankOf(card);
@@ -124,7 +127,9 @@ const classify = (cards: GuandanCard[]): Pattern | null => {
     }
     const counts = rankCounts(cards);
     if (counts !== null) {
-      const multiplicities = Array.from(counts.values()).sort((a, b) => a - b);
+      const multiplicities = Array.from(counts.values()).sort(
+        (a, b) => a - b,
+      );
       if (
         multiplicities.length === 2 &&
         multiplicities[0] === 2 &&
@@ -181,7 +186,9 @@ const strength = (cards: GuandanCard[]): Strength | null => {
   let mainRank: GuandanRank = "Ace";
   if (pattern === "triple_with_pair") {
     const counts = rankCounts(cards)!;
-    const triple = Array.from(counts.entries()).find((entry) => entry[1] === 3);
+    const triple = Array.from(counts.entries()).find(
+      (entry) => entry[1] === 3,
+    );
     if (triple !== undefined) mainRank = triple[0];
   } else if (
     pattern === "straight" ||
@@ -397,7 +404,8 @@ const findSuggestedIndexes = (
     const candidateIndexes = kept.filter((value) => value !== index);
     if (candidateIndexes.length === 0) return;
     const candidateHand = candidateIndexes.map((value) => hand[value]);
-    if (handCanBeat(candidateHand, currentCards, level)) kept = candidateIndexes;
+    if (handCanBeat(candidateHand, currentCards, level))
+      kept = candidateIndexes;
   });
 
   return kept;
