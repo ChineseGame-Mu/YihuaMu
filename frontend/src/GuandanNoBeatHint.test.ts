@@ -258,6 +258,36 @@ describe('Guandan bomb escalation suggestions', () => {
   });
 });
 
+describe('Guandan joker and level ordering', () => {
+  test('orders singles as big joker, small joker, level card, then ordinary ranks', () => {
+    expect(handCanBeat([joker('Big')], [joker('Small')], 'Six')).toBe(true);
+    expect(findSuggestedIndexes([joker('Big')], [joker('Small')], 'Six')).toEqual([
+      0,
+    ]);
+
+    expect(handCanBeat([joker('Small')], [suited('Six')], 'Six')).toBe(true);
+    expect(findSuggestedIndexes([joker('Small')], [suited('Six')], 'Six')).toEqual([
+      0,
+    ]);
+
+    expect(handCanBeat([suited('Six')], [suited('Ace')], 'Six')).toBe(true);
+    expect(findSuggestedIndexes([suited('Six')], [suited('Ace')], 'Six')).toEqual([
+      0,
+    ]);
+  });
+
+  test('allows same-joker pairs but rejects mixed-joker pairs', () => {
+    const bigPair = [joker('Big'), joker('Big')];
+    const smallPair = [joker('Small'), joker('Small')];
+    const mixedPair = [joker('Small'), joker('Big')];
+
+    expect(handCanBeat(bigPair, smallPair, 'Six')).toBe(true);
+    expect(findSuggestedIndexes(bigPair, smallPair, 'Six')).toEqual([0, 1]);
+    expect(handCanBeat(mixedPair, smallPair, 'Six')).toBe(false);
+    expect(findSuggestedIndexes(mixedPair, smallPair, 'Six')).toEqual([]);
+  });
+});
+
 describe('Guandan no-beat decisions', () => {
   test('returns false when no same-pattern play or bomb can beat', () => {
     const hand = [suited('Seven'), suited('Eight')];
