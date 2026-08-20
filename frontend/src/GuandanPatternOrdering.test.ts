@@ -71,4 +71,70 @@ describe('Guandan ordinary pattern ordering', () => {
     expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3, 4, 5]);
     expect(handCanBeat(current, hand, 'Two')).toBe(false);
   });
+
+  test('compares straights by their high card', () => {
+    const hand = [
+      suited('Seven', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Ten', 'Spades'),
+      suited('Jack', 'Clubs'),
+    ];
+    const current = [
+      suited('Six', 'Clubs'),
+      suited('Seven', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Nine', 'Spades'),
+      suited('Ten', 'Clubs'),
+    ];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(true);
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3, 4]);
+    expect(handCanBeat(current, hand, 'Two')).toBe(false);
+  });
+
+  test('compares consecutive triples by their high triple', () => {
+    const hand = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Ten', 'Clubs'),
+      suited('Ten', 'Diamonds'),
+      suited('Ten', 'Hearts'),
+    ];
+    const current = [
+      suited('Eight', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Eight', 'Hearts'),
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+    ];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(true);
+    expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(handCanBeat(current, hand, 'Two')).toBe(false);
+  });
+
+  test('does not compare different ordinary patterns even with the same card count', () => {
+    const straight = [
+      suited('Seven', 'Clubs'),
+      suited('Eight', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Ten', 'Spades'),
+      suited('Jack', 'Clubs'),
+    ];
+    const tripleWithPair = [
+      suited('Nine', 'Clubs'),
+      suited('Nine', 'Diamonds'),
+      suited('Nine', 'Hearts'),
+      suited('Ace', 'Clubs'),
+      suited('Ace', 'Diamonds'),
+    ];
+
+    expect(handCanBeat(straight, tripleWithPair, 'Two')).toBe(false);
+    expect(findSuggestedIndexes(straight, tripleWithPair, 'Two')).toEqual([]);
+    expect(handCanBeat(tripleWithPair, straight, 'Two')).toBe(false);
+    expect(findSuggestedIndexes(tripleWithPair, straight, 'Two')).toEqual([]);
+  });
 });
