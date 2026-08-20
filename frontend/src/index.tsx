@@ -15,6 +15,7 @@ import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
 import GuandanStateProvider from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
+import GuandanNoBeatControls from "./GuandanNoBeatControls";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -97,6 +98,7 @@ const bootstrap = (): void => {
                 </button>
               </div>
               <GuandanNoBeatHint />
+              <GuandanNoBeatControls />
               <GuandanTable />
             </div>
           </GuandanStateProvider>
