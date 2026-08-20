@@ -1,6 +1,7 @@
 import {
   describeSuggestedCards,
   findSuggestedIndexes,
+  handCanBeat,
 } from './GuandanNoBeatHint';
 import type {
   GuandanCard,
@@ -60,6 +61,32 @@ describe('Guandan play suggestion strategy', () => {
     const current = [suited('Ace', 'Clubs'), suited('Ace', 'Diamonds')];
 
     expect(findSuggestedIndexes(hand, current, 'Two')).toEqual([0, 1, 2, 3]);
+  });
+});
+
+describe('Guandan no-beat decisions', () => {
+  test('returns false when no same-pattern play or bomb can beat', () => {
+    const hand = [suited('Seven'), suited('Eight')];
+
+    expect(handCanBeat(hand, [suited('Nine')], 'Two')).toBe(false);
+  });
+
+  test('returns true when an ordinary same-pattern play can beat', () => {
+    const hand = [suited('Ten'), suited('Jack')];
+
+    expect(handCanBeat(hand, [suited('Nine')], 'Two')).toBe(true);
+  });
+
+  test('returns true when only a bomb can beat a non-bomb play', () => {
+    const hand = [
+      suited('Four', 'Clubs'),
+      suited('Four', 'Diamonds'),
+      suited('Four', 'Hearts'),
+      suited('Four', 'Spades'),
+    ];
+    const current = [suited('Ace', 'Clubs'), suited('Ace', 'Diamonds')];
+
+    expect(handCanBeat(hand, current, 'Two')).toBe(true);
   });
 });
 
