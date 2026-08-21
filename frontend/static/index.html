@@ -39,8 +39,10 @@
           </p>
         </div>
         <script type="text/javascript">
-          if (!window.location.href.endsWith("/")) {
-            window.location.href = window.location.href + "/";
+          if (!window.location.pathname.endsWith("/")) {
+            const url = new URL(window.location.href);
+            url.pathname = url.pathname + "/";
+            window.location.replace(url.toString());
           }
         </script>
         <script type="text/javascript" src="runtime.js"></script>
