@@ -151,7 +151,8 @@ const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
-const isValidRoomCode = (value: string): boolean => /^\d{4}$/.test(value);
+const isValidRoomCode = (value: string): boolean =>
+  /^(?!0000)\d{4}$/.test(value);
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
