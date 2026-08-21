@@ -360,18 +360,26 @@
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-end;
-  min-height: 132px;
+  min-height: 275px;
   padding: 18px 10px 8px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-color: #b58a35 transparent;
 }
 
-.guandan-hand button {
+.guandan-card-stack {
+  display: flex;
+  flex: 0 0 78px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.guandan-hand .guandan-card-stack button {
   flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
-  margin-right: -32px;
+  margin: -82px 0 0;
   padding: 0;
   border-radius: 7px;
   background: transparent;
@@ -379,15 +387,15 @@
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 
-.guandan-hand button:last-child {
-  margin-right: 10px;
+.guandan-hand .guandan-card-stack button:first-child {
+  margin-top: 0;
 }
 
-.guandan-hand button:hover {
+.guandan-hand .guandan-card-stack button:hover {
   transform: translateY(-6px);
 }
 
-.guandan-hand button[aria-pressed="true"] {
+.guandan-hand .guandan-card-stack button[aria-pressed="true"] {
   transform: translateY(-15px) !important;
   box-shadow: 0 9px 14px rgb(0 0 0 / 28%);
   outline: 3px solid #e0a91e;
@@ -468,8 +476,8 @@
     padding-left: 42px;
   }
 
-  .guandan-hand button {
-    margin-right: -37px;
+  .guandan-card-stack {
+    flex-basis: 72px;
   }
 }
 
@@ -572,12 +580,12 @@
   }
 
   .guandan-hand {
-    min-height: 118px;
+    min-height: 250px;
     padding-inline: 2px;
   }
 
-  .guandan-hand button {
-    margin-right: -35px;
+  .guandan-card-stack {
+    flex-basis: 66px;
   }
 
   .guandan-play-actions {
