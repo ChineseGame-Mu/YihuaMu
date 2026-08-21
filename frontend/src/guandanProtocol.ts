@@ -24,7 +24,7 @@ export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
-  | { type: "start"; player_count: number }
+  | { type: "start"; player_count: 4 }
   | { type: "play"; card_indexes: number[] }
   | { type: "tribute_card"; card_index: number }
   | { type: "return_tribute"; card_index: number }
@@ -39,11 +39,12 @@ export type GuandanTributePlan =
 
 export type GuandanServerMessage =
   | { type: "connected"; protocol: string }
-  | { type: "joined"; room: string; seat: number }
+  | { type: "joined"; room: string; seat: number | null }
   | {
       type: "waiting";
       players: string[];
       observers: string[];
+      online_players: boolean[];
       minimum_players: number;
       maximum_players: number;
     }
@@ -53,6 +54,7 @@ export type GuandanServerMessage =
       type: "state";
       players: string[];
       observers: string[];
+      online_players: boolean[];
       turn: number;
       hand_counts: number[];
       last_play: GuandanCard[];

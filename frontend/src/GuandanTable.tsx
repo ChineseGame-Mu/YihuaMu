@@ -114,9 +114,12 @@ const unicodeCards: Record<string, Record<string, string>> = {
 const cardGlyph = (card: GuandanCard): string =>
   "Joker" in card
     ? card.Joker === "Big"
-      ? "🃟"
-      : "🃏"
+      ? "🃏"
+      : "🃟"
     : (unicodeCards[card.Suited.suit]?.[card.Suited.rank] ?? "🂠");
+
+const cardStackKey = (card: GuandanCard): string =>
+  "Joker" in card ? `Joker-${card.Joker}` : card.Suited.rank;
 
 const cardSortValue = (
   card: GuandanCard,
@@ -146,29 +149,40 @@ const tributeRole = (
 };
 
 const DEAL_INTERVAL_MS = 120;
-const TRICK_CLEAR_DELAY_MS = 1000;
+const TRICK_CLEAR_DELAY_MS = 8000;
+const ROOM_CODE_LENGTH = 4;
+const DEFAULT_ROOM_CODE = "0001";
+const normalizeRoomCode = (value: string): string =>
+  value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
+const isValidRoomCode = (value: string): boolean => /^000[1-4]$/.test(value);
 
 const GuandanTable: React.FunctionComponent = () => {
-  const { state } = React.useContext(GuandanStateContext);
+  const { state, reset } = React.useContext(GuandanStateContext);
   const { status, send } = React.useContext(GuandanWebsocketContext);
   const query = React.useMemo(
     () => new URLSearchParams(window.location.search),
     [],
   );
-  const [room, setRoom] = React.useState(() => query.get("room") ?? "");
+  const [room, setRoom] = React.useState(() =>
+    normalizeRoomCode(query.get("room") ?? DEFAULT_ROOM_CODE),
+  );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
+  const autoJoinFromLink = React.useRef(
+    query.has("room") && query.has("name") && query.get("name")!.trim() !== "",
+  );
   const [selected, setSelected] = React.useState<number[]>([]);
   const [dealStep, setDealStep] = React.useState<number | null>(null);
   const [startRequested, setStartRequested] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const [fourColor, setFourColor] = React.useState(
-    () => window.localStorage.getItem("guandan_four_color") !== "off",
+    () => window.localStorage.getItem("guandan_four_color") === "on",
   );
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
 
-  const joined = state.room !== null && state.seat !== null;
+  const joined = state.room !== null;
+  const observing = joined && state.seat === null;
   const role = tributeRole(
     state.pendingTribute as GuandanTributePlan | null,
     state.seat,
@@ -185,20 +199,23 @@ const GuandanTable: React.FunctionComponent = () => {
   const gameStarted = serverDealt || startRequested;
   const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
   const myTurn =
-    state.seat !== null &&
-    effectiveTurn === state.seat &&
-    gameStarted &&
-    !dealing;
+    state.seat !== null && effectiveTurn === state.seat && gameStarted;
 
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
   }, [fourColor]);
 
   React.useEffect(() => {
-    if (status !== "connected" || joined || joinPendingRef.current) return;
+    if (
+      !autoJoinFromLink.current ||
+      status !== "connected" ||
+      joined ||
+      joinPendingRef.current
+    )
+      return;
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n) return;
+    if (!isValidRoomCode(r) || !n) return;
     const key = `${r}\u0000${n}`;
     if (autoJoinKeyRef.current === key) return;
     autoJoinKeyRef.current = key;
@@ -221,17 +238,28 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [status]);
 
   React.useEffect(() => {
+    if (status === "disconnected" && state.room !== null) {
+      reset();
+    }
+  }, [status, state.room, reset]);
+
+  React.useEffect(() => {
     if (serverDealt) setStartRequested(true);
   }, [serverDealt]);
 
   React.useEffect(() => {
+    const previousHandSize = lastAnimatedHandSizeRef.current;
+    const handSizeChanged = state.hand.length !== previousHandSize;
+    if (state.hand.length < previousHandSize) {
+      setSelected([]);
+    }
     const shouldAnimate =
       state.hand.length > 0 &&
-      state.hand.length !== lastAnimatedHandSizeRef.current &&
+      handSizeChanged &&
       state.lastPlay.length === 0 &&
       playerCount >= 4;
-    if (!shouldAnimate) return;
     lastAnimatedHandSizeRef.current = state.hand.length;
+    if (!shouldAnimate) return;
     setDealStep(0);
   }, [state.hand.length, state.lastPlay.length, playerCount]);
 
@@ -278,8 +306,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinRoom = (): void => {
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n || joinPendingRef.current) return;
+    if (!isValidRoomCode(r) || !n || joinPendingRef.current) return;
     autoJoinKeyRef.current = `${r}\u0000${n}`;
+    autoJoinFromLink.current = true;
     joinPendingRef.current = true;
     if (!send({ type: "join", room: r, name: n })) {
       joinPendingRef.current = false;
@@ -288,7 +317,7 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const startGame = (): void => {
-    if (state.seat !== 0 || gameStarted || state.players.length < 4) return;
+    if (state.seat === null || gameStarted || state.players.length < 4) return;
     if (send({ type: "start", player_count: 4 })) {
       setStartRequested(true);
       setSelected([]);
@@ -304,8 +333,11 @@ const GuandanTable: React.FunctionComponent = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
     url.searchParams.set("test", "1");
-    url.searchParams.set("room", room.trim() || "TEST");
-    url.searchParams.set("name", `测试玩家${player}`);
+    url.searchParams.set(
+      "room",
+      isValidRoomCode(room) ? room : DEFAULT_ROOM_CODE,
+    );
+    url.searchParams.set("name", `玩家${player}`);
     return url.toString();
   };
 
@@ -350,7 +382,7 @@ const GuandanTable: React.FunctionComponent = () => {
   ]);
 
   const toggleCard = (index: number): void => {
-    if (!gameStarted || dealing) return;
+    if (!gameStarted) return;
     setSelected((current) =>
       current.includes(index)
         ? current.filter((value) => value !== index)
@@ -358,14 +390,25 @@ const GuandanTable: React.FunctionComponent = () => {
     );
   };
 
+  const stackedHand = React.useMemo(() => {
+    const stacks: Array<typeof visibleHand> = [];
+    visibleHand.forEach((entry) => {
+      const previous = stacks[stacks.length - 1];
+      if (
+        previous !== undefined &&
+        cardStackKey(previous[0]!.card) === cardStackKey(entry.card)
+      ) {
+        previous.push(entry);
+      } else {
+        stacks.push([entry]);
+      }
+    });
+    return stacks;
+  }, [visibleHand]);
+
   const playSelected = (): void => {
-    if (
-      gameStarted &&
-      selected.length > 0 &&
-      !dealing &&
-      send({ type: "play", card_indexes: selected })
-    ) {
-      setSelected([]);
+    if (gameStarted && selected.length > 0) {
+      send({ type: "play", card_indexes: selected });
     }
   };
 
@@ -375,7 +418,6 @@ const GuandanTable: React.FunctionComponent = () => {
     if (
       gameStarted &&
       selected.length === 1 &&
-      !dealing &&
       send({ type, card_index: selected[0] as number })
     ) {
       setSelected([]);
@@ -388,7 +430,7 @@ const GuandanTable: React.FunctionComponent = () => {
 
   return (
     <main className="guandan-table">
-      <header>
+      <header className="guandan-status-bar">
         <h1>掼蛋</h1>
         <div>连接状态：{status}</div>
         {state.room !== null && <div>房间：{state.room}</div>}
@@ -403,7 +445,7 @@ const GuandanTable: React.FunctionComponent = () => {
       </header>
 
       {showSettings && (
-        <section className="guandan-settings">
+        <section className="guandan-settings guandan-panel">
           <h2>掼蛋设置</h2>
           <label htmlFor="guandan-card-color-mode">牌面配色：</label>{" "}
           <select
@@ -419,24 +461,31 @@ const GuandanTable: React.FunctionComponent = () => {
       )}
 
       {!joined && (
-        <section>
+        <section className="guandan-join-section guandan-panel">
           <h2>加入牌桌</h2>
           <input
             aria-label="房间号"
-            placeholder="房间号"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={ROOM_CODE_LENGTH}
+            placeholder="房间号0001至0004"
             value={room}
-            onChange={(event) => setRoom(event.target.value)}
+            onChange={(event) => setRoom(normalizeRoomCode(event.target.value))}
           />
           <input
             aria-label="姓名"
-            placeholder="姓名"
+            placeholder="请输入完整姓名"
+            maxLength={32}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              autoJoinFromLink.current = false;
+              setName(event.target.value);
+            }}
           />
           <button
             disabled={
               status !== "connected" ||
-              !room.trim() ||
+              !isValidRoomCode(room) ||
               !name.trim() ||
               joinPendingRef.current
             }
@@ -444,14 +493,14 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             加入房间
           </button>
-          {status === "connected" && room.trim() && name.trim() && (
+          {status === "connected" && isValidRoomCode(room) && name.trim() && (
             <p>正在自动恢复房间…</p>
           )}
         </section>
       )}
 
       {testMode && !joined && (
-        <section>
+        <section className="guandan-test-section guandan-panel">
           <h2>四人联机测试</h2>
           <div className="guandan-actions">
             {[1, 2, 3, 4].map((player) => (
@@ -470,184 +519,252 @@ const GuandanTable: React.FunctionComponent = () => {
 
       {joined && (
         <>
-          <section className="guandan-player-section">
-            <h2>玩家</h2>
-            <div className="guandan-players">
-              {state.players.map((player, index) => (
-                <div key={`${player}-${index}`}>
-                  <strong>
-                    {index === state.seat ? `${player}（我）` : player}
-                  </strong>
-                  <span>
-                    {effectiveTurn === index && gameStarted && !dealing
-                      ? " ← 当前出牌"
-                      : dealing
-                        ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
-                        : ""}
-                  </span>
-                  <div>剩余：{dealtCountForSeat(index)} 张</div>
-                  {!gameStarted &&
-                    state.seat !== null &&
-                    index !== state.seat && (
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={() => swapSeat(index)}
-                      >
-                        与我换位
-                      </button>
-                    )}
-                </div>
-              ))}
+          {observing && (
+            <section className="guandan-observer-notice" role="status">
+              您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。
+            </section>
+          )}
+          <div className="guandan-public-zone" aria-label="公共桌面">
+            <div className="guandan-zone-title">
+              <span>公共桌面</span>
+              <small>所有玩家共同可见</small>
             </div>
-          </section>
-
-          {dealing && (
-            <section>
-              <strong>正在发牌：</strong>
-              按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
-            </section>
-          )}
-
-          {tributePending && (
-            <section>
-              <h2>进贡 / 还贡</h2>
-              <p>
-                {role === "giver"
-                  ? "请选择 1 张牌进贡。"
-                  : role === "receiver"
-                    ? "请选择 1 张牌还贡。"
-                    : "等待相关玩家完成进贡与还贡。"}
-              </p>
-            </section>
-          )}
-
-          <section>
-            <h2>桌面</h2>
-            {state.tablePlays.length === 0 ? (
-              <div>暂无出牌</div>
-            ) : (
-              <div className="guandan-trick-plays">
-                {state.tablePlays.map((play, playIndex) => (
+            <aside className="guandan-scoreboard" aria-label="当前级数">
+              <span>当前级数</span>
+              <strong>
+                {state.level === null ? "—" : rankLabel[state.level]}
+              </strong>
+            </aside>
+            <section className="guandan-player-section">
+              <h2>玩家</h2>
+              <div className="guandan-players">
+                {state.players.map((player, index) => (
                   <div
-                    className="guandan-trick-play"
-                    key={`${play.player}-${playIndex}`}
+                    className={`guandan-player-card ${
+                      effectiveTurn === index && gameStarted && !dealing
+                        ? "is-active"
+                        : ""
+                    } ${index === state.seat ? "is-me" : ""}`}
+                    key={`${player}-${index}`}
                   >
-                    <strong>
-                      {state.players[play.player] ?? `玩家${play.player + 1}`}：
-                    </strong>
-                    <span className="guandan-table-play">
-                      {play.cards.map((card, cardIndex) => (
-                        <span
-                          key={`${cardGlyph(card)}-${cardIndex}`}
-                          style={{ display: "inline-block", marginRight: -22 }}
-                        >
-                          {fullCard(card, 86)}
-                        </span>
-                      ))}
+                    <span className="guandan-seat-badge">
+                      {(["东", "南", "西", "北"] as const)[index] ?? index + 1}
                     </span>
+                    <strong>
+                      {index === state.seat ? `${player}（我）` : player}
+                    </strong>
+                    <span
+                      className={`guandan-online-status ${
+                        state.onlinePlayers[index] ? "is-online" : "is-offline"
+                      }`}
+                    >
+                      {state.onlinePlayers[index] ? "● 在线" : "○ 已掉线"}
+                    </span>
+                    <span>
+                      {effectiveTurn === index && gameStarted && !dealing
+                        ? " ← 当前出牌"
+                        : dealing
+                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                          : ""}
+                    </span>
+                    <div>剩余：{dealtCountForSeat(index)} 张</div>
+                    {!gameStarted &&
+                      state.seat !== null &&
+                      index !== state.seat && (
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={() => swapSeat(index)}
+                        >
+                          与我换位
+                        </button>
+                      )}
                   </div>
                 ))}
               </div>
+              {state.observers.length > 0 && (
+                <div className="guandan-observers">
+                  围观：{state.observers.join("、")}
+                </div>
+              )}
+            </section>
+
+            {dealing && (
+              <section className="guandan-notice-panel">
+                <strong>正在发牌：</strong>
+                按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
+              </section>
             )}
-            {state.trickComplete && (
-              <div>
-                <strong>本轮结束，正在收牌…</strong>
+
+            {tributePending && (
+              <section className="guandan-tribute-panel guandan-panel">
+                <h2>进贡 / 还贡</h2>
+                <p>
+                  {role === "giver"
+                    ? "请选择 1 张牌进贡。"
+                    : role === "receiver"
+                      ? "请选择 1 张牌还贡。"
+                      : "等待相关玩家完成进贡与还贡。"}
+                </p>
+              </section>
+            )}
+
+            <section className="guandan-table-stage">
+              <h2>本轮出牌</h2>
+              {state.tablePlays.length === 0 ? (
+                <div>暂无出牌</div>
+              ) : (
+                <div className="guandan-trick-plays">
+                  {state.tablePlays.map((play, playIndex) => (
+                    <div
+                      className="guandan-trick-play"
+                      key={`${play.player}-${playIndex}`}
+                    >
+                      <strong>
+                        {state.players[play.player] ?? `玩家${play.player + 1}`}
+                        ：
+                      </strong>
+                      <span className="guandan-table-play">
+                        {play.cards.map((card, cardIndex) => (
+                          <span
+                            key={`${cardGlyph(card)}-${cardIndex}`}
+                            style={{
+                              display: "inline-block",
+                              marginRight: -22,
+                            }}
+                          >
+                            {fullCard(card, 86)}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {state.trickComplete && (
+                <div>
+                  <strong>本轮结束，可以收牌。</strong>{" "}
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={() => send({ type: "end_round" })}
+                  >
+                    结束本轮 / 收牌
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
+
+          {!observing && (
+            <div className="guandan-private-zone" aria-label="我的桌面">
+              <div className="guandan-zone-title">
+                <span>我的桌面</span>
+                <small>仅显示我的手牌与操作</small>
               </div>
-            )}
-          </section>
+              <section className="guandan-hand-section">
+                <h2>我的手牌（{visibleHand.length}）</h2>
+                <div className="guandan-hand">
+                  {stackedHand.map((stack) => (
+                    <div
+                      className="guandan-card-stack"
+                      key={cardStackKey(stack[0]!.card)}
+                    >
+                      <span
+                        className="guandan-stack-count"
+                        aria-label={`${stack.length}张`}
+                      >
+                        ×{stack.length}
+                      </span>
+                      {stack.map(({ card, originalIndex }, stackIndex) => (
+                        <button
+                          type="button"
+                          key={`${cardGlyph(card)}-${originalIndex}`}
+                          aria-pressed={selected.includes(originalIndex)}
+                          disabled={!gameStarted || state.trickComplete}
+                          onClick={() => toggleCard(originalIndex)}
+                          style={{
+                            zIndex: selected.includes(originalIndex)
+                              ? 100
+                              : stackIndex + 1,
+                            padding: 0,
+                            border: selected.includes(originalIndex)
+                              ? "3px solid currentColor"
+                              : "2px solid transparent",
+                            borderRadius: 8,
+                            background: "transparent",
+                            transform: selected.includes(originalIndex)
+                              ? "translateY(-12px)"
+                              : "none",
+                          }}
+                        >
+                          {fullCard(card)}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </section>
 
-          <section>
-            <h2>我的手牌（{visibleHand.length}）</h2>
-            <div
-              className="guandan-hand"
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "flex-end",
-                gap: 4,
-              }}
-            >
-              {visibleHand.map(({ card, originalIndex }) => (
+              <section className="guandan-actions guandan-play-actions">
+                {!gameStarted && (
+                  <button
+                    className="guandan-start-button"
+                    disabled={state.seat === null || state.players.length < 4}
+                    onClick={startGame}
+                  >
+                    开始四人局
+                  </button>
+                )}
+                {!gameStarted && state.players.length === 4 && (
+                  <span>任意已入座玩家均可开始</span>
+                )}
+                {!gameStarted && state.players.length < 4 && (
+                  <span>等待四位玩家全部进入</span>
+                )}
+                {tributePending && role === "giver" && (
+                  <button
+                    disabled={!gameStarted || selected.length !== 1}
+                    onClick={() => sendSingleSelected("tribute_card")}
+                  >
+                    进贡此牌
+                  </button>
+                )}
+                {tributePending && role === "receiver" && (
+                  <button
+                    disabled={!gameStarted || selected.length !== 1}
+                    onClick={() => sendSingleSelected("return_tribute")}
+                  >
+                    还贡此牌
+                  </button>
+                )}
                 <button
-                  type="button"
-                  key={`${cardGlyph(card)}-${originalIndex}`}
-                  aria-pressed={selected.includes(originalIndex)}
-                  disabled={!gameStarted || dealing || state.trickComplete}
-                  onClick={() => toggleCard(originalIndex)}
-                  style={{
-                    padding: 0,
-                    border: selected.includes(originalIndex)
-                      ? "3px solid currentColor"
-                      : "2px solid transparent",
-                    borderRadius: 8,
-                    background: "transparent",
-                    transform: selected.includes(originalIndex)
-                      ? "translateY(-12px)"
-                      : "none",
-                  }}
+                  disabled={
+                    !gameStarted ||
+                    state.trickComplete ||
+                    tributePending ||
+                    !myTurn ||
+                    selected.length === 0
+                  }
+                  onClick={playSelected}
                 >
-                  {fullCard(card)}
+                  出牌
                 </button>
-              ))}
+                <button
+                  disabled={
+                    !gameStarted ||
+                    state.trickComplete ||
+                    tributePending ||
+                    !myTurn ||
+                    state.lastPlayer === null
+                  }
+                  onClick={() => send({ type: "pass" })}
+                >
+                  过牌
+                </button>
+              </section>
             </div>
-          </section>
-
-          <section className="guandan-actions guandan-play-actions">
-            {!gameStarted && (
-              <button
-                className="guandan-start-button"
-                disabled={state.seat !== 0 || state.players.length < 4}
-                onClick={startGame}
-              >
-                开始四人局
-              </button>
-            )}
-            {!gameStarted && state.seat !== 0 && <span>等待首位玩家开始</span>}
-            {!gameStarted && state.players.length < 4 && (
-              <span>等待四位玩家全部进入</span>
-            )}
-            {tributePending && role === "giver" && (
-              <button
-                disabled={!gameStarted || dealing || selected.length !== 1}
-                onClick={() => sendSingleSelected("tribute_card")}
-              >
-                进贡此牌
-              </button>
-            )}
-            {tributePending && role === "receiver" && (
-              <button
-                disabled={!gameStarted || dealing || selected.length !== 1}
-                onClick={() => sendSingleSelected("return_tribute")}
-              >
-                还贡此牌
-              </button>
-            )}
-            <button
-              disabled={
-                !gameStarted ||
-                state.trickComplete ||
-                tributePending ||
-                !myTurn ||
-                selected.length === 0
-              }
-              onClick={playSelected}
-            >
-              出牌
-            </button>
-            <button
-              disabled={
-                !gameStarted ||
-                state.trickComplete ||
-                tributePending ||
-                !myTurn ||
-                state.lastPlayer === null
-              }
-              onClick={() => send({ type: "pass" })}
-            >
-              过牌
-            </button>
-          </section>
+          )}
         </>
       )}
 

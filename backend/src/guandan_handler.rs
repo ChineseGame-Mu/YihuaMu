@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
-    strength::strength_basic,
+    strength::strengths_at_level,
     team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
+    CardFace, Rank, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -22,8 +22,12 @@ use crate::guandan_serving_types::{
     GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
 };
 
+const GUANDAN_PLAYER_COUNT: usize = 4;
+
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
+        Mutex::new(HashMap::new());
+    static ref GUANDAN_CONNECTIONS: Mutex<HashMap<Vec<u8>, HashMap<String, usize>>> =
         Mutex::new(HashMap::new());
 }
 
@@ -49,11 +53,12 @@ pub enum GuandanServerMessage {
     },
     Joined {
         room: String,
-        seat: usize,
+        seat: Option<usize>,
     },
     Waiting {
         players: Vec<String>,
         observers: Vec<String>,
+        online_players: Vec<bool>,
         minimum_players: usize,
         maximum_players: usize,
     },
@@ -67,6 +72,7 @@ pub enum GuandanServerMessage {
     State {
         players: Vec<String>,
         observers: Vec<String>,
+        online_players: Vec<bool>,
         turn: usize,
         hand_counts: Vec<usize>,
         last_play: Vec<CardFace>,
@@ -111,11 +117,14 @@ impl fmt::Display for PlayError {
 }
 
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
-    let table = TableConfig::new(player_count)?;
-    if !table.is_even_table() {
-        return Err("Guandan supports even tables: 4, 6, 8, 10, 12, 14");
+    if player_count != GUANDAN_PLAYER_COUNT {
+        return Err("Guandan requires exactly 4 players");
     }
-    Ok(table)
+    TableConfig::new(player_count)
+}
+
+fn validate_starting_seat(seat: Option<usize>) -> Result<usize, &'static str> {
+    seat.ok_or("observers cannot start the game")
 }
 
 fn encode(message: &GuandanServerMessage) -> Option<String> {
@@ -136,8 +145,31 @@ fn observers_for(key: &[u8]) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn is_observer(key: &[u8], name: &str) -> bool {
-    observers_for(key).iter().any(|observer| observer == name)
+fn set_connected(key: &[u8], name: &str, connected: bool) {
+    let Ok(mut rooms) = GUANDAN_CONNECTIONS.lock() else {
+        return;
+    };
+    let room = rooms.entry(key.to_vec()).or_default();
+    if connected {
+        *room.entry(name.to_string()).or_default() += 1;
+    } else if let Some(count) = room.get_mut(name) {
+        *count = count.saturating_sub(1);
+        if *count == 0 {
+            room.remove(name);
+        }
+    }
+    if room.is_empty() {
+        rooms.remove(key);
+    }
+}
+
+fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
+    let rooms = GUANDAN_CONNECTIONS.lock().ok();
+    let room = rooms.as_ref().and_then(|rooms| rooms.get(key));
+    game.player_names
+        .iter()
+        .map(|name| room.and_then(|room| room.get(name)).copied().unwrap_or(0) > 0)
+        .collect()
 }
 
 fn normalize_room_name(room: &str) -> String {
@@ -164,8 +196,9 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
     GuandanServerMessage::Waiting {
         players: game.player_names.clone(),
         observers: observers_for(key),
-        minimum_players: MIN_PLAYERS,
-        maximum_players: MAX_PLAYERS,
+        online_players: online_players(key, game),
+        minimum_players: GUANDAN_PLAYER_COUNT,
+        maximum_players: GUANDAN_PLAYER_COUNT,
     }
 }
 
@@ -173,6 +206,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
         players: game.player_names.clone(),
         observers: observers_for(key),
+        online_players: online_players(key, game),
         turn: game.turn,
         hand_counts: game.hand_counts(),
         last_play: game.last_play.clone(),
@@ -285,13 +319,24 @@ fn validate_play_against_table(
     current: &[CardFace],
     level: Rank,
 ) -> Result<(), &'static str> {
-    let candidate =
-        strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
+    let candidates = strengths_at_level(cards, level);
+    if candidates.is_empty() {
+        return Err("selected cards are not a legal Guandan pattern");
+    }
     if current.is_empty() {
         return Ok(());
     }
-    let table = strength_basic(current).ok_or("current table play is invalid")?;
-    if beats_at_level(candidate, table, level) {
+
+    let table_strengths = strengths_at_level(current, level);
+    if table_strengths.is_empty() {
+        return Err("current table play is invalid");
+    }
+
+    if candidates.iter().any(|candidate| {
+        table_strengths
+            .iter()
+            .all(|table| beats_at_level(*candidate, *table, level))
+    }) {
         Ok(())
     } else {
         Err("play must beat the current table play")
@@ -322,6 +367,7 @@ pub async fn websocket(
 
     let mut joined_room: Option<Vec<u8>> = None;
     let mut joined_name: Option<String> = None;
+    let mut joined_as_observer = false;
     let mut subscription_task = None;
 
     while let Some(result) = ws_rx.next().await {
@@ -376,25 +422,17 @@ pub async fn websocket(
                 }
 
                 let key = room.as_bytes().to_vec();
-                if is_observer(&key, &name) {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
-                            message: "name is already in use".to_string(),
-                        },
-                    );
-                    continue;
-                }
-
                 let existing_seat = current_seat(&storage, &key, &name).await;
                 let seat = if let Some(seat) = existing_seat {
-                    seat
+                    Some(seat)
                 } else {
                     let name_for_state = name.clone();
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
-                            if state.game.started || state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.started
+                                || state.game.player_names.len() >= GUANDAN_PLAYER_COUNT
+                            {
                                 return Err(());
                             }
                             state.game.player_names.push(name_for_state);
@@ -403,24 +441,35 @@ pub async fn websocket(
                         })
                         .await;
 
-                    if seat_result.is_err() {
-                        send(
-                            &tx,
-                            &GuandanServerMessage::Error {
-                                message: "room is full or game already started".to_string(),
-                            },
-                        );
-                        continue;
-                    }
-
                     match current_seat(&storage, &key, &name).await {
-                        Some(seat) => seat,
+                        Some(seat) => Some(seat),
+                        None if seat_result.is_err() => {
+                            let room_exists = storage.clone().get(key.clone()).await.is_ok();
+                            if !room_exists {
+                                send(
+                                    &tx,
+                                    &GuandanServerMessage::Error {
+                                        message: "unable to join this room".to_string(),
+                                    },
+                                );
+                                continue;
+                            }
+                            if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+                                let room_observers = observers.entry(key.clone()).or_default();
+                                if !room_observers.iter().any(|observer| observer == &name) {
+                                    room_observers.push(name.clone());
+                                }
+                            }
+                            joined_as_observer = true;
+                            None
+                        }
                         None => continue,
                     }
                 };
 
                 joined_room = Some(key.clone());
                 joined_name = Some(name.clone());
+                set_connected(&key, &name, true);
                 send(
                     &tx,
                     &GuandanServerMessage::Joined {
@@ -439,7 +488,7 @@ pub async fn websocket(
                             },
                         );
                         send(&tx, &state_message(&key, &state.game));
-                        if let Some(hand) = state.game.private_hand(seat) {
+                        if let Some(hand) = seat.and_then(|seat| state.game.private_hand(seat)) {
                             send(
                                 &tx,
                                 &GuandanServerMessage::Hand {
@@ -459,16 +508,17 @@ pub async fn websocket(
                 let tx_sub = tx.clone();
                 let storage_sub = storage.clone();
                 let name_sub = name;
+                let key_sub = key.clone();
                 subscription_task = Some(tokio::spawn(async move {
                     while sub.recv().await.is_some() {
-                        if let Ok(state) = storage_sub.clone().get(key.clone()).await {
+                        if let Ok(state) = storage_sub.clone().get(key_sub.clone()).await {
                             let seat_sub = state
                                 .game
                                 .player_names
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
-                                send(&tx_sub, &state_message(&key, &state.game));
+                                send(&tx_sub, &state_message(&key_sub, &state.game));
                                 if let Some(seat_sub) = seat_sub {
                                     if let Some(hand) = state.game.private_hand(seat_sub) {
                                         send(
@@ -480,11 +530,19 @@ pub async fn websocket(
                                     }
                                 }
                             } else {
-                                send(&tx_sub, &waiting_message(&key, &state.game));
+                                send(&tx_sub, &waiting_message(&key_sub, &state.game));
                             }
                         }
                     }
                 }));
+
+                let _: Result<u64, ()> = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
             }
             GuandanClientMessage::SetParticipation { active } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
@@ -512,7 +570,7 @@ pub async fn websocket(
                                 .iter()
                                 .position(|n| n == &name_for_state)
                                 .ok_or(())?;
-                            if state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.player_names.len() >= GUANDAN_PLAYER_COUNT {
                                 return Err(());
                             }
                             room_observers.remove(observer_index);
@@ -591,27 +649,18 @@ pub async fn websocket(
                     (Some(key), Some(name)) => (key, name),
                     _ => continue,
                 };
-                let seat = match current_seat(&storage, &key, &name).await {
-                    Some(seat) => seat,
-                    None => {
+                let seat = match validate_starting_seat(current_seat(&storage, &key, &name).await) {
+                    Ok(seat) => seat,
+                    Err(message) => {
                         send(
                             &tx,
                             &GuandanServerMessage::Error {
-                                message: "observers cannot start the game".to_string(),
+                                message: message.to_string(),
                             },
                         );
                         continue;
                     }
                 };
-                if seat != 0 {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
-                            message: "only seat 1 can start the game".to_string(),
-                        },
-                    );
-                    continue;
-                }
                 let table = match validate_start(player_count) {
                     Ok(table) => table,
                     Err(message) => {
@@ -627,7 +676,8 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.player_names.len() != table.player_count {
+                        if state.game.started || state.game.player_names.len() != table.player_count
+                        {
                             return Err(());
                         }
                         let mut deck = build_deck(table);
@@ -661,7 +711,9 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "selected player count must match active players".to_string(),
+                            message:
+                                "the game is already underway or four seated players are required"
+                                    .to_string(),
                         },
                     );
                     continue;
@@ -924,7 +976,30 @@ pub async fn websocket(
     }
 
     if let Some(key) = joined_room {
-        storage.unsubscribe(key, subscriber_id).await;
+        storage
+            .clone()
+            .unsubscribe(key.clone(), subscriber_id)
+            .await;
+        if let Some(name) = joined_name {
+            set_connected(&key, &name, false);
+            if joined_as_observer {
+                if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+                    if let Some(room_observers) = observers.get_mut(&key) {
+                        room_observers.retain(|observer| observer != &name);
+                        if room_observers.is_empty() {
+                            observers.remove(&key);
+                        }
+                    }
+                }
+            }
+            let _: Result<u64, ()> = storage
+                .clone()
+                .execute_operation_with_messages(key, move |mut state| {
+                    state.bump_version();
+                    Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                })
+                .await;
+        }
     }
     if let Some(task) = subscription_task {
         task.abort();
@@ -942,10 +1017,22 @@ mod tests {
     }
 
     #[test]
-    fn accepts_even_test_tables() {
-        for count in [4usize, 6, 8, 10, 12, 14] {
-            assert_eq!(validate_start(count).unwrap().player_count, count);
+    fn accepts_only_four_player_games() {
+        assert_eq!(validate_start(4).unwrap().player_count, 4);
+        for count in [3usize, 5, 6, 8, 10, 12, 14] {
+            assert!(validate_start(count).is_err());
         }
+    }
+
+    #[test]
+    fn every_seated_player_can_start_but_observers_cannot() {
+        for seat in 0..GUANDAN_PLAYER_COUNT {
+            assert_eq!(validate_starting_seat(Some(seat)), Ok(seat));
+        }
+        assert_eq!(
+            validate_starting_seat(None),
+            Err("observers cannot start the game")
+        );
     }
 
     #[test]

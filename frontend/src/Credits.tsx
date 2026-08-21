@@ -2,9 +2,7 @@ import * as React from "react";
 import type { JSX } from "react";
 
 const Credits = (): JSX.Element => (
-  <p style={{ padding: "0 20px" }}>
-    Original author: Robert Ying · Contributor: Yihua Mu
-  </p>
+  <p style={{ padding: "0 20px" }}>Designer: Yihua Mu</p>
 );
 
 export default Credits;

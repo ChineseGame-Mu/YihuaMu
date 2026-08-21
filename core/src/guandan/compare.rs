@@ -69,6 +69,10 @@ fn sequence_pattern(pattern: PlayPattern) -> bool {
     )
 }
 
+fn sequence_rank_value(rank: Rank) -> u8 {
+    natural_rank_value(rank)
+}
+
 /// Ordering for ordinary/joker main values:
 /// ordinary ranks < active level < small joker < big joker.
 fn main_power(play: PlayStrength, level: Rank) -> u8 {
@@ -81,7 +85,7 @@ fn main_power(play: PlayStrength, level: Rank) -> u8 {
 
 fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {
     if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {
-        natural_rank_value(candidate.main_rank).cmp(&natural_rank_value(current.main_rank))
+        sequence_rank_value(candidate.main_rank).cmp(&sequence_rank_value(current.main_rank))
     } else {
         main_power(candidate, level).cmp(&main_power(current, level))
     }

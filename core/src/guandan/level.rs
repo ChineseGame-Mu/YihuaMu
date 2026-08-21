@@ -6,7 +6,7 @@
 //! In each game, the active level rank is the strongest non-joker rank. Only
 //! the small and big jokers rank above it.
 
-use super::Rank;
+use super::{CardFace, Rank, Suit};
 
 /// Advance one winning side by exactly one level.
 ///
@@ -31,6 +31,18 @@ pub fn next_level(level: Rank) -> Rank {
 
 pub fn is_final_level(level: Rank) -> bool {
     level == Rank::Ace
+}
+
+/// In Guandan, only the heart card matching the active level is a wild card.
+/// The same rank in clubs, diamonds, or spades remains an ordinary level card.
+pub fn is_level_wildcard(card: CardFace, level: Rank) -> bool {
+    matches!(
+        card,
+        CardFace::Suited {
+            suit: Suit::Hearts,
+            rank,
+        } if rank == level
+    )
 }
 
 /// Base ordering for non-level, non-joker cards in Guandan.
@@ -72,6 +84,10 @@ pub fn level_rank_value(rank: Rank, level: Rank) -> u8 {
 mod tests {
     use super::*;
 
+    fn card(suit: Suit, rank: Rank) -> CardFace {
+        CardFace::Suited { suit, rank }
+    }
+
     #[test]
     fn winner_advances_one_level_at_a_time() {
         let mut level = Rank::Two;
@@ -99,6 +115,26 @@ mod tests {
     fn ace_is_terminal() {
         assert!(is_final_level(Rank::Ace));
         assert_eq!(next_level(Rank::Ace), Rank::Ace);
+    }
+
+    #[test]
+    fn only_heart_level_card_is_wild() {
+        assert!(is_level_wildcard(
+            card(Suit::Hearts, Rank::Seven),
+            Rank::Seven,
+        ));
+        assert!(!is_level_wildcard(
+            card(Suit::Spades, Rank::Seven),
+            Rank::Seven,
+        ));
+        assert!(!is_level_wildcard(
+            card(Suit::Hearts, Rank::Eight),
+            Rank::Seven,
+        ));
+        assert!(!is_level_wildcard(
+            CardFace::Joker(super::super::Joker::Small),
+            Rank::Seven,
+        ));
     }
 
     #[test]
