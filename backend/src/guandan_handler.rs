@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
-    strength::strength_basic,
+    strength::strengths_at_level,
     team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
+    CardFace, Rank, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -21,6 +21,8 @@ use tokio::sync::mpsc;
 use crate::guandan_serving_types::{
     GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
 };
+
+const GUANDAN_PLAYER_COUNT: usize = 4;
 
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
@@ -111,11 +113,10 @@ impl fmt::Display for PlayError {
 }
 
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
-    let table = TableConfig::new(player_count)?;
-    if !table.is_even_table() {
-        return Err("Guandan supports even tables: 4, 6, 8, 10, 12, 14");
+    if player_count != GUANDAN_PLAYER_COUNT {
+        return Err("Guandan requires exactly 4 players");
     }
-    Ok(table)
+    TableConfig::new(player_count)
 }
 
 fn encode(message: &GuandanServerMessage) -> Option<String> {
@@ -164,8 +165,8 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
     GuandanServerMessage::Waiting {
         players: game.player_names.clone(),
         observers: observers_for(key),
-        minimum_players: MIN_PLAYERS,
-        maximum_players: MAX_PLAYERS,
+        minimum_players: GUANDAN_PLAYER_COUNT,
+        maximum_players: GUANDAN_PLAYER_COUNT,
     }
 }
 
@@ -285,13 +286,24 @@ fn validate_play_against_table(
     current: &[CardFace],
     level: Rank,
 ) -> Result<(), &'static str> {
-    let candidate =
-        strength_basic(cards).ok_or("selected cards are not a legal Guandan pattern")?;
+    let candidates = strengths_at_level(cards, level);
+    if candidates.is_empty() {
+        return Err("selected cards are not a legal Guandan pattern");
+    }
     if current.is_empty() {
         return Ok(());
     }
-    let table = strength_basic(current).ok_or("current table play is invalid")?;
-    if beats_at_level(candidate, table, level) {
+
+    let table_strengths = strengths_at_level(current, level);
+    if table_strengths.is_empty() {
+        return Err("current table play is invalid");
+    }
+
+    if candidates.iter().any(|candidate| {
+        table_strengths
+            .iter()
+            .all(|table| beats_at_level(*candidate, *table, level))
+    }) {
         Ok(())
     } else {
         Err("play must beat the current table play")
@@ -394,7 +406,9 @@ pub async fn websocket(
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
-                            if state.game.started || state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.started
+                                || state.game.player_names.len() >= GUANDAN_PLAYER_COUNT
+                            {
                                 return Err(());
                             }
                             state.game.player_names.push(name_for_state);
@@ -512,7 +526,7 @@ pub async fn websocket(
                                 .iter()
                                 .position(|n| n == &name_for_state)
                                 .ok_or(())?;
-                            if state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.player_names.len() >= GUANDAN_PLAYER_COUNT {
                                 return Err(());
                             }
                             room_observers.remove(observer_index);
@@ -942,9 +956,10 @@ mod tests {
     }
 
     #[test]
-    fn accepts_even_test_tables() {
-        for count in [4usize, 6, 8, 10, 12, 14] {
-            assert_eq!(validate_start(count).unwrap().player_count, count);
+    fn accepts_only_four_player_games() {
+        assert_eq!(validate_start(4).unwrap().player_count, 4);
+        for count in [3usize, 5, 6, 8, 10, 12, 14] {
+            assert!(validate_start(count).is_err());
         }
     }
 
