@@ -123,6 +123,10 @@ pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> 
     TableConfig::new(player_count)
 }
 
+fn validate_starting_seat(seat: Option<usize>) -> Result<usize, &'static str> {
+    seat.ok_or("observers cannot start the game")
+}
+
 fn encode(message: &GuandanServerMessage) -> Option<String> {
     serde_json::to_string(message).ok()
 }
@@ -645,13 +649,13 @@ pub async fn websocket(
                     (Some(key), Some(name)) => (key, name),
                     _ => continue,
                 };
-                let seat = match current_seat(&storage, &key, &name).await {
-                    Some(seat) => seat,
-                    None => {
+                let seat = match validate_starting_seat(current_seat(&storage, &key, &name).await) {
+                    Ok(seat) => seat,
+                    Err(message) => {
                         send(
                             &tx,
                             &GuandanServerMessage::Error {
-                                message: "observers cannot start the game".to_string(),
+                                message: message.to_string(),
                             },
                         );
                         continue;
@@ -1018,6 +1022,17 @@ mod tests {
         for count in [3usize, 5, 6, 8, 10, 12, 14] {
             assert!(validate_start(count).is_err());
         }
+    }
+
+    #[test]
+    fn every_seated_player_can_start_but_observers_cannot() {
+        for seat in 0..GUANDAN_PLAYER_COUNT {
+            assert_eq!(validate_starting_seat(Some(seat)), Ok(seat));
+        }
+        assert_eq!(
+            validate_starting_seat(None),
+            Err("observers cannot start the game")
+        );
     }
 
     #[test]

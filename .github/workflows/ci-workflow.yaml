@@ -50,7 +50,9 @@ jobs:
         working-directory: ./frontend
 
       - name: Check frontend formatting
-        run: yarn prettier --check
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier --check
         working-directory: ./frontend
       - name: Lint Rust code
         run: cargo clippy
