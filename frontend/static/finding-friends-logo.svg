@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#a9e77e"/><stop offset=".5" stop-color="#2d9c54"/><stop offset="1" stop-color="#0e6035"/>
+    </linearGradient>
+  </defs>
+  <circle cx="60" cy="60" r="55" fill="url(#g)" stroke="#f5d77a" stroke-width="5"/>
+  <circle cx="43" cy="43" r="15" fill="#fff3c4" stroke="#175f39" stroke-width="2"/>
+  <circle cx="77" cy="43" r="15" fill="#fff3c4" stroke="#175f39" stroke-width="2"/>
+  <path d="M22 71c4-18 38-19 42 0M56 71c4-18 38-19 42 0" fill="#f5d46e" stroke="#175f39" stroke-width="3"/>
+  <text x="60" y="94" text-anchor="middle" font-size="23" font-weight="900" fill="#fff7c7" stroke="#0a4c2b" stroke-width="1">找朋友</text>
+</svg>
