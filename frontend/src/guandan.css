@@ -20,6 +20,7 @@
 .guandan-clock {
   position: relative;
   flex: 0 0 auto;
+  margin-left: auto;
   width: 66px;
   height: 66px;
   border: 3px solid #e5bd5b;
