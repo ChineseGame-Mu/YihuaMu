@@ -532,7 +532,7 @@ pub async fn websocket(
                     }
                 }));
 
-                let _ = storage
+                let _: Result<u64, ()> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
                         state.bump_version();
@@ -991,7 +991,7 @@ pub async fn websocket(
                     }
                 }
             }
-            let _ = storage
+            let _: Result<u64, ()> = storage
                 .clone()
                 .execute_operation_with_messages(key, move |mut state| {
                     state.bump_version();
