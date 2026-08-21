@@ -489,6 +489,12 @@ const GuandanTable: React.FunctionComponent = () => {
               <span>公共桌面</span>
               <small>所有玩家共同可见</small>
             </div>
+            <aside className="guandan-scoreboard" aria-label="当前级数">
+              <span>当前级数</span>
+              <strong>
+                {state.level === null ? "—" : rankLabel[state.level]}
+              </strong>
+            </aside>
             <section className="guandan-player-section">
               <h2>玩家</h2>
               <div className="guandan-players">
