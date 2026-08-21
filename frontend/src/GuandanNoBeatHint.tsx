@@ -844,7 +844,7 @@ const selectSuggestedCards = (
     );
   const desired = new Set(indexes);
   const buttons = document.querySelectorAll<HTMLButtonElement>(
-    ".guandan-hand > button",
+    ".guandan-hand button",
   );
 
   buttons.forEach((button, visibleIndex) => {
