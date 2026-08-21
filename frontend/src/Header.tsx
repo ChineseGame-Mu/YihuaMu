@@ -3,6 +3,8 @@ import GameMode from "./GameMode";
 import GameStatisticsButton from "./GameStatisticsButton";
 import SettingsButton from "./SettingsButton";
 import { GameModeSettings } from "./gen-types";
+import ExitGameButton from "./ExitGameButton";
+import GameClockLogo from "./GameClockLogo";
 
 import type { JSX } from "react";
 
@@ -11,35 +13,21 @@ interface IProps {
   chatLink?: string | null;
 }
 
-const reselectButtonStyle: React.CSSProperties = {
-  marginLeft: "14px",
-  padding: "6px 14px",
-  fontSize: "18px",
-  fontWeight: 700,
-  verticalAlign: "middle",
-  borderRadius: "8px",
-  cursor: "pointer",
-};
-
 const returnToGameSelection = (): void => {
   window.location.href = `${window.location.origin}${window.location.pathname}`;
 };
 
 const Header = (props: IProps): JSX.Element => (
   <div>
-    <h1>
+    <h1 className="game-header-row">
+      <ExitGameButton onClick={returnToGameSelection} />
       <GameMode gameMode={props.gameMode} />
-      <button
-        type="button"
-        className="normal"
-        style={reselectButtonStyle}
-        onClick={returnToGameSelection}
-      >
-        重新选择
-      </button>
       &nbsp;
       <SettingsButton />
       <GameStatisticsButton />
+      <GameClockLogo
+        game={props.gameMode === "Tractor" ? "Tractor" : "FindingFriends"}
+      />
     </h1>
     {props.chatLink !== undefined && props.chatLink !== null ? (
       <p>

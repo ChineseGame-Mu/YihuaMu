@@ -27,7 +27,7 @@ export interface AppState {
 }
 
 const roomNameFromLocation = (): string => {
-  const match = window.location.hash.slice(1).match(/^\d{4}/);
+  const match = window.location.hash.slice(1).match(/^000[1-4]/);
   return match?.[0] ?? "";
 };
 

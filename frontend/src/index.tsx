@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/react";
 
 import "./style.css";
 import "./guandan.css";
+import "./game-logos.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
@@ -13,6 +14,10 @@ import Root from "./Root";
 import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
 import GuandanStateProvider from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
+import GuandanNoBeatHint from "./GuandanNoBeatHint";
+import GuandanNoBeatControls from "./GuandanNoBeatControls";
+import ExitGameButton from "./ExitGameButton";
+import GameClockLogo from "./GameClockLogo";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -60,15 +65,12 @@ const bootstrap = (): void => {
           <GuandanStateProvider>
             <div>
               <div className="guandan-topbar">
+                <ExitGameButton onClick={returnToGameSelection} />
                 <h1>掼蛋</h1>
-                <button
-                  type="button"
-                  className="normal guandan-reselect-button"
-                  onClick={returnToGameSelection}
-                >
-                  重新选择
-                </button>
+                <GameClockLogo game="Guandan" />
               </div>
+              <GuandanNoBeatHint />
+              <GuandanNoBeatControls />
               <GuandanTable />
             </div>
           </GuandanStateProvider>

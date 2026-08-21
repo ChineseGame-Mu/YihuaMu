@@ -24,7 +24,7 @@ export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
-  | { type: "start"; player_count: number }
+  | { type: "start"; player_count: 4 }
   | { type: "play"; card_indexes: number[] }
   | { type: "tribute_card"; card_index: number }
   | { type: "return_tribute"; card_index: number }
