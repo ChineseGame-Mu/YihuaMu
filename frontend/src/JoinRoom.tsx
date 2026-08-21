@@ -17,10 +17,12 @@ interface IProps {
 }
 
 export const ROOM_CODE_LENGTH = 4;
+export const isValidRoomCode = (value: string): boolean =>
+  /^(?!0000)\d{4}$/.test(value);
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
-    props.room_name.length !== ROOM_CODE_LENGTH,
+    !isValidRoomCode(props.room_name),
   );
   const { send } = React.useContext(WebsocketContext);
 
@@ -38,7 +40,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
     event.preventDefault();
-    if (props.name.length > 0 && props.room_name.length === ROOM_CODE_LENGTH) {
+    if (props.name.length > 0 && isValidRoomCode(props.room_name)) {
       send({
         room_name: props.room_name,
         name: props.name,
@@ -67,7 +69,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   const generateRoomName = React.useCallback((): void => {
     const arr = new Uint32Array(1);
     window.crypto.getRandomValues(arr);
-    const code = String(arr[0] % 10000).padStart(ROOM_CODE_LENGTH, "0");
+    const code = String((arr[0] % 9999) + 1).padStart(ROOM_CODE_LENGTH, "0");
     setCreatingNewRoom(true);
     props.setRoomName(code);
   }, [props.setRoomName]);
@@ -79,7 +81,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   }, [props.room_name.length, generateRoomName]);
 
   const canSubmit =
-    props.room_name.length === ROOM_CODE_LENGTH &&
+    isValidRoomCode(props.room_name) &&
     props.name.length > 0 &&
     props.name.length <= 32;
 
