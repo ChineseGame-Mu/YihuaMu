@@ -4,7 +4,7 @@ import Errors from "./Errors";
 import Initialize from "./Initialize";
 import Draw from "./Draw";
 import Exchange from "./Exchange";
-import JoinRoom, { ROOM_CODE_LENGTH } from "./JoinRoom";
+import JoinRoom, { isValidRoomCode } from "./JoinRoom";
 import { AppStateContext } from "./AppStateProvider";
 import { TimerContext } from "./TimerProvider";
 import Credits from "./Credits";
@@ -103,7 +103,7 @@ const Root = (): JSX.Element => {
   );
 
   // A valid room code in a shared URL always takes precedence over the welcome screen.
-  const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
+  const hasSharedRoom = isValidRoomCode(state.roomName);
 
   if (state.connected) {
     if (state.gameState === null || !hasSharedRoom) {
