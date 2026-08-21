@@ -146,11 +146,14 @@
 }
 
 .guandan-public-zone {
-  border: 2px solid #e4bd61;
+  border: 3px double #f3d57c;
   background:
     radial-gradient(ellipse at center, rgb(98 190 105 / 22%), transparent 65%),
     rgb(4 63 36 / 62%);
-  box-shadow: inset 0 0 28px rgb(0 0 0 / 17%), 0 8px 20px rgb(0 0 0 / 16%);
+  box-shadow:
+    inset 0 0 0 2px rgb(255 239 176 / 38%),
+    inset 0 0 28px rgb(0 0 0 / 17%),
+    0 8px 20px rgb(0 0 0 / 16%);
 }
 
 .guandan-scoreboard {
@@ -193,9 +196,13 @@
 }
 
 .guandan-private-zone {
-  border: 2px solid #91d7ec;
+  border: 4px solid #b97920;
   background: linear-gradient(180deg, rgb(19 79 67 / 78%), rgb(7 51 39 / 82%));
-  box-shadow: inset 0 0 24px rgb(35 138 155 / 13%), 0 8px 20px rgb(0 0 0 / 18%);
+  box-shadow:
+    inset 0 0 0 2px #f1cf72,
+    inset 0 0 0 5px rgb(97 54 4 / 42%),
+    inset 0 0 24px rgb(35 138 155 / 13%),
+    0 8px 20px rgb(0 0 0 / 18%);
 }
 
 .guandan-zone-title {
