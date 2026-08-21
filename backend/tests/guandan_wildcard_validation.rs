@@ -1,7 +1,5 @@
 use shengji_core::guandan::{
-    compare::beats_at_level,
-    strength::strengths_at_level,
-    CardFace, Joker, PlayPattern, Rank, Suit,
+    compare::beats_at_level, strength::strengths_at_level, CardFace, Joker, PlayPattern, Rank, Suit,
 };
 
 fn card(suit: Suit, rank: Rank) -> CardFace {

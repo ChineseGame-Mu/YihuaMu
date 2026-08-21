@@ -80,23 +80,14 @@ pub fn classify_at_level(cards: &[CardFace], level: Rank) -> Vec<PlayPattern> {
 
     match cards.len() {
         1 => add(PlayPattern::Single, true),
-        2 => add(
-            PlayPattern::Pair,
-            can_fill_same_rank(&fixed, wild_count, 2),
-        ),
+        2 => add(PlayPattern::Pair, can_fill_same_rank(&fixed, wild_count, 2)),
         3 => add(
             PlayPattern::Triple,
             can_fill_same_rank(&fixed, wild_count, 3),
         ),
-        4 => add(
-            PlayPattern::Bomb,
-            can_fill_same_rank(&fixed, wild_count, 4),
-        ),
+        4 => add(PlayPattern::Bomb, can_fill_same_rank(&fixed, wild_count, 4)),
         5 => {
-            add(
-                PlayPattern::Bomb,
-                can_fill_same_rank(&fixed, wild_count, 5),
-            );
+            add(PlayPattern::Bomb, can_fill_same_rank(&fixed, wild_count, 5));
             add(
                 PlayPattern::StraightFlush,
                 can_fill_straight(&fixed, wild_count, true),
@@ -111,10 +102,7 @@ pub fn classify_at_level(cards: &[CardFace], level: Rank) -> Vec<PlayPattern> {
             );
         }
         6 => {
-            add(
-                PlayPattern::Bomb,
-                can_fill_same_rank(&fixed, wild_count, 6),
-            );
+            add(PlayPattern::Bomb, can_fill_same_rank(&fixed, wild_count, 6));
             add(
                 PlayPattern::ConsecutivePairs,
                 can_fill_consecutive_groups(&fixed, wild_count, 3, 2),
@@ -214,13 +202,7 @@ fn ranks_in_order() -> [Rank; 13] {
 
 fn straight_targets() -> Vec<[Rank; 5]> {
     let ranks = ranks_in_order();
-    let mut targets = vec![[
-        Rank::Ace,
-        Rank::Two,
-        Rank::Three,
-        Rank::Four,
-        Rank::Five,
-    ]];
+    let mut targets = vec![[Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five]];
     for start in 0..=8 {
         targets.push([
             ranks[start],
@@ -243,11 +225,7 @@ fn can_fill_same_rank(fixed: &[CardFace], wild_count: usize, total: usize) -> bo
     counts.len() <= 1
 }
 
-fn can_fill_targets(
-    fixed: &[CardFace],
-    wild_count: usize,
-    targets: &[(Rank, usize)],
-) -> bool {
+fn can_fill_targets(fixed: &[CardFace], wild_count: usize, targets: &[(Rank, usize)]) -> bool {
     let Some(counts) = rank_counts(fixed) else {
         return false;
     };
@@ -293,8 +271,7 @@ fn can_fill_triple_with_pair(fixed: &[CardFace], wild_count: usize) -> bool {
     let ranks = ranks_in_order();
     ranks.iter().copied().any(|triple| {
         ranks.iter().copied().any(|pair| {
-            triple != pair
-                && can_fill_targets(fixed, wild_count, &[(triple, 3), (pair, 2)])
+            triple != pair && can_fill_targets(fixed, wild_count, &[(triple, 3), (pair, 2)])
         })
     })
 }
@@ -363,8 +340,7 @@ fn is_straight(cards: &[CardFace]) -> bool {
         return false;
     };
     let ranks = counts.keys().copied().collect::<Vec<_>>();
-    counts.values().all(|count| *count == 1)
-        && (consecutive(&ranks) || ace_low_straight(&ranks))
+    counts.values().all(|count| *count == 1) && (consecutive(&ranks) || ace_low_straight(&ranks))
 }
 
 fn is_straight_flush(cards: &[CardFace]) -> bool {
@@ -565,8 +541,10 @@ mod tests {
     #[test]
     fn heart_level_wildcard_completes_pair_and_bomb() {
         let wild = card(Suit::Hearts, Rank::Seven);
-        assert!(classify_at_level(&[card(Suit::Clubs, Rank::King), wild], Rank::Seven)
-            .contains(&PlayPattern::Pair));
+        assert!(
+            classify_at_level(&[card(Suit::Clubs, Rank::King), wild], Rank::Seven)
+                .contains(&PlayPattern::Pair)
+        );
         assert!(classify_at_level(
             &[
                 card(Suit::Clubs, Rank::King),

@@ -1,7 +1,5 @@
 use shengji_core::guandan::{
-    compare::beats_at_level,
-    strength::strength_basic,
-    CardFace, PlayPattern, Rank, Suit,
+    compare::beats_at_level, strength::strength_basic, CardFace, PlayPattern, Rank, Suit,
 };
 
 fn card(suit: Suit, rank: Rank) -> CardFace {
@@ -77,6 +75,14 @@ fn equal_rank_straight_flushes_do_not_compare_by_suit() {
     let hearts_strength = strength_basic(&hearts).unwrap();
     let spades_strength = strength_basic(&spades).unwrap();
 
-    assert!(!beats_at_level(hearts_strength, spades_strength, Rank::Five));
-    assert!(!beats_at_level(spades_strength, hearts_strength, Rank::Five));
+    assert!(!beats_at_level(
+        hearts_strength,
+        spades_strength,
+        Rank::Five
+    ));
+    assert!(!beats_at_level(
+        spades_strength,
+        hearts_strength,
+        Rank::Five
+    ));
 }
