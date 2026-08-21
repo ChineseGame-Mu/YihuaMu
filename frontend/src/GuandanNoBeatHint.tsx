@@ -682,7 +682,12 @@ const suggestionScore = (
     !isBombFamily(current.pattern) && candidate.pattern === current.pattern
       ? 0
       : 1,
-  bombBreaks: bombBreakPenalty(hand, indexes),
+  // A bomb is not considered "broken" when the suggested play is itself a
+  // bomb. This lets the hint choose the smallest sufficient bomb instead of
+  // unnecessarily consuming every duplicate card of the same rank.
+  bombBreaks: isBombFamily(candidate.pattern)
+    ? 0
+    : bombBreakPenalty(hand, indexes),
   levelCards: indexes.filter((index) => rankOf(hand[index]) === level).length,
   bombTier: isBombFamily(candidate.pattern) ? bombTier(candidate) : 0,
   mainPower: candidateMainPower(candidate, level),
