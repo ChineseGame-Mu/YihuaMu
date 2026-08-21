@@ -208,6 +208,66 @@
   background: rgb(7 69 41 / 74%) !important;
 }
 
+.guandan-public-zone,
+.guandan-private-zone {
+  position: relative;
+  margin: 14px 0;
+  padding: 42px 12px 12px;
+  border-radius: 22px;
+}
+
+.guandan-public-zone {
+  border: 2px solid #e4bd61;
+  background:
+    radial-gradient(ellipse at center, rgb(98 190 105 / 22%), transparent 65%),
+    rgb(4 63 36 / 62%);
+  box-shadow: inset 0 0 28px rgb(0 0 0 / 17%), 0 8px 20px rgb(0 0 0 / 16%);
+}
+
+.guandan-private-zone {
+  border: 2px solid #91d7ec;
+  background: linear-gradient(180deg, rgb(19 79 67 / 78%), rgb(7 51 39 / 82%));
+  box-shadow: inset 0 0 24px rgb(35 138 155 / 13%), 0 8px 20px rgb(0 0 0 / 18%);
+}
+
+.guandan-zone-title {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 280px;
+  padding: 7px 22px 8px;
+  border-radius: 0 0 16px 16px;
+  color: #fff7d5;
+  font-weight: 900;
+  text-align: center;
+  transform: translateX(-50%);
+  justify-content: center;
+}
+
+.guandan-public-zone > .guandan-zone-title {
+  background: linear-gradient(180deg, #bf8526, #8f5c12);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 22%);
+}
+
+.guandan-private-zone > .guandan-zone-title {
+  background: linear-gradient(180deg, #1688a0, #0a5d70);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 22%);
+}
+
+.guandan-zone-title span {
+  font-size: 1.16rem;
+  letter-spacing: 0.12em;
+}
+
+.guandan-zone-title small {
+  font-size: 0.78rem;
+  font-weight: 650;
+  opacity: 0.9;
+}
+
 .guandan-player-section h2 {
   margin: 0 0 8px;
   color: #ffe7a5;
@@ -494,6 +554,27 @@
   .guandan-table section {
     padding: 9px;
     border-radius: 13px;
+  }
+
+  .guandan-public-zone,
+  .guandan-private-zone {
+    margin: 10px 0;
+    padding: 39px 6px 6px;
+    border-radius: 16px;
+  }
+
+  .guandan-zone-title {
+    min-width: 230px;
+    gap: 7px;
+    padding: 6px 12px 7px;
+  }
+
+  .guandan-zone-title span {
+    font-size: 1rem;
+  }
+
+  .guandan-zone-title small {
+    font-size: 0.7rem;
   }
 
   .guandan-players {
