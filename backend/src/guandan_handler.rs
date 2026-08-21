@@ -13,7 +13,7 @@ use shengji_core::guandan::{
     strength::strengths_at_level,
     team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Rank, TableConfig, MAX_PLAYERS, MIN_PLAYERS,
+    CardFace, Rank, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -21,6 +21,8 @@ use tokio::sync::mpsc;
 use crate::guandan_serving_types::{
     GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
 };
+
+const GUANDAN_PLAYER_COUNT: usize = 4;
 
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
@@ -111,7 +113,7 @@ impl fmt::Display for PlayError {
 }
 
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
-    if player_count != 4 {
+    if player_count != GUANDAN_PLAYER_COUNT {
         return Err("Guandan requires exactly 4 players");
     }
     TableConfig::new(player_count)
@@ -163,8 +165,8 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
     GuandanServerMessage::Waiting {
         players: game.player_names.clone(),
         observers: observers_for(key),
-        minimum_players: MIN_PLAYERS,
-        maximum_players: MAX_PLAYERS,
+        minimum_players: GUANDAN_PLAYER_COUNT,
+        maximum_players: GUANDAN_PLAYER_COUNT,
     }
 }
 
@@ -404,7 +406,9 @@ pub async fn websocket(
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
-                            if state.game.started || state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.started
+                                || state.game.player_names.len() >= GUANDAN_PLAYER_COUNT
+                            {
                                 return Err(());
                             }
                             state.game.player_names.push(name_for_state);
@@ -522,7 +526,7 @@ pub async fn websocket(
                                 .iter()
                                 .position(|n| n == &name_for_state)
                                 .ok_or(())?;
-                            if state.game.player_names.len() >= MAX_PLAYERS {
+                            if state.game.player_names.len() >= GUANDAN_PLAYER_COUNT {
                                 return Err(());
                             }
                             room_observers.remove(observer_index);
