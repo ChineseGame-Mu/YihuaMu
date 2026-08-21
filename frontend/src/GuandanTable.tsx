@@ -146,7 +146,12 @@ const tributeRole = (
 };
 
 const DEAL_INTERVAL_MS = 120;
-const TRICK_CLEAR_DELAY_MS = 1000;
+const TRICK_CLEAR_DELAY_MS = 8000;
+const ROOM_CODE_LENGTH = 4;
+const DEFAULT_ROOM_CODE = "0001";
+const normalizeRoomCode = (value: string): string =>
+  value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
+const isValidRoomCode = (value: string): boolean => /^\d{4}$/.test(value);
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
@@ -155,14 +160,16 @@ const GuandanTable: React.FunctionComponent = () => {
     () => new URLSearchParams(window.location.search),
     [],
   );
-  const [room, setRoom] = React.useState(() => query.get("room") ?? "");
+  const [room, setRoom] = React.useState(() =>
+    normalizeRoomCode(query.get("room") ?? DEFAULT_ROOM_CODE),
+  );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
   const [selected, setSelected] = React.useState<number[]>([]);
   const [dealStep, setDealStep] = React.useState<number | null>(null);
   const [startRequested, setStartRequested] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const [fourColor, setFourColor] = React.useState(
-    () => window.localStorage.getItem("guandan_four_color") !== "off",
+    () => window.localStorage.getItem("guandan_four_color") === "on",
   );
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
@@ -198,7 +205,7 @@ const GuandanTable: React.FunctionComponent = () => {
     if (status !== "connected" || joined || joinPendingRef.current) return;
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n) return;
+    if (!isValidRoomCode(r) || !n) return;
     const key = `${r}\u0000${n}`;
     if (autoJoinKeyRef.current === key) return;
     autoJoinKeyRef.current = key;
@@ -225,13 +232,18 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [serverDealt]);
 
   React.useEffect(() => {
+    const previousHandSize = lastAnimatedHandSizeRef.current;
+    const handSizeChanged = state.hand.length !== previousHandSize;
+    if (state.hand.length < previousHandSize) {
+      setSelected([]);
+    }
     const shouldAnimate =
       state.hand.length > 0 &&
-      state.hand.length !== lastAnimatedHandSizeRef.current &&
+      handSizeChanged &&
       state.lastPlay.length === 0 &&
       playerCount >= 4;
-    if (!shouldAnimate) return;
     lastAnimatedHandSizeRef.current = state.hand.length;
+    if (!shouldAnimate) return;
     setDealStep(0);
   }, [state.hand.length, state.lastPlay.length, playerCount]);
 
@@ -278,7 +290,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinRoom = (): void => {
     const r = room.trim();
     const n = name.trim();
-    if (!r || !n || joinPendingRef.current) return;
+    if (!isValidRoomCode(r) || !n || joinPendingRef.current) return;
     autoJoinKeyRef.current = `${r}\u0000${n}`;
     joinPendingRef.current = true;
     if (!send({ type: "join", room: r, name: n })) {
@@ -304,7 +316,10 @@ const GuandanTable: React.FunctionComponent = () => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
     url.searchParams.set("test", "1");
-    url.searchParams.set("room", room.trim() || "TEST");
+    url.searchParams.set(
+      "room",
+      isValidRoomCode(room) ? room : DEFAULT_ROOM_CODE,
+    );
     url.searchParams.set("name", `测试玩家${player}`);
     return url.toString();
   };
@@ -359,13 +374,8 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const playSelected = (): void => {
-    if (
-      gameStarted &&
-      selected.length > 0 &&
-      !dealing &&
-      send({ type: "play", card_indexes: selected })
-    ) {
-      setSelected([]);
+    if (gameStarted && selected.length > 0 && !dealing) {
+      send({ type: "play", card_indexes: selected });
     }
   };
 
@@ -423,9 +433,12 @@ const GuandanTable: React.FunctionComponent = () => {
           <h2>加入牌桌</h2>
           <input
             aria-label="房间号"
-            placeholder="房间号"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={ROOM_CODE_LENGTH}
+            placeholder="4位房间号"
             value={room}
-            onChange={(event) => setRoom(event.target.value)}
+            onChange={(event) => setRoom(normalizeRoomCode(event.target.value))}
           />
           <input
             aria-label="姓名"
@@ -436,7 +449,7 @@ const GuandanTable: React.FunctionComponent = () => {
           <button
             disabled={
               status !== "connected" ||
-              !room.trim() ||
+              !isValidRoomCode(room) ||
               !name.trim() ||
               joinPendingRef.current
             }
@@ -444,7 +457,7 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             加入房间
           </button>
-          {status === "connected" && room.trim() && name.trim() && (
+          {status === "connected" && isValidRoomCode(room) && name.trim() && (
             <p>正在自动恢复房间…</p>
           )}
         </section>
@@ -552,7 +565,14 @@ const GuandanTable: React.FunctionComponent = () => {
             )}
             {state.trickComplete && (
               <div>
-                <strong>本轮结束，正在收牌…</strong>
+                <strong>本轮结束，可以收牌。</strong>{" "}
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={() => send({ type: "end_round" })}
+                >
+                  结束本轮 / 收牌
+                </button>
               </div>
             )}
           </section>
