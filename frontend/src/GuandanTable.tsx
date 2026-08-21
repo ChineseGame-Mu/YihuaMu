@@ -484,195 +484,205 @@ const GuandanTable: React.FunctionComponent = () => {
 
       {joined && (
         <>
-          <section className="guandan-player-section">
-            <h2>玩家</h2>
-            <div className="guandan-players">
-              {state.players.map((player, index) => (
-                <div
-                  className={`guandan-player-card ${
-                    effectiveTurn === index && gameStarted && !dealing
-                      ? "is-active"
-                      : ""
-                  } ${index === state.seat ? "is-me" : ""}`}
-                  key={`${player}-${index}`}
-                >
-                  <span className="guandan-seat-badge">
-                    {(["东", "南", "西", "北"] as const)[index] ?? index + 1}
-                  </span>
-                  <strong>
-                    {index === state.seat ? `${player}（我）` : player}
-                  </strong>
-                  <span>
-                    {effectiveTurn === index && gameStarted && !dealing
-                      ? " ← 当前出牌"
-                      : dealing
-                        ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
-                        : ""}
-                  </span>
-                  <div>剩余：{dealtCountForSeat(index)} 张</div>
-                  {!gameStarted &&
-                    state.seat !== null &&
-                    index !== state.seat && (
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={() => swapSeat(index)}
-                      >
-                        与我换位
-                      </button>
-                    )}
-                </div>
-              ))}
+          <div className="guandan-public-zone" aria-label="公共桌面">
+            <div className="guandan-zone-title">
+              <span>公共桌面</span>
+              <small>所有玩家共同可见</small>
             </div>
-          </section>
-
-          {dealing && (
-            <section className="guandan-notice-panel">
-              <strong>正在发牌：</strong>
-              按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
-            </section>
-          )}
-
-          {tributePending && (
-            <section className="guandan-tribute-panel guandan-panel">
-              <h2>进贡 / 还贡</h2>
-              <p>
-                {role === "giver"
-                  ? "请选择 1 张牌进贡。"
-                  : role === "receiver"
-                    ? "请选择 1 张牌还贡。"
-                    : "等待相关玩家完成进贡与还贡。"}
-              </p>
-            </section>
-          )}
-
-          <section className="guandan-table-stage">
-            <h2>本轮出牌</h2>
-            {state.tablePlays.length === 0 ? (
-              <div>暂无出牌</div>
-            ) : (
-              <div className="guandan-trick-plays">
-                {state.tablePlays.map((play, playIndex) => (
+            <section className="guandan-player-section">
+              <h2>玩家</h2>
+              <div className="guandan-players">
+                {state.players.map((player, index) => (
                   <div
-                    className="guandan-trick-play"
-                    key={`${play.player}-${playIndex}`}
+                    className={`guandan-player-card ${
+                      effectiveTurn === index && gameStarted && !dealing
+                        ? "is-active"
+                        : ""
+                    } ${index === state.seat ? "is-me" : ""}`}
+                    key={`${player}-${index}`}
                   >
-                    <strong>
-                      {state.players[play.player] ?? `玩家${play.player + 1}`}：
-                    </strong>
-                    <span className="guandan-table-play">
-                      {play.cards.map((card, cardIndex) => (
-                        <span
-                          key={`${cardGlyph(card)}-${cardIndex}`}
-                          style={{ display: "inline-block", marginRight: -22 }}
-                        >
-                          {fullCard(card, 86)}
-                        </span>
-                      ))}
+                    <span className="guandan-seat-badge">
+                      {(["东", "南", "西", "北"] as const)[index] ?? index + 1}
                     </span>
+                    <strong>
+                      {index === state.seat ? `${player}（我）` : player}
+                    </strong>
+                    <span>
+                      {effectiveTurn === index && gameStarted && !dealing
+                        ? " ← 当前出牌"
+                        : dealing
+                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                          : ""}
+                    </span>
+                    <div>剩余：{dealtCountForSeat(index)} 张</div>
+                    {!gameStarted &&
+                      state.seat !== null &&
+                      index !== state.seat && (
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={() => swapSeat(index)}
+                        >
+                          与我换位
+                        </button>
+                      )}
                   </div>
                 ))}
               </div>
+            </section>
+  
+            {dealing && (
+              <section className="guandan-notice-panel">
+                <strong>正在发牌：</strong>
+                按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
+              </section>
             )}
-            {state.trickComplete && (
-              <div>
-                <strong>本轮结束，可以收牌。</strong>{" "}
-                <button
-                  type="button"
-                  className="normal"
-                  onClick={() => send({ type: "end_round" })}
-                >
-                  结束本轮 / 收牌
-                </button>
-              </div>
+  
+            {tributePending && (
+              <section className="guandan-tribute-panel guandan-panel">
+                <h2>进贡 / 还贡</h2>
+                <p>
+                  {role === "giver"
+                    ? "请选择 1 张牌进贡。"
+                    : role === "receiver"
+                      ? "请选择 1 张牌还贡。"
+                      : "等待相关玩家完成进贡与还贡。"}
+                </p>
+              </section>
             )}
-          </section>
+  
+            <section className="guandan-table-stage">
+              <h2>本轮出牌</h2>
+              {state.tablePlays.length === 0 ? (
+                <div>暂无出牌</div>
+              ) : (
+                <div className="guandan-trick-plays">
+                  {state.tablePlays.map((play, playIndex) => (
+                    <div
+                      className="guandan-trick-play"
+                      key={`${play.player}-${playIndex}`}
+                    >
+                      <strong>
+                        {state.players[play.player] ?? `玩家${play.player + 1}`}：
+                      </strong>
+                      <span className="guandan-table-play">
+                        {play.cards.map((card, cardIndex) => (
+                          <span
+                            key={`${cardGlyph(card)}-${cardIndex}`}
+                            style={{ display: "inline-block", marginRight: -22 }}
+                          >
+                            {fullCard(card, 86)}
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {state.trickComplete && (
+                <div>
+                  <strong>本轮结束，可以收牌。</strong>{" "}
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={() => send({ type: "end_round" })}
+                  >
+                    结束本轮 / 收牌
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
 
-          <section className="guandan-hand-section">
-            <h2>我的手牌（{visibleHand.length}）</h2>
-            <div
-              className="guandan-hand"
-            >
-              {visibleHand.map(({ card, originalIndex }) => (
-                <button
-                  type="button"
-                  key={`${cardGlyph(card)}-${originalIndex}`}
-                  aria-pressed={selected.includes(originalIndex)}
-                  disabled={!gameStarted || dealing || state.trickComplete}
-                  onClick={() => toggleCard(originalIndex)}
-                  style={{
-                    padding: 0,
-                    border: selected.includes(originalIndex)
-                      ? "3px solid currentColor"
-                      : "2px solid transparent",
-                    borderRadius: 8,
-                    background: "transparent",
-                    transform: selected.includes(originalIndex)
-                      ? "translateY(-12px)"
-                      : "none",
-                  }}
-                >
-                  {fullCard(card)}
-                </button>
-              ))}
+          <div className="guandan-private-zone" aria-label="我的桌面">
+            <div className="guandan-zone-title">
+              <span>我的桌面</span>
+              <small>仅显示我的手牌与操作</small>
             </div>
-          </section>
-
-          <section className="guandan-actions guandan-play-actions">
-            {!gameStarted && (
+            <section className="guandan-hand-section">
+              <h2>我的手牌（{visibleHand.length}）</h2>
+            <div className="guandan-hand">
+                {visibleHand.map(({ card, originalIndex }) => (
+                  <button
+                    type="button"
+                    key={`${cardGlyph(card)}-${originalIndex}`}
+                    aria-pressed={selected.includes(originalIndex)}
+                    disabled={!gameStarted || dealing || state.trickComplete}
+                    onClick={() => toggleCard(originalIndex)}
+                    style={{
+                      padding: 0,
+                      border: selected.includes(originalIndex)
+                        ? "3px solid currentColor"
+                        : "2px solid transparent",
+                      borderRadius: 8,
+                      background: "transparent",
+                      transform: selected.includes(originalIndex)
+                        ? "translateY(-12px)"
+                        : "none",
+                    }}
+                  >
+                    {fullCard(card)}
+                  </button>
+                ))}
+              </div>
+            </section>
+  
+            <section className="guandan-actions guandan-play-actions">
+              {!gameStarted && (
+                <button
+                  className="guandan-start-button"
+                  disabled={state.seat !== 0 || state.players.length < 4}
+                  onClick={startGame}
+                >
+                  开始四人局
+                </button>
+              )}
+              {!gameStarted && state.seat !== 0 && <span>等待首位玩家开始</span>}
+              {!gameStarted && state.players.length < 4 && (
+                <span>等待四位玩家全部进入</span>
+              )}
+              {tributePending && role === "giver" && (
+                <button
+                  disabled={!gameStarted || dealing || selected.length !== 1}
+                  onClick={() => sendSingleSelected("tribute_card")}
+                >
+                  进贡此牌
+                </button>
+              )}
+              {tributePending && role === "receiver" && (
+                <button
+                  disabled={!gameStarted || dealing || selected.length !== 1}
+                  onClick={() => sendSingleSelected("return_tribute")}
+                >
+                  还贡此牌
+                </button>
+              )}
               <button
-                className="guandan-start-button"
-                disabled={state.seat !== 0 || state.players.length < 4}
-                onClick={startGame}
+                disabled={
+                  !gameStarted ||
+                  state.trickComplete ||
+                  tributePending ||
+                  !myTurn ||
+                  selected.length === 0
+                }
+                onClick={playSelected}
               >
-                开始四人局
+                出牌
               </button>
-            )}
-            {!gameStarted && state.seat !== 0 && <span>等待首位玩家开始</span>}
-            {!gameStarted && state.players.length < 4 && (
-              <span>等待四位玩家全部进入</span>
-            )}
-            {tributePending && role === "giver" && (
               <button
-                disabled={!gameStarted || dealing || selected.length !== 1}
-                onClick={() => sendSingleSelected("tribute_card")}
+                disabled={
+                  !gameStarted ||
+                  state.trickComplete ||
+                  tributePending ||
+                  !myTurn ||
+                  state.lastPlayer === null
+                }
+                onClick={() => send({ type: "pass" })}
               >
-                进贡此牌
+                过牌
               </button>
-            )}
-            {tributePending && role === "receiver" && (
-              <button
-                disabled={!gameStarted || dealing || selected.length !== 1}
-                onClick={() => sendSingleSelected("return_tribute")}
-              >
-                还贡此牌
-              </button>
-            )}
-            <button
-              disabled={
-                !gameStarted ||
-                state.trickComplete ||
-                tributePending ||
-                !myTurn ||
-                selected.length === 0
-              }
-              onClick={playSelected}
-            >
-              出牌
-            </button>
-            <button
-              disabled={
-                !gameStarted ||
-                state.trickComplete ||
-                tributePending ||
-                !myTurn ||
-                state.lastPlayer === null
-              }
-              onClick={() => send({ type: "pass" })}
-            >
-              过牌
-            </button>
-          </section>
+            </section>
+          </div>
         </>
       )}
 
