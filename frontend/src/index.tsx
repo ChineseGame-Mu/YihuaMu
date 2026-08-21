@@ -99,7 +99,6 @@ const bootstrap = (): void => {
           <GuandanStateProvider>
             <div>
               <div className="guandan-topbar">
-                <GuandanClock />
                 <span className="guandan-brand-logo" aria-hidden="true" />
                 <h1>掼蛋</h1>
                 <button
@@ -109,6 +108,7 @@ const bootstrap = (): void => {
                 >
                   重新选择
                 </button>
+                <GuandanClock />
               </div>
               <GuandanNoBeatHint />
               <GuandanNoBeatControls />
