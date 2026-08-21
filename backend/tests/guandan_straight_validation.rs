@@ -15,8 +15,9 @@ fn straight(ranks: [Rank; 5]) -> Vec<CardFace> {
         Suit::Clubs,
     ];
     ranks
-        .into_iter()
-        .zip(suits)
+        .iter()
+        .copied()
+        .zip(suits.iter().copied())
         .map(|(rank, suit)| card(suit, rank))
         .collect()
 }
