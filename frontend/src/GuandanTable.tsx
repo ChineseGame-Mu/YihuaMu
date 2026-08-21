@@ -154,8 +154,7 @@ const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
-const isValidRoomCode = (value: string): boolean =>
-  /^000[1-4]$/.test(value);
+const isValidRoomCode = (value: string): boolean => /^000[1-4]$/.test(value);
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
@@ -588,13 +587,17 @@ const GuandanTable: React.FunctionComponent = () => {
                       key={`${play.player}-${playIndex}`}
                     >
                       <strong>
-                        {state.players[play.player] ?? `玩家${play.player + 1}`}：
+                        {state.players[play.player] ?? `玩家${play.player + 1}`}
+                        ：
                       </strong>
                       <span className="guandan-table-play">
                         {play.cards.map((card, cardIndex) => (
                           <span
                             key={`${cardGlyph(card)}-${cardIndex}`}
-                            style={{ display: "inline-block", marginRight: -22 }}
+                            style={{
+                              display: "inline-block",
+                              marginRight: -22,
+                            }}
                           >
                             {fullCard(card, 86)}
                           </span>
@@ -637,7 +640,9 @@ const GuandanTable: React.FunctionComponent = () => {
                         type="button"
                         key={`${cardGlyph(card)}-${originalIndex}`}
                         aria-pressed={selected.includes(originalIndex)}
-                        disabled={!gameStarted || dealing || state.trickComplete}
+                        disabled={
+                          !gameStarted || dealing || state.trickComplete
+                        }
                         onClick={() => toggleCard(originalIndex)}
                         style={{
                           padding: 0,
@@ -669,7 +674,9 @@ const GuandanTable: React.FunctionComponent = () => {
                   开始四人局
                 </button>
               )}
-              {!gameStarted && state.seat !== 0 && <span>等待首位玩家开始</span>}
+              {!gameStarted && state.seat !== 0 && (
+                <span>等待首位玩家开始</span>
+              )}
               {!gameStarted && state.players.length < 4 && (
                 <span>等待四位玩家全部进入</span>
               )}

@@ -84,9 +84,7 @@ const Root = (): JSX.Element => {
     window.history.replaceState({}, "", window.location.pathname);
   };
 
-  const reselectButton = (
-    <ExitGameButton onClick={returnToGameSelection} />
-  );
+  const reselectButton = <ExitGameButton onClick={returnToGameSelection} />;
 
   // A valid room code in a shared URL always takes precedence over the welcome screen.
   const hasSharedRoom = isValidRoomCode(state.roomName);
