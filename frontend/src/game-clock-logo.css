@@ -1,0 +1,61 @@
+.game-clock-logo {
+  position: relative;
+  display: block;
+  width: 92px;
+  height: 92px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  border-radius: 50%;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 4px 5px rgb(0 0 0 / 30%));
+}
+
+.game-clock-logo--guandan {
+  background-image: url("../static/guandan-logo.svg");
+}
+
+.game-clock-logo--tractor {
+  background-image: url("../static/shengji-logo.svg");
+}
+
+.game-clock-logo--finding-friends {
+  background-image: url("../static/finding-friends-logo.svg");
+}
+
+.game-clock-logo time {
+  position: absolute;
+  right: 4px;
+  bottom: 1px;
+  left: 4px;
+  padding: 3px 4px;
+  border: 1px solid #ffe59a;
+  border-radius: 999px;
+  background: rgb(4 35 28 / 88%);
+  color: #fff5c4;
+  font-family: "Courier New", monospace;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px #000;
+}
+
+.game-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .game-clock-logo {
+    width: 70px;
+    height: 70px;
+  }
+
+  .game-clock-logo time {
+    font-size: 10px;
+  }
+}
