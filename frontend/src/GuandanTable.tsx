@@ -118,6 +118,9 @@ const cardGlyph = (card: GuandanCard): string =>
       : "🃏"
     : (unicodeCards[card.Suited.suit]?.[card.Suited.rank] ?? "🂠");
 
+const cardStackKey = (card: GuandanCard): string =>
+  "Joker" in card ? `Joker-${card.Joker}` : card.Suited.rank;
+
 const cardSortValue = (
   card: GuandanCard,
   level: GuandanRank | null,
@@ -374,6 +377,22 @@ const GuandanTable: React.FunctionComponent = () => {
     );
   };
 
+  const stackedHand = React.useMemo(() => {
+    const stacks: Array<typeof visibleHand> = [];
+    visibleHand.forEach((entry) => {
+      const previous = stacks[stacks.length - 1];
+      if (
+        previous !== undefined &&
+        cardStackKey(previous[0]!.card) === cardStackKey(entry.card)
+      ) {
+        previous.push(entry);
+      } else {
+        stacks.push([entry]);
+      }
+    });
+    return stacks;
+  }, [visibleHand]);
+
   const playSelected = (): void => {
     if (gameStarted && selected.length > 0 && !dealing) {
       send({ type: "play", card_indexes: selected });
@@ -607,28 +626,35 @@ const GuandanTable: React.FunctionComponent = () => {
             </div>
             <section className="guandan-hand-section">
               <h2>我的手牌（{visibleHand.length}）</h2>
-            <div className="guandan-hand">
-                {visibleHand.map(({ card, originalIndex }) => (
-                  <button
-                    type="button"
-                    key={`${cardGlyph(card)}-${originalIndex}`}
-                    aria-pressed={selected.includes(originalIndex)}
-                    disabled={!gameStarted || dealing || state.trickComplete}
-                    onClick={() => toggleCard(originalIndex)}
-                    style={{
-                      padding: 0,
-                      border: selected.includes(originalIndex)
-                        ? "3px solid currentColor"
-                        : "2px solid transparent",
-                      borderRadius: 8,
-                      background: "transparent",
-                      transform: selected.includes(originalIndex)
-                        ? "translateY(-12px)"
-                        : "none",
-                    }}
+              <div className="guandan-hand">
+                {stackedHand.map((stack) => (
+                  <div
+                    className="guandan-card-stack"
+                    key={cardStackKey(stack[0]!.card)}
                   >
-                    {fullCard(card)}
-                  </button>
+                    {stack.map(({ card, originalIndex }) => (
+                      <button
+                        type="button"
+                        key={`${cardGlyph(card)}-${originalIndex}`}
+                        aria-pressed={selected.includes(originalIndex)}
+                        disabled={!gameStarted || dealing || state.trickComplete}
+                        onClick={() => toggleCard(originalIndex)}
+                        style={{
+                          padding: 0,
+                          border: selected.includes(originalIndex)
+                            ? "3px solid currentColor"
+                            : "2px solid transparent",
+                          borderRadius: 8,
+                          background: "transparent",
+                          transform: selected.includes(originalIndex)
+                            ? "translateY(-12px)"
+                            : "none",
+                        }}
+                      >
+                        {fullCard(card)}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
             </section>
