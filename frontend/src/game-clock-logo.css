@@ -6,22 +6,60 @@
   flex: 0 0 auto;
   margin-left: auto;
   border-radius: 50%;
-  background-position: center;
-  background-size: contain;
-  background-repeat: no-repeat;
   filter: drop-shadow(0 4px 5px rgb(0 0 0 / 30%));
 }
 
 .game-clock-logo--guandan {
-  background-image: url("../static/guandan-logo.svg");
+  --logo-main: #b51f18;
+  --logo-dark: #67110d;
+  --logo-accent: #ffe49a;
 }
 
 .game-clock-logo--tractor {
-  background-image: url("../static/shengji-logo.svg");
+  --logo-main: #176bb0;
+  --logo-dark: #093d78;
+  --logo-accent: #e5f5ff;
 }
 
 .game-clock-logo--finding-friends {
-  background-image: url("../static/finding-friends-logo.svg");
+  --logo-main: #21834b;
+  --logo-dark: #0b4d29;
+  --logo-accent: #e8ffd9;
+}
+
+.game-clock-logo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.game-clock-logo-ring {
+  fill: var(--logo-main);
+  stroke: #e7bd58;
+  stroke-width: 5px;
+}
+
+.game-clock-logo-card {
+  fill: #fff9dc;
+  stroke: var(--logo-dark);
+  stroke-width: 3px;
+}
+
+.game-clock-logo-suit {
+  fill: var(--logo-main);
+  font-size: 25px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.game-clock-logo-name {
+  fill: var(--logo-accent);
+  font-size: 15px;
+  font-weight: 900;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--logo-dark);
+  stroke-width: 3px;
 }
 
 .game-clock-logo time {
