@@ -63,6 +63,7 @@ const bootstrap = (): void => {
           <GuandanStateProvider>
             <div>
               <div className="guandan-topbar">
+                <span className="guandan-brand-logo" aria-hidden="true" />
                 <h1>掼蛋</h1>
                 <button
                   type="button"
