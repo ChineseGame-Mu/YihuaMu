@@ -17,6 +17,66 @@
   text-shadow: 0 2px 3px rgb(0 0 0 / 45%);
 }
 
+.guandan-clock {
+  position: relative;
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border: 3px solid #e5bd5b;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #fffdf2 0 5%, transparent 6%),
+    repeating-conic-gradient(
+      from -1deg,
+      #325142 0deg 2deg,
+      transparent 2deg 30deg
+    ),
+    radial-gradient(circle at 35% 28%, #ffffff, #f7e7b6 72%, #c58f2b);
+  box-shadow:
+    inset 0 0 0 4px #fff5ce,
+    inset 0 0 12px rgb(70 43 0 / 22%),
+    0 4px 10px rgb(0 0 0 / 35%);
+}
+
+.guandan-clock-hand {
+  position: absolute;
+  bottom: 50%;
+  left: calc(50% - 1px);
+  width: 2px;
+  border-radius: 999px;
+  background: #173c2c;
+  transform-origin: 50% 100%;
+}
+
+.guandan-clock-hour {
+  height: 19px;
+  width: 4px;
+  left: calc(50% - 2px);
+}
+
+.guandan-clock-minute {
+  height: 25px;
+  width: 3px;
+  left: calc(50% - 1.5px);
+}
+
+.guandan-clock-second {
+  height: 27px;
+  background: #c83a2a;
+}
+
+.guandan-clock-pin {
+  position: absolute;
+  top: calc(50% - 4px);
+  left: calc(50% - 4px);
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff1b7;
+  border-radius: 50%;
+  background: #b82e21;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 35%);
+}
+
 .guandan-reselect-button {
   padding: 7px 16px !important;
   border: 1px solid #e7c36c !important;
@@ -384,6 +444,24 @@
 
   .guandan-topbar h1 {
     font-size: 1.5rem;
+  }
+
+  .guandan-clock {
+    width: 50px;
+    height: 50px;
+    border-width: 2px;
+  }
+
+  .guandan-clock-hour {
+    height: 14px;
+  }
+
+  .guandan-clock-minute {
+    height: 18px;
+  }
+
+  .guandan-clock-second {
+    height: 20px;
   }
 
   .guandan-reselect-button {
