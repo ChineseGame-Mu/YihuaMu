@@ -195,17 +195,13 @@ impl PlayPhase {
             for msg in &mut msgs {
                 match msg {
                     PlayCardsMessage::PlayedCards { ref mut cards, .. } => {
-                        for card in cards {
-                            *card = Card::Unknown;
-                        }
+                        cards.fill(Card::Unknown);
                     }
                     PlayCardsMessage::ThrowFailed {
                         ref mut original_cards,
                         ..
                     } => {
-                        for card in original_cards {
-                            *card = Card::Unknown;
-                        }
+                        original_cards.fill(Card::Unknown);
                     }
                 }
             }
@@ -680,9 +676,7 @@ impl PlayPhase {
             self.hands.destructively_redact_except_for_player(player);
         }
         if game_ongoing && player != self.exchanger {
-            for card in &mut self.kitty {
-                *card = Card::Unknown;
-            }
+            self.kitty.fill(Card::Unknown);
         }
     }
 }
