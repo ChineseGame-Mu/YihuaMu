@@ -111,11 +111,10 @@ impl fmt::Display for PlayError {
 }
 
 pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {
-    let table = TableConfig::new(player_count)?;
-    if !table.is_even_table() {
-        return Err("Guandan supports even tables: 4, 6, 8, 10, 12, 14");
+    if player_count != 4 {
+        return Err("Guandan requires exactly 4 players");
     }
-    Ok(table)
+    TableConfig::new(player_count)
 }
 
 fn encode(message: &GuandanServerMessage) -> Option<String> {
@@ -953,9 +952,10 @@ mod tests {
     }
 
     #[test]
-    fn accepts_even_test_tables() {
-        for count in [4usize, 6, 8, 10, 12, 14] {
-            assert_eq!(validate_start(count).unwrap().player_count, count);
+    fn accepts_only_four_player_games() {
+        assert_eq!(validate_start(4).unwrap().player_count, 4);
+        for count in [3usize, 5, 6, 8, 10, 12, 14] {
+            assert!(validate_start(count).is_err());
         }
     }
 
