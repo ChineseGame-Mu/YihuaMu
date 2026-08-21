@@ -1,0 +1,53 @@
+.exit-game-button {
+  display: inline-grid !important;
+  grid-template-rows: 46px auto;
+  width: 82px;
+  height: 64px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0 10px 0 0 !important;
+  padding: 3px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  border: 2px solid #ffe37c !important;
+  background: #8b2418 !important;
+  color: #fff7c7 !important;
+  box-shadow: 0 0 0 3px rgb(255 220 91 / 25%) !important;
+  cursor: pointer;
+}
+
+.guandan-topbar .exit-game-button {
+  margin-right: 0 !important;
+}
+
+.exit-game-button:hover {
+  background: rgb(255 232 159 / 18%) !important;
+  transform: translateY(-1px);
+}
+
+.exit-game-button:focus-visible {
+  outline: 3px solid #71d9ff;
+  outline-offset: 2px;
+}
+
+.exit-game-button svg {
+  display: block;
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(0 3px 3px rgb(0 43 35 / 55%));
+}
+
+.exit-game-button span {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+@media (max-width: 700px) {
+  .exit-game-button {
+    width: 68px;
+    height: 54px;
+    grid-template-rows: 39px auto;
+    border-radius: 11px !important;
+  }
+}

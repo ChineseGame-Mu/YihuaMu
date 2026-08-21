@@ -4,7 +4,7 @@ import Errors from "./Errors";
 import Initialize from "./Initialize";
 import Draw from "./Draw";
 import Exchange from "./Exchange";
-import JoinRoom, { ROOM_CODE_LENGTH } from "./JoinRoom";
+import JoinRoom, { isValidRoomCode } from "./JoinRoom";
 import { AppStateContext } from "./AppStateProvider";
 import { TimerContext } from "./TimerProvider";
 import Credits from "./Credits";
@@ -14,6 +14,8 @@ import DebugInfo from "./DebugInfo";
 import TitleHandler from "./TitleHandler";
 import ResetButton from "./ResetButton";
 import Welcome from "./Welcome";
+import ExitGameButton from "./ExitGameButton";
+import GameClockLogo from "./GameClockLogo";
 
 import type { JSX } from "react";
 
@@ -26,15 +28,6 @@ const titleRowStyle: React.CSSProperties = {
   flexWrap: "wrap",
   alignItems: "center",
   gap: "12px",
-};
-
-const reselectButtonStyle: React.CSSProperties = {
-  padding: "6px 14px",
-  fontSize: "18px",
-  fontWeight: 700,
-  lineHeight: 1.2,
-  borderRadius: "8px",
-  cursor: "pointer",
 };
 
 const Root = (): JSX.Element => {
@@ -91,19 +84,10 @@ const Root = (): JSX.Element => {
     window.history.replaceState({}, "", window.location.pathname);
   };
 
-  const reselectButton = (
-    <button
-      className="normal"
-      type="button"
-      style={reselectButtonStyle}
-      onClick={returnToGameSelection}
-    >
-      重新选择
-    </button>
-  );
+  const reselectButton = <ExitGameButton onClick={returnToGameSelection} />;
 
   // A valid room code in a shared URL always takes precedence over the welcome screen.
-  const hasSharedRoom = state.roomName.length === ROOM_CODE_LENGTH;
+  const hasSharedRoom = isValidRoomCode(state.roomName);
 
   if (state.connected) {
     if (state.gameState === null || !hasSharedRoom) {
@@ -125,11 +109,18 @@ const Root = (): JSX.Element => {
           <Errors errors={state.errors} />
           <div className="game">
             <div style={titleRowStyle}>
+              {reselectButton}
               <h1>
                 升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
                 <span className="red">Finding Friends</span>
               </h1>
-              {reselectButton}
+              <GameClockLogo
+                game={
+                  selectedGameMode === "FindingFriends"
+                    ? "FindingFriends"
+                    : "Tractor"
+                }
+              />
             </div>
             {hasSharedRoom && selectedGameMode === null ? (
               <p>
@@ -238,11 +229,12 @@ const Root = (): JSX.Element => {
       <div>
         <div className="game">
           <div style={titleRowStyle}>
+            {reselectButton}
             <h1>
               升级 / <span className="red">Tractor</span> / 找朋友 /{" "}
               <span className="red">Finding Friends</span>
             </h1>
-            {reselectButton}
+            <GameClockLogo game="Tractor" />
           </div>
           <p>
             正在连接朋友分享的房间：<strong>{state.roomName}</strong>
@@ -271,10 +263,11 @@ const Root = (): JSX.Element => {
         <Errors errors={state.errors} />
         <div className="game">
           <div style={titleRowStyle}>
+            {reselectButton}
             <h1>
               {selectedGameMode === "Tractor" ? "升级 / 拖拉机" : "找朋友"}
             </h1>
-            {reselectButton}
+            <GameClockLogo game={selectedGameMode} />
           </div>
           <p>已选择游戏模式，正在连接服务器… 连接完成后会自动进入房间页面。</p>
         </div>

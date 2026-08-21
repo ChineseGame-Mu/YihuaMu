@@ -27,6 +27,8 @@ const GUANDAN_PLAYER_COUNT: usize = 4;
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
         Mutex::new(HashMap::new());
+    static ref GUANDAN_CONNECTIONS: Mutex<HashMap<Vec<u8>, HashMap<String, usize>>> =
+        Mutex::new(HashMap::new());
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -51,11 +53,12 @@ pub enum GuandanServerMessage {
     },
     Joined {
         room: String,
-        seat: usize,
+        seat: Option<usize>,
     },
     Waiting {
         players: Vec<String>,
         observers: Vec<String>,
+        online_players: Vec<bool>,
         minimum_players: usize,
         maximum_players: usize,
     },
@@ -69,6 +72,7 @@ pub enum GuandanServerMessage {
     State {
         players: Vec<String>,
         observers: Vec<String>,
+        online_players: Vec<bool>,
         turn: usize,
         hand_counts: Vec<usize>,
         last_play: Vec<CardFace>,
@@ -137,8 +141,31 @@ fn observers_for(key: &[u8]) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn is_observer(key: &[u8], name: &str) -> bool {
-    observers_for(key).iter().any(|observer| observer == name)
+fn set_connected(key: &[u8], name: &str, connected: bool) {
+    let Ok(mut rooms) = GUANDAN_CONNECTIONS.lock() else {
+        return;
+    };
+    let room = rooms.entry(key.to_vec()).or_default();
+    if connected {
+        *room.entry(name.to_string()).or_default() += 1;
+    } else if let Some(count) = room.get_mut(name) {
+        *count = count.saturating_sub(1);
+        if *count == 0 {
+            room.remove(name);
+        }
+    }
+    if room.is_empty() {
+        rooms.remove(key);
+    }
+}
+
+fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
+    let rooms = GUANDAN_CONNECTIONS.lock().ok();
+    let room = rooms.as_ref().and_then(|rooms| rooms.get(key));
+    game.player_names
+        .iter()
+        .map(|name| room.and_then(|room| room.get(name)).copied().unwrap_or(0) > 0)
+        .collect()
 }
 
 fn normalize_room_name(room: &str) -> String {
@@ -165,6 +192,7 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
     GuandanServerMessage::Waiting {
         players: game.player_names.clone(),
         observers: observers_for(key),
+        online_players: online_players(key, game),
         minimum_players: GUANDAN_PLAYER_COUNT,
         maximum_players: GUANDAN_PLAYER_COUNT,
     }
@@ -174,6 +202,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
         players: game.player_names.clone(),
         observers: observers_for(key),
+        online_players: online_players(key, game),
         turn: game.turn,
         hand_counts: game.hand_counts(),
         last_play: game.last_play.clone(),
@@ -334,6 +363,7 @@ pub async fn websocket(
 
     let mut joined_room: Option<Vec<u8>> = None;
     let mut joined_name: Option<String> = None;
+    let mut joined_as_observer = false;
     let mut subscription_task = None;
 
     while let Some(result) = ws_rx.next().await {
@@ -388,19 +418,9 @@ pub async fn websocket(
                 }
 
                 let key = room.as_bytes().to_vec();
-                if is_observer(&key, &name) {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
-                            message: "name is already in use".to_string(),
-                        },
-                    );
-                    continue;
-                }
-
                 let existing_seat = current_seat(&storage, &key, &name).await;
                 let seat = if let Some(seat) = existing_seat {
-                    seat
+                    Some(seat)
                 } else {
                     let name_for_state = name.clone();
                     let seat_result = storage
@@ -417,24 +437,35 @@ pub async fn websocket(
                         })
                         .await;
 
-                    if seat_result.is_err() {
-                        send(
-                            &tx,
-                            &GuandanServerMessage::Error {
-                                message: "room is full or game already started".to_string(),
-                            },
-                        );
-                        continue;
-                    }
-
                     match current_seat(&storage, &key, &name).await {
-                        Some(seat) => seat,
+                        Some(seat) => Some(seat),
+                        None if seat_result.is_err() => {
+                            let room_exists = storage.clone().get(key.clone()).await.is_ok();
+                            if !room_exists {
+                                send(
+                                    &tx,
+                                    &GuandanServerMessage::Error {
+                                        message: "unable to join this room".to_string(),
+                                    },
+                                );
+                                continue;
+                            }
+                            if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+                                let room_observers = observers.entry(key.clone()).or_default();
+                                if !room_observers.iter().any(|observer| observer == &name) {
+                                    room_observers.push(name.clone());
+                                }
+                            }
+                            joined_as_observer = true;
+                            None
+                        }
                         None => continue,
                     }
                 };
 
                 joined_room = Some(key.clone());
                 joined_name = Some(name.clone());
+                set_connected(&key, &name, true);
                 send(
                     &tx,
                     &GuandanServerMessage::Joined {
@@ -453,7 +484,7 @@ pub async fn websocket(
                             },
                         );
                         send(&tx, &state_message(&key, &state.game));
-                        if let Some(hand) = state.game.private_hand(seat) {
+                        if let Some(hand) = seat.and_then(|seat| state.game.private_hand(seat)) {
                             send(
                                 &tx,
                                 &GuandanServerMessage::Hand {
@@ -473,16 +504,17 @@ pub async fn websocket(
                 let tx_sub = tx.clone();
                 let storage_sub = storage.clone();
                 let name_sub = name;
+                let key_sub = key.clone();
                 subscription_task = Some(tokio::spawn(async move {
                     while sub.recv().await.is_some() {
-                        if let Ok(state) = storage_sub.clone().get(key.clone()).await {
+                        if let Ok(state) = storage_sub.clone().get(key_sub.clone()).await {
                             let seat_sub = state
                                 .game
                                 .player_names
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
-                                send(&tx_sub, &state_message(&key, &state.game));
+                                send(&tx_sub, &state_message(&key_sub, &state.game));
                                 if let Some(seat_sub) = seat_sub {
                                     if let Some(hand) = state.game.private_hand(seat_sub) {
                                         send(
@@ -494,11 +526,19 @@ pub async fn websocket(
                                     }
                                 }
                             } else {
-                                send(&tx_sub, &waiting_message(&key, &state.game));
+                                send(&tx_sub, &waiting_message(&key_sub, &state.game));
                             }
                         }
                     }
                 }));
+
+                let _ = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
             }
             GuandanClientMessage::SetParticipation { active } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
@@ -938,7 +978,27 @@ pub async fn websocket(
     }
 
     if let Some(key) = joined_room {
-        storage.unsubscribe(key, subscriber_id).await;
+        storage.unsubscribe(key.clone(), subscriber_id).await;
+        if let Some(name) = joined_name {
+            set_connected(&key, &name, false);
+            if joined_as_observer {
+                if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+                    if let Some(room_observers) = observers.get_mut(&key) {
+                        room_observers.retain(|observer| observer != &name);
+                        if room_observers.is_empty() {
+                            observers.remove(&key);
+                        }
+                    }
+                }
+            }
+            let _ = storage
+                .clone()
+                .execute_operation_with_messages(key, move |mut state| {
+                    state.bump_version();
+                    Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                })
+                .await;
+        }
     }
     if let Some(task) = subscription_task {
         task.abort();

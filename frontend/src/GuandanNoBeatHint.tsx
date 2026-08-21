@@ -112,9 +112,7 @@ const isAceLowStraightRanks = (input: GuandanRank[]): boolean => {
 };
 
 const straightTargets = (): GuandanRank[][] => {
-  const targets: GuandanRank[][] = [
-    ["Ace", "Two", "Three", "Four", "Five"],
-  ];
+  const targets: GuandanRank[][] = [["Ace", "Two", "Three", "Four", "Five"]];
   for (let start = 0; start <= 8; start += 1) {
     targets.push(ranks.slice(start, start + 5));
   }
@@ -200,7 +198,11 @@ const sequenceMainRank = (cards: GuandanCard[]): GuandanRank | null => {
     .map(rankOf)
     .filter((rank): rank is GuandanRank => rank !== null);
   if (isAceLowStraightRanks(cardRanks)) return "Five";
-  return cardRanks.sort((a, b) => naturalRankValue(a) - naturalRankValue(b)).at(-1) ?? null;
+  return (
+    cardRanks
+      .sort((a, b) => naturalRankValue(a) - naturalRankValue(b))
+      .at(-1) ?? null
+  );
 };
 
 const strength = (cards: GuandanCard[]): Strength | null => {
@@ -320,9 +322,10 @@ const strengthsAtLevel = (
     addSameRank("bomb");
 
     straightTargets().forEach((target) => {
-      const targetCounts = target.map(
-        (rank): [GuandanRank, number] => [rank, 1],
-      );
+      const targetCounts = target.map((rank): [GuandanRank, number] => [
+        rank,
+        1,
+      ]);
       if (!targetFits(fixed, targetCounts, wildCount)) return;
       const mainRank = isAceLowStraightRanks(target)
         ? "Five"
@@ -436,7 +439,9 @@ const beats = (
       candidate.pattern === "straight_flush" &&
       current.pattern === "straight_flush"
     ) {
-      return sequencePower(candidate.mainRank) > sequencePower(current.mainRank);
+      return (
+        sequencePower(candidate.mainRank) > sequencePower(current.mainRank)
+      );
     }
     if (
       candidate.pattern === "bomb" &&
@@ -550,7 +555,8 @@ const beatsAllTableInterpretations = (
   candidate: Strength,
   currentStrengths: Strength[],
   level: GuandanRank,
-): boolean => currentStrengths.every((current) => beats(candidate, current, level));
+): boolean =>
+  currentStrengths.every((current) => beats(candidate, current, level));
 
 export const handCanBeat = (
   hand: GuandanCard[],
@@ -582,7 +588,10 @@ export const handCanBeat = (
       candidateIndex < candidateGroups.length;
       candidateIndex += 1
     ) {
-      const candidates = strengthsAtLevel(candidateGroups[candidateIndex], level);
+      const candidates = strengthsAtLevel(
+        candidateGroups[candidateIndex],
+        level,
+      );
       if (
         candidates.some((candidate) =>
           beatsAllTableInterpretations(candidate, currentStrengths, level),
@@ -682,7 +691,13 @@ const suggestionScore = (
     !isBombFamily(current.pattern) && candidate.pattern === current.pattern
       ? 0
       : 1,
-  bombBreaks: bombBreakPenalty(hand, indexes),
+  // A bomb is not considered "broken" when the suggested play is itself a
+  // bomb. This lets the hint choose the smallest sufficient bomb instead of
+  // unnecessarily consuming every duplicate card of the same rank.
+  bombBreaks:
+    candidate.pattern === "bomb" || candidate.pattern === "joker_bomb"
+      ? 0
+      : bombBreakPenalty(hand, indexes),
   levelCards: indexes.filter((index) => rankOf(hand[index]) === level).length,
   bombTier: isBombFamily(candidate.pattern) ? bombTier(candidate) : 0,
   mainPower: candidateMainPower(candidate, level),
@@ -723,7 +738,10 @@ export const describeSuggestedCards = (
   cards: GuandanCard[],
   level?: GuandanRank,
 ): string | null => {
-  const play = level === undefined ? strength(cards) : strengthsAtLevel(cards, level)[0] ?? null;
+  const play =
+    level === undefined
+      ? strength(cards)
+      : (strengthsAtLevel(cards, level)[0] ?? null);
   if (play === null) return null;
   const rank =
     play.joker === "Small"
@@ -791,13 +809,7 @@ export const findSuggestedIndexes = (
       candidates.push({
         indexes,
         strength: candidate,
-        score: suggestionScore(
-          hand,
-          indexes,
-          candidate,
-          scoringCurrent,
-          level,
-        ),
+        score: suggestionScore(hand, indexes, candidate, scoringCurrent, level),
       });
     });
   };
@@ -844,7 +856,7 @@ const selectSuggestedCards = (
     );
   const desired = new Set(indexes);
   const buttons = document.querySelectorAll<HTMLButtonElement>(
-    ".guandan-hand > button",
+    ".guandan-hand button",
   );
 
   buttons.forEach((button, visibleIndex) => {

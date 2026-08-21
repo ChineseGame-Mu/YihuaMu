@@ -17,10 +17,12 @@ interface IProps {
 }
 
 export const ROOM_CODE_LENGTH = 4;
+export const isValidRoomCode = (value: string): boolean =>
+  /^000[1-4]$/.test(value);
 
 const JoinRoom = (props: IProps): JSX.Element => {
   const [creatingNewRoom, setCreatingNewRoom] = React.useState<boolean>(
-    props.room_name.length !== ROOM_CODE_LENGTH,
+    !isValidRoomCode(props.room_name),
   );
   const { send } = React.useContext(WebsocketContext);
 
@@ -38,7 +40,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
 
   const handleSubmit = (event: React.SyntheticEvent): void => {
     event.preventDefault();
-    if (props.name.length > 0 && props.room_name.length === ROOM_CODE_LENGTH) {
+    if (props.name.length > 0 && isValidRoomCode(props.room_name)) {
       send({
         room_name: props.room_name,
         name: props.name,
@@ -65,11 +67,8 @@ const JoinRoom = (props: IProps): JSX.Element => {
   };
 
   const generateRoomName = React.useCallback((): void => {
-    const arr = new Uint32Array(1);
-    window.crypto.getRandomValues(arr);
-    const code = String(arr[0] % 10000).padStart(ROOM_CODE_LENGTH, "0");
     setCreatingNewRoom(true);
-    props.setRoomName(code);
+    props.setRoomName("0001");
   }, [props.setRoomName]);
 
   React.useEffect(() => {
@@ -79,7 +78,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
   }, [props.room_name.length, generateRoomName]);
 
   const canSubmit =
-    props.room_name.length === ROOM_CODE_LENGTH &&
+    isValidRoomCode(props.room_name) &&
     props.name.length > 0 &&
     props.name.length <= 32;
 
@@ -104,7 +103,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
                 inputMode="numeric"
                 pattern="[0-9]{4}"
                 aria-label="4位房间代码"
-                placeholder="输入4位房间号"
+                placeholder="0001至0004"
                 value={props.room_name}
                 onChange={handleRoomChange}
                 maxLength={ROOM_CODE_LENGTH}
@@ -114,7 +113,7 @@ const JoinRoom = (props: IProps): JSX.Element => {
           </h2>
           <p>
             <strong>加入朋友的房间：</strong>
-            把上面的4位号码改成朋友给您的房间号，然后点击下面的“进入指定房间”按钮。
+            房间号只限0001、0002、0003、0004。请选择朋友给您的房间号，然后点击下面的“进入指定房间”按钮。
           </p>
         </div>
         <div>

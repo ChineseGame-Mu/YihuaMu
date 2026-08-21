@@ -13,6 +13,7 @@ interface GuandanTableState {
   seat: number | null;
   players: string[];
   observers: string[];
+  onlinePlayers: boolean[];
   playerCount: number | null;
   cardsPerPlayer: number | null;
   hand: GuandanCard[];
@@ -42,6 +43,7 @@ const initialState: GuandanTableState = {
   seat: null,
   players: [],
   observers: [],
+  onlinePlayers: [],
   playerCount: null,
   cardsPerPlayer: null,
   hand: [],
@@ -95,6 +97,7 @@ const reduceMessage = (
         ...state,
         players: message.players,
         observers: message.observers,
+        onlinePlayers: message.online_players,
         minimumPlayers: message.minimum_players,
         maximumPlayers: message.maximum_players,
         error: null,
@@ -114,6 +117,7 @@ const reduceMessage = (
         ...state,
         players: message.players,
         observers: message.observers,
+        onlinePlayers: message.online_players,
         turn: message.turn,
         handCounts: message.hand_counts,
         lastPlay: message.last_play,

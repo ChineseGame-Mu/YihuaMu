@@ -1,240 +1,670 @@
 .guandan-topbar {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 20px 20px 0;
-  background: #ffffff;
-  color: #1f2933;
+  gap: 16px;
+  padding: 8px 28px;
+  border-bottom: 2px solid #d6ac52;
+  background: linear-gradient(180deg, #123e2e, #082c20);
+  color: #fff8d7;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 28%);
 }
 
 .guandan-topbar h1 {
   margin: 0;
+  color: #ffe39a;
   font-size: 2rem;
-  color: #137a43;
-}
-
-.guandan-reselect-button {
-  padding: 6px 14px !important;
-  border: 1.5px solid #198754 !important;
-  border-radius: 8px !important;
-  background: #ffffff !important;
-  color: #137a43 !important;
-  font-size: 18px !important;
-  font-weight: 700 !important;
-  cursor: pointer;
+  letter-spacing: 0.14em;
+  text-shadow: 0 2px 3px rgb(0 0 0 / 45%);
 }
 
 .guandan-table {
-  min-height: 100vh;
+  position: relative;
+  min-height: calc(100vh - 65px);
   box-sizing: border-box;
-  padding: 20px 20px 96px;
-  background: #ffffff;
-  color: #1f2933;
+  padding: 16px 26px 112px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgb(117 205 121 / 34%), transparent 38%),
+    repeating-linear-gradient(
+      115deg,
+      rgb(255 255 255 / 2%) 0 2px,
+      transparent 2px 7px
+    ),
+    linear-gradient(145deg, #1d8049, #0f6038 52%, #09472b);
+  color: #fffdf1;
 }
 
-.guandan-table header {
+.guandan-table::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  z-index: 0;
+  pointer-events: none;
+  border: 2px solid rgb(231 195 108 / 78%);
+  border-radius: 24px;
+  box-shadow: inset 0 0 0 4px rgb(9 60 35 / 42%);
+}
+
+.guandan-table > * {
+  position: relative;
+  z-index: 1;
+}
+
+.guandan-status-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 24px;
-  margin-bottom: 18px;
-  padding: 14px 18px;
-  border: 2px solid #198754;
-  border-radius: 14px;
-  background: #ffffff;
+  gap: 9px 20px;
+  min-height: 52px;
+  margin: 0 0 10px;
+  padding: 10px 16px;
+  border: 1px solid rgb(247 218 143 / 68%);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgb(5 52 31 / 92%), rgb(8 67 40 / 90%));
+  color: #fff8d7;
+  box-shadow: 0 5px 14px rgb(0 0 0 / 20%);
 }
 
-.guandan-table header h1 {
+.guandan-status-bar h1 {
   display: none;
 }
 
+.guandan-status-bar > div {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 10%);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
 .guandan-table section {
-  margin: 14px 0;
+  margin: 10px 0;
   padding: 14px;
-  border: 2px solid #198754;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #1f2933;
+  border: 1px solid rgb(245 218 150 / 70%);
+  border-radius: 16px;
+  background: rgb(255 252 235 / 95%);
+  color: #173528;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 16%);
+}
+
+.guandan-table h2 {
+  margin: 0 0 10px;
+  color: #175f39;
 }
 
 .guandan-table input,
-.guandan-table button {
+.guandan-table button,
+.guandan-table select {
   font: inherit;
 }
 
-.guandan-table input {
-  padding: 8px 10px;
+.guandan-table input,
+.guandan-table select {
+  padding: 10px 12px;
   margin: 4px 8px 4px 0;
-  border: 1.5px solid #4aa56c;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
+  border: 1.5px solid #4d9b6d;
+  border-radius: 10px;
+  background: #fffef7;
+  color: #132d22;
+  font-size: 1rem;
 }
 
 .guandan-table button {
   cursor: pointer;
-  padding: 8px 12px;
-  border: 1.5px solid #198754;
-  border-radius: 8px;
-  background: #ffffff;
-  color: #137a43;
-  font-weight: 700;
+  padding: 9px 16px;
+  border: 1px solid #d3a73f;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fff7d7, #f2d68b);
+  color: #19472f;
+  font-weight: 800;
+  box-shadow:
+    0 3px 0 #9b7421,
+    0 4px 8px rgb(0 0 0 / 16%);
 }
 
 .guandan-table button:hover:not(:disabled) {
-  background: #edf9f1;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.guandan-table button:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #9b7421;
 }
 
 .guandan-table button:disabled {
   cursor: not-allowed;
-  opacity: 0.45;
+  opacity: 0.48;
+  box-shadow: none;
 }
 
 .guandan-player-section {
-  padding: 7px 10px !important;
-  margin: 7px 0 !important;
+  padding: 10px !important;
+  background: rgb(7 69 41 / 74%) !important;
+}
+
+.guandan-public-zone,
+.guandan-private-zone {
+  position: relative;
+  margin: 14px 0;
+  padding: 42px 12px 12px;
+  border-radius: 22px;
+}
+
+.guandan-public-zone {
+  border: 3px double #f3d57c;
+  background:
+    radial-gradient(ellipse at center, rgb(98 190 105 / 22%), transparent 65%),
+    rgb(4 63 36 / 62%);
+  box-shadow:
+    inset 0 0 0 2px rgb(255 239 176 / 38%),
+    inset 0 0 28px rgb(0 0 0 / 17%),
+    0 8px 20px rgb(0 0 0 / 16%);
+}
+
+.guandan-scoreboard {
+  position: absolute;
+  top: 7px;
+  right: 12px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 128px;
+  padding: 6px 9px 6px 13px;
+  border: 2px solid #f4d47c;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #79271b, #4d130e);
+  color: #fff2bd;
+  box-shadow:
+    inset 0 0 0 2px rgb(255 228 143 / 15%),
+    0 4px 10px rgb(0 0 0 / 30%);
+}
+
+.guandan-scoreboard span {
+  font-size: 0.83rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.guandan-scoreboard strong {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 2px solid #f7d77c;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #fff5c9, #e7bd59);
+  color: #61180f;
+  font-size: 1.45rem;
+  line-height: 1;
+  text-shadow: 0 1px #fff;
+}
+
+.guandan-private-zone {
+  border: 4px solid #b97920;
+  background: linear-gradient(180deg, rgb(19 79 67 / 78%), rgb(7 51 39 / 82%));
+  box-shadow:
+    inset 0 0 0 2px #f1cf72,
+    inset 0 0 0 5px rgb(97 54 4 / 42%),
+    inset 0 0 24px rgb(35 138 155 / 13%),
+    0 8px 20px rgb(0 0 0 / 18%);
+}
+
+.guandan-zone-title {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 280px;
+  padding: 7px 22px 8px;
+  border-radius: 0 0 16px 16px;
+  color: #fff7d5;
+  font-weight: 900;
+  text-align: center;
+  transform: translateX(-50%);
+  justify-content: center;
+}
+
+.guandan-public-zone > .guandan-zone-title {
+  background: linear-gradient(180deg, #bf8526, #8f5c12);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 22%);
+}
+
+.guandan-private-zone > .guandan-zone-title {
+  background: linear-gradient(180deg, #1688a0, #0a5d70);
+  box-shadow: 0 3px 8px rgb(0 0 0 / 22%);
+}
+
+.guandan-zone-title span {
+  font-size: 1.16rem;
+  letter-spacing: 0.12em;
+}
+
+.guandan-zone-title small {
+  font-size: 0.78rem;
+  font-weight: 650;
+  opacity: 0.9;
 }
 
 .guandan-player-section h2 {
-  margin: 0 0 5px;
+  margin: 0 0 8px;
+  color: #ffe7a5;
   font-size: 1rem;
-  color: #137a43;
+  text-align: center;
+  letter-spacing: 0.28em;
 }
 
 .guandan-players {
   display: grid;
-  grid-template-columns: repeat(4, minmax(110px, 1fr));
-  gap: 5px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
 }
 
-.guandan-players > div {
-  min-height: 34px;
-  padding: 4px 6px;
-  border: 1px solid #74b98d;
-  border-radius: 7px;
-  background: #f8fffa;
-  font-size: 0.88rem;
-  line-height: 1.15;
+/* Large rooms stay readable: 9-16 players use two rows of up to eight. */
+.guandan-players:has(> .guandan-player-card:nth-child(9)) {
+  grid-template-columns: repeat(8, minmax(125px, 1fr));
 }
 
-.guandan-players > div div {
-  margin-top: 2px;
+.guandan-player-card {
+  position: relative;
+  min-height: 66px;
+  padding: 10px 10px 9px 48px;
+  overflow: hidden;
+  border: 1px solid rgb(255 229 158 / 50%);
+  border-radius: 14px;
+  background: linear-gradient(
+    145deg,
+    rgb(255 255 255 / 98%),
+    rgb(240 235 204 / 97%)
+  );
+  color: #143727;
+  line-height: 1.25;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 20%);
+}
+
+.guandan-player-card.is-me {
+  outline: 3px solid #7fdcff;
+  outline-offset: 1px;
+}
+
+.guandan-player-card.is-active {
+  border-color: #ffd45d;
+  background: linear-gradient(145deg, #fff8ce, #f6d66e);
+  box-shadow:
+    0 0 0 3px rgb(255 215 95 / 32%),
+    0 5px 12px rgb(0 0 0 / 25%);
+}
+
+.guandan-player-card strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.guandan-online-status {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.guandan-online-status.is-online {
+  color: #087a3d;
+}
+
+.guandan-online-status.is-offline {
+  color: #a12a20;
+}
+
+.guandan-observer-notice {
+  border: 2px solid #ffe08a !important;
+  background: #fff3bd !important;
+  color: #503600 !important;
+  font-weight: 800;
+  text-align: center;
+}
+
+.guandan-player-card div {
+  margin-top: 4px;
+  font-size: 0.92rem;
+}
+
+.guandan-observers {
+  margin-top: 9px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  background: rgb(255 246 203 / 92%);
+  color: #584000;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.guandan-seat-badge {
+  position: absolute;
+  top: 50%;
+  left: 9px;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #218e56, #0d5a34);
+  color: #fff5c9;
+  font-weight: 900;
+  transform: translateY(-50%);
+  box-shadow: inset 0 0 0 2px rgb(255 224 140 / 48%);
+}
+
+.guandan-player-card.is-active .guandan-seat-badge {
+  background: linear-gradient(180deg, #d05a31, #932817);
+}
+
+.guandan-table-stage {
+  min-height: 245px;
+  background:
+    radial-gradient(ellipse at center, rgb(98 190 105 / 36%), transparent 64%),
+    linear-gradient(145deg, rgb(15 105 56 / 90%), rgb(8 75 43 / 94%)) !important;
+  color: #fff9df !important;
+  border: 2px solid #d5ad55 !important;
+  box-shadow:
+    inset 0 0 30px rgb(0 0 0 / 20%),
+    0 7px 18px rgb(0 0 0 / 22%) !important;
+}
+
+.guandan-table-stage h2 {
+  color: #ffe7a4;
+  font-size: 1.05rem;
+  text-align: center;
+  letter-spacing: 0.22em;
+}
+
+.guandan-trick-plays {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guandan-trick-play {
+  min-height: 82px;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgb(0 0 0 / 12%);
+}
+
+.guandan-table-play {
+  display: block;
+  margin-top: 7px;
+}
+
+.guandan-hand-section {
+  overflow: hidden;
+  background: linear-gradient(180deg, #fffdf0, #eee2b9) !important;
 }
 
 .guandan-hand {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-wrap: nowrap;
   align-items: flex-end;
+  min-height: 275px;
+  padding: 18px 10px 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-color: #b58a35 transparent;
 }
 
-.guandan-hand button {
+.guandan-card-stack {
+  position: relative;
+  display: flex;
+  flex: 0 0 78px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.guandan-stack-count {
+  position: absolute;
+  top: -13px;
+  right: 1px;
+  z-index: 200;
+  min-width: 28px;
+  padding: 2px 6px;
+  border: 2px solid #fff4b5;
+  border-radius: 999px;
+  background: #8b2418;
+  color: #fff8d5;
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-align: center;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 30%);
+}
+
+.guandan-hand .guandan-card-stack button {
+  flex: 0 0 auto;
   min-width: 0;
   min-height: 0;
+  margin: -82px 0 0;
   padding: 0;
   border-radius: 7px;
   background: transparent;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 3px 7px rgb(0 0 0 / 28%);
   transition:
     transform 120ms ease,
     box-shadow 120ms ease;
 }
 
-.guandan-hand button:hover {
-  transform: translateY(-5px);
+.guandan-hand .guandan-card-stack button:first-child {
+  margin-top: 0;
 }
 
-.guandan-hand button[aria-pressed="true"] {
-  transform: translateY(-12px);
-  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
-  outline: 3px solid #198754;
+.guandan-hand .guandan-card-stack button:hover {
+  transform: translateY(-6px);
+}
+
+.guandan-hand .guandan-card-stack button[aria-pressed="true"] {
+  transform: translateY(-15px) !important;
+  box-shadow: 0 9px 14px rgb(0 0 0 / 28%);
+  outline: 3px solid #e0a91e;
 }
 
 .guandan-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 13px;
   justify-content: center;
+  align-items: center;
 }
 
 .guandan-actions button {
-  min-width: 96px;
-  font-weight: 700;
+  min-width: 120px;
+  font-size: 1.08rem;
 }
 
 .guandan-play-actions {
-  position: sticky;
+  position: sticky !important;
   bottom: 8px;
-  z-index: 20;
-  margin-top: 10px;
+  z-index: 20 !important;
+  margin-top: 10px !important;
   padding: 12px !important;
-  border: 2px solid #198754 !important;
-  background: #ffffff !important;
-  box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgb(255 225 145 / 72%) !important;
+  background: rgb(5 50 30 / 95%) !important;
+  color: #fff9df !important;
+  box-shadow: 0 -4px 18px rgb(0 0 0 / 28%) !important;
+  backdrop-filter: blur(10px);
 }
 
 .guandan-play-actions button:not(:disabled) {
-  background: #198754;
-  color: #ffffff;
+  min-width: 132px;
+  border-color: #f0ca64;
+  background: linear-gradient(180deg, #ffd85e, #e9a914);
+  color: #4a2d00;
+}
+
+.guandan-play-actions button:last-of-type:not(:disabled) {
+  border-color: #8ed8ff;
+  background: linear-gradient(180deg, #4eb9ef, #197cae);
+  color: #fff;
 }
 
 .guandan-start-button {
-  font-size: 1.05rem !important;
-  padding: 10px 18px !important;
-  background: #198754 !important;
-  color: #ffffff !important;
+  padding: 11px 24px !important;
+  background: linear-gradient(180deg, #ffd85e, #e9a914) !important;
+  color: #4a2d00 !important;
+  font-size: 1.1rem !important;
+}
+
+.guandan-notice-panel {
+  border-color: #ffe298 !important;
+  background: #fff4c9 !important;
+  color: #5d4100 !important;
+  text-align: center;
 }
 
 .guandan-table [role="alert"] {
   padding: 10px 12px;
-  border-radius: 8px;
   border: 1px solid #b42318;
+  border-radius: 10px;
   background: #fff5f5;
   color: #8f1d1d;
 }
 
-@media (max-width: 700px) {
-  .guandan-topbar {
-    padding: 10px 10px 0;
-  }
-
-  .guandan-topbar h1 {
-    font-size: 1.7rem;
-  }
-
-  .guandan-reselect-button {
-    font-size: 16px !important;
-  }
-
+@media (min-width: 900px) and (max-width: 1250px) {
   .guandan-table {
-    padding: 10px 10px 92px;
-  }
-
-  .guandan-table header {
-    gap: 8px 14px;
-    padding: 10px 12px;
-  }
-
-  .guandan-table section {
-    padding: 10px;
+    padding-inline: 16px;
   }
 
   .guandan-players {
-    grid-template-columns: repeat(2, minmax(105px, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(4, minmax(145px, 1fr));
+    gap: 7px;
   }
 
-  .guandan-players > div {
-    min-height: 30px;
-    padding: 3px 5px;
+  .guandan-player-card {
+    padding-left: 42px;
+  }
+
+  .guandan-card-stack {
+    flex-basis: 72px;
+  }
+}
+
+@media (max-width: 700px) {
+  .guandan-topbar {
+    padding: 7px 12px;
+  }
+
+  .guandan-topbar h1 {
+    font-size: 1.5rem;
+  }
+
+  .guandan-table {
+    min-height: calc(100vh - 54px);
+    padding: 9px 9px 100px;
+  }
+
+  .guandan-table::after {
+    inset: 3px;
+    border-radius: 17px;
+  }
+
+  .guandan-status-bar {
+    gap: 6px;
+    min-height: 46px;
+    padding: 8px 9px;
     font-size: 0.82rem;
   }
 
+  .guandan-status-bar > div {
+    padding: 4px 7px;
+  }
+
+  .guandan-table section {
+    padding: 9px;
+    border-radius: 13px;
+  }
+
+  .guandan-public-zone,
+  .guandan-private-zone {
+    margin: 10px 0;
+    padding: 39px 6px 6px;
+    border-radius: 16px;
+  }
+
+  .guandan-scoreboard {
+    position: relative;
+    top: auto;
+    right: auto;
+    justify-content: center;
+    width: max-content;
+    min-width: 118px;
+    margin: 0 0 7px auto;
+    padding: 5px 7px 5px 11px;
+  }
+
+  .guandan-scoreboard strong {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+  }
+
+  .guandan-zone-title {
+    min-width: 230px;
+    gap: 7px;
+    padding: 6px 12px 7px;
+  }
+
+  .guandan-zone-title span {
+    font-size: 1rem;
+  }
+
+  .guandan-zone-title small {
+    font-size: 0.7rem;
+  }
+
+  .guandan-players {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .guandan-player-card {
+    min-height: 57px;
+    padding: 7px 6px 6px 36px;
+    font-size: 0.82rem;
+  }
+
+  .guandan-seat-badge {
+    left: 6px;
+    width: 25px;
+    height: 25px;
+  }
+
+  .guandan-table-stage {
+    min-height: 185px;
+  }
+
+  .guandan-trick-plays {
+    grid-template-columns: 1fr;
+  }
+
   .guandan-hand {
-    gap: 4px;
+    min-height: 250px;
+    padding-inline: 2px;
+  }
+
+  .guandan-card-stack {
+    flex-basis: 66px;
   }
 
   .guandan-play-actions {
     bottom: 4px;
+    gap: 8px;
+    padding: 9px !important;
+  }
+
+  .guandan-actions button,
+  .guandan-play-actions button:not(:disabled) {
+    min-width: 96px;
+    padding: 9px 12px;
   }
 }
