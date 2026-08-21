@@ -19,19 +19,8 @@
   padding-right: 112px;
 }
 
-.guandan-brand-logo {
-  display: inline-block;
-  flex: 0 0 auto;
-  width: 96px;
-  height: 96px;
-  background: url("../static/guandan-logo.svg") center / contain no-repeat;
-  pointer-events: none;
-  border-radius: 12px;
-}
-
 @media (max-width: 700px) {
-  .game-table-logo,
-  .guandan-brand-logo {
+  .game-table-logo {
     width: 56px;
     height: 56px;
   }
