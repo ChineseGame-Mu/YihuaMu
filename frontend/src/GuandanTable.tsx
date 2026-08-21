@@ -324,7 +324,7 @@ const GuandanTable: React.FunctionComponent = () => {
       "room",
       isValidRoomCode(room) ? room : DEFAULT_ROOM_CODE,
     );
-    url.searchParams.set("name", `测试玩家${player}`);
+    url.searchParams.set("name", `玩家${player}`);
     return url.toString();
   };
 
