@@ -4,6 +4,7 @@ import GameStatisticsButton from "./GameStatisticsButton";
 import SettingsButton from "./SettingsButton";
 import { GameModeSettings } from "./gen-types";
 import ExitGameButton from "./ExitGameButton";
+import GameClockLogo from "./GameClockLogo";
 
 import type { JSX } from "react";
 
@@ -18,12 +19,15 @@ const returnToGameSelection = (): void => {
 
 const Header = (props: IProps): JSX.Element => (
   <div>
-    <h1>
+    <h1 className="game-header-row">
       <ExitGameButton onClick={returnToGameSelection} />
       <GameMode gameMode={props.gameMode} />
       &nbsp;
       <SettingsButton />
       <GameStatisticsButton />
+      <GameClockLogo
+        game={props.gameMode === "Tractor" ? "Tractor" : "FindingFriends"}
+      />
     </h1>
     {props.chatLink !== undefined && props.chatLink !== null ? (
       <p>
