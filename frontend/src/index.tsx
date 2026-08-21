@@ -17,6 +17,7 @@ import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import ExitGameButton from "./ExitGameButton";
+import GameClockLogo from "./GameClockLogo";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -24,42 +25,6 @@ const WasmProvider = React.lazy(
 
 const returnToGameSelection = (): void => {
   window.location.href = `${window.location.origin}${window.location.pathname}`;
-};
-
-const GuandanClock = (): React.ReactElement => {
-  const [now, setNow] = React.useState(() => new Date());
-
-  React.useEffect(() => {
-    const timer = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const seconds = now.getSeconds();
-  const minutes = now.getMinutes() + seconds / 60;
-  const hours = (now.getHours() % 12) + minutes / 60;
-
-  return (
-    <div
-      className="guandan-clock"
-      role="timer"
-      aria-label={now.toLocaleTimeString()}
-      title={now.toLocaleTimeString()}
-    >
-      <span
-        className="guandan-clock-hand guandan-clock-hour"
-        style={{ transform: `rotate(${hours * 30}deg)` }}
-      />
-      <span
-        className="guandan-clock-hand guandan-clock-minute"
-        style={{ transform: `rotate(${minutes * 6}deg)` }}
-      />
-      <span
-        className="guandan-clock-hand guandan-clock-second"
-        style={{ transform: `rotate(${seconds * 6}deg)` }}
-      />
-      <span className="guandan-clock-pin" />
-    </div>
-  );
 };
 
 const bootstrap = (): void => {
@@ -101,9 +66,8 @@ const bootstrap = (): void => {
             <div>
               <div className="guandan-topbar">
                 <ExitGameButton onClick={returnToGameSelection} />
-                <span className="guandan-brand-logo" aria-hidden="true" />
                 <h1>掼蛋</h1>
-                <GuandanClock />
+                <GameClockLogo game="Guandan" />
               </div>
               <GuandanNoBeatHint />
               <GuandanNoBeatControls />
