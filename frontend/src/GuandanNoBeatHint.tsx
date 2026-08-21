@@ -62,6 +62,11 @@ const rankOf = (card: GuandanCard): GuandanRank | null =>
 const suitOf = (card: GuandanCard): GuandanSuit | null =>
   "Suited" in card ? card.Suited.suit : null;
 
+const isLevelWildcard = (card: GuandanCard, level: GuandanRank): boolean =>
+  "Suited" in card &&
+  card.Suited.suit === "Hearts" &&
+  card.Suited.rank === level;
+
 const sameFaceRank = (cards: GuandanCard[]): boolean => {
   if (cards.length === 0) return false;
   const first = cards[0];
@@ -95,15 +100,25 @@ const consecutive = (input: GuandanRank[]): boolean => {
 };
 
 const isAceLowStraightRanks = (input: GuandanRank[]): boolean => {
-  const ranks = new Set(input);
+  const rankSet = new Set(input);
   return (
-    ranks.size === 5 &&
-    ranks.has("Ace") &&
-    ranks.has("Two") &&
-    ranks.has("Three") &&
-    ranks.has("Four") &&
-    ranks.has("Five")
+    rankSet.size === 5 &&
+    rankSet.has("Ace") &&
+    rankSet.has("Two") &&
+    rankSet.has("Three") &&
+    rankSet.has("Four") &&
+    rankSet.has("Five")
   );
+};
+
+const straightTargets = (): GuandanRank[][] => {
+  const targets: GuandanRank[][] = [
+    ["Ace", "Two", "Three", "Four", "Five"],
+  ];
+  for (let start = 0; start <= 8; start += 1) {
+    targets.push(ranks.slice(start, start + 5));
+  }
+  return targets;
 };
 
 const isStraight = (cards: GuandanCard[]): boolean => {
@@ -223,6 +238,155 @@ const strength = (cards: GuandanCard[]): Strength | null => {
   return { pattern, mainRank, cardCount: cards.length, joker: null };
 };
 
+const targetFits = (
+  fixed: GuandanCard[],
+  targets: Array<[GuandanRank, number]>,
+  wildCount: number,
+): boolean => {
+  const counts = rankCounts(fixed);
+  if (counts === null) return false;
+  if (
+    Array.from(counts.keys()).some(
+      (rank) => !targets.some(([target]) => target === rank),
+    )
+  ) {
+    return false;
+  }
+  let missing = 0;
+  for (const [rank, needed] of targets) {
+    const present = counts.get(rank) ?? 0;
+    if (present > needed) return false;
+    missing += needed - present;
+  }
+  return missing === wildCount;
+};
+
+const strengthsAtLevel = (
+  cards: GuandanCard[],
+  level: GuandanRank,
+): Strength[] => {
+  if (!cards.some((card) => isLevelWildcard(card, level))) {
+    const basic = strength(cards);
+    return basic === null ? [] : [basic];
+  }
+
+  const fixed = cards.filter((card) => !isLevelWildcard(card, level));
+  const wildCount = cards.length - fixed.length;
+  const result: Strength[] = [];
+  const add = (pattern: Pattern, mainRank: GuandanRank): void => {
+    const candidate: Strength = {
+      pattern,
+      mainRank,
+      cardCount: cards.length,
+      joker: null,
+    };
+    if (
+      !result.some(
+        (item) =>
+          item.pattern === candidate.pattern &&
+          item.mainRank === candidate.mainRank &&
+          item.cardCount === candidate.cardCount,
+      )
+    ) {
+      result.push(candidate);
+    }
+  };
+
+  const addSameRank = (pattern: Pattern): void => {
+    ranks.forEach((rank) => {
+      if (targetFits(fixed, [[rank, cards.length]], wildCount)) {
+        add(pattern, rank);
+      }
+    });
+  };
+
+  if (cards.length === 1) {
+    add("single", level);
+    return result;
+  }
+  if (cards.length === 2) {
+    addSameRank("pair");
+    return result;
+  }
+  if (cards.length === 3) {
+    addSameRank("triple");
+    return result;
+  }
+  if (cards.length === 4) {
+    addSameRank("bomb");
+    return result;
+  }
+  if (cards.length === 5) {
+    addSameRank("bomb");
+
+    straightTargets().forEach((target) => {
+      const targetCounts = target.map(
+        (rank): [GuandanRank, number] => [rank, 1],
+      );
+      if (!targetFits(fixed, targetCounts, wildCount)) return;
+      const mainRank = isAceLowStraightRanks(target)
+        ? "Five"
+        : target[target.length - 1];
+      add("straight", mainRank);
+      const fixedSuits = fixed
+        .map(suitOf)
+        .filter((suit): suit is GuandanSuit => suit !== null);
+      if (
+        fixedSuits.length === fixed.length &&
+        (fixedSuits.length === 0 ||
+          fixedSuits.every((suit) => suit === fixedSuits[0]))
+      ) {
+        add("straight_flush", mainRank);
+      }
+    });
+
+    ranks.forEach((triple) => {
+      ranks.forEach((pair) => {
+        if (
+          triple !== pair &&
+          targetFits(
+            fixed,
+            [
+              [triple, 3],
+              [pair, 2],
+            ],
+            wildCount,
+          )
+        ) {
+          add("triple_with_pair", triple);
+        }
+      });
+    });
+    return result;
+  }
+  if (cards.length === 6) {
+    addSameRank("bomb");
+    for (let start = 0; start <= ranks.length - 3; start += 1) {
+      const targets: Array<[GuandanRank, number]> = [
+        [ranks[start], 2],
+        [ranks[start + 1], 2],
+        [ranks[start + 2], 2],
+      ];
+      if (targetFits(fixed, targets, wildCount)) {
+        add("consecutive_pairs", ranks[start + 2]);
+      }
+    }
+    for (let start = 0; start <= ranks.length - 2; start += 1) {
+      const targets: Array<[GuandanRank, number]> = [
+        [ranks[start], 3],
+        [ranks[start + 1], 3],
+      ];
+      if (targetFits(fixed, targets, wildCount)) {
+        add("consecutive_triples", ranks[start + 1]);
+      }
+    }
+    return result;
+  }
+
+  addSameRank("bomb");
+  return result;
+};
+
 const bombTier = (play: Strength): number => {
   if (play.pattern === "joker_bomb") return Number.MAX_SAFE_INTEGER;
   if (play.pattern === "straight_flush") return 5;
@@ -340,33 +504,68 @@ const indexCombinations = (
   return result;
 };
 
-const hasAnyBomb = (hand: GuandanCard[]): boolean => {
+const hasAnyBomb = (hand: GuandanCard[], level: GuandanRank): boolean => {
   const suitedCounts = new Map<GuandanRank, number>();
   let jokers = 0;
+  let wildCount = 0;
   hand.forEach((card) => {
-    if ("Joker" in card) jokers += 1;
-    else
+    if (isLevelWildcard(card, level)) {
+      wildCount += 1;
+    } else if ("Joker" in card) {
+      jokers += 1;
+    } else {
       suitedCounts.set(
         card.Suited.rank,
         (suitedCounts.get(card.Suited.rank) ?? 0) + 1,
       );
+    }
   });
-  return (
-    jokers >= 4 || Array.from(suitedCounts.values()).some((count) => count >= 4)
-  );
+  if (
+    jokers >= 4 ||
+    Array.from(suitedCounts.values()).some((count) => count + wildCount >= 4)
+  ) {
+    return true;
+  }
+
+  const targets = straightTargets();
+  return (Object.keys(suitOrder) as GuandanSuit[]).some((suit) => {
+    const present = new Set<GuandanRank>();
+    hand.forEach((card) => {
+      if (
+        "Suited" in card &&
+        !isLevelWildcard(card, level) &&
+        card.Suited.suit === suit
+      ) {
+        present.add(card.Suited.rank);
+      }
+    });
+    return targets.some(
+      (target) =>
+        target.filter((rank) => present.has(rank)).length + wildCount >= 5,
+    );
+  });
 };
+
+const beatsAllTableInterpretations = (
+  candidate: Strength,
+  currentStrengths: Strength[],
+  level: GuandanRank,
+): boolean => currentStrengths.every((current) => beats(candidate, current, level));
 
 export const handCanBeat = (
   hand: GuandanCard[],
   currentCards: GuandanCard[],
   level: GuandanRank,
 ): boolean => {
-  const current = strength(currentCards);
-  if (current === null) return true;
-  if (!isBombFamily(current.pattern) && hasAnyBomb(hand)) return true;
+  const currentStrengths = strengthsAtLevel(currentCards, level);
+  if (currentStrengths.length === 0) return true;
+  const currentHasBombInterpretation = currentStrengths.some((current) =>
+    isBombFamily(current.pattern),
+  );
+  if (!currentHasBombInterpretation && hasAnyBomb(hand, level)) return true;
 
   const sizes = new Set<number>();
-  if (!isBombFamily(current.pattern)) sizes.add(current.cardCount);
+  if (!currentHasBombInterpretation) sizes.add(currentCards.length);
   else {
     sizes.add(4);
     sizes.add(5);
@@ -383,15 +582,22 @@ export const handCanBeat = (
       candidateIndex < candidateGroups.length;
       candidateIndex += 1
     ) {
-      const candidate = strength(candidateGroups[candidateIndex]);
-      if (candidate !== null && beats(candidate, current, level)) return true;
+      const candidates = strengthsAtLevel(candidateGroups[candidateIndex], level);
+      if (
+        candidates.some((candidate) =>
+          beatsAllTableInterpretations(candidate, currentStrengths, level),
+        )
+      ) {
+        return true;
+      }
     }
   }
 
-  if (isBombFamily(current.pattern)) {
+  if (currentHasBombInterpretation) {
+    const wildcards = hand.filter((card) => isLevelWildcard(card, level));
     const byRank = new Map<GuandanRank, GuandanCard[]>();
     hand.forEach((card) => {
-      if ("Suited" in card) {
+      if ("Suited" in card && !isLevelWildcard(card, level)) {
         const group = byRank.get(card.Suited.rank) ?? [];
         group.push(card);
         byRank.set(card.Suited.rank, group);
@@ -399,10 +605,16 @@ export const handCanBeat = (
     });
     const groups = Array.from(byRank.values());
     for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
-      const group = groups[groupIndex];
+      const group = groups[groupIndex].concat(wildcards);
       for (let size = 7; size <= group.length; size += 1) {
-        const candidate = strength(group.slice(0, size));
-        if (candidate !== null && beats(candidate, current, level)) return true;
+        const candidates = strengthsAtLevel(group.slice(0, size), level);
+        if (
+          candidates.some((candidate) =>
+            beatsAllTableInterpretations(candidate, currentStrengths, level),
+          )
+        ) {
+          return true;
+        }
       }
     }
   }
@@ -507,8 +719,11 @@ const rankLabels: Record<GuandanRank, string> = {
   Ace: "A",
 };
 
-export const describeSuggestedCards = (cards: GuandanCard[]): string | null => {
-  const play = strength(cards);
+export const describeSuggestedCards = (
+  cards: GuandanCard[],
+  level?: GuandanRank,
+): string | null => {
+  const play = level === undefined ? strength(cards) : strengthsAtLevel(cards, level)[0] ?? null;
   if (play === null) return null;
   const rank =
     play.joker === "Small"
@@ -546,14 +761,18 @@ export const findSuggestedIndexes = (
   currentCards: GuandanCard[],
   level: GuandanRank,
 ): number[] => {
-  const current = strength(currentCards);
-  if (current === null) return [];
+  const currentStrengths = strengthsAtLevel(currentCards, level);
+  if (currentStrengths.length === 0) return [];
+  const scoringCurrent = currentStrengths[0];
+  const currentHasBombInterpretation = currentStrengths.some((current) =>
+    isBombFamily(current.pattern),
+  );
 
   const sizes: number[] = [];
   const addSize = (size: number): void => {
     if (size <= hand.length && !sizes.includes(size)) sizes.push(size);
   };
-  if (!isBombFamily(current.pattern)) addSize(current.cardCount);
+  if (!currentHasBombInterpretation) addSize(currentCards.length);
   addSize(4);
   addSize(5);
   addSize(6);
@@ -565,12 +784,21 @@ export const findSuggestedIndexes = (
   }> = [];
   const addCandidate = (indexes: number[]): void => {
     const cards = indexes.map((index) => hand[index]);
-    const candidate = strength(cards);
-    if (candidate === null || !beats(candidate, current, level)) return;
-    candidates.push({
-      indexes,
-      strength: candidate,
-      score: suggestionScore(hand, indexes, candidate, current, level),
+    const interpretations = strengthsAtLevel(cards, level).filter((candidate) =>
+      beatsAllTableInterpretations(candidate, currentStrengths, level),
+    );
+    interpretations.forEach((candidate) => {
+      candidates.push({
+        indexes,
+        strength: candidate,
+        score: suggestionScore(
+          hand,
+          indexes,
+          candidate,
+          scoringCurrent,
+          level,
+        ),
+      });
     });
   };
 
@@ -578,17 +806,21 @@ export const findSuggestedIndexes = (
     indexCombinations(hand.length, size).forEach(addCandidate);
   });
 
+  const wildcardIndexes: number[] = [];
   const byRank = new Map<GuandanRank, number[]>();
   hand.forEach((card, index) => {
-    if ("Suited" in card) {
+    if (isLevelWildcard(card, level)) {
+      wildcardIndexes.push(index);
+    } else if ("Suited" in card) {
       const group = byRank.get(card.Suited.rank) ?? [];
       group.push(index);
       byRank.set(card.Suited.rank, group);
     }
   });
   Array.from(byRank.values()).forEach((group) => {
-    for (let size = 7; size <= group.length; size += 1) {
-      addCandidate(group.slice(0, size));
+    const extended = group.concat(wildcardIndexes);
+    for (let size = 7; size <= extended.length; size += 1) {
+      addCandidate(extended.slice(0, size));
     }
   });
 
@@ -681,6 +913,7 @@ const GuandanNoBeatHint: React.FunctionComponent = () => {
     selectSuggestedCards(state.hand, indexes, state.level!);
     const description = describeSuggestedCards(
       indexes.map((index) => state.hand[index]),
+      state.level!,
     );
     setSuggestionText(description);
   };
