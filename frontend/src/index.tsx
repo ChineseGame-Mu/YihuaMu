@@ -16,6 +16,7 @@ import GuandanStateProvider from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
+import ExitGameButton from "./ExitGameButton";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -99,15 +100,9 @@ const bootstrap = (): void => {
           <GuandanStateProvider>
             <div>
               <div className="guandan-topbar">
+                <ExitGameButton onClick={returnToGameSelection} />
                 <span className="guandan-brand-logo" aria-hidden="true" />
                 <h1>掼蛋</h1>
-                <button
-                  type="button"
-                  className="normal guandan-reselect-button"
-                  onClick={returnToGameSelection}
-                >
-                  重新选择
-                </button>
                 <GuandanClock />
               </div>
               <GuandanNoBeatHint />
