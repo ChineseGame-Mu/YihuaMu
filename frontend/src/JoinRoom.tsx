@@ -67,11 +67,8 @@ const JoinRoom = (props: IProps): JSX.Element => {
   };
 
   const generateRoomName = React.useCallback((): void => {
-    const arr = new Uint32Array(1);
-    window.crypto.getRandomValues(arr);
-    const code = String((arr[0] % 4) + 1).padStart(ROOM_CODE_LENGTH, "0");
     setCreatingNewRoom(true);
-    props.setRoomName(code);
+    props.setRoomName("0001");
   }, [props.setRoomName]);
 
   React.useEffect(() => {
