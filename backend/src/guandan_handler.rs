@@ -978,7 +978,10 @@ pub async fn websocket(
     }
 
     if let Some(key) = joined_room {
-        storage.unsubscribe(key.clone(), subscriber_id).await;
+        storage
+            .clone()
+            .unsubscribe(key.clone(), subscriber_id)
+            .await;
         if let Some(name) = joined_name {
             set_connected(&key, &name, false);
             if joined_as_observer {
