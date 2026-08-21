@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 12px 28px;
+  padding: 8px 28px;
   border-bottom: 2px solid #d6ac52;
   background: linear-gradient(180deg, #123e2e, #082c20);
   color: #fff8d7;
@@ -63,7 +63,7 @@
   gap: 9px 20px;
   min-height: 52px;
   margin: 0 0 10px;
-  padding: 10px 126px 10px 16px;
+  padding: 10px 16px;
   border: 1px solid rgb(247 218 143 / 68%);
   border-radius: 16px;
   background: linear-gradient(180deg, rgb(5 52 31 / 92%), rgb(8 67 40 / 90%));
@@ -379,7 +379,7 @@
 
 @media (max-width: 700px) {
   .guandan-topbar {
-    padding: 9px 12px;
+    padding: 7px 12px;
   }
 
   .guandan-topbar h1 {
@@ -404,7 +404,7 @@
   .guandan-status-bar {
     gap: 6px;
     min-height: 46px;
-    padding: 8px 76px 8px 9px;
+    padding: 8px 9px;
     font-size: 0.82rem;
   }
 
