@@ -7,7 +7,7 @@ fn card(suit: Suit, rank: Rank) -> CardFace {
 }
 
 fn straight_flush(suit: Suit, ranks: [Rank; 5]) -> Vec<CardFace> {
-    ranks.into_iter().map(|rank| card(suit, rank)).collect()
+    ranks.iter().copied().map(|rank| card(suit, rank)).collect()
 }
 
 #[test]
