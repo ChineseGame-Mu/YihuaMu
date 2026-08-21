@@ -36,7 +36,7 @@ impl<S: State> HashMapStorage<S> {
     ) {
         if let Some(subscribers) = s.get_mut(key) {
             let mut send_failed = false;
-            for (_, subscriber) in subscribers.iter_mut() {
+            for subscriber in subscribers.values_mut() {
                 if subscriber.send(message.clone()).is_err() {
                     send_failed |= true;
                 }

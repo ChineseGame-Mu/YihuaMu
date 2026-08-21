@@ -317,7 +317,7 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const startGame = (): void => {
-    if (state.seat !== 0 || gameStarted || state.players.length < 4) return;
+    if (state.seat === null || gameStarted || state.players.length < 4) return;
     if (send({ type: "start", player_count: 4 })) {
       setStartRequested(true);
       setSelected([]);
@@ -710,14 +710,14 @@ const GuandanTable: React.FunctionComponent = () => {
                 {!gameStarted && (
                   <button
                     className="guandan-start-button"
-                    disabled={state.seat !== 0 || state.players.length < 4}
+                    disabled={state.seat === null || state.players.length < 4}
                     onClick={startGame}
                   >
                     开始四人局
                   </button>
                 )}
-                {!gameStarted && state.seat !== 0 && (
-                  <span>等待首位玩家开始</span>
+                {!gameStarted && state.players.length === 4 && (
+                  <span>任意已入座玩家均可开始</span>
                 )}
                 {!gameStarted && state.players.length < 4 && (
                   <span>等待四位玩家全部进入</span>

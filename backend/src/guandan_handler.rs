@@ -657,15 +657,6 @@ pub async fn websocket(
                         continue;
                     }
                 };
-                if seat != 0 {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
-                            message: "only seat 1 can start the game".to_string(),
-                        },
-                    );
-                    continue;
-                }
                 let table = match validate_start(player_count) {
                     Ok(table) => table,
                     Err(message) => {
@@ -681,7 +672,8 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.player_names.len() != table.player_count {
+                        if state.game.started || state.game.player_names.len() != table.player_count
+                        {
                             return Err(());
                         }
                         let mut deck = build_deck(table);
@@ -715,7 +707,9 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "selected player count must match active players".to_string(),
+                            message:
+                                "the game is already underway or four seated players are required"
+                                    .to_string(),
                         },
                     );
                     continue;
