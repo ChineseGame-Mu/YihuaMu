@@ -21,12 +21,7 @@ fn seat_for_name(state: &GuandanGameState, name: &str) -> Option<usize> {
 fn reconnecting_same_name_restores_original_seat_and_private_hand() {
     let mut state = GuandanGameState::default();
     state.started = true;
-    state.player_names = vec![
-        "Alice".into(),
-        "Bob".into(),
-        "Carol".into(),
-        "Dave".into(),
-    ];
+    state.player_names = vec!["Alice".into(), "Bob".into(), "Carol".into(), "Dave".into()];
     state.hands = vec![
         vec![card(Suit::Clubs, Rank::Two)],
         vec![card(Suit::Hearts, Rank::Ace)],

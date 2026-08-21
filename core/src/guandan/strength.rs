@@ -83,13 +83,7 @@ fn rank_targets() -> [Rank; 13] {
 
 fn straight_targets() -> Vec<[Rank; 5]> {
     let ranks = rank_targets();
-    let mut targets = vec![[
-        Rank::Ace,
-        Rank::Two,
-        Rank::Three,
-        Rank::Four,
-        Rank::Five,
-    ]];
+    let mut targets = vec![[Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five]];
     for start in 0..=8 {
         targets.push([
             ranks[start],
@@ -160,15 +154,7 @@ fn wildcard_main_ranks(cards: &[CardFace], pattern: PlayPattern, level: Rank) ->
                 target_fits(&fixed, &targets, wild_count)
             })
             .map(|target| {
-                if target
-                    == [
-                        Rank::Ace,
-                        Rank::Two,
-                        Rank::Three,
-                        Rank::Four,
-                        Rank::Five,
-                    ]
-                {
+                if target == [Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five] {
                     Rank::Five
                 } else {
                     *target.iter().max().expect("straight target is non-empty")
@@ -180,8 +166,7 @@ fn wildcard_main_ranks(cards: &[CardFace], pattern: PlayPattern, level: Rank) ->
             .copied()
             .filter(|triple| {
                 rank_targets().iter().copied().any(|pair| {
-                    pair != *triple
-                        && target_fits(&fixed, &[(*triple, 3), (pair, 2)], wild_count)
+                    pair != *triple && target_fits(&fixed, &[(*triple, 3), (pair, 2)], wild_count)
                 })
             })
             .collect(),
@@ -197,8 +182,7 @@ fn wildcard_main_ranks(cards: &[CardFace], pattern: PlayPattern, level: Rank) ->
                     let targets = (0..groups)
                         .map(|offset| (ranks[start + offset], copies))
                         .collect::<Vec<_>>();
-                    target_fits(&fixed, &targets, wild_count)
-                        .then_some(ranks[start + groups - 1])
+                    target_fits(&fixed, &targets, wild_count).then_some(ranks[start + groups - 1])
                 })
                 .collect()
         }
@@ -341,11 +325,7 @@ mod tests {
             ],
             Rank::Five,
         );
-        assert!(strengths.contains(&PlayStrength::new(
-            PlayPattern::Straight,
-            Rank::Ten,
-            5,
-        )));
+        assert!(strengths.contains(&PlayStrength::new(PlayPattern::Straight, Rank::Ten, 5,)));
     }
 
     #[test]
@@ -378,10 +358,6 @@ mod tests {
             ],
             Rank::Seven,
         );
-        assert!(strengths.contains(&PlayStrength::new(
-            PlayPattern::Bomb,
-            Rank::Queen,
-            4,
-        )));
+        assert!(strengths.contains(&PlayStrength::new(PlayPattern::Bomb, Rank::Queen, 4,)));
     }
 }

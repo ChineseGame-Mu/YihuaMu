@@ -1,4 +1,6 @@
-use shengji_core::guandan::{rules::classify_basic, strength::strength_basic, CardFace, PlayPattern, Rank, Suit};
+use shengji_core::guandan::{
+    rules::classify_basic, strength::strength_basic, CardFace, PlayPattern, Rank, Suit,
+};
 
 fn card(suit: Suit, rank: Rank) -> CardFace {
     CardFace::Suited { suit, rank }
