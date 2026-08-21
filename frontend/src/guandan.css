@@ -161,6 +161,11 @@
   gap: 10px;
 }
 
+/* Large rooms stay readable: 9-16 players use two rows of up to eight. */
+.guandan-players:has(> .guandan-player-card:nth-child(9)) {
+  grid-template-columns: repeat(8, minmax(125px, 1fr));
+}
+
 .guandan-player-card {
   position: relative;
   min-height: 66px;
@@ -359,6 +364,7 @@
   }
 
   .guandan-players {
+    grid-template-columns: repeat(4, minmax(145px, 1fr));
     gap: 7px;
   }
 
