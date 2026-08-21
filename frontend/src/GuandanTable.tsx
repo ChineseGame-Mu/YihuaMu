@@ -114,8 +114,8 @@ const unicodeCards: Record<string, Record<string, string>> = {
 const cardGlyph = (card: GuandanCard): string =>
   "Joker" in card
     ? card.Joker === "Big"
-      ? "🃟"
-      : "🃏"
+      ? "🃏"
+      : "🃟"
     : (unicodeCards[card.Suited.suit]?.[card.Suited.rank] ?? "🂠");
 
 const cardStackKey = (card: GuandanCard): string =>
