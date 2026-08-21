@@ -51,11 +51,16 @@ const GameClockLogo = ({ game }: IProps): JSX.Element => {
     >
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <circle className="game-clock-logo-ring" cx="50" cy="50" r="46" />
-        <path className="game-clock-logo-card" d="M30 18h40v46H30z" />
-        <text className="game-clock-logo-suit" x="50" y="49">
+        <path className="game-clock-logo-card game-clock-logo-card--left" d="M22 20h29v39H22z" />
+        <path className="game-clock-logo-card game-clock-logo-card--right" d="M49 20h29v39H49z" />
+        <text className="game-clock-logo-suit" x="50" y="43">
           {game === "FindingFriends" ? "友" : game === "Tractor" ? "♠" : "♥"}
         </text>
-        <text className="game-clock-logo-name" x="50" y="69">
+        <text
+          className={`game-clock-logo-name game-clock-logo-name--${classes[game]}`}
+          x="50"
+          y="68"
+        >
           {symbols[game]}
         </text>
       </svg>
