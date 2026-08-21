@@ -10,6 +10,15 @@ type WelcomeProps = {
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
+const guandanTestHref = (): string => {
+  const params = new URLSearchParams(window.location.search);
+  params.set("test", "1");
+  params.set("game", "guandan");
+  params.set("room", "0001");
+  params.delete("name");
+  return `${window.location.pathname}?${params.toString()}`;
+};
+
 const Welcome = ({
   connected = false,
   onSelectGameMode,
@@ -74,7 +83,7 @@ const Welcome = ({
         </button>
         <a
           className="welcome-mode"
-          href="?game=guandan"
+          href={guandanTestHref()}
           style={{
             font: "inherit",
             color: "inherit",
@@ -85,8 +94,10 @@ const Welcome = ({
         >
           <div className="welcome-mode-icon">🂠</div>
           <div>
-            <h2>掼蛋 / Guandan</h2>
-            <p>四人掼蛋在线版，点击进入后创建或加入掼蛋房间。</p>
+            <h2>
+              掼蛋 / Guandan <span className="welcome-badge">朋友测试</span>
+            </h2>
+            <p>进入测试房间0001，填写姓名后即可与朋友一起测试。</p>
           </div>
         </a>
       </div>
