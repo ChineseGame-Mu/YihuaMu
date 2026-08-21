@@ -58,6 +58,9 @@ impl TrickState {
             self.current_player = self.leader;
             self.last_play_player = None;
             self.passed.fill(false);
+            if self.finished[self.current_player] {
+                self.advance();
+            }
         }
         Ok(trick_closed)
     }
@@ -117,6 +120,19 @@ mod tests {
         assert!(!trick.pass(2).unwrap());
         assert!(trick.pass(3).unwrap());
         assert_eq!(trick.current_player(), 0);
+    }
+
+    #[test]
+    fn finished_trick_winner_is_skipped_after_other_players_pass() {
+        let table = TableConfig::new(4).unwrap();
+        let mut trick = TrickState::new(table, 0).unwrap();
+        trick.mark_play(0).unwrap();
+        trick.finish_player(0).unwrap();
+
+        assert!(!trick.pass(1).unwrap());
+        assert!(!trick.pass(2).unwrap());
+        assert!(trick.pass(3).unwrap());
+        assert_eq!(trick.current_player(), 1);
     }
 
     #[test]
