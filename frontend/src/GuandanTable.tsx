@@ -530,14 +530,14 @@ const GuandanTable: React.FunctionComponent = () => {
                 ))}
               </div>
             </section>
-  
+
             {dealing && (
               <section className="guandan-notice-panel">
                 <strong>正在发牌：</strong>
                 按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
               </section>
             )}
-  
+
             {tributePending && (
               <section className="guandan-tribute-panel guandan-panel">
                 <h2>进贡 / 还贡</h2>
@@ -550,7 +550,7 @@ const GuandanTable: React.FunctionComponent = () => {
                 </p>
               </section>
             )}
-  
+
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
               {state.tablePlays.length === 0 ? (
@@ -626,7 +626,7 @@ const GuandanTable: React.FunctionComponent = () => {
                 ))}
               </div>
             </section>
-  
+
             <section className="guandan-actions guandan-play-actions">
               {!gameStarted && (
                 <button
