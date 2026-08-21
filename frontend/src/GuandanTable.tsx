@@ -398,7 +398,7 @@ const GuandanTable: React.FunctionComponent = () => {
 
   return (
     <main className="guandan-table">
-      <header>
+      <header className="guandan-status-bar">
         <h1>掼蛋</h1>
         <div>连接状态：{status}</div>
         {state.room !== null && <div>房间：{state.room}</div>}
@@ -413,7 +413,7 @@ const GuandanTable: React.FunctionComponent = () => {
       </header>
 
       {showSettings && (
-        <section className="guandan-settings">
+        <section className="guandan-settings guandan-panel">
           <h2>掼蛋设置</h2>
           <label htmlFor="guandan-card-color-mode">牌面配色：</label>{" "}
           <select
@@ -429,7 +429,7 @@ const GuandanTable: React.FunctionComponent = () => {
       )}
 
       {!joined && (
-        <section>
+        <section className="guandan-join-section guandan-panel">
           <h2>加入牌桌</h2>
           <input
             aria-label="房间号"
@@ -464,7 +464,7 @@ const GuandanTable: React.FunctionComponent = () => {
       )}
 
       {testMode && !joined && (
-        <section>
+        <section className="guandan-test-section guandan-panel">
           <h2>四人联机测试</h2>
           <div className="guandan-actions">
             {[1, 2, 3, 4].map((player) => (
@@ -487,7 +487,17 @@ const GuandanTable: React.FunctionComponent = () => {
             <h2>玩家</h2>
             <div className="guandan-players">
               {state.players.map((player, index) => (
-                <div key={`${player}-${index}`}>
+                <div
+                  className={`guandan-player-card ${
+                    effectiveTurn === index && gameStarted && !dealing
+                      ? "is-active"
+                      : ""
+                  } ${index === state.seat ? "is-me" : ""}`}
+                  key={`${player}-${index}`}
+                >
+                  <span className="guandan-seat-badge">
+                    {(["东", "南", "西", "北"] as const)[index] ?? index + 1}
+                  </span>
                   <strong>
                     {index === state.seat ? `${player}（我）` : player}
                   </strong>
@@ -516,14 +526,14 @@ const GuandanTable: React.FunctionComponent = () => {
           </section>
 
           {dealing && (
-            <section>
+            <section className="guandan-notice-panel">
               <strong>正在发牌：</strong>
               按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
             </section>
           )}
 
           {tributePending && (
-            <section>
+            <section className="guandan-tribute-panel guandan-panel">
               <h2>进贡 / 还贡</h2>
               <p>
                 {role === "giver"
@@ -535,8 +545,8 @@ const GuandanTable: React.FunctionComponent = () => {
             </section>
           )}
 
-          <section>
-            <h2>桌面</h2>
+          <section className="guandan-table-stage">
+            <h2>本轮出牌</h2>
             {state.tablePlays.length === 0 ? (
               <div>暂无出牌</div>
             ) : (
@@ -577,16 +587,10 @@ const GuandanTable: React.FunctionComponent = () => {
             )}
           </section>
 
-          <section>
+          <section className="guandan-hand-section">
             <h2>我的手牌（{visibleHand.length}）</h2>
             <div
               className="guandan-hand"
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "flex-end",
-                gap: 4,
-              }}
             >
               {visibleHand.map(({ card, originalIndex }) => (
                 <button
