@@ -216,8 +216,8 @@ const GuandanTable: React.FunctionComponent = () => {
   const playerCount = state.playerCount ?? state.players.length;
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
-  const totalDealCards = playerCount > 0 ? playerCount * cardsPerPlayer : 0;
-  const dealing = dealStep !== null && dealStep < totalDealCards;
+  const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;
+  const dealing = dealStep !== null && dealStep < totalDealSteps;
   const serverDealt =
     state.hand.length > 0 || state.handCounts.some((count) => count > 0);
   const gameStarted = serverDealt || startRequested;
@@ -303,20 +303,20 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [state.hand.length, state.lastPlay.length, nextRoundPending, playerCount]);
 
   React.useEffect(() => {
-    if (dealStep === null || totalDealCards <= 0) return;
-    if (dealStep >= totalDealCards) {
+    if (dealStep === null || totalDealSteps <= 0) return;
+    if (dealStep >= totalDealSteps) {
       setDealStep(null);
       return;
     }
     const timer = window.setTimeout(
       () =>
         setDealStep((current) =>
-          current === null ? null : Math.min(current + 1, totalDealCards),
+          current === null ? null : Math.min(current + 1, totalDealSteps),
         ),
       DEAL_INTERVAL_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [dealStep, totalDealCards]);
+  }, [dealStep, totalDealSteps]);
 
   React.useEffect(() => {
     if (
@@ -411,28 +411,26 @@ const GuandanTable: React.FunctionComponent = () => {
     return url.toString();
   };
 
-  const dealtCountForSeat = (seat: number): number => {
+  const dealtCount = (): number => {
     if (dealStep === null || playerCount <= 0) {
-      const explicit = state.handCounts[seat];
-      if (explicit !== undefined) return explicit;
-      if (seat === state.seat && state.hand.length > 0)
-        return state.hand.length;
       return state.cardsPerPlayer ?? 0;
     }
-    return Math.max(
-      0,
-      Math.min(
-        cardsPerPlayer,
-        Math.floor((dealStep + playerCount - 1 - seat) / playerCount),
-      ),
-    );
+    return Math.max(0, Math.min(cardsPerPlayer, dealStep));
+  };
+
+  const remainingCountForSeat = (seat: number): number => {
+    if (dealStep !== null) return dealtCount();
+    const explicit = state.handCounts[seat];
+    if (explicit !== undefined) return explicit;
+    if (seat === state.seat && state.hand.length > 0) return state.hand.length;
+    return state.cardsPerPlayer ?? 0;
   };
 
   const visibleHand = React.useMemo(() => {
     const count =
       dealStep === null || state.seat === null
         ? state.hand.length
-        : dealtCountForSeat(state.seat);
+        : dealtCount();
     return state.hand
       .map((card, originalIndex) => ({ card, originalIndex }))
       .filter(({ originalIndex }) => originalIndex < count)
@@ -645,13 +643,13 @@ const GuandanTable: React.FunctionComponent = () => {
                       !nextRoundPending
                         ? " ← 当前出牌"
                         : dealing
-                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                          ? ` ← 发牌中 ${dealtCount()}/${cardsPerPlayer}`
                           : ""}
                     </span>
                     <div>
                       {nextRoundPending
                         ? "剩余：待发牌"
-                        : `剩余：${dealtCountForSeat(index)} 张`}
+                        : `剩余：${remainingCountForSeat(index)} 张`}
                     </div>
                     {!gameStarted &&
                       state.seat !== null &&
@@ -694,7 +692,7 @@ const GuandanTable: React.FunctionComponent = () => {
             {dealing && (
               <section className="guandan-notice-panel">
                 <strong>正在发牌：</strong>
-                按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
+                四位玩家正在同步收牌，请稍候…
               </section>
             )}
 
