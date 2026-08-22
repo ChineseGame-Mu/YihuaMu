@@ -547,8 +547,11 @@ const GuandanTable: React.FunctionComponent = () => {
                     } ${index === state.seat ? "is-me" : ""}`}
                     key={`${player}-${index}`}
                   >
-                    <span className="guandan-seat-badge">
-                      {(["东", "南", "西", "北"] as const)[index] ?? index + 1}
+                    <span
+                      className="guandan-seat-badge"
+                      aria-label={`玩家座位 ${index + 1}`}
+                    >
+                      {index + 1}
                     </span>
                     <strong>
                       {index === state.seat ? `${player}（我）` : player}
