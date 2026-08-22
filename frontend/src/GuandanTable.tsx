@@ -674,6 +674,23 @@ const GuandanTable: React.FunctionComponent = () => {
               )}
             </section>
 
+            {!gameStarted && !observing && (
+              <section className="guandan-actions guandan-start-panel">
+                <button
+                  className="guandan-start-button"
+                  disabled={state.seat === null || state.players.length < 4}
+                  onClick={startGame}
+                >
+                  开始四人局
+                </button>
+                <strong>
+                  {state.players.length === 4
+                    ? "四位玩家已到齐，任意已入座玩家均可开始"
+                    : `等待四位玩家全部进入（当前${state.players.length}/4）`}
+                </strong>
+              </section>
+            )}
+
             {dealing && (
               <section className="guandan-notice-panel">
                 <strong>正在发牌：</strong>
@@ -889,21 +906,6 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
 
               <section className="guandan-actions guandan-play-actions">
-                {!gameStarted && (
-                  <button
-                    className="guandan-start-button"
-                    disabled={state.seat === null || state.players.length < 4}
-                    onClick={startGame}
-                  >
-                    开始四人局
-                  </button>
-                )}
-                {!gameStarted && state.players.length === 4 && (
-                  <span>任意已入座玩家均可开始</span>
-                )}
-                {!gameStarted && state.players.length < 4 && (
-                  <span>等待四位玩家全部进入</span>
-                )}
                 {tributePending && role === "giver" && (
                   <button
                     disabled={!gameStarted || selected.length !== 1}
