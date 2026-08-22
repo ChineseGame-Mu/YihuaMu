@@ -434,13 +434,21 @@ pub async fn websocket(
                     Some(seat)
                 } else {
                     let name_for_state = name.clone();
+                    let room_has_connected_players = GUANDAN_CONNECTIONS
+                        .lock()
+                        .ok()
+                        .and_then(|rooms| rooms.get(&key).cloned())
+                        .is_some_and(|players| players.values().any(|count| *count > 0));
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
                             if state.game.started
                                 || state.game.player_names.len() >= GUANDAN_PLAYER_COUNT
                             {
-                                return Err(());
+                                if room_has_connected_players {
+                                    return Err(());
+                                }
+                                state.game = GuandanGameState::default();
                             }
                             state.game.player_names.push(name_for_state);
                             state.bump_version();
