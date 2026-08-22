@@ -528,6 +528,13 @@ pub async fn websocket(
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
+                                send(
+                                    &tx_sub,
+                                    &GuandanServerMessage::Started {
+                                        player_count: state.game.hands.len(),
+                                        cards_per_player: CARDS_PER_PLAYER,
+                                    },
+                                );
                                 send(&tx_sub, &state_message(&key_sub, &state.game));
                                 if state.game.next_round_phase.is_none() {
                                     if let Some(seat_sub) = seat_sub {

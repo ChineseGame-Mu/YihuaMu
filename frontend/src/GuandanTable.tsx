@@ -863,12 +863,6 @@ const GuandanTable: React.FunctionComponent = () => {
                       className="guandan-card-stack"
                       key={cardStackKey(stack[0]!.card)}
                     >
-                      <span
-                        className="guandan-stack-count"
-                        aria-label={`${stack.length}张`}
-                      >
-                        ×{stack.length}
-                      </span>
                       {stack.map(({ card, originalIndex }, stackIndex) => (
                         <button
                           type="button"
