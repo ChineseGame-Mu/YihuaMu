@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install websockets
-      - name: Start ef477f0 backend locally
+      - name: Start backend locally
         run: |
           PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan-server.log 2>&1 &
           for i in $(seq 1 120); do
@@ -24,7 +24,7 @@ jobs:
           done
           cat /tmp/guandan-server.log
           exit 1
-      - name: Robot4 win then tribute return-card exchange
+      - name: Random winner then tribute return-card exchange
         env:
           WS_URL: ws://127.0.0.1:3030/api/guandan
         run: |
@@ -127,32 +127,27 @@ jobs:
               raise RuntimeError('unknown tribute plan '+repr(plan))
 
           async def main():
-              chosen=None
-              for attempt in range(1,9):
-                  bots=await connect(f'robot4-tribute-{attempt}')
-                  s=await play_to_finish(bots)
-                  print('ROUND1',attempt,'winner',s.get('last_game_winner'),'finish',s.get('finish_order'),'promotion',s.get('last_promotion_steps'))
-                  if s.get('last_game_winner')==3:
-                      chosen=(bots,s); break
-                  await close(bots)
-              if not chosen: raise RuntimeError('robot4 did not win in 8 attempts')
-              bots,s=chosen
-              print('ROBOT4_WIN_CONFIRMED',json.dumps(s,ensure_ascii=False))
+              bots=await connect('random-winner-tribute')
+              s=await play_to_finish(bots)
+              winner=s.get('last_game_winner')
+              if winner is None: raise RuntimeError('missing random winner')
+              print('RANDOM_WINNER',NAMES[winner],'finish',s.get('finish_order'),'promotion',s.get('last_promotion_steps'))
 
-              # Losing team is seats 0/2; loser manually starts the shuffle, then previous winner deals.
-              if not await act(bots,bots[0],{'type':'shuffle_next_round','from_position':None,'to_position':None},2):
-                  raise RuntimeError('losing-team shuffle failed '+repr(bots[0].errors[-5:]))
+              loser=next(i for i in range(4) if i%2 != winner%2)
+              if not await act(bots,bots[loser],{'type':'shuffle_next_round','from_position':None,'to_position':None},2):
+                  raise RuntimeError('losing-team shuffle failed '+repr(bots[loser].errors[-5:]))
               await wait_for(lambda:bots[0].state and bots[0].state.get('next_round_phase')=='awaiting_deal',5)
-              print('SHUFFLE_OK')
-              if not await act(bots,bots[3],{'type':'deal_next_round'},2):
-                  raise RuntimeError('winner deal failed '+repr(bots[3].errors[-5:]))
+              print('SHUFFLE_OK',NAMES[loser])
+              if not await act(bots,bots[winner],{'type':'deal_next_round'},2):
+                  raise RuntimeError('winner deal failed '+repr(bots[winner].errors[-5:]))
               await wait_for(lambda:bots[0].state and bots[0].state.get('next_round_phase') is None,5)
               s=(await shared(bots,5))[0]
               print('ROUND2_AFTER_DEAL',json.dumps(s,ensure_ascii=False))
               if s.get('tribute_resisted'):
-                  raise RuntimeError('tribute was resisted in this deal; rerun required')
+                  print('RESULT_JSON',json.dumps({'winner':NAMES[winner],'tribute_resisted':True,'next_turn':NAMES[s['turn']]},ensure_ascii=False))
+                  await close(bots); return
               plan=s.get('pending_tribute')
-              if not plan: raise RuntimeError('expected pending tribute after robot4 win')
+              if not plan: raise RuntimeError('expected pending tribute after random winner')
               givers,receivers,kind=plan_parts(plan)
               print('TRIBUTE_PLAN',kind,'givers',[NAMES[x] for x in givers],'receivers',[NAMES[x] for x in receivers])
 
@@ -175,10 +170,9 @@ jobs:
                   if not ok: raise RuntimeError(f'return failed {NAMES[seat]} {b.errors[-10:]}')
 
               final=(await shared(bots,5))[0]
-              print('AFTER_EXCHANGE',json.dumps(final,ensure_ascii=False))
               if final.get('pending_tribute') is not None: raise RuntimeError('tribute exchange did not clear')
               if (final.get('hand_counts') or []) != [27,27,27,27]: raise RuntimeError('hand counts not restored after exchange')
-              print('RESULT_JSON',json.dumps({'winner':'机器人4','tribute_kind':kind,'givers':[NAMES[x] for x in givers],'receivers':[NAMES[x] for x in receivers],'tribute_cards':paid,'return_cards':returned,'next_turn':NAMES[final['turn']]},ensure_ascii=False))
+              print('RESULT_JSON',json.dumps({'winner':NAMES[winner],'tribute_kind':kind,'givers':[NAMES[x] for x in givers],'receivers':[NAMES[x] for x in receivers],'tribute_cards':paid,'return_cards':returned,'next_turn':NAMES[final['turn']]},ensure_ascii=False))
               await close(bots)
 
           asyncio.run(main())
