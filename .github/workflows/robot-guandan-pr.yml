@@ -1,0 +1,87 @@
+name: Robot Guandan PR
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  robot-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install websockets
+      - name: Play one four-player game
+        env:
+          WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
+          ROOM: '0004'
+        run: |
+          python - <<'PY'
+          import asyncio, json, os, time
+          import websockets
+          URL=os.environ['WS_URL']; ROOM=os.environ['ROOM']; NAMES=['机器人1','机器人2','机器人3','机器人4']
+          class Bot:
+              def __init__(self,name): self.name=name; self.ws=None; self.seat=None; self.hand=[]; self.state=None; self.version=0; self.errors=[]
+              async def send(self,o): await self.ws.send(json.dumps(o,ensure_ascii=False))
+              async def reader(self):
+                  async for raw in self.ws:
+                      m=json.loads(raw); t=m.get('type')
+                      if t=='joined': self.seat=m.get('seat')
+                      elif t=='hand': self.hand=m['cards']
+                      elif t=='state': self.state=m; self.version+=1
+                      elif t=='error': self.errors.append(m.get('message','error'))
+          async def wait_for(pred,timeout=15):
+              end=time.time()+timeout
+              while time.time()<end:
+                  if pred(): return True
+                  await asyncio.sleep(.05)
+              return False
+          async def attempt_play(b,idx):
+              bv=b.version; bn=len(b.hand); be=len(b.errors)
+              await b.send({'type':'play','card_indexes':[idx]})
+              end=time.time()+1.5
+              while time.time()<end:
+                  if len(b.errors)>be: return False
+                  if len(b.hand)<bn: return True
+                  if b.version>bv and b.state and b.state.get('turn')!=b.seat: return True
+                  await asyncio.sleep(.03)
+              return False
+          async def main():
+              bots=[Bot(n) for n in NAMES]
+              for b in bots:
+                  b.ws=await websockets.connect(URL,open_timeout=20,ping_interval=20,ping_timeout=20)
+                  asyncio.create_task(b.reader()); await b.send({'type':'join','room':ROOM,'name':b.name})
+                  if not await wait_for(lambda b=b:b.seat is not None,10): raise RuntimeError(f'{b.name} join failed errors={b.errors}')
+              print('JOINED',[(b.name,b.seat) for b in bots])
+              await bots[0].send({'type':'start','player_count':4})
+              if not await wait_for(lambda:all(len(b.hand)==27 for b in bots) and all(b.state for b in bots),20):
+                  raise RuntimeError('deal failed '+str([(b.name,len(b.hand),b.errors[-3:]) for b in bots]))
+              print('DEALT',[len(b.hand) for b in bots])
+              for step in range(1000):
+                  s=max((b.state for b in bots if b.state),key=lambda x:len(x.get('table_plays',[])),default=None)
+                  if not s: await asyncio.sleep(.05); continue
+                  winner=s.get('last_game_winner'); phase=s.get('next_round_phase')
+                  if winner is not None and phase is not None:
+                      print('RESULT_JSON',json.dumps({'winner_seat':winner,'winner_name':NAMES[winner],'finish_order':s.get('finish_order'),'promotion':s.get('last_promotion_steps'),'phase':phase},ensure_ascii=False))
+                      for b in bots: await b.ws.close()
+                      return
+                  turn=s.get('turn')
+                  if turn is None or turn<0 or turn>3: await asyncio.sleep(.05); continue
+                  b=bots[turn]
+                  if not b.hand: await asyncio.sleep(.05); continue
+                  if not (s.get('last_play') or []):
+                      if not await attempt_play(b,0): raise RuntimeError(f'lead failed {b.name} {b.errors[-5:]}')
+                  else:
+                      played=False
+                      for idx in range(len(b.hand)):
+                          if await attempt_play(b,idx): played=True; break
+                      if not played:
+                          bv=b.version; await b.send({'type':'pass'})
+                          if not await wait_for(lambda b=b,bv=bv:b.version>bv and b.state and b.state.get('turn')!=b.seat,3):
+                              raise RuntimeError(f'pass failed {b.name} {b.errors[-5:]}')
+                  await asyncio.sleep(.03)
+              raise RuntimeError('game did not finish')
+          asyncio.run(main())
+          PY
