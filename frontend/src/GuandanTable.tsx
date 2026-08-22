@@ -362,6 +362,8 @@ const GuandanTable: React.FunctionComponent = () => {
     if (send({ type: "start", player_count: 4 })) {
       setStartRequested(true);
       setSelected([]);
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
     }
   };
 
@@ -391,7 +393,10 @@ const GuandanTable: React.FunctionComponent = () => {
 
   const dealNextRound = (): void => {
     setSelected([]);
-    send({ type: "deal_next_round" });
+    if (send({ type: "deal_next_round" })) {
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+    }
   };
 
   const testPlayerUrl = (player: number): string => {
