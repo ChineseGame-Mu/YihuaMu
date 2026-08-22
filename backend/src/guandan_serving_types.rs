@@ -24,6 +24,13 @@ pub struct GuandanTributeCard {
     pub card: CardFace,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum GuandanNextRoundPhase {
+    AwaitingShuffle,
+    AwaitingDeal,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
@@ -46,6 +53,10 @@ pub struct GuandanGameState {
     pub return_cards: Vec<GuandanTributeCard>,
     pub tribute_resisted: bool,
     pub match_winner: Option<Team>,
+    #[serde(default)]
+    pub next_round_phase: Option<GuandanNextRoundPhase>,
+    #[serde(default)]
+    pub next_round_finish_order: Vec<usize>,
 }
 
 impl Default for GuandanGameState {
@@ -71,6 +82,8 @@ impl Default for GuandanGameState {
             return_cards: Vec::new(),
             tribute_resisted: false,
             match_winner: None,
+            next_round_phase: None,
+            next_round_finish_order: Vec::new(),
         }
     }
 }
@@ -90,7 +103,9 @@ impl GuandanGameState {
     }
 
     pub fn normal_play_blocked(&self) -> bool {
-        self.pending_tribute.is_some() || self.match_winner.is_some()
+        self.pending_tribute.is_some()
+            || self.match_winner.is_some()
+            || self.next_round_phase.is_some()
     }
 
     fn tribute_givers(&self) -> Option<Vec<usize>> {
