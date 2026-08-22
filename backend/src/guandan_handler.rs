@@ -11,7 +11,7 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
-    team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
+    team::{team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
     CardFace, Rank, TableConfig,
 };
@@ -268,28 +268,44 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     }
 
     let player_count = game.hands.len();
-    let table = validate_start(player_count)?;
+    if player_count != GUANDAN_PLAYER_COUNT {
+        return Err("Guandan settlement requires exactly four players");
+    }
     let previous_finish_order = game.finish_order.clone();
-    let winner = previous_finish_order[0];
-    let winner_team = team_for_seat(table, winner)?;
+    let winner = *previous_finish_order
+        .first()
+        .ok_or("finish order is empty")?;
+    if winner >= player_count {
+        return Err("winner seat is outside the table");
+    }
+    let winner_team = if winner % 2 == 0 { Team::A } else { Team::B };
     let winner_level = game.team_levels.level_for(winner_team);
 
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
 
-    let promotion_steps = if player_count == 4 {
-        four_player_promotion_steps(table, &previous_finish_order)?
-    } else {
-        1
+    let mut completed_finish_order = previous_finish_order.clone();
+    for seat in 0..player_count {
+        if !completed_finish_order.contains(&seat) {
+            completed_finish_order.push(seat);
+        }
+    }
+    let partner = (winner + 2) % player_count;
+    let partner_place = completed_finish_order
+        .iter()
+        .position(|seat| *seat == partner)
+        .ok_or("winner partner is missing from finish order")?
+        + 1;
+    let promotion_steps = match partner_place {
+        2 => 3,
+        3 => 2,
+        4 => 1,
+        _ => return Err("invalid partner finishing place"),
     };
     game.last_promotion_steps = Some(promotion_steps);
 
     if winner_level == Rank::Ace {
-        let wins_match = if player_count == 4 {
-            four_player_ace_win(table, &previous_finish_order)?
-        } else {
-            true
-        };
+        let wins_match = promotion_steps >= 2;
         if wins_match {
             game.match_winner = Some(winner_team);
             game.trick_complete = true;
