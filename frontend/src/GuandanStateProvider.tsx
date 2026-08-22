@@ -33,6 +33,7 @@ interface GuandanTableState {
   pendingTribute: unknown;
   tributeResisted: boolean;
   matchWinner: GuandanTeam | null;
+  nextRoundPhase: "awaiting_shuffle" | "awaiting_deal" | null;
   minimumPlayers: number | null;
   maximumPlayers: number | null;
   error: string | null;
@@ -63,6 +64,7 @@ const initialState: GuandanTableState = {
   pendingTribute: null,
   tributeResisted: false,
   matchWinner: null,
+  nextRoundPhase: null,
   minimumPlayers: null,
   maximumPlayers: null,
   error: null,
@@ -134,6 +136,7 @@ const reduceMessage = (
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
+        nextRoundPhase: message.next_round_phase,
         error: null,
       };
     case "error":
