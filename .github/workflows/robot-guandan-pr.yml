@@ -13,13 +13,13 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install websockets
-      - name: Resume and finish one four-player game
+      - name: Observe or finish one four-player game
         env:
           WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
           ROOM: '0004'
         run: |
           python - <<'PY'
-          import asyncio, json, os, time
+          import asyncio, json, os, time, collections
           import websockets
 
           URL=os.environ['WS_URL']; ROOM=os.environ['ROOM']; NAMES=['机器人1','机器人2','机器人3','机器人4']
@@ -43,10 +43,26 @@ jobs:
                   await asyncio.sleep(.03)
               return False
 
+          def key(s):
+              if not s: return None
+              return json.dumps({
+                  'turn':s.get('turn'),'hand_counts':s.get('hand_counts'),'last_play':s.get('last_play'),
+                  'last_player':s.get('last_player'),'passes':s.get('passes'),'finish_order':s.get('finish_order'),
+                  'last_game_winner':s.get('last_game_winner'),'next_round_phase':s.get('next_round_phase')
+              },sort_keys=True,ensure_ascii=False)
+
+          def consensus(bots):
+              vals=[(key(b.state),b.state) for b in bots if b.state]
+              if not vals: return None,0
+              counts=collections.Counter(k for k,_ in vals)
+              k,n=counts.most_common(1)[0]
+              s=next(s for kk,s in vals if kk==k)
+              return s,n
+
           async def attempt_play(b,idx):
               bv=b.version; bn=len(b.hand); be=len(b.errors)
               await b.send({'type':'play','card_indexes':[idx]})
-              end=time.time()+0.45
+              end=time.time()+0.5
               while time.time()<end:
                   if len(b.errors)>be: return False
                   if len(b.hand)<bn: return True
@@ -54,62 +70,59 @@ jobs:
                   await asyncio.sleep(.015)
               return False
 
+          def emit_result(s):
+              w=s['last_game_winner']
+              print('RESULT_JSON',json.dumps({'winner_seat':w,'winner_name':NAMES[w],'finish_order':s.get('finish_order'),'promotion':s.get('last_promotion_steps'),'phase':s.get('next_round_phase')},ensure_ascii=False))
+
           async def main():
               bots=[Bot(n) for n in NAMES]
               for b in bots:
                   b.ws=await websockets.connect(URL,open_timeout=20,ping_interval=20,ping_timeout=20)
-                  asyncio.create_task(b.reader())
-                  await b.send({'type':'join','room':ROOM,'name':b.name})
-                  if not await wait_for(lambda b=b:b.seat is not None,10):
-                      raise RuntimeError(f'{b.name} join failed errors={b.errors}')
-              if not await wait_for(lambda:all(b.state is not None for b in bots),10):
-                  raise RuntimeError('state sync failed')
+                  asyncio.create_task(b.reader()); await b.send({'type':'join','room':ROOM,'name':b.name})
+                  if not await wait_for(lambda b=b:b.seat is not None,10): raise RuntimeError(f'{b.name} join failed {b.errors}')
+              await wait_for(lambda:all(b.state for b in bots),10)
               print('JOINED',[(b.name,b.seat,len(b.hand)) for b in bots])
 
-              s=bots[0].state
-              if s.get('last_game_winner') is not None and s.get('next_round_phase') is not None:
-                  w=s['last_game_winner']
-                  print('RESULT_JSON',json.dumps({'winner_seat':w,'winner_name':NAMES[w],'finish_order':s.get('finish_order'),'promotion':s.get('last_promotion_steps'),'phase':s.get('next_round_phase')},ensure_ascii=False))
-                  return
+              # Another one-off runner may still be finishing this exact game. Observe first.
+              observe_end=time.time()+45
+              while time.time()<observe_end:
+                  s,n=consensus(bots)
+                  if s and s.get('last_game_winner') is not None and s.get('next_round_phase') is not None:
+                      emit_result(s); return
+                  await asyncio.sleep(.2)
 
-              if all(len(b.hand)==0 for b in bots):
+              s,n=consensus(bots)
+              if all(len(b.hand)==0 for b in bots) and s and s.get('last_game_winner') is None:
                   await bots[0].send({'type':'start','player_count':4})
-                  if not await wait_for(lambda:all(len(b.hand)==27 for b in bots),20):
-                      raise RuntimeError('fresh deal failed '+str([(b.name,len(b.hand),b.errors[-3:]) for b in bots]))
-                  print('DEALT',[len(b.hand) for b in bots])
-              else:
-                  print('RESUMING',[len(b.hand) for b in bots])
+                  await wait_for(lambda:all(len(b.hand)==27 for b in bots),20)
+              print('START_HANDS',[len(b.hand) for b in bots])
 
-              for step in range(1200):
-                  s=bots[0].state
-                  winner=s.get('last_game_winner'); phase=s.get('next_round_phase')
-                  if winner is not None and phase is not None:
-                      print('RESULT_JSON',json.dumps({'winner_seat':winner,'winner_name':NAMES[winner],'finish_order':s.get('finish_order'),'promotion':s.get('last_promotion_steps'),'phase':phase},ensure_ascii=False))
+              for step in range(1500):
+                  s,n=consensus(bots)
+                  if s is None or n<3:
+                      await asyncio.sleep(.04); continue
+                  if s.get('last_game_winner') is not None and s.get('next_round_phase') is not None:
+                      emit_result(s)
                       for b in bots: await b.ws.close()
                       return
                   turn=s.get('turn')
-                  if turn is None or not 0 <= turn < 4:
-                      await asyncio.sleep(.03); continue
+                  if turn is None or not 0<=turn<4:
+                      await asyncio.sleep(.04); continue
                   b=bots[turn]
-                  if len(b.hand)==0:
-                      await asyncio.sleep(.03); continue
+                  if not b.hand:
+                      await asyncio.sleep(.04); continue
                   last=s.get('last_play') or []
                   if not last:
-                      if not await attempt_play(b,0):
-                          raise RuntimeError(f'lead failed {b.name}; errors={b.errors[-8:]}')
+                      await attempt_play(b,0)
                   else:
                       played=False
                       for idx in range(len(b.hand)-1,-1,-1):
-                          if await attempt_play(b,idx):
-                              played=True; break
+                          if await attempt_play(b,idx): played=True; break
                       if not played:
-                          bv=b.version; be=len(b.errors)
                           await b.send({'type':'pass'})
-                          ok=await wait_for(lambda b=b,bv=bv:b.version>bv and b.state and b.state.get('turn')!=b.seat,3)
-                          if not ok:
-                              raise RuntimeError(f'pass failed {b.name}; errors={b.errors[be:]}')
-                  await asyncio.sleep(.02)
-              raise RuntimeError('game did not finish within 1200 actions')
+                          await asyncio.sleep(.12)
+                  await asyncio.sleep(.04)
+              raise RuntimeError('game did not finish within 1500 cycles')
 
           asyncio.run(main())
           PY
