@@ -194,6 +194,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
+  const hasAnimatedCurrentDealRef = React.useRef(false);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -214,6 +215,11 @@ const GuandanTable: React.FunctionComponent = () => {
   const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
   const myTurn =
     state.seat !== null && effectiveTurn === state.seat && gameStarted;
+  const lastWinnerName =
+    state.lastGameWinner === null
+      ? null
+      : (state.players[state.lastGameWinner] ??
+        `玩家${state.lastGameWinner + 1}`);
 
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
@@ -267,13 +273,18 @@ const GuandanTable: React.FunctionComponent = () => {
     if (state.hand.length < previousHandSize) {
       setSelected([]);
     }
+    if (state.lastPlay.length > 0) {
+      hasAnimatedCurrentDealRef.current = false;
+    }
     const shouldAnimate =
       state.hand.length > 0 &&
       handSizeChanged &&
       state.lastPlay.length === 0 &&
+      !hasAnimatedCurrentDealRef.current &&
       playerCount >= 4;
     lastAnimatedHandSizeRef.current = state.hand.length;
     if (!shouldAnimate) return;
+    hasAnimatedCurrentDealRef.current = true;
     setDealStep(0);
   }, [state.hand.length, state.lastPlay.length, playerCount]);
 
@@ -554,7 +565,9 @@ const GuandanTable: React.FunctionComponent = () => {
               <div className="guandan-players">
                 {state.players.map((player, index) => (
                   <div
-                    className={`guandan-player-card ${
+                    className={`guandan-player-card guandan-team-${
+                      index % 2 === 0 ? "a" : "b"
+                    } ${
                       effectiveTurn === index && gameStarted && !dealing
                         ? "is-active"
                         : ""
@@ -610,6 +623,23 @@ const GuandanTable: React.FunctionComponent = () => {
               <section className="guandan-notice-panel">
                 <strong>正在发牌：</strong>
                 按玩家1 → 玩家2 → 玩家3 → 玩家4循环发牌，请稍候…
+              </section>
+            )}
+
+            {state.lastGameWinner !== null && lastWinnerName !== null && (
+              <section
+                className={`guandan-result-panel guandan-team-${
+                  state.lastGameWinner % 2 === 0 ? "a" : "b"
+                }`}
+                role="status"
+                aria-label="上一局结果"
+              >
+                <strong>上一局赢家：{lastWinnerName}</strong>
+                <span>座位 {state.lastGameWinner + 1}</span>
+                <span>本局积分：+{state.lastPromotionSteps ?? 0}</span>
+                {state.lastPromotionSteps !== null && (
+                  <span>升级 {state.lastPromotionSteps} 级</span>
+                )}
               </section>
             )}
 
