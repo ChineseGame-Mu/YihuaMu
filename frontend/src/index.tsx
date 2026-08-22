@@ -5,6 +5,7 @@ import * as Sentry from "@sentry/react";
 
 import "./style.css";
 import "./guandan.css";
+import "./guandan-single-viewport.css";
 import "./game-logos.css";
 
 import AppStateProvider from "./AppStateProvider";
@@ -66,7 +67,6 @@ const bootstrap = (): void => {
             <div>
               <div className="guandan-topbar">
                 <ExitGameButton onClick={returnToGameSelection} />
-                <h1>掼蛋</h1>
                 <GameClockLogo game="Guandan" />
               </div>
               <GuandanNoBeatHint />
