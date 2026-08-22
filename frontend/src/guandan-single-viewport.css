@@ -1,0 +1,206 @@
+/* Single-viewport Guandan layout overrides.
+ * Keep game logic untouched; only compress/rearrange presentation.
+ */
+
+/* Remove the large decorative title bar while keeping exit/timer controls compact. */
+.guandan-topbar {
+  position: relative;
+  min-height: 52px;
+  padding: 4px 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.guandan-topbar h1 {
+  display: none;
+}
+
+/* Main table should fit one normal desktop viewport. */
+.guandan-table {
+  min-height: calc(100vh - 52px);
+  height: calc(100vh - 52px);
+  padding: 6px 14px 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.guandan-status-bar {
+  flex: 0 0 auto;
+  min-height: 34px;
+  margin: 0 0 5px;
+  padding: 5px 10px;
+  gap: 6px 12px;
+  border-radius: 11px;
+}
+
+.guandan-status-bar > div {
+  padding: 3px 8px;
+  font-size: 0.88rem;
+}
+
+.guandan-status-bar button {
+  padding: 5px 10px;
+}
+
+/* Public table = upper half. Do not consume space with other player cards. */
+.guandan-public-zone {
+  flex: 1 1 48%;
+  min-height: 0;
+  margin: 4px 0 5px;
+  padding: 30px 8px 7px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.guandan-public-zone > .guandan-zone-title {
+  min-width: 220px;
+  padding: 4px 16px 5px;
+}
+
+.guandan-zone-title span {
+  font-size: 1rem;
+}
+
+.guandan-zone-title small {
+  font-size: 0.68rem;
+}
+
+/* Hide the duplicate level window and all other-player cards. */
+.guandan-scoreboard,
+.guandan-player-section {
+  display: none !important;
+}
+
+.guandan-start-panel,
+.guandan-notice-panel,
+.guandan-result-panel,
+.guandan-next-round-panel,
+.guandan-tribute-panel {
+  margin: 4px 0 !important;
+  padding: 6px 10px !important;
+}
+
+.guandan-table-stage {
+  min-height: 0 !important;
+  height: 100%;
+  margin: 4px 0 0 !important;
+  padding: 8px 10px !important;
+  overflow: auto;
+}
+
+.guandan-table-stage h2 {
+  margin-bottom: 4px;
+  font-size: 0.96rem;
+}
+
+.guandan-trick-plays {
+  gap: 4px;
+}
+
+.guandan-trick-play {
+  margin: 2px 0;
+}
+
+/* My table = lower half and never overlaps the public table. */
+.guandan-private-zone {
+  flex: 1 1 48%;
+  min-height: 0;
+  margin: 0;
+  padding: 30px 8px 6px;
+  overflow: hidden;
+  border-width: 3px;
+  border-radius: 16px;
+}
+
+.guandan-private-zone > .guandan-zone-title {
+  min-width: 220px;
+  padding: 4px 16px 5px;
+}
+
+.guandan-hand-section {
+  height: calc(100% - 48px);
+  margin: 0 !important;
+  padding: 6px 8px !important;
+  overflow: hidden;
+}
+
+.guandan-hand-section h2 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.guandan-hand {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: calc(100% - 28px);
+  min-height: 150px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 4px 0;
+}
+
+/* Same-rank cards are stacked vertically, like the approved reference image. */
+.guandan-card-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  min-width: 72px;
+  height: 100%;
+  padding-top: 2px;
+}
+
+.guandan-card-stack > button {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0 0 -82px !important;
+  box-shadow: none !important;
+}
+
+.guandan-card-stack > button:last-child {
+  margin-bottom: 0 !important;
+}
+
+.guandan-play-actions {
+  height: 42px;
+  margin: 3px 0 0 !important;
+  padding: 4px 8px !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.guandan-play-actions button {
+  padding: 6px 22px;
+}
+
+/* Smaller screens: preserve strict separation; allow internal scrolling only. */
+@media (max-height: 760px) {
+  .guandan-topbar {
+    min-height: 44px;
+    padding-block: 2px;
+  }
+
+  .guandan-table {
+    min-height: calc(100vh - 44px);
+    height: calc(100vh - 44px);
+  }
+
+  .guandan-public-zone,
+  .guandan-private-zone {
+    padding-top: 27px;
+  }
+
+  .guandan-hand {
+    min-height: 125px;
+  }
+
+  .guandan-card-stack > button {
+    margin-bottom: -88px !important;
+  }
+}
