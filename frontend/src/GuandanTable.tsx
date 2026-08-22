@@ -154,7 +154,7 @@ const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
-const isValidRoomCode = (value: string): boolean => /^000[1-4]$/.test(value);
+const isValidRoomCode = (value: string): boolean => /^\d{4}$/.test(value);
 
 const guandanErrorLabel = (message: string): string => {
   const labels: Record<string, string> = {
@@ -536,7 +536,7 @@ const GuandanTable: React.FunctionComponent = () => {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={ROOM_CODE_LENGTH}
-            placeholder="房间号0001至0004"
+            placeholder="请输入四位数字房间号"
             value={room}
             onChange={(event) => setRoom(normalizeRoomCode(event.target.value))}
           />
