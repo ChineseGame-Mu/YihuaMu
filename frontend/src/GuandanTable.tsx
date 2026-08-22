@@ -156,6 +156,20 @@ const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
 const isValidRoomCode = (value: string): boolean => /^000[1-4]$/.test(value);
 
+const guandanErrorLabel = (message: string): string => {
+  const labels: Record<string, string> = {
+    "selected cards are not a legal Guandan pattern":
+      "当前选择不是合法的掼蛋牌型。顺子必须正好选择5张牌。",
+    "play must beat the current table play": "所选牌型不能压过桌面上的牌。",
+    "cannot pass now": "现在不能过牌。首位出牌者必须出牌。",
+    "observers cannot start the game": "围观者不能开始游戏。",
+    "the game is already underway or four seated players are required":
+      "游戏已经开始，或者尚未坐满4位玩家。",
+    "round is not ready to end": "本轮尚未结束，暂时不能收牌。",
+  };
+  return labels[message] ?? message;
+};
+
 const GuandanTable: React.FunctionComponent = () => {
   const { state, reset } = React.useContext(GuandanStateContext);
   const { status, send } = React.useContext(GuandanWebsocketContext);
@@ -771,7 +785,9 @@ const GuandanTable: React.FunctionComponent = () => {
         </>
       )}
 
-      {state.error !== null && <p role="alert">{state.error}</p>}
+      {state.error !== null && (
+        <p role="alert">{guandanErrorLabel(state.error)}</p>
+      )}
     </main>
   );
 };
