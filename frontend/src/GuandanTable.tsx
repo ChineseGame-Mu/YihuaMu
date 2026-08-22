@@ -166,6 +166,12 @@ const guandanErrorLabel = (message: string): string => {
     "the game is already underway or four seated players are required":
       "游戏已经开始，或者尚未坐满4位玩家。",
     "round is not ready to end": "本轮尚未结束，暂时不能收牌。",
+    "the next round is not ready to shuffle": "现在还不能洗牌。",
+    "only a player on the losing team may shuffle": "只能由输方玩家洗牌。",
+    "the next round is not ready to deal": "请先由输方完成洗牌。",
+    "only the previous winner may deal": "只能由上一局赢家发牌。",
+    "shuffle positions must both be between 1 and 108":
+      "抽牌位置和插入位置都必须在1到108之间。",
   };
   return labels[message] ?? message;
 };
@@ -188,6 +194,8 @@ const GuandanTable: React.FunctionComponent = () => {
   const [dealStep, setDealStep] = React.useState<number | null>(null);
   const [startRequested, setStartRequested] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
+  const [shuffleFrom, setShuffleFrom] = React.useState("1");
+  const [shuffleTo, setShuffleTo] = React.useState("108");
   const [fourColor, setFourColor] = React.useState(
     () => window.localStorage.getItem("guandan_four_color") === "on",
   );
@@ -203,6 +211,7 @@ const GuandanTable: React.FunctionComponent = () => {
     state.seat,
   );
   const tributePending = state.pendingTribute !== null;
+  const nextRoundPending = state.nextRoundPhase !== null;
   const testMode = query.get("test") === "1";
   const playerCount = state.playerCount ?? state.players.length;
   const cardsPerPlayer =
@@ -220,6 +229,10 @@ const GuandanTable: React.FunctionComponent = () => {
       ? null
       : (state.players[state.lastGameWinner] ??
         `玩家${state.lastGameWinner + 1}`);
+  const canShuffleNextRound =
+    state.seat !== null &&
+    state.lastGameWinner !== null &&
+    state.seat % 2 !== state.lastGameWinner % 2;
 
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
@@ -280,13 +293,14 @@ const GuandanTable: React.FunctionComponent = () => {
       state.hand.length > 0 &&
       handSizeChanged &&
       state.lastPlay.length === 0 &&
+      !nextRoundPending &&
       !hasAnimatedCurrentDealRef.current &&
       playerCount >= 4;
     lastAnimatedHandSizeRef.current = state.hand.length;
     if (!shouldAnimate) return;
     hasAnimatedCurrentDealRef.current = true;
     setDealStep(0);
-  }, [state.hand.length, state.lastPlay.length, playerCount]);
+  }, [state.hand.length, state.lastPlay.length, nextRoundPending, playerCount]);
 
   React.useEffect(() => {
     if (dealStep === null || totalDealCards <= 0) return;
@@ -310,6 +324,7 @@ const GuandanTable: React.FunctionComponent = () => {
       state.lastPlayer === null ||
       state.seat !== state.lastPlayer ||
       tributePending ||
+      nextRoundPending ||
       dealing
     ) {
       return;
@@ -324,6 +339,7 @@ const GuandanTable: React.FunctionComponent = () => {
     state.lastPlayer,
     state.seat,
     tributePending,
+    nextRoundPending,
     dealing,
     send,
   ]);
@@ -352,6 +368,30 @@ const GuandanTable: React.FunctionComponent = () => {
   const swapSeat = (targetSeat: number): void => {
     if (gameStarted || state.seat === null || targetSeat === state.seat) return;
     send({ type: "reorder_players", order: [state.seat, targetSeat] });
+  };
+
+  const shuffleNextRound = (): void => {
+    send({
+      type: "shuffle_next_round",
+      from_position: null,
+      to_position: null,
+    });
+  };
+
+  const placeCardAndShuffle = (): void => {
+    const from = Number(shuffleFrom);
+    const to = Number(shuffleTo);
+    if (!Number.isInteger(from) || !Number.isInteger(to)) return;
+    send({
+      type: "shuffle_next_round",
+      from_position: from,
+      to_position: to,
+    });
+  };
+
+  const dealNextRound = (): void => {
+    setSelected([]);
+    send({ type: "deal_next_round" });
   };
 
   const testPlayerUrl = (player: number): string => {
@@ -568,7 +608,10 @@ const GuandanTable: React.FunctionComponent = () => {
                     className={`guandan-player-card guandan-team-${
                       index % 2 === 0 ? "a" : "b"
                     } ${
-                      effectiveTurn === index && gameStarted && !dealing
+                      effectiveTurn === index &&
+                      gameStarted &&
+                      !dealing &&
+                      !nextRoundPending
                         ? "is-active"
                         : ""
                     } ${index === state.seat ? "is-me" : ""}`}
@@ -591,13 +634,20 @@ const GuandanTable: React.FunctionComponent = () => {
                       {state.onlinePlayers[index] ? "● 在线" : "○ 已掉线"}
                     </span>
                     <span>
-                      {effectiveTurn === index && gameStarted && !dealing
+                      {effectiveTurn === index &&
+                      gameStarted &&
+                      !dealing &&
+                      !nextRoundPending
                         ? " ← 当前出牌"
                         : dealing
                           ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
                           : ""}
                     </span>
-                    <div>剩余：{dealtCountForSeat(index)} 张</div>
+                    <div>
+                      {nextRoundPending
+                        ? "剩余：待发牌"
+                        : `剩余：${dealtCountForSeat(index)} 张`}
+                    </div>
                     {!gameStarted &&
                       state.seat !== null &&
                       index !== state.seat && (
@@ -639,6 +689,82 @@ const GuandanTable: React.FunctionComponent = () => {
                 <span>本局积分：+{state.lastPromotionSteps ?? 0}</span>
                 {state.lastPromotionSteps !== null && (
                   <span>升级 {state.lastPromotionSteps} 级</span>
+                )}
+              </section>
+            )}
+
+            {state.nextRoundPhase !== null && (
+              <section
+                className="guandan-next-round-panel"
+                aria-label="下局开始"
+              >
+                <strong>下局开始</strong>
+                {state.nextRoundPhase === "awaiting_shuffle" ? (
+                  <>
+                    <span>请输方任一玩家随机洗牌。</span>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={!canShuffleNextRound}
+                      onClick={shuffleNextRound}
+                    >
+                      随机洗牌
+                    </button>
+                    <div className="guandan-manual-shuffle">
+                      <label>
+                        抽第
+                        <input
+                          type="number"
+                          min="1"
+                          max="108"
+                          value={shuffleFrom}
+                          disabled={!canShuffleNextRound}
+                          onChange={(event) =>
+                            setShuffleFrom(event.target.value)
+                          }
+                        />
+                        张
+                      </label>
+                      <label>
+                        插入第
+                        <input
+                          type="number"
+                          min="1"
+                          max="108"
+                          value={shuffleTo}
+                          disabled={!canShuffleNextRound}
+                          onChange={(event) => setShuffleTo(event.target.value)}
+                        />
+                        位
+                      </label>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={
+                          !canShuffleNextRound ||
+                          Number(shuffleFrom) < 1 ||
+                          Number(shuffleFrom) > 108 ||
+                          Number(shuffleTo) < 1 ||
+                          Number(shuffleTo) > 108
+                        }
+                        onClick={placeCardAndShuffle}
+                      >
+                        抽牌插入洗牌
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span>洗牌完成，请上一局赢家发牌。</span>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={state.seat !== state.lastGameWinner}
+                      onClick={dealNextRound}
+                    >
+                      发牌
+                    </button>
+                  </>
                 )}
               </section>
             )}
@@ -728,7 +854,11 @@ const GuandanTable: React.FunctionComponent = () => {
                           type="button"
                           key={`${cardGlyph(card)}-${originalIndex}`}
                           aria-pressed={selected.includes(originalIndex)}
-                          disabled={!gameStarted || state.trickComplete}
+                          disabled={
+                            !gameStarted ||
+                            state.trickComplete ||
+                            nextRoundPending
+                          }
                           onClick={() => toggleCard(originalIndex)}
                           style={{
                             zIndex: selected.includes(originalIndex)
@@ -790,6 +920,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     !gameStarted ||
                     state.trickComplete ||
                     tributePending ||
+                    nextRoundPending ||
                     !myTurn ||
                     selected.length === 0
                   }
@@ -802,6 +933,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     !gameStarted ||
                     state.trickComplete ||
                     tributePending ||
+                    nextRoundPending ||
                     !myTurn ||
                     state.lastPlayer === null
                   }
