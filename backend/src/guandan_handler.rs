@@ -35,18 +35,33 @@ lazy_static::lazy_static! {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GuandanClientMessage {
-    Join { room: String, name: String },
-    ReorderPlayers { order: [usize; 2] },
-    SetParticipation { active: bool },
-    Start { player_count: usize },
+    Join {
+        room: String,
+        name: String,
+    },
+    ReorderPlayers {
+        order: [usize; 2],
+    },
+    SetParticipation {
+        active: bool,
+    },
+    Start {
+        player_count: usize,
+    },
     ShuffleNextRound {
         from_position: Option<usize>,
         to_position: Option<usize>,
     },
     DealNextRound,
-    Play { card_indexes: Vec<usize> },
-    TributeCard { card_index: usize },
-    ReturnTribute { card_index: usize },
+    Play {
+        card_indexes: Vec<usize>,
+    },
+    TributeCard {
+        card_index: usize,
+    },
+    ReturnTribute {
+        card_index: usize,
+    },
     Pass,
     EndRound,
 }
@@ -481,8 +496,7 @@ pub async fn websocket(
                         );
                         send(&tx, &state_message(&key, &state.game));
                         if state.game.next_round_phase.is_none() {
-                            if let Some(hand) =
-                                seat.and_then(|seat| state.game.private_hand(seat))
+                            if let Some(hand) = seat.and_then(|seat| state.game.private_hand(seat))
                             {
                                 send(
                                     &tx,
@@ -761,9 +775,10 @@ pub async fn websocket(
                         }
                         let table = validate_start(state.game.player_names.len())
                             .map_err(PlayError::Invalid)?;
-                        let winner_team = state.game.last_game_winner_team.ok_or(
-                            PlayError::Invalid("the previous winner is unavailable"),
-                        )?;
+                        let winner_team = state
+                            .game
+                            .last_game_winner_team
+                            .ok_or(PlayError::Invalid("the previous winner is unavailable"))?;
                         if team_for_seat(table, seat).map_err(PlayError::Invalid)? == winner_team {
                             return Err(PlayError::Invalid(
                                 "only a player on the losing team may shuffle",
@@ -787,13 +802,10 @@ pub async fn websocket(
                         }
                         let (hands, remainder) = deal(table, &deck).map_err(PlayError::Invalid)?;
                         if !remainder.is_empty() {
-                            return Err(PlayError::Invalid(
-                                "next Guandan deal left undealt cards",
-                            ));
+                            return Err(PlayError::Invalid("next Guandan deal left undealt cards"));
                         }
                         state.game.hands = hands;
-                        state.game.next_round_phase =
-                            Some(GuandanNextRoundPhase::AwaitingDeal);
+                        state.game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -819,23 +831,18 @@ pub async fn websocket(
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
-                        if state.game.next_round_phase
-                            != Some(GuandanNextRoundPhase::AwaitingDeal)
+                        if state.game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal)
                         {
                             return Err(PlayError::Invalid("the next round is not ready to deal"));
                         }
                         if state.game.last_game_winner != Some(seat) {
-                            return Err(PlayError::Invalid(
-                                "only the previous winner may deal",
-                            ));
+                            return Err(PlayError::Invalid("only the previous winner may deal"));
                         }
                         let table = validate_start(state.game.player_names.len())
                             .map_err(PlayError::Invalid)?;
-                        let plan = four_player_tribute_plan(
-                            table,
-                            &state.game.next_round_finish_order,
-                        )
-                        .map_err(PlayError::Invalid)?;
+                        let plan =
+                            four_player_tribute_plan(table, &state.game.next_round_finish_order)
+                                .map_err(PlayError::Invalid)?;
                         if can_resist_tribute(&plan, &state.game.hands) {
                             state.game.tribute_resisted = true;
                         } else {
