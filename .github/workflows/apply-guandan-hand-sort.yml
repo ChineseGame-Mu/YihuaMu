@@ -185,3 +185,4 @@ jobs:
           git push origin HEAD:fix/guandan-single-viewport-20260822
 
 # retrigger 2026-08-23 hand sort option
+# retrigger 2026-08-23 15:xx user requested hand sort option again
