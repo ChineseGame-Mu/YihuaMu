@@ -157,26 +157,28 @@
   font-size: 0.94rem;
 }
 
-/* Keep every accepted play visible on the public table instead of stacking
- * subsequent players below the clipped first row. */
+/* Public table is a single chronological stream: first play first, then the
+ * next accepted play. Player identity is intentionally not shown here. */
 .guandan-trick-plays {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  align-items: start;
-  gap: 6px !important;
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px !important;
   width: 100%;
 }
 
 .guandan-trick-play {
-  min-width: 0;
-  margin: 1px 0;
-  padding: 3px 5px;
-  overflow: visible;
+  display: contents;
+}
+
+.guandan-trick-play > strong {
+  display: none !important;
 }
 
 .guandan-table-play {
-  display: flex !important;
-  flex-wrap: wrap;
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
   align-items: flex-start;
   min-width: 0;
   overflow: visible;
@@ -353,10 +355,6 @@
     max-width: 82px !important;
     height: 36px !important;
     padding: 6px 8px !important;
-  }
-
-  .guandan-trick-plays {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
