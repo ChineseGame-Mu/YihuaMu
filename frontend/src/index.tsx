@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/react";
 import "./style.css";
 import "./guandan.css";
 import "./guandan-single-viewport.css";
+import "./guandan-header-decor.css";
 import "./game-logos.css";
 
 import AppStateProvider from "./AppStateProvider";
@@ -18,7 +19,7 @@ import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import ExitGameButton from "./ExitGameButton";
-import GameClockLogo from "./GameClockLogo";
+import GuandanHeaderDecor from "./GuandanHeaderDecor";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -67,7 +68,7 @@ const bootstrap = (): void => {
             <div>
               <div className="guandan-topbar">
                 <ExitGameButton onClick={returnToGameSelection} />
-                <GameClockLogo game="Guandan" />
+                <GuandanHeaderDecor />
               </div>
               <GuandanNoBeatHint />
               <GuandanNoBeatControls />
