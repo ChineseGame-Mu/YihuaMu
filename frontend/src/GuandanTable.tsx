@@ -624,7 +624,11 @@ const GuandanTable: React.FunctionComponent = () => {
               <span>公共桌面</span>
               <small>所有玩家共同可见</small>
             </div>
-            <div className="guandan-participant-names" role="status" aria-label="当前参赛玩家">
+            <div
+              className="guandan-participant-names"
+              role="status"
+              aria-label="当前参赛玩家"
+            >
               <strong>当前参赛玩家：</strong>
               {state.players.length === 0
                 ? "等待玩家加入"
