@@ -41,7 +41,6 @@
   transform-origin: right top;
 }
 
-/* Make the existing Guandan timer read as a compact traditional clock. */
 .guandan-topbar > :last-child img,
 .guandan-topbar > :last-child svg {
   border-radius: 50% !important;
@@ -52,7 +51,6 @@
   display: none !important;
 }
 
-/* Main table fills one viewport. */
 .guandan-table {
   position: relative;
   min-height: 100vh;
@@ -74,7 +72,6 @@
   overflow: hidden;
 }
 
-/* Traditional central Guandan title: two cards on each side. */
 .guandan-status-bar::after {
   content: "🂡  🂱   掼 蛋   🃁  🃑";
   position: absolute;
@@ -107,12 +104,10 @@
   padding: 4px 9px;
 }
 
-/* Do not duplicate the level in the status strip. */
 .guandan-status-bar > div:nth-of-type(3) {
   display: none;
 }
 
-/* Public table = upper half. Other players never consume layout space. */
 .guandan-public-zone {
   flex: 1 1 46%;
   min-height: 0;
@@ -135,7 +130,6 @@
   font-size: 0.66rem;
 }
 
-/* Remove duplicate level display and all player cards from the table view. */
 .guandan-scoreboard,
 .guandan-player-section {
   display: none !important;
@@ -171,7 +165,6 @@
   margin: 1px 0;
 }
 
-/* My table = lower half; it must never overlap the public table. */
 .guandan-private-zone {
   position: relative;
   flex: 1 1 54%;
@@ -211,7 +204,6 @@
   padding: 3px 3px 0;
 }
 
-/* Same-rank cards stack vertically, matching the approved reference. */
 .guandan-card-stack {
   position: relative;
   display: flex;
@@ -223,7 +215,6 @@
   padding-top: 2px;
 }
 
-/* Hand cards are solid, fully opaque SVG cards. */
 .guandan-card-stack > button,
 .guandan-card-stack > button:disabled,
 .guandan-card-stack > button svg {
@@ -242,29 +233,44 @@
   margin-bottom: 0 !important;
 }
 
-/* Play/pass controls float at the lower-right instead of consuming a full row. */
-.guandan-play-actions {
-  position: absolute;
-  z-index: 30;
-  right: 12px;
-  bottom: 10px;
-  width: auto;
-  height: auto;
+/* Force the controls to remain two compact buttons at the lower-right. */
+.guandan-private-zone > section.guandan-play-actions {
+  position: absolute !important;
+  z-index: 30 !important;
+  top: auto !important;
+  right: 12px !important;
+  bottom: 10px !important;
+  left: auto !important;
+  width: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
+  height: auto !important;
+  min-height: 0 !important;
   margin: 0 !important;
   padding: 0 !important;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
+  display: flex !important;
+  flex: none !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
   background: transparent !important;
   border: 0 !important;
+  border-radius: 0 !important;
   box-shadow: none !important;
 }
 
-.guandan-play-actions button {
-  min-width: 88px;
-  padding: 8px 16px;
-  white-space: nowrap;
+.guandan-private-zone > section.guandan-play-actions > button {
+  box-sizing: border-box !important;
+  display: block !important;
+  flex: none !important;
+  width: 96px !important;
+  min-width: 96px !important;
+  max-width: 96px !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 7px 10px !important;
+  white-space: nowrap !important;
 }
 
 @media (max-width: 760px) {
@@ -294,18 +300,24 @@
   }
 
   .guandan-hand-section {
-    padding-right: 102px !important;
+    padding-right: 96px !important;
   }
 
-  .guandan-play-actions {
-    right: 7px;
-    bottom: 7px;
-    gap: 6px;
+  .guandan-private-zone > section.guandan-play-actions {
+    right: 7px !important;
+    bottom: 7px !important;
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    gap: 6px !important;
   }
 
-  .guandan-play-actions button {
-    min-width: 78px;
-    padding: 7px 12px;
+  .guandan-private-zone > section.guandan-play-actions > button {
+    width: 82px !important;
+    min-width: 82px !important;
+    max-width: 82px !important;
+    height: 36px !important;
+    padding: 6px 8px !important;
   }
 }
 
