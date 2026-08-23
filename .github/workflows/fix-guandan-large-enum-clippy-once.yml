@@ -1,0 +1,43 @@
+name: Fix Guandan large enum clippy once
+
+on:
+  push:
+    branches: [fix/guandan-single-viewport-20260822]
+    paths: [.github/workflows/fix-guandan-large-enum-clippy-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - name: Fix clippy without changing websocket protocol
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+          old = '#[derive(Clone, Debug, Serialize)]\n#[serde(tag = "type", rename_all = "snake_case")]\npub enum GuandanServerMessage {'
+          new = '#[allow(clippy::large_enum_variant)]\n#[derive(Clone, Debug, Serialize)]\n#[serde(tag = "type", rename_all = "snake_case")]\npub enum GuandanServerMessage {'
+          if new in s:
+              raise SystemExit(0)
+          if old not in s:
+              raise SystemExit('GuandanServerMessage anchor missing')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          cargo fmt --all
+          cargo fmt --all -- --check
+          cargo clippy --all-targets --all-features -- -D warnings
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: allow Guandan server message size variance"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
