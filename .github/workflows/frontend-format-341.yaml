@@ -1,0 +1,47 @@
+name: Frontend 341 Autoformat
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: frontend-341-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Install frontend dependencies
+        run: yarn install
+        working-directory: ./frontend
+
+      - name: Enforce Prettier 3.4.1 and format
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier --write
+          yarn prettier --check
+        working-directory: ./frontend
+
+      - name: Commit formatting corrections when needed
+        run: |
+          if git diff --quiet -- frontend/src; then
+            echo "Frontend already satisfies 341."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src
+          git commit -m "style: auto-format frontend with Prettier 3.4.1 [skip ci]"
+          git push
