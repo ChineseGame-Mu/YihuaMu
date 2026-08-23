@@ -344,13 +344,16 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
 
 fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
     let active_players = game.hands.iter().filter(|hand| !hand.is_empty()).count();
-    if active_players > 1 || game.finish_order.is_empty() {
+    if active_players > 0 || game.finish_order.is_empty() {
         return Ok(false);
     }
 
     let player_count = game.hands.len();
     if player_count != GUANDAN_PLAYER_COUNT {
         return Err("Guandan settlement requires exactly four players");
+    }
+    if game.finish_order.len() != player_count {
+        return Err("Guandan settlement requires a complete finish order");
     }
     let previous_finish_order = game.finish_order.clone();
     let winner = *previous_finish_order
@@ -365,12 +368,7 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
 
-    let mut completed_finish_order = previous_finish_order.clone();
-    for seat in 0..player_count {
-        if !completed_finish_order.contains(&seat) {
-            completed_finish_order.push(seat);
-        }
-    }
+    let completed_finish_order = previous_finish_order.clone();
     let partner = (winner + 2) % player_count;
     let partner_place = completed_finish_order
         .iter()
@@ -403,7 +401,7 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
 
     game.turn = winner;
     game.level = next_level;
-    game.next_round_finish_order = previous_finish_order;
+    game.next_round_finish_order = completed_finish_order[..player_count - 1].to_vec();
     game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
     game.last_play.clear();
     game.last_player = None;
@@ -1409,13 +1407,20 @@ mod tests {
     }
 
     #[test]
-    fn one_two_finish_advances_and_waits_for_loser_shuffle() {
+    fn one_two_finish_waits_for_last_player_then_loser_shuffle() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 2, 1];
+        assert!(!settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.next_round_phase, None);
+        assert_eq!(game.team_levels.team_a, Rank::Two);
+
+        game.hands[3].clear();
+        game.finish_order.push(3);
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
         assert_eq!(game.team_levels.team_a, Rank::Five);
         assert_eq!(game.last_promotion_steps, Some(3));
         assert_eq!(
@@ -1427,19 +1432,27 @@ mod tests {
     }
 
     #[test]
-    fn one_three_finish_waits_for_loser_shuffle() {
+    fn one_three_finish_waits_for_last_player_then_loser_shuffle() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 1, 2];
+        assert!(!settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.next_round_phase, None);
+        assert_eq!(game.team_levels.team_a, Rank::Two);
+
+        game.hands[3].clear();
+        game.finish_order.push(3);
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.finish_order, vec![0, 1, 2, 3]);
         assert_eq!(game.team_levels.team_a, Rank::Four);
         assert_eq!(game.last_promotion_steps, Some(2));
         assert_eq!(
             game.next_round_phase,
             Some(GuandanNextRoundPhase::AwaitingShuffle)
         );
+        assert_eq!(game.next_round_finish_order, vec![0, 1, 2]);
         assert!(game.pending_tribute.is_none());
     }
 
