@@ -54,13 +54,14 @@ jobs:
 
       - name: Lint frontend
         run: yarn lint
-        working-directory: ./frontend
 
       - name: Lint Rust code
         run: cargo clippy
 
-      - name: Check Rust formatting
-        run: cargo fmt --all -- --check
+      - name: Normalize and check Rust formatting
+        run: |
+          cargo fmt --all
+          cargo fmt --all -- --check
 
       - name: Test Rust code
         run: cargo test --all
