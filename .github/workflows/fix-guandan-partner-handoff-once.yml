@@ -1,0 +1,162 @@
+name: Fix Guandan partner handoff once
+
+on:
+  push:
+    branches: [fix/guandan-single-viewport-20260822]
+    paths: [.github/workflows/fix-guandan-partner-handoff-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Apply partner-handoff and winner-display fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f"missing patch anchor in {path}: {old[:160]!r}")
+              p.write_text(s.replace(old, new, 1))
+
+          backend = "backend/src/guandan_handler.rs"
+
+          replace_once(
+              backend,
+              '''fn advance_turn(game: &mut GuandanGameState) {
+    if game.hands.is_empty() {
+        return;
+    }
+    for _ in 0..game.hands.len() {
+        game.turn = (game.turn + 1) % game.hands.len();
+        if !game.hands[game.turn].is_empty() {
+            break;
+        }
+    }
+}
+''',
+              '''fn advance_turn(game: &mut GuandanGameState) {
+    if game.hands.is_empty() {
+        return;
+    }
+    for _ in 0..game.hands.len() {
+        game.turn = (game.turn + 1) % game.hands.len();
+        if !game.hands[game.turn].is_empty() {
+            break;
+        }
+    }
+}
+
+fn set_next_lead_after_trick(game: &mut GuandanGameState, winner: usize) {
+    game.turn = winner;
+    if !game.hands[winner].is_empty() {
+        return;
+    }
+
+    // Guandan "接风": when the trick winner has gone out, their partner
+    // takes the next lead if that partner still has cards.
+    let partner = (winner + 2) % game.hands.len();
+    if !game.hands[partner].is_empty() {
+        game.turn = partner;
+        return;
+    }
+
+    // If the partner has also gone out, fall back to the next active seat.
+    advance_turn(game);
+}
+''',
+          )
+
+          old_resolution = '''            game.last_trick_winner = Some(winner);
+            game.turn = winner;
+            if game.hands[winner].is_empty() {
+                advance_turn(game);
+            }
+            game.last_play.clear();'''
+          new_resolution = '''            game.last_trick_winner = Some(winner);
+            set_next_lead_after_trick(game, winner);
+            game.last_play.clear();'''
+          replace_once(backend, old_resolution, new_resolution)
+
+          old_human_resolution = '''                            state.game.last_trick_winner = Some(winner);
+                            state.game.turn = winner;
+                            if state.game.hands[winner].is_empty() {
+                                advance_turn(&mut state.game);
+                            }
+                            state.game.last_play.clear();'''
+          new_human_resolution = '''                            state.game.last_trick_winner = Some(winner);
+                            set_next_lead_after_trick(&mut state.game, winner);
+                            state.game.last_play.clear();'''
+          replace_once(backend, old_human_resolution, new_human_resolution)
+
+          old_end_round = '''                        state.game.last_trick_winner = Some(winner);
+                        state.game.turn = winner;
+                        if state.game.hands[winner].is_empty() {
+                            advance_turn(&mut state.game);
+                        }
+                        state.game.last_play.clear();'''
+          new_end_round = '''                        state.game.last_trick_winner = Some(winner);
+                        set_next_lead_after_trick(&mut state.game, winner);
+                        state.game.last_play.clear();'''
+          replace_once(backend, old_end_round, new_end_round)
+
+          frontend = "frontend/src/GuandanTable.tsx"
+          replace_once(
+              frontend,
+              '''              {state.lastTrickWinner !== null && (
+                <div
+                  className="guandan-notice-panel"
+                  role="status"
+                  aria-label="本轮赢家"
+                >
+                  <strong>本轮赢家：</strong>
+                  {state.players[state.lastTrickWinner] ??
+                    `玩家${state.lastTrickWinner + 1}`}
+                </div>
+              )}''',
+              '''              {Number.isInteger(state.lastTrickWinner) &&
+                state.lastTrickWinner !== null && (
+                  <div
+                    className="guandan-notice-panel"
+                    role="status"
+                    aria-label="本轮赢家"
+                  >
+                    <strong>本轮赢家：</strong>
+                    {state.players[state.lastTrickWinner] ??
+                      `玩家${state.lastTrickWinner + 1}`}
+                  </div>
+                )}''',
+          )
+          PY
+
+      - name: Format and validate
+        run: |
+          cd frontend
+          npx --yes prettier@3.4.1 --write src/GuandanTable.tsx
+          npx --yes prettier@3.4.1 --check src/GuandanTable.tsx
+          cd ..
+          cargo fmt --all -- --check || cargo fmt --all
+          cargo test -p shengji-backend guandan_handler --no-fail-fast || cargo test guandan_handler --no-fail-fast
+
+      - name: Commit fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: hand Guandan lead to finished winner partner"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
