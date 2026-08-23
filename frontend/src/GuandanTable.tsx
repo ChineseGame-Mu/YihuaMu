@@ -867,7 +867,8 @@ const GuandanTable: React.FunctionComponent = () => {
               </div>
               <section className="guandan-hand-section">
                 <h2>
-                  {currentPlayerName !== null && `${currentPlayerName}｜`}我的手牌（
+                  {currentPlayerName !== null && `${currentPlayerName}｜`}
+                  我的手牌（
                   {visibleHand.length}）
                 </h2>
                 <div className="guandan-hand">
