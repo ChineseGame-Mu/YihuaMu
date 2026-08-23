@@ -222,8 +222,6 @@ const GuandanTable: React.FunctionComponent = () => {
     state.hand.length > 0 || state.handCounts.some((count) => count > 0);
   const gameStarted = serverDealt || startRequested;
   const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
-  const myTurn =
-    state.seat !== null && effectiveTurn === state.seat && gameStarted;
   const currentPlayerName =
     state.seat === null
       ? null
@@ -925,27 +923,13 @@ const GuandanTable: React.FunctionComponent = () => {
                   </button>
                 )}
                 <button
-                  disabled={
-                    !gameStarted ||
-                    state.trickComplete ||
-                    tributePending ||
-                    nextRoundPending ||
-                    !myTurn ||
-                    selected.length === 0
-                  }
+                  disabled={!gameStarted || selected.length === 0}
                   onClick={playSelected}
                 >
                   出牌
                 </button>
                 <button
-                  disabled={
-                    !gameStarted ||
-                    state.trickComplete ||
-                    tributePending ||
-                    nextRoundPending ||
-                    !myTurn ||
-                    state.lastPlayer === null
-                  }
+                  disabled={!gameStarted || state.lastPlayer === null}
                   onClick={() => send({ type: "pass" })}
                 >
                   过牌
