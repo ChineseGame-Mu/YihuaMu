@@ -51,7 +51,6 @@ const GuandanHeaderDecor = (): JSX.Element => {
           <span className="guandan-stopwatch-hand" />
         </span>
         <time dateTime={now.toISOString()}>{time}</time>
-        <span className="guandan-header-clock-label">实时</span>
       </div>
     </div>
   );
