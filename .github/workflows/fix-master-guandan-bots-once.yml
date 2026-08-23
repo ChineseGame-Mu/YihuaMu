@@ -1,0 +1,77 @@
+name: Fix live Guandan robot support once
+
+on:
+  push:
+    branches: [master]
+    paths: [.github/workflows/fix-master-guandan-bots-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Patch live Guandan backend robot support
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+
+          def once(old, new, label):
+              global s
+              if s.count(old) != 1:
+                  raise SystemExit(f'{label}: expected one anchor, found {s.count(old)}')
+              s = s.replace(old, new, 1)
+
+          once(
+              '''    SetParticipation { active: bool },\n    Start { player_count: usize },''',
+              '''    SetParticipation { active: bool },\n    SetBots { count: usize },\n    Start { player_count: usize },''',
+              'client enum',
+          )
+
+          once(
+              '''fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {''',
+              '''fn is_robot_name(name: &str) -> bool {\n    name.starts_with("机器人")\n}\n\nfn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {\n    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {\n        if game.normal_play_blocked() || !game.started || game.trick_complete {\n            break;\n        }\n        let seat = game.turn;\n        if !game\n            .player_names\n            .get(seat)\n            .is_some_and(|name| is_robot_name(name))\n        {\n            break;\n        }\n\n        let chosen = game.hands[seat]\n            .iter()\n            .enumerate()\n            .find_map(|(index, card)| {\n                validate_play_against_table(&[*card], &game.last_play, game.level)\n                    .is_ok()\n                    .then_some(index)\n            });\n\n        if let Some(index) = chosen {\n            let card = game.hands[seat].remove(index);\n            let cards = vec![card];\n            game.last_play = cards.clone();\n            game.last_player = Some(seat);\n            game.table_plays.push(GuandanTablePlay { player: seat, cards });\n            game.passes = 0;\n            if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {\n                game.finish_order.push(seat);\n            }\n            let settled = settle_and_redeal_if_complete(game)?;\n            if !settled {\n                advance_turn(game);\n            }\n            continue;\n        }\n\n        if game.last_player.is_none() {\n            return Err("robot has no legal lead");\n        }\n        game.passes += 1;\n        let winner = game.last_player.unwrap_or(game.turn);\n        let required_passes = game\n            .hands\n            .iter()\n            .enumerate()\n            .filter(|(index, hand)| *index != winner && !hand.is_empty())\n            .count();\n        if game.passes >= required_passes {\n            game.turn = winner;\n            if game.hands[winner].is_empty() {\n                advance_turn(game);\n            }\n            game.last_play.clear();\n            game.last_player = None;\n            game.table_plays.clear();\n            game.passes = 0;\n            game.trick_complete = false;\n        } else {\n            advance_turn(game);\n        }\n    }\n    Ok(())\n}\n\nfn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {''',
+              'robot helpers',
+          )
+
+          participation_end = '''                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "participation can only be changed before the game starts"\n                                .to_string(),\n                        },\n                    );\n                }\n            }\n            GuandanClientMessage::ReorderPlayers { order } => {'''
+          bots_handler = '''                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "participation can only be changed before the game starts"\n                                .to_string(),\n                        },\n                    );\n                }\n            }\n            GuandanClientMessage::SetBots { count } => {\n                let (key, name) = match (joined_room.clone(), joined_name.clone()) {\n                    (Some(key), Some(name)) => (key, name),\n                    _ => continue,\n                };\n                if current_seat(&storage, &key, &name).await.is_none() {\n                    continue;\n                }\n                let result = storage\n                    .clone()\n                    .execute_operation_with_messages(key, move |mut state| {\n                        if state.game.started || !(1..=3).contains(&count) {\n                            return Err(());\n                        }\n                        state.game.player_names.retain(|player| !is_robot_name(player));\n                        let human_count = state.game.player_names.len();\n                        if human_count + count > GUANDAN_PLAYER_COUNT {\n                            return Err(());\n                        }\n                        for index in 1..=count {\n                            state.game.player_names.push(format!("机器人{index}"));\n                        }\n                        state.bump_version();\n                        Ok((state, vec![GuandanStorageMessage::StateChanged]))\n                    })\n                    .await;\n                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "robot count must fit the four-player table before start"\n                                .to_string(),\n                        },\n                    );\n                }\n            }\n            GuandanClientMessage::ReorderPlayers { order } => {'''
+          once(participation_end, bots_handler, 'set bots handler')
+
+          play_anchor = '''                        if !settled {\n                            advance_turn(&mut state.game);\n                        }\n                        state.bump_version();'''
+          play_repl = '''                        if !settled {\n                            advance_turn(&mut state.game);\n                        }\n                        run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;\n                        state.bump_version();'''
+          once(play_anchor, play_repl, 'play robot continuation')
+
+          pass_anchor = '''                        } else {\n                            advance_turn(&mut state.game);\n                        }\n                        state.bump_version();\n                        Ok((state, vec![GuandanStorageMessage::StateChanged]))\n                    })\n                    .await;\n                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "cannot pass now".to_string(),'''
+          pass_repl = '''                        } else {\n                            advance_turn(&mut state.game);\n                        }\n                        run_robot_turns(&mut state.game).map_err(|_| ())?;\n                        state.bump_version();\n                        Ok((state, vec![GuandanStorageMessage::StateChanged]))\n                    })\n                    .await;\n                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "cannot pass now".to_string(),'''
+          once(pass_anchor, pass_repl, 'pass robot continuation')
+
+          test_anchor = '''    #[test]\n    fn tribute_commands_deserialize() {'''
+          test_repl = '''    #[test]\n    fn set_bots_command_deserializes() {\n        let command: GuandanClientMessage =\n            serde_json::from_str(r#"{\\"type\\":\\"set_bots\\",\\"count\\":1}"#).unwrap();\n        assert!(matches!(command, GuandanClientMessage::SetBots { count: 1 }));\n    }\n\n    #[test]\n    fn tribute_commands_deserialize() {'''
+          once(test_anchor, test_repl, 'bot protocol test')
+
+          p.write_text(s)
+          PY
+
+      - name: Format and test backend
+        run: |
+          cargo fmt --all -- --check || cargo fmt --all
+          cargo test guandan_handler --no-fail-fast
+
+      - name: Commit live backend fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: support server-managed Guandan robot seats"
+          git push origin HEAD:master
