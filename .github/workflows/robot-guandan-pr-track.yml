@@ -1,0 +1,41 @@
+name: Robot Guandan PR Track
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  robot-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install websockets
+      - name: Start backend locally with cleared room state
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan-server.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/guandan-server.log
+          exit 1
+      - name: Reuse three-round robot script from current workflow
+        env:
+          WS_URL: ws://127.0.0.1:3030/api/guandan
+          ROOM: "0004"
+        run: |
+          awk '
+            /python - <<.PY./ {copy=1; next}
+            copy && /^          PY$/ {copy=0; exit}
+            copy {sub(/^          /, ""); print}
+          ' .github/workflows/robot-guandan-current.yml > /tmp/robot_guandan_three_rounds.py
+          python /tmp/robot_guandan_three_rounds.py
+      - name: Show server tail
+        if: always()
+        run: tail -120 /tmp/guandan-server.log || true
