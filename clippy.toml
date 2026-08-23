@@ -1,0 +1,4 @@
+# The Guandan websocket State message intentionally carries the complete public
+# table snapshot in a single serde enum variant. Keep the wire shape unchanged;
+# allow this protocol enum to exceed Clippy's default 200-byte variant gap.
+enum-variant-size-threshold = 512
