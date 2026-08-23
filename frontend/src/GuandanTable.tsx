@@ -652,15 +652,28 @@ const GuandanTable: React.FunctionComponent = () => {
             <div
               className="guandan-participant-names"
               role="status"
-              aria-label="当前参赛玩家"
+              aria-label="参赛玩家"
             >
-              <strong>当前参赛玩家：</strong>
+              <strong>参赛玩家：</strong>
               {state.players.length === 0
                 ? "等待玩家加入"
-                : state.players
-                    .map((player, index) => `玩家${index + 1}：${player}`)
-                    .join(" ｜ ")}
+                : state.players.join(" ｜ ")}
             </div>
+            {state.finishOrder.length === 4 && (
+              <div
+                className="guandan-notice-panel"
+                role="status"
+                aria-label="输赢顺序"
+              >
+                <strong>输赢顺序：</strong>
+                {state.finishOrder
+                  .map(
+                    (seat, index) =>
+                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
+                  )
+                  .join(" ｜ ")}
+              </div>
+            )}
             <aside className="guandan-scoreboard" aria-label="当前级数">
               <span>当前级数</span>
               <strong>
