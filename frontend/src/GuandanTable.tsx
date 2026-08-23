@@ -199,6 +199,12 @@ const GuandanTable: React.FunctionComponent = () => {
   const [fourColor, setFourColor] = React.useState(
     () => window.localStorage.getItem("guandan_four_color") === "on",
   );
+  const [handSortOrder, setHandSortOrder] = React.useState<"asc" | "desc">(
+    () =>
+      window.localStorage.getItem("guandan_hand_sort_order") === "desc"
+        ? "desc"
+        : "asc",
+  );
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
@@ -239,6 +245,10 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
   }, [fourColor]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
+  }, [handSortOrder]);
 
   React.useEffect(() => {
     if (
@@ -433,13 +443,15 @@ const GuandanTable: React.FunctionComponent = () => {
       dealStep === null || state.seat === null
         ? state.hand.length
         : dealtCount();
+    const direction = handSortOrder === "asc" ? 1 : -1;
     return state.hand
       .map((card, originalIndex) => ({ card, originalIndex }))
       .filter(({ originalIndex }) => originalIndex < count)
       .sort(
         (a, b) =>
-          cardSortValue(a.card, state.level) -
-            cardSortValue(b.card, state.level) ||
+          direction *
+            (cardSortValue(a.card, state.level) -
+              cardSortValue(b.card, state.level)) ||
           a.originalIndex - b.originalIndex,
       );
   }, [
@@ -449,6 +461,7 @@ const GuandanTable: React.FunctionComponent = () => {
     playerCount,
     cardsPerPlayer,
     state.level,
+    handSortOrder,
   ]);
 
   const toggleCard = (index: number): void => {
@@ -526,7 +539,19 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="two">二色（黑 / 红）</option>
             <option value="four">四色（黑 / 红 / 蓝 / 绿）</option>
           </select>
-          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>
+          <br />
+          <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
+          <select
+            id="guandan-hand-sort-order"
+            value={handSortOrder}
+            onChange={(event) =>
+              setHandSortOrder(event.target.value === "desc" ? "desc" : "asc")
+            }
+          >
+            <option value="asc">从小到大</option>
+            <option value="desc">从大到小</option>
+          </select>
+          <p>牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。</p>
           <div className="guandan-bot-settings">
             <strong>机器人陪玩：</strong>{" "}
             {[1, 2, 3].map((count) => {
