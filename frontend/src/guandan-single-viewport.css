@@ -18,326 +18,72 @@
   pointer-events: none;
 }
 
-.guandan-topbar > * {
-  pointer-events: auto;
-}
-
-.guandan-topbar > :first-child {
-  position: absolute;
-  left: 12px;
-  top: 4px;
-  transform: scale(0.78);
-  transform-origin: left top;
-}
-
-.guandan-topbar > :last-child {
-  position: absolute;
-  right: 14px;
-  top: 1px;
-  width: 54px;
-  height: 54px;
-  overflow: visible;
-  transform: scale(0.76);
-  transform-origin: right top;
-}
-
+.guandan-topbar > * { pointer-events: auto; }
+.guandan-topbar > :first-child { position: absolute; left: 12px; top: 4px; transform: scale(0.78); transform-origin: left top; }
+.guandan-topbar > :last-child { position: absolute; right: 14px; top: 1px; width: 54px; height: 54px; overflow: visible; transform: scale(0.76); transform-origin: right top; }
 .guandan-topbar > :last-child img,
-.guandan-topbar > :last-child svg {
-  border-radius: 50% !important;
-}
-
+.guandan-topbar > :last-child svg { border-radius: 50% !important; }
 .guandan-topbar h1,
-.guandan-status-bar h1 {
-  display: none !important;
-}
+.guandan-status-bar h1 { display: none !important; }
 
-.guandan-table {
-  position: relative;
-  min-height: 100vh;
-  height: 100vh;
-  padding: 4px 10px 6px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+.guandan-table { position: relative; min-height: 100vh; height: 100vh; padding: 4px 10px 6px; overflow: hidden; display: flex; flex-direction: column; }
+.guandan-status-bar { position: relative; flex: 0 0 52px; min-height: 52px; margin: 0 0 4px; padding: 9px 86px 7px 82px; gap: 6px 10px; border-radius: 12px; overflow: hidden; }
+.guandan-status-bar::after { content: "🂡  🂱   掼 蛋   🃁  🃑"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); white-space: nowrap; color: #ffe69a; font-family: "STKaiti", "KaiTi", "Noto Serif CJK SC", serif; font-size: clamp(20px, 2.1vw, 31px); font-weight: 900; line-height: 1; letter-spacing: 3px; text-shadow: 0 2px 0 #7b1f13, 0 0 5px rgba(255, 215, 110, 0.65); pointer-events: none; }
+.guandan-status-bar > div { position: relative; z-index: 2; padding: 2px 7px; font-size: 0.82rem; }
+.guandan-status-bar button { position: relative; z-index: 2; padding: 4px 9px; }
+.guandan-status-bar > div:nth-of-type(3) { display: none; }
 
-.guandan-status-bar {
-  position: relative;
-  flex: 0 0 52px;
-  min-height: 52px;
-  margin: 0 0 4px;
-  padding: 9px 86px 7px 82px;
-  gap: 6px 10px;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.guandan-status-bar::after {
-  content: "🂡  🂱   掼 蛋   🃁  🃑";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  white-space: nowrap;
-  color: #ffe69a;
-  font-family: "STKaiti", "KaiTi", "Noto Serif CJK SC", serif;
-  font-size: clamp(20px, 2.1vw, 31px);
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: 3px;
-  text-shadow:
-    0 2px 0 #7b1f13,
-    0 0 5px rgba(255, 215, 110, 0.65);
-  pointer-events: none;
-}
-
-.guandan-status-bar > div {
-  position: relative;
-  z-index: 2;
-  padding: 2px 7px;
-  font-size: 0.82rem;
-}
-
-.guandan-status-bar button {
-  position: relative;
-  z-index: 2;
-  padding: 4px 9px;
-}
-
-.guandan-status-bar > div:nth-of-type(3) {
-  display: none;
-}
-
-.guandan-public-zone {
-  flex: 1 1 46%;
-  min-height: 0;
-  margin: 3px 0 4px;
-  padding: 28px 7px 6px;
-  overflow: hidden;
-  border-radius: 14px;
-}
-
-.guandan-public-zone > .guandan-zone-title {
-  min-width: 200px;
-  padding: 3px 14px 4px;
-}
-
-.guandan-zone-title span {
-  font-size: 0.96rem;
-}
-
-.guandan-zone-title small {
-  font-size: 0.66rem;
-}
-
+.guandan-public-zone { flex: 1 1 46%; min-height: 0; margin: 3px 0 4px; padding: 28px 7px 6px; overflow: hidden; border-radius: 14px; }
+.guandan-public-zone > .guandan-zone-title { min-width: 200px; padding: 3px 14px 4px; }
+.guandan-zone-title span { font-size: 0.96rem; }
+.guandan-zone-title small { font-size: 0.66rem; }
 .guandan-scoreboard,
-.guandan-player-section {
-  display: none !important;
-}
-
+.guandan-player-section { display: none !important; }
 .guandan-start-panel,
 .guandan-notice-panel,
 .guandan-result-panel,
 .guandan-next-round-panel,
-.guandan-tribute-panel {
-  margin: 3px 0 !important;
-  padding: 5px 8px !important;
-}
+.guandan-tribute-panel { margin: 3px 0 !important; padding: 5px 8px !important; }
+.guandan-table-stage { min-height: 0 !important; height: 100%; margin: 3px 0 0 !important; padding: 6px 8px !important; overflow: auto; }
+.guandan-table-stage h2 { margin-bottom: 3px; font-size: 0.94rem; }
+.guandan-trick-plays { gap: 3px; }
+.guandan-trick-play { margin: 1px 0; }
 
-.guandan-table-stage {
-  min-height: 0 !important;
-  height: 100%;
-  margin: 3px 0 0 !important;
-  padding: 6px 8px !important;
-  overflow: auto;
-}
-
-.guandan-table-stage h2 {
-  margin-bottom: 3px;
-  font-size: 0.94rem;
-}
-
-.guandan-trick-plays {
-  gap: 3px;
-}
-
-.guandan-trick-play {
-  margin: 1px 0;
-}
-
-.guandan-private-zone {
-  position: relative;
-  flex: 1 1 54%;
-  min-height: 0;
-  margin: 0;
-  padding: 28px 7px 5px;
-  overflow: hidden;
-  border-width: 3px;
-  border-radius: 14px;
-}
-
-.guandan-private-zone > .guandan-zone-title {
-  min-width: 200px;
-  padding: 3px 14px 4px;
-}
-
-.guandan-hand-section {
-  height: calc(100% - 8px);
-  margin: 0 !important;
-  padding: 5px 116px 5px 7px !important;
-  overflow: hidden;
-}
-
-.guandan-hand-section h2 {
-  margin: 0 0 3px;
-  font-size: 0.98rem;
-}
-
-.guandan-hand {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: calc(100% - 26px);
-  min-height: 140px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 3px 3px 0;
-}
-
-.guandan-card-stack {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  flex: 0 0 auto;
-  min-width: 72px;
-  height: 100%;
-  padding-top: 2px;
-}
-
+.guandan-private-zone { position: relative; flex: 1 1 54%; min-height: 0; margin: 0; padding: 28px 7px 5px; overflow: hidden; border-width: 3px; border-radius: 14px; }
+.guandan-private-zone > .guandan-zone-title { min-width: 200px; padding: 3px 14px 4px; }
+.guandan-hand-section { height: calc(100% - 8px); margin: 0 !important; padding: 5px 116px 5px 7px !important; overflow: hidden; }
+.guandan-hand-section h2 { margin: 0 0 3px; font-size: 0.98rem; }
+.guandan-hand { display: flex; align-items: flex-end; gap: 4px; height: calc(100% - 26px); min-height: 140px; overflow-x: auto; overflow-y: hidden; padding: 3px 3px 0; }
+.guandan-card-stack { position: relative; display: flex; flex-direction: column; justify-content: flex-end; flex: 0 0 auto; min-width: 72px; height: 100%; padding-top: 2px; }
 .guandan-card-stack > button,
 .guandan-card-stack > button:disabled,
-.guandan-card-stack > button svg {
-  opacity: 1 !important;
-  filter: none !important;
-}
-
-.guandan-card-stack > button {
-  position: relative;
-  flex: 0 0 auto;
-  margin: 0 0 -82px !important;
-  box-shadow: none !important;
-}
-
-.guandan-card-stack > button:last-child {
-  margin-bottom: 0 !important;
-}
+.guandan-card-stack > button svg { opacity: 1 !important; filter: none !important; }
+.guandan-card-stack > button { position: relative; flex: 0 0 auto; margin: 0 0 -82px !important; box-shadow: none !important; }
+.guandan-card-stack > button:last-child { margin-bottom: 0 !important; }
 
 /* Force the controls to remain two compact buttons at the lower-right. */
-.guandan-private-zone > section.guandan-play-actions {
-  position: absolute !important;
-  z-index: 30 !important;
-  top: auto !important;
-  right: 12px !important;
-  bottom: 10px !important;
-  left: auto !important;
-  width: 96px !important;
-  min-width: 96px !important;
-  max-width: 96px !important;
-  height: auto !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  display: flex !important;
-  flex: none !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  justify-content: flex-end !important;
-  gap: 8px !important;
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-}
-
-.guandan-private-zone > section.guandan-play-actions > button {
-  box-sizing: border-box !important;
-  display: block !important;
-  flex: none !important;
-  width: 96px !important;
-  min-width: 96px !important;
-  max-width: 96px !important;
-  height: 38px !important;
-  margin: 0 !important;
-  padding: 7px 10px !important;
-  white-space: nowrap !important;
-}
+.guandan-private-zone > section.guandan-play-actions { position: absolute !important; z-index: 30 !important; top: auto !important; right: 12px !important; bottom: 10px !important; left: auto !important; width: 96px !important; min-width: 96px !important; max-width: 96px !important; height: auto !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; display: flex !important; flex: none !important; flex-direction: column !important; align-items: stretch !important; justify-content: flex-end !important; gap: 8px !important; background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+.guandan-private-zone > section.guandan-play-actions > button { box-sizing: border-box !important; display: block !important; flex: none !important; width: 96px !important; min-width: 96px !important; max-width: 96px !important; height: 38px !important; margin: 0 !important; padding: 7px 10px !important; white-space: nowrap !important; color: #fff !important; font-weight: 800; border: 1px solid rgba(255, 255, 255, 0.32) !important; }
+/* 出牌 = deep green; 过牌 = deep burgundy. Position and size stay unchanged. */
+.guandan-private-zone > section.guandan-play-actions > button:nth-last-child(2) { background: #14532d !important; }
+.guandan-private-zone > section.guandan-play-actions > button:last-child { background: #7f1d1d !important; }
+.guandan-private-zone > section.guandan-play-actions > button:disabled { opacity: 0.62 !important; }
 
 @media (max-width: 760px) {
-  .guandan-status-bar {
-    padding-left: 66px;
-    padding-right: 64px;
-  }
-
-  .guandan-status-bar::after {
-    content: "🂡 🂱  掼蛋  🃁 🃑";
-    font-size: 18px;
-    letter-spacing: 1px;
-  }
-
-  .guandan-status-bar > div {
-    font-size: 0.7rem;
-  }
-
-  .guandan-topbar > :first-child {
-    left: 5px;
-    transform: scale(0.64);
-  }
-
-  .guandan-topbar > :last-child {
-    right: 6px;
-    transform: scale(0.62);
-  }
-
-  .guandan-hand-section {
-    padding-right: 96px !important;
-  }
-
-  .guandan-private-zone > section.guandan-play-actions {
-    right: 7px !important;
-    bottom: 7px !important;
-    width: 82px !important;
-    min-width: 82px !important;
-    max-width: 82px !important;
-    gap: 6px !important;
-  }
-
-  .guandan-private-zone > section.guandan-play-actions > button {
-    width: 82px !important;
-    min-width: 82px !important;
-    max-width: 82px !important;
-    height: 36px !important;
-    padding: 6px 8px !important;
-  }
+  .guandan-status-bar { padding-left: 66px; padding-right: 64px; }
+  .guandan-status-bar::after { content: "🂡 🂱  掼蛋  🃁 🃑"; font-size: 18px; letter-spacing: 1px; }
+  .guandan-status-bar > div { font-size: 0.7rem; }
+  .guandan-topbar > :first-child { left: 5px; transform: scale(0.64); }
+  .guandan-topbar > :last-child { right: 6px; transform: scale(0.62); }
+  .guandan-hand-section { padding-right: 96px !important; }
+  .guandan-private-zone > section.guandan-play-actions { right: 7px !important; bottom: 7px !important; width: 82px !important; min-width: 82px !important; max-width: 82px !important; gap: 6px !important; }
+  .guandan-private-zone > section.guandan-play-actions > button { width: 82px !important; min-width: 82px !important; max-width: 82px !important; height: 36px !important; padding: 6px 8px !important; }
 }
 
 @media (max-height: 760px) {
-  .guandan-status-bar {
-    flex-basis: 46px;
-    min-height: 46px;
-    padding-block: 6px;
-  }
-
+  .guandan-status-bar { flex-basis: 46px; min-height: 46px; padding-block: 6px; }
   .guandan-public-zone,
-  .guandan-private-zone {
-    padding-top: 25px;
-  }
-
-  .guandan-hand {
-    min-height: 120px;
-  }
-
-  .guandan-card-stack > button {
-    margin-bottom: -88px !important;
-  }
+  .guandan-private-zone { padding-top: 25px; }
+  .guandan-hand { min-height: 120px; }
+  .guandan-card-stack > button { margin-bottom: -88px !important; }
 }
