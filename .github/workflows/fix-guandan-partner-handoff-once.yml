@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 20
 
-      - name: Apply partner-handoff and winner-display fixes
+      - name: Apply partner-handoff, opponent-pass, and winner-display fixes
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -67,7 +67,7 @@ fn set_next_lead_after_trick(game: &mut GuandanGameState, winner: usize) {
         return;
     }
 
-    // Guandan "接风": when the trick winner has gone out, their partner
+    // Guandan 接风: when the trick winner has gone out, their partner
     // takes the next lead if that partner still has cards.
     let partner = (winner + 2) % game.hands.len();
     if !game.hands[partner].is_empty() {
@@ -75,10 +75,57 @@ fn set_next_lead_after_trick(game: &mut GuandanGameState, winner: usize) {
         return;
     }
 
-    // If the partner has also gone out, fall back to the next active seat.
     advance_turn(game);
 }
+
+fn required_passes_for_trick(game: &GuandanGameState, winner: usize) -> usize {
+    if !game.hands[winner].is_empty() {
+        return game
+            .hands
+            .iter()
+            .enumerate()
+            .filter(|(index, hand)| *index != winner && !hand.is_empty())
+            .count();
+    }
+
+    // When the winner has gone out, only the two opponents need to decline
+    // the play. The winner's partner receives 接风 and does not have to pass.
+    let partner = (winner + 2) % game.hands.len();
+    game.hands
+        .iter()
+        .enumerate()
+        .filter(|(index, hand)| {
+            *index != winner && *index != partner && !hand.is_empty()
+        })
+        .count()
+}
 ''',
+          )
+
+          old_required = '''        let required_passes = game
+            .hands
+            .iter()
+            .enumerate()
+            .filter(|(index, hand)| *index != winner && !hand.is_empty())
+            .count();'''
+          replace_once(
+              backend,
+              old_required,
+              '''        let required_passes = required_passes_for_trick(game, winner);''',
+          )
+
+          old_human_required = '''                        let required_passes = state
+                            .game
+                            .hands
+                            .iter()
+                            .enumerate()
+                            .filter(|(index, hand)| *index != winner && !hand.is_empty())
+                            .count();'''
+          replace_once(
+              backend,
+              old_human_required,
+              '''                        let required_passes =
+                            required_passes_for_trick(&state.game, winner);''',
           )
 
           old_resolution = '''            game.last_trick_winner = Some(winner);
@@ -150,7 +197,7 @@ fn set_next_lead_after_trick(game: &mut GuandanGameState, winner: usize) {
           npx --yes prettier@3.4.1 --check src/GuandanTable.tsx
           cd ..
           cargo fmt --all -- --check || cargo fmt --all
-          cargo test -p shengji-backend guandan_handler --no-fail-fast || cargo test guandan_handler --no-fail-fast
+          cargo test guandan_handler --no-fail-fast
 
       - name: Commit fix
         run: |
@@ -158,5 +205,5 @@ fn set_next_lead_after_trick(game: &mut GuandanGameState, winner: usize) {
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx
           git diff --cached --quiet && exit 0
-          git commit -m "fix: hand Guandan lead to finished winner partner"
+          git commit -m "fix: apply Guandan partner handoff after opponents pass"
           git push origin HEAD:fix/guandan-single-viewport-20260822
