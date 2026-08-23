@@ -868,15 +868,19 @@ const GuandanTable: React.FunctionComponent = () => {
 
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
-              {state.lastTrickWinner !== null && (
+              {state.finishOrder.length > 0 && (
                 <div
                   className="guandan-notice-panel"
                   role="status"
-                  aria-label="本轮赢家"
+                  aria-label="本轮输赢排序"
                 >
-                  <strong>本轮赢家：</strong>
-                  {state.players[state.lastTrickWinner] ??
-                    `玩家${state.lastTrickWinner + 1}`}
+                  <strong>本轮输赢排序：</strong>
+                  {state.finishOrder
+                    .map(
+                      (seat, index) =>
+                        `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
+                    )
+                    .join(" ｜ ")}
                 </div>
               )}
               {state.tablePlays.length === 0 ? (
