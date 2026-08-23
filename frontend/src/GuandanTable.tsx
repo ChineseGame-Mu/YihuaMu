@@ -882,11 +882,7 @@ const GuandanTable: React.FunctionComponent = () => {
                           type="button"
                           key={`${cardGlyph(card)}-${originalIndex}`}
                           aria-pressed={selected.includes(originalIndex)}
-                          disabled={
-                            !gameStarted ||
-                            state.trickComplete ||
-                            nextRoundPending
-                          }
+                          disabled={!gameStarted}
                           onClick={() => toggleCard(originalIndex)}
                           style={{
                             zIndex: selected.includes(originalIndex)
