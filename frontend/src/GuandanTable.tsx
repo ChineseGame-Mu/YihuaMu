@@ -760,6 +760,22 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
+            {state.finishOrder.length === 4 && (
+              <section
+                className="guandan-notice-panel"
+                role="status"
+                aria-label="四位玩家输赢顺序"
+              >
+                <strong>四位玩家输赢顺序：</strong>
+                {state.finishOrder
+                  .map(
+                    (seat, index) =>
+                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
+                  )
+                  .join(" ｜ ")}
+              </section>
+            )}
+
             {state.lastGameWinner !== null && lastWinnerName !== null && (
               <section
                 className={`guandan-result-panel guandan-team-${
