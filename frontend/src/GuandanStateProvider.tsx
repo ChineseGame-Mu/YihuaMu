@@ -93,7 +93,12 @@ const reduceMessage = (
     case "connected":
       return { ...state, error: null };
     case "joined":
-      return { ...state, room: message.room, seat: message.seat, error: null };
+      return {
+        ...initialState,
+        room: message.room,
+        seat: message.seat,
+        error: null,
+      };
     case "waiting":
       return {
         ...state,
@@ -109,7 +114,7 @@ const reduceMessage = (
         ...state,
         playerCount: message.player_count,
         cardsPerPlayer: message.cards_per_player,
-        turn: state.turn ?? 0,
+        turn: 0,
         error: null,
       };
     case "hand":
