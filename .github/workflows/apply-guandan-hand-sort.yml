@@ -1,0 +1,185 @@
+name: Apply Guandan hand sort option
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/workflows/apply-guandan-hand-sort.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Patch GuandanTable safely
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/GuandanTable.tsx')
+          text = path.read_text()
+
+          old = '''  const [fourColor, setFourColor] = React.useState(
+    () => window.localStorage.getItem("guandan_four_color") === "on",
+  );
+  const autoJoinKeyRef = React.useRef<string | null>(null);'''
+          new = '''  const [fourColor, setFourColor] = React.useState(
+    () => window.localStorage.getItem("guandan_four_color") === "on",
+  );
+  const [handSortOrder, setHandSortOrder] = React.useState<
+    "ascending" | "descending"
+  >(() =>
+    window.localStorage.getItem("guandan_hand_sort_order") === "descending"
+      ? "descending"
+      : "ascending",
+  );
+  const autoJoinKeyRef = React.useRef<string | null>(null);'''
+          assert text.count(old) == 1, 'hand sort state anchor mismatch'
+          text = text.replace(old, new)
+
+          old = '''  React.useEffect(() => {
+    window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
+  }, [fourColor]);
+
+  React.useEffect(() => {'''
+          new = '''  React.useEffect(() => {
+    window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
+  }, [fourColor]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
+  }, [handSortOrder]);
+
+  React.useEffect(() => {'''
+          assert text.count(old) == 1, 'local storage effect anchor mismatch'
+          text = text.replace(old, new)
+
+          old = '''  const visibleHand = React.useMemo(() => {
+    const count =
+      dealStep === null || state.seat === null
+        ? state.hand.length
+        : dealtCount();
+    return state.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ originalIndex }) => originalIndex < count)
+      .sort(
+        (a, b) =>
+          cardSortValue(a.card, state.level) -
+            cardSortValue(b.card, state.level) ||
+          a.originalIndex - b.originalIndex,
+      );
+  }, [
+    dealStep,
+    state.hand,
+    state.seat,
+    playerCount,
+    cardsPerPlayer,
+    state.level,
+  ]);'''
+          new = '''  const visibleHand = React.useMemo(() => {
+    const count =
+      dealStep === null || state.seat === null
+        ? state.hand.length
+        : dealtCount();
+    const direction = handSortOrder === "ascending" ? 1 : -1;
+    return state.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ originalIndex }) => originalIndex < count)
+      .sort(
+        (a, b) =>
+          direction *
+            (cardSortValue(a.card, state.level) -
+              cardSortValue(b.card, state.level)) ||
+          a.originalIndex - b.originalIndex,
+      );
+  }, [
+    dealStep,
+    state.hand,
+    state.seat,
+    playerCount,
+    cardsPerPlayer,
+    state.level,
+    handSortOrder,
+  ]);'''
+          assert text.count(old) == 1, 'visible hand sort anchor mismatch'
+          text = text.replace(old, new)
+
+          old = '''          </select>
+          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>
+          <div className="guandan-bot-settings">'''
+          new = '''          </select>
+          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>
+          <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
+          <select
+            id="guandan-hand-sort-order"
+            value={handSortOrder}
+            onChange={(event) =>
+              setHandSortOrder(
+                event.target.value === "descending" ? "descending" : "ascending",
+              )
+            }
+          >
+            <option value="ascending">从小到大</option>
+            <option value="descending">从大到小</option>
+          </select>
+          <p>每位玩家可独立选择自己的手牌排列顺序，并保存在当前浏览器。</p>
+          <div className="guandan-bot-settings">'''
+          assert text.count(old) == 1, 'settings anchor mismatch'
+          text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Verify Prettier 3.4.1 and format
+        working-directory: frontend
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier --write
+          yarn prettier --check
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Test frontend
+        working-directory: frontend
+        run: yarn test --runInBand
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: yarn lint
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy,rustfmt
+
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint Rust
+        run: cargo clippy
+
+      - name: Test Rust
+        run: cargo test
+
+      - name: Commit verified feature
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: let each Guandan player choose hand sort order"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
