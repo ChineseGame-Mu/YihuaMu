@@ -1,0 +1,39 @@
+name: Apply public participant names
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/workflows/apply-public-player-names.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+      - name: Add participant names to public table
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/GuandanTable.tsx')
+          text = path.read_text()
+          old = '''            <div className="guandan-zone-title">\n              <span>公共桌面</span>\n              <small>所有玩家共同可见</small>\n            </div>\n            <aside className="guandan-scoreboard" aria-label="当前级数">'''
+          new = '''            <div className="guandan-zone-title">\n              <span>公共桌面</span>\n              <small>所有玩家共同可见</small>\n            </div>\n            <div className="guandan-participant-names" role="status" aria-label="当前参赛玩家">\n              <strong>当前参赛玩家：</strong>\n              {state.players.length === 0\n                ? "等待玩家加入"\n                : state.players\n                    .map((player, index) => `玩家${index + 1}：${player}`)\n                    .join(" ｜ ")}\n            </div>\n            <aside className="guandan-scoreboard" aria-label="当前级数">'''
+          if old not in text:
+              raise SystemExit('public zone anchor not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: show all participating players on public table"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
