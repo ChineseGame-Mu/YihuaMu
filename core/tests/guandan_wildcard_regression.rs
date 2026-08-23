@@ -1,7 +1,5 @@
 use shengji_core::guandan::{
-    rules::classify_at_level,
-    strength::strengths_at_level,
-    CardFace, Joker, PlayPattern, Rank,
+    rules::classify_at_level, strength::strengths_at_level, CardFace, Joker, PlayPattern, Rank,
     Suit,
 };
 
