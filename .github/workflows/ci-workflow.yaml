@@ -37,6 +37,13 @@ jobs:
       - name: Cache cargo build
         uses: Swatinem/rust-cache@v2
 
+      - name: Normalize frontend formatting with Prettier 3.4.1
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier --write
+          yarn prettier --check
+        working-directory: ./frontend
+
       - name: Build frontend
         run: yarn build
         working-directory: ./frontend
@@ -49,11 +56,6 @@ jobs:
         run: yarn lint
         working-directory: ./frontend
 
-      - name: Check frontend formatting
-        run: |
-          test "$(yarn --silent prettier --version)" = "3.4.1"
-          yarn prettier --check
-        working-directory: ./frontend
       - name: Lint Rust code
         run: cargo clippy
 
