@@ -1,0 +1,124 @@
+name: Add Guandan robot players v2 once
+
+on:
+  push:
+    branches: [fix/guandan-single-viewport-20260822]
+    paths: [.github/workflows/add-guandan-bots-v2-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch robot support
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f"missing patch anchor in {path}: {old[:120]!r}")
+              p.write_text(s.replace(old, new, 1))
+
+          protocol = Path("frontend/src/guandanProtocol.ts")
+          ps = protocol.read_text()
+          if 'type: "set_bots"' not in ps:
+              ps = ps.replace(
+                  '  | { type: "set_participation"; active: boolean }\n',
+                  '  | { type: "set_participation"; active: boolean }\n  | { type: "set_bots"; count: 1 | 2 | 3 }\n',
+                  1,
+              )
+              protocol.write_text(ps)
+
+          table = Path("frontend/src/GuandanTable.tsx")
+          ts = table.read_text()
+          if 'className="guandan-bot-settings"' not in ts:
+              old = '          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>\n        </section>'
+              new = '''          <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>\n          <div className="guandan-bot-settings">\n            <strong>机器人陪玩：</strong>{" "}\n            {[1, 2, 3].map((count) => {\n              const humanCount = state.players.filter(\n                (player) => !player.startsWith("机器人"),\n              ).length;\n              return (\n                <button\n                  key={count}\n                  type="button"\n                  className="normal"\n                  disabled={!joined || gameStarted || humanCount + count > 4}\n                  onClick={() =>\n                    send({ type: "set_bots", count: count as 1 | 2 | 3 })\n                  }\n                >\n                  {count} 个机器人\n                </button>\n              );\n            })}\n          </div>\n          <p>任何已入座玩家都可在开局前选择 1 至 3 个机器人；真人加机器人总数固定为 4。</p>\n        </section>'''
+              if old not in ts:
+                  raise SystemExit("missing Guandan settings anchor")
+              table.write_text(ts.replace(old, new, 1))
+
+          backend = Path("backend/src/guandan_handler.rs")
+          bs = backend.read_text()
+          if 'SetBots {' not in bs:
+              bs = bs.replace(
+                  '    SetParticipation {\n        active: bool,\n    },\n',
+                  '    SetParticipation {\n        active: bool,\n    },\n    SetBots {\n        count: usize,\n    },\n',
+                  1,
+              )
+
+          if 'fn is_robot_name(' not in bs:
+              anchor = "fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {"
+              robot = '''fn is_robot_name(name: &str) -> bool {\n    name.starts_with("机器人")\n}\n\nfn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {\n    for _ in 0..32 {\n        if game.normal_play_blocked() || !game.started || game.trick_complete {\n            break;\n        }\n        let seat = game.turn;\n        if !game\n            .player_names\n            .get(seat)\n            .is_some_and(|name| is_robot_name(name))\n        {\n            break;\n        }\n\n        let chosen = game.hands[seat]\n            .iter()\n            .enumerate()\n            .find_map(|(index, card)| {\n                let cards = [*card];\n                validate_play_against_table(&cards, &game.last_play, game.level)\n                    .is_ok()\n                    .then_some(index)\n            });\n\n        if let Some(index) = chosen {\n            let card = game.hands[seat].remove(index);\n            let cards = vec![card];\n            game.last_play = cards.clone();\n            game.last_player = Some(seat);\n            game.table_plays.push(GuandanTablePlay { player: seat, cards });\n            game.passes = 0;\n            if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {\n                game.finish_order.push(seat);\n            }\n            let settled = settle_and_redeal_if_complete(game)?;\n            if !settled {\n                advance_turn(game);\n            }\n            continue;\n        }\n\n        if game.last_player.is_none() {\n            return Err("robot has no legal lead");\n        }\n        game.passes += 1;\n        let winner = game.last_player.unwrap_or(game.turn);\n        let required_passes = game\n            .hands\n            .iter()\n            .enumerate()\n            .filter(|(index, hand)| *index != winner && !hand.is_empty())\n            .count();\n        if game.passes >= required_passes {\n            game.turn = winner;\n            if game.hands[winner].is_empty() {\n                advance_turn(game);\n            }\n            game.last_play.clear();\n            game.last_player = None;\n            game.table_plays.clear();\n            game.passes = 0;\n            game.trick_complete = false;\n        } else {\n            advance_turn(game);\n        }\n    }\n    Ok(())\n}\n\n'''
+              if anchor not in bs:
+                  raise SystemExit("missing settle function anchor")
+              bs = bs.replace(anchor, robot + anchor, 1)
+
+          if 'GuandanClientMessage::SetBots { count }' not in bs:
+              anchor = '            GuandanClientMessage::ReorderPlayers { order } => {'
+              handler = '''            GuandanClientMessage::SetBots { count } => {\n                let (key, name) = match (joined_room.clone(), joined_name.clone()) {\n                    (Some(key), Some(name)) => (key, name),\n                    _ => continue,\n                };\n                if current_seat(&storage, &key, &name).await.is_none() {\n                    continue;\n                }\n                let result = storage\n                    .clone()\n                    .execute_operation_with_messages(key, move |mut state| {\n                        if state.game.started || !(1..=3).contains(&count) {\n                            return Err(());\n                        }\n                        state.game.player_names.retain(|player| !is_robot_name(player));\n                        let human_count = state.game.player_names.len();\n                        if human_count + count > GUANDAN_PLAYER_COUNT {\n                            return Err(());\n                        }\n                        for index in 1..=count {\n                            state.game.player_names.push(format!("机器人{index}"));\n                        }\n                        state.bump_version();\n                        Ok((state, vec![GuandanStorageMessage::StateChanged]))\n                    })\n                    .await;\n                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "robot count must fit the four-player table before start"\n                                .to_string(),\n                        },\n                    );\n                }\n            }\n'''
+              if anchor not in bs:
+                  raise SystemExit("missing reorder handler anchor")
+              bs = bs.replace(anchor, handler + anchor, 1)
+
+          play_marker = '            GuandanClientMessage::Play { mut card_indexes } => {'
+          pass_marker = '            GuandanClientMessage::Pass => {'
+          if 'run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;' not in bs:
+              start = bs.index(play_marker)
+              end = bs.index('            GuandanClientMessage::TributeCard', start)
+              segment = bs[start:end]
+              old = '''                        if !settled {\n                            advance_turn(&mut state.game);\n                        }\n                        state.bump_version();'''
+              new = '''                        if !settled {\n                            advance_turn(&mut state.game);\n                        }\n                        run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;\n                        state.bump_version();'''
+              if old not in segment:
+                  raise SystemExit("missing human play advance anchor")
+              segment = segment.replace(old, new, 1)
+              bs = bs[:start] + segment + bs[end:]
+
+          if 'run_robot_turns(&mut state.game).map_err(|_| ())?;' not in bs:
+              start = bs.index(pass_marker)
+              end = bs.index('            GuandanClientMessage::EndRound', start)
+              segment = bs[start:end]
+              old = '''                        } else {\n                            advance_turn(&mut state.game);\n                        }\n                        state.bump_version();'''
+              new = '''                        } else {\n                            advance_turn(&mut state.game);\n                        }\n                        run_robot_turns(&mut state.game).map_err(|_| ())?;\n                        state.bump_version();'''
+              if old not in segment:
+                  raise SystemExit("missing human pass advance anchor")
+              segment = segment.replace(old, new, 1)
+              bs = bs[:start] + segment + bs[end:]
+
+          backend.write_text(bs)
+          PY
+      - name: Format 341 and Rust
+        run: |
+          cd frontend
+          npx --yes prettier@3.4.1 --write src/GuandanTable.tsx src/guandanProtocol.ts
+          npx --yes prettier@3.4.1 --check src/GuandanTable.tsx src/guandanProtocol.ts
+          cd ..
+          cargo fmt --all
+          cargo fmt --all -- --check
+      - name: Verify frontend build
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+      - name: Verify Rust
+        run: cargo check -p backend
+      - name: Commit robot support
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add selectable Guandan robot players"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
