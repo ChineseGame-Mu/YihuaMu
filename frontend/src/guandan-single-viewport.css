@@ -88,7 +88,9 @@
   font-weight: 900;
   line-height: 1;
   letter-spacing: 3px;
-  text-shadow: 0 2px 0 #7b1f13, 0 0 5px rgba(255, 215, 110, 0.65);
+  text-shadow:
+    0 2px 0 #7b1f13,
+    0 0 5px rgba(255, 215, 110, 0.65);
   pointer-events: none;
 }
 
