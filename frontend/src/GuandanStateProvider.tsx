@@ -24,6 +24,7 @@ interface GuandanTableState {
   tablePlays: Array<{ player: number; cards: GuandanCard[] }>;
   passes: number;
   trickComplete: boolean;
+  lastTrickWinner: number | null;
   level: GuandanRank | null;
   teamLevels: unknown;
   finishOrder: number[];
@@ -55,6 +56,7 @@ const initialState: GuandanTableState = {
   tablePlays: [],
   passes: 0,
   trickComplete: false,
+  lastTrickWinner: null,
   level: null,
   teamLevels: null,
   finishOrder: [],
@@ -120,6 +122,7 @@ const reduceMessage = (
         tablePlays: [],
         passes: 0,
         trickComplete: false,
+        lastTrickWinner: null,
         finishOrder: [],
         pendingTribute: null,
         tributeResisted: false,
@@ -141,6 +144,7 @@ const reduceMessage = (
         tablePlays: message.table_plays,
         passes: message.passes,
         trickComplete: message.trick_complete,
+        lastTrickWinner: message.last_trick_winner,
         level: message.level,
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,

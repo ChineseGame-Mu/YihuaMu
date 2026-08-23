@@ -831,6 +831,17 @@ const GuandanTable: React.FunctionComponent = () => {
 
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
+              {state.lastTrickWinner !== null && (
+                <div
+                  className="guandan-notice-panel"
+                  role="status"
+                  aria-label="本轮赢家"
+                >
+                  <strong>本轮赢家：</strong>
+                  {state.players[state.lastTrickWinner] ??
+                    `玩家${state.lastTrickWinner + 1}`}
+                </div>
+              )}
               {state.tablePlays.length === 0 ? (
                 <div>暂无出牌</div>
               ) : (

@@ -104,6 +104,7 @@ pub enum GuandanServerMessage {
         table_plays: Vec<GuandanTablePlay>,
         passes: usize,
         trick_complete: bool,
+        last_trick_winner: Option<usize>,
         level: Rank,
         team_levels: TeamLevels,
         finish_order: Vec<usize>,
@@ -239,6 +240,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         table_plays: game.table_plays.clone(),
         passes: game.passes,
         trick_complete: game.trick_complete,
+        last_trick_winner: game.last_trick_winner,
         level: game.level,
         team_levels: game.team_levels,
         finish_order: game.finish_order.clone(),
@@ -323,6 +325,7 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
             .filter(|(index, hand)| *index != winner && !hand.is_empty())
             .count();
         if game.passes >= required_passes {
+            game.last_trick_winner = Some(winner);
             game.turn = winner;
             if game.hands[winner].is_empty() {
                 advance_turn(game);
@@ -854,6 +857,7 @@ pub async fn websocket(
                         state.game.table_plays.clear();
                         state.game.passes = 0;
                         state.game.trick_complete = false;
+                        state.game.last_trick_winner = None;
                         state.game.finish_order.clear();
                         state.game.last_game_winner = None;
                         state.game.last_game_winner_team = None;
@@ -1186,6 +1190,7 @@ pub async fn websocket(
                             .filter(|(index, hand)| *index != winner && !hand.is_empty())
                             .count();
                         if state.game.passes >= required_passes {
+                            state.game.last_trick_winner = Some(winner);
                             state.game.turn = winner;
                             if state.game.hands[winner].is_empty() {
                                 advance_turn(&mut state.game);
@@ -1227,6 +1232,7 @@ pub async fn websocket(
                             return Err(());
                         }
                         let winner = state.game.last_player.ok_or(())?;
+                        state.game.last_trick_winner = Some(winner);
                         state.game.turn = winner;
                         if state.game.hands[winner].is_empty() {
                             advance_turn(&mut state.game);
