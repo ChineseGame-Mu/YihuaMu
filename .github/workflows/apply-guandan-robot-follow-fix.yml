@@ -1,0 +1,109 @@
+name: Apply Guandan robot follow fix
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/workflows/apply-guandan-robot-follow-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+      - name: Patch robot multi-card follow logic
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/src/guandan_handler.rs')
+          text = path.read_text()
+          old = '''        let chosen = game.hands[seat]\n            .iter()\n            .enumerate()\n            .find_map(|(index, card)| {\n                validate_play_against_table(&[*card], &game.last_play, game.level)\n                    .is_ok()\n                    .then_some(index)\n            });\n\n        if let Some(index) = chosen {\n            let card = game.hands[seat].remove(index);\n            let cards = vec![card];\n'''
+          new = '''        let chosen = first_legal_robot_play(\n            &game.hands[seat],\n            &game.last_play,\n            game.level,\n        );\n\n        if let Some(indexes) = chosen {\n            let cards = indexes\n                .iter()\n                .map(|&index| game.hands[seat][index])\n                .collect::<Vec<_>>();\n            for &index in indexes.iter().rev() {\n                game.hands[seat].remove(index);\n            }\n'''
+          if old not in text:
+              raise SystemExit('robot single-card block not found')
+          text = text.replace(old, new, 1)
+          marker = '''fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {\n'''
+          helper = r'''fn first_legal_robot_play(
+    hand: &[CardFace],
+    current: &[CardFace],
+    level: Rank,
+) -> Option<Vec<usize>> {
+    if hand.is_empty() {
+        return None;
+    }
+    if current.is_empty() {
+        return Some(vec![0]);
+    }
+
+    let mut sizes = vec![current.len()];
+    for size in 4..=hand.len().min(6) {
+        if !sizes.contains(&size) {
+            sizes.push(size);
+        }
+    }
+    for size in sizes {
+        if size == 0 || size > hand.len() || size > 6 {
+            continue;
+        }
+        let mut chosen = Vec::with_capacity(size);
+        if find_legal_robot_combination(hand, current, level, size, 0, &mut chosen) {
+            return Some(chosen);
+        }
+    }
+    None
+}
+
+fn find_legal_robot_combination(
+    hand: &[CardFace],
+    current: &[CardFace],
+    level: Rank,
+    target_size: usize,
+    start: usize,
+    chosen: &mut Vec<usize>,
+) -> bool {
+    if chosen.len() == target_size {
+        let cards = chosen.iter().map(|&index| hand[index]).collect::<Vec<_>>();
+        return validate_play_against_table(&cards, current, level).is_ok();
+    }
+    let remaining = target_size - chosen.len();
+    if hand.len().saturating_sub(start) < remaining {
+        return false;
+    }
+    for index in start..=hand.len() - remaining {
+        chosen.push(index);
+        if find_legal_robot_combination(
+            hand,
+            current,
+            level,
+            target_size,
+            index + 1,
+            chosen,
+        ) {
+            return true;
+        }
+        chosen.pop();
+    }
+    false
+}
+
+'''
+          if marker not in text:
+              raise SystemExit('run_robot_turns marker not found')
+          text = text.replace(marker, helper + marker, 1)
+          path.write_text(text)
+          PY
+          cargo fmt -- backend/src/guandan_handler.rs
+          cargo test -p shengji guandan_handler --lib || cargo test -p shengji
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/src/guandan_handler.rs
+          git commit -m 'fix: let Guandan robots follow multi-card plays'
+          git push origin HEAD:fix/guandan-single-viewport-20260822
