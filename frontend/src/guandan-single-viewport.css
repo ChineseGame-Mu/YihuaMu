@@ -2,16 +2,49 @@
  * Keep game logic untouched; only compress/rearrange presentation.
  */
 
-/* Collapse the decorative header while keeping exit/timer controls. */
+/* Put exit + timer visually inside the green connection/status strip. */
 .guandan-topbar {
-  position: relative;
-  min-height: 44px;
+  position: absolute;
+  z-index: 20;
+  top: 4px;
+  left: 0;
+  width: 100%;
   height: 44px;
-  padding: 2px 14px;
+  min-height: 44px;
+  padding: 0 12px;
   border: 0;
   background: transparent;
   box-shadow: none;
-  overflow: hidden;
+  pointer-events: none;
+}
+
+.guandan-topbar > * {
+  pointer-events: auto;
+}
+
+.guandan-topbar > :first-child {
+  position: absolute;
+  left: 12px;
+  top: 4px;
+  transform: scale(0.78);
+  transform-origin: left top;
+}
+
+.guandan-topbar > :last-child {
+  position: absolute;
+  right: 14px;
+  top: 1px;
+  width: 54px;
+  height: 54px;
+  overflow: visible;
+  transform: scale(0.76);
+  transform-origin: right top;
+}
+
+/* Make the existing Guandan timer read as a compact traditional clock. */
+.guandan-topbar > :last-child img,
+.guandan-topbar > :last-child svg {
+  border-radius: 50% !important;
 }
 
 .guandan-topbar h1,
@@ -19,10 +52,11 @@
   display: none !important;
 }
 
-/* Main table fills one desktop viewport. */
+/* Main table fills one viewport. */
 .guandan-table {
-  min-height: calc(100vh - 44px);
-  height: calc(100vh - 44px);
+  position: relative;
+  min-height: 100vh;
+  height: 100vh;
   padding: 4px 10px 6px;
   overflow: hidden;
   display: flex;
@@ -30,21 +64,50 @@
 }
 
 .guandan-status-bar {
-  flex: 0 0 auto;
-  min-height: 32px;
+  position: relative;
+  flex: 0 0 52px;
+  min-height: 52px;
   margin: 0 0 4px;
-  padding: 4px 8px;
+  padding: 9px 86px 7px 82px;
   gap: 6px 10px;
-  border-radius: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Traditional central Guandan title: two cards on each side. */
+.guandan-status-bar::after {
+  content: "🂡  🂱   掼 蛋   🃁  🃑";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #ffe69a;
+  font-family: "STKaiti", "KaiTi", "Noto Serif CJK SC", serif;
+  font-size: clamp(20px, 2.1vw, 31px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 0 #7b1f13, 0 0 5px rgba(255, 215, 110, 0.65);
+  pointer-events: none;
 }
 
 .guandan-status-bar > div {
+  position: relative;
+  z-index: 2;
   padding: 2px 7px;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
 }
 
 .guandan-status-bar button {
+  position: relative;
+  z-index: 2;
   padding: 4px 9px;
+}
+
+/* Do not duplicate the level in the status strip. */
+.guandan-status-bar > div:nth-of-type(3) {
+  display: none;
 }
 
 /* Public table = upper half. Other players never consume layout space. */
@@ -182,16 +245,38 @@
   padding: 5px 20px;
 }
 
-@media (max-height: 760px) {
-  .guandan-topbar {
-    min-height: 38px;
-    height: 38px;
-    padding-block: 1px;
+@media (max-width: 760px) {
+  .guandan-status-bar {
+    padding-left: 66px;
+    padding-right: 64px;
   }
 
-  .guandan-table {
-    min-height: calc(100vh - 38px);
-    height: calc(100vh - 38px);
+  .guandan-status-bar::after {
+    content: "🂡 🂱  掼蛋  🃁 🃑";
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+
+  .guandan-status-bar > div {
+    font-size: 0.7rem;
+  }
+
+  .guandan-topbar > :first-child {
+    left: 5px;
+    transform: scale(0.64);
+  }
+
+  .guandan-topbar > :last-child {
+    right: 6px;
+    transform: scale(0.62);
+  }
+}
+
+@media (max-height: 760px) {
+  .guandan-status-bar {
+    flex-basis: 46px;
+    min-height: 46px;
+    padding-block: 6px;
   }
 
   .guandan-public-zone,
