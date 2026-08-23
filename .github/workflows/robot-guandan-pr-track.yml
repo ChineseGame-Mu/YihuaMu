@@ -35,6 +35,15 @@ jobs:
             copy && /^          PY$/ {copy=0; exit}
             copy {sub(/^          /, ""); print}
           ' .github/workflows/robot-guandan-current.yml > /tmp/robot_guandan_three_rounds.py
+          python - <<'PY'
+          path = "/tmp/robot_guandan_three_rounds.py"
+          text = open(path, encoding="utf-8").read()
+          old = 'if saw_active_round and phase is not None and len(finish) >= 4:'
+          new = 'if saw_active_round and phase is not None and state.get("last_game_winner") is not None:'
+          if old not in text:
+              raise SystemExit("completion condition not found")
+          open(path, "w", encoding="utf-8").write(text.replace(old, new, 1))
+          PY
           python /tmp/robot_guandan_three_rounds.py
       - name: Show server tail
         if: always()
