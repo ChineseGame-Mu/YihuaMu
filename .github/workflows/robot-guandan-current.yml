@@ -8,13 +8,13 @@ on:
 jobs:
   robot-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: pip install websockets
       - name: Start backend locally with cleared room state
         run: |
@@ -25,18 +25,23 @@ jobs:
           done
           cat /tmp/guandan-server.log
           exit 1
-      - name: Play one complete four-player game in room 0004
+      - name: Play three four-player rounds and exercise tribute flow
         env:
           WS_URL: ws://127.0.0.1:3030/api/guandan
-          ROOM: '0004'
+          ROOM: "0004"
         run: |
           python - <<'PY'
-          import asyncio, collections, json, os, time
+          import asyncio
+          import collections
+          import json
+          import os
+          import time
+
           import websockets
 
-          URL = os.environ['WS_URL']
-          ROOM = os.environ['ROOM']
-          NAMES = ['机器人1', '机器人2', '机器人3', '机器人4']
+          URL = os.environ["WS_URL"]
+          ROOM = os.environ["ROOM"]
+          NAMES = ["机器人1", "机器人2", "机器人3", "机器人4"]
 
           class Bot:
               def __init__(self, name):
@@ -53,15 +58,15 @@ jobs:
               async def reader(self):
                   async for raw in self.ws:
                       msg = json.loads(raw)
-                      kind = msg.get('type')
-                      if kind == 'joined':
-                          self.seat = msg.get('seat')
-                      elif kind == 'hand':
-                          self.hand = msg.get('cards', [])
-                      elif kind == 'state':
+                      kind = msg.get("type")
+                      if kind == "joined":
+                          self.seat = msg.get("seat")
+                      elif kind == "hand":
+                          self.hand = msg.get("cards", [])
+                      elif kind == "state":
                           self.state = msg
-                      elif kind == 'error':
-                          self.errors.append(msg.get('message', 'error'))
+                      elif kind == "error":
+                          self.errors.append(msg.get("message", "error"))
 
           async def wait_for(pred, timeout=10, step=0.01):
               end = time.time() + timeout
@@ -76,9 +81,18 @@ jobs:
               if not state:
                   return None
               keys = [
-                  'turn', 'hand_counts', 'last_play', 'last_player', 'passes',
-                  'finish_order', 'last_game_winner', 'last_promotion_steps',
-                  'next_round_phase'
+                  "turn",
+                  "hand_counts",
+                  "last_play",
+                  "last_player",
+                  "passes",
+                  "finish_order",
+                  "last_game_winner",
+                  "last_game_winner_team",
+                  "last_promotion_steps",
+                  "pending_tribute",
+                  "tribute_resisted",
+                  "next_round_phase",
               ]
               return json.dumps(
                   {key: state.get(key) for key in keys},
@@ -92,7 +106,8 @@ jobs:
                   return None, 0
               counts = collections.Counter(key for key, _ in values)
               key, number = counts.most_common(1)[0]
-              return next(state for candidate, state in values if candidate == key), number
+              state = next(value for candidate, value in values if candidate == key)
+              return state, number
 
           async def shared(bots, timeout=5):
               return await wait_for(
@@ -124,6 +139,210 @@ jobs:
                   await asyncio.sleep(0.01)
               return False
 
+          def plan_parts(plan):
+              if "Single" in plan:
+                  item = plan["Single"]
+                  return [item["giver"]], [item["receiver"]], "single"
+              if "Double" in plan:
+                  item = plan["Double"]
+                  return list(item["givers"]), list(item["receivers"]), "double"
+              raise RuntimeError("unknown tribute plan " + repr(plan))
+
+          async def play_round(bots, round_number):
+              actions = 0
+              saw_active_round = False
+              for cycle in range(10000):
+                  current = await shared(bots, 2)
+                  if not current:
+                      continue
+                  state = current[0]
+                  counts = state.get("hand_counts") or []
+                  phase = state.get("next_round_phase")
+                  finish = state.get("finish_order") or []
+
+                  if any(count > 0 for count in counts) and phase is None:
+                      saw_active_round = True
+
+                  if saw_active_round and phase is not None and len(finish) >= 4:
+                      print(
+                          "ROUND_RESULT",
+                          round_number,
+                          json.dumps(
+                              {
+                                  "winner_seat": state.get("last_game_winner"),
+                                  "winner_name": NAMES[state.get("last_game_winner")],
+                                  "finish_order": finish,
+                                  "promotion": state.get("last_promotion_steps"),
+                                  "phase": phase,
+                                  "actions": actions,
+                              },
+                              ensure_ascii=False,
+                          ),
+                      )
+                      return state
+
+                  turn = state.get("turn")
+                  if (
+                      phase is not None
+                      or turn is None
+                      or not 0 <= turn < 4
+                      or turn >= len(counts)
+                      or counts[turn] <= 0
+                  ):
+                      await asyncio.sleep(0.01)
+                      continue
+
+                  bot = bots[turn]
+                  last_play = state.get("last_play") or []
+                  if not last_play:
+                      played = False
+                      for index in range(counts[turn]):
+                          if await act(
+                              bots,
+                              bot,
+                              {"type": "play", "card_indexes": [index]},
+                              0.5,
+                          ):
+                              actions += 1
+                              played = True
+                              break
+                      if not played:
+                          raise RuntimeError(
+                              f"round {round_number} lead stuck seat={turn} errors={bot.errors[-5:]}"
+                          )
+                  else:
+                      played = False
+                      for index in range(counts[turn]):
+                          if await act(
+                              bots,
+                              bot,
+                              {"type": "play", "card_indexes": [index]},
+                              0.35,
+                          ):
+                              actions += 1
+                              played = True
+                              break
+                      if not played:
+                          if await act(bots, bot, {"type": "pass"}, 0.5):
+                              actions += 1
+                          else:
+                              raise RuntimeError(
+                                  f"round {round_number} follow/pass stuck seat={turn} errors={bot.errors[-5:]}"
+                              )
+
+                  await asyncio.sleep(0.005)
+
+              raise RuntimeError(f"round {round_number} did not finish")
+
+          async def prepare_next_round(bots, finished_state, round_number, coverage):
+              winner = finished_state.get("last_game_winner")
+              if winner is None:
+                  raise RuntimeError("missing previous winner")
+
+              winning_parity = winner % 2
+              loser = next(seat for seat in range(4) if seat % 2 != winning_parity)
+
+              if not await act(
+                  bots,
+                  bots[loser],
+                  {"type": "shuffle_next_round", "from_position": None, "to_position": None},
+                  2,
+              ):
+                  raise RuntimeError(
+                      f"round {round_number} loser shuffle failed {bots[loser].errors[-5:]}"
+                  )
+
+              if not await wait_for(
+                  lambda: bots[0].state
+                  and bots[0].state.get("next_round_phase") == "awaiting_deal",
+                  5,
+              ):
+                  raise RuntimeError("did not reach awaiting_deal")
+
+              if not await act(bots, bots[winner], {"type": "deal_next_round"}, 2):
+                  raise RuntimeError(
+                      f"round {round_number} winner deal failed {bots[winner].errors[-5:]}"
+                  )
+
+              if not await wait_for(
+                  lambda: bots[0].state
+                  and bots[0].state.get("next_round_phase") is None,
+                  5,
+              ):
+                  raise RuntimeError("next round did not become active")
+
+              state = (await shared(bots, 5))[0]
+              resisted = bool(state.get("tribute_resisted"))
+              plan = state.get("pending_tribute")
+
+              if resisted:
+                  coverage["anti_tribute"] += 1
+                  print(
+                      "ANTI_TRIBUTE_OK",
+                      round_number,
+                      "previous_winner",
+                      NAMES[winner],
+                  )
+              elif plan:
+                  givers, receivers, kind = plan_parts(plan)
+                  coverage["tribute"] += 1
+                  print(
+                      "TRIBUTE_PLAN",
+                      round_number,
+                      kind,
+                      "givers",
+                      [NAMES[x] for x in givers],
+                      "receivers",
+                      [NAMES[x] for x in receivers],
+                  )
+
+                  for seat in givers:
+                      bot = bots[seat]
+                      paid = False
+                      for index in range(len(bot.hand)):
+                          if await act(
+                              bots,
+                              bot,
+                              {"type": "tribute_card", "card_index": index},
+                              0.8,
+                          ):
+                              paid = True
+                              print("TRIBUTE_OK", round_number, NAMES[seat])
+                              break
+                      if not paid:
+                          raise RuntimeError(
+                              f"tribute failed {NAMES[seat]} {bot.errors[-10:]}"
+                          )
+
+                  for seat in receivers:
+                      bot = bots[seat]
+                      returned = False
+                      for index in range(len(bot.hand)):
+                          if await act(
+                              bots,
+                              bot,
+                              {"type": "return_tribute", "card_index": index},
+                              0.8,
+                          ):
+                              returned = True
+                              coverage["return_tribute"] += 1
+                              print("RETURN_TRIBUTE_OK", round_number, NAMES[seat])
+                              break
+                      if not returned:
+                          raise RuntimeError(
+                              f"return tribute failed {NAMES[seat]} {bot.errors[-10:]}"
+                          )
+
+                  state = (await shared(bots, 5))[0]
+                  if state.get("pending_tribute") is not None:
+                      raise RuntimeError("tribute exchange did not clear")
+              else:
+                  print("NO_TRIBUTE_REQUIRED", round_number)
+
+              counts = state.get("hand_counts") or []
+              if counts != [27, 27, 27, 27]:
+                  raise RuntimeError("next-round hand counts are not 27 each: " + repr(counts))
+
           async def main():
               bots = [Bot(name) for name in NAMES]
               for bot in bots:
@@ -134,88 +353,57 @@ jobs:
                       ping_timeout=20,
                   )
                   asyncio.create_task(bot.reader())
-                  await bot.send({'type': 'join', 'room': ROOM, 'name': bot.name})
+                  await bot.send({"type": "join", "room": ROOM, "name": bot.name})
                   if not await wait_for(lambda bot=bot: bot.seat is not None, 5):
-                      raise RuntimeError(f'join failed {bot.name}: {bot.errors}')
+                      raise RuntimeError(f"join failed {bot.name}: {bot.errors}")
 
-              print('ROOM_CLEARED_AND_JOINED', ROOM, [(bot.name, bot.seat) for bot in bots])
-              await bots[0].send({'type': 'start', 'player_count': 4})
+              print(
+                  "ROOM_CLEARED_AND_JOINED",
+                  ROOM,
+                  [(bot.name, bot.seat) for bot in bots],
+              )
+
+              await bots[0].send({"type": "start", "player_count": 4})
               if not await wait_for(lambda: all(len(bot.hand) == 27 for bot in bots), 10):
                   raise RuntimeError(
-                      'deal failed ' + str([(bot.name, len(bot.hand), bot.errors) for bot in bots])
+                      "deal failed "
+                      + str([(bot.name, len(bot.hand), bot.errors) for bot in bots])
                   )
-              print('DEALT', [len(bot.hand) for bot in bots])
+              print("ROUND1_DEALT", [len(bot.hand) for bot in bots])
 
-              actions = 0
-              for cycle in range(8000):
-                  current = await shared(bots, 2)
-                  if not current:
-                      continue
-                  state = current[0]
-                  winner = state.get('last_game_winner')
-                  phase = state.get('next_round_phase')
-                  if winner is not None and phase is not None:
-                      result = {
-                          'room': ROOM,
-                          'winner_seat': winner,
-                          'winner_name': NAMES[winner],
-                          'finish_order': state.get('finish_order'),
-                          'promotion': state.get('last_promotion_steps'),
-                          'phase': phase,
-                          'actions': actions,
-                      }
-                      print('RESULT_JSON', json.dumps(result, ensure_ascii=False))
-                      for bot in bots:
-                          await bot.ws.close()
-                      return
+              coverage = {"tribute": 0, "return_tribute": 0, "anti_tribute": 0}
+              winners = []
 
-                  turn = state.get('turn')
-                  counts = state.get('hand_counts') or []
-                  if turn is None or not 0 <= turn < 4 or turn >= len(counts) or counts[turn] <= 0:
-                      await asyncio.sleep(0.01)
-                      continue
-
-                  bot = bots[turn]
-                  last_play = state.get('last_play') or []
-                  if not last_play:
-                      played = False
-                      for index in range(counts[turn]):
-                          if await act(bot=bots[turn], bots=bots, message={'type': 'play', 'card_indexes': [index]}, timeout=0.5):
-                              actions += 1
-                              played = True
-                              break
-                      if not played:
-                          raise RuntimeError(f'lead stuck seat={turn} errors={bot.errors[-5:]}')
-                  else:
-                      played = False
-                      for index in range(counts[turn]):
-                          if await act(bot=bots[turn], bots=bots, message={'type': 'play', 'card_indexes': [index]}, timeout=0.35):
-                              actions += 1
-                              played = True
-                              break
-                      if not played:
-                          if await act(bot=bots[turn], bots=bots, message={'type': 'pass'}, timeout=0.5):
-                              actions += 1
-                          else:
-                              raise RuntimeError(f'follow/pass stuck seat={turn} errors={bot.errors[-5:]}')
-
-                  if cycle % 100 == 0:
-                      print(
-                          'PROGRESS',
-                          cycle,
-                          'turn',
-                          turn,
-                          'counts',
-                          counts,
-                          'finish',
-                          state.get('finish_order'),
+              for round_number in range(1, 4):
+                  finished = await play_round(bots, round_number)
+                  winner = finished.get("last_game_winner")
+                  winners.append(NAMES[winner])
+                  if round_number < 3:
+                      await prepare_next_round(
+                          bots,
+                          finished,
+                          round_number + 1,
+                          coverage,
                       )
-                  await asyncio.sleep(0.005)
 
-              raise RuntimeError('game did not finish')
+              result = {
+                  "room": ROOM,
+                  "rounds": 3,
+                  "winners": winners,
+                  "coverage": coverage,
+              }
+              print("THREE_ROUND_RESULT", json.dumps(result, ensure_ascii=False))
+
+              if coverage["tribute"] == 0:
+                  print("COVERAGE_NOTE: three random rounds did not produce a tribute case")
+              if coverage["anti_tribute"] == 0:
+                  print("COVERAGE_NOTE: three random rounds did not produce an anti-tribute case")
+
+              for bot in bots:
+                  await bot.ws.close()
 
           asyncio.run(main())
           PY
       - name: Show server tail
         if: always()
-        run: tail -100 /tmp/guandan-server.log || true
+        run: tail -120 /tmp/guandan-server.log || true
