@@ -46,19 +46,10 @@ const GuandanHeaderDecor = (): JSX.Element => {
       </div>
 
       <div className="guandan-header-clock" role="timer" aria-label={time}>
-        <svg viewBox="0 0 100 72">
-          <path
-            className="guandan-clock-laurel"
-            d="M19 54c-7-6-10-14-9-23M15 49l-6-1M13 43l-6-3M12 36l-5-5M81 54c7-6 10-14 9-23M85 49l6-1M87 43l6-3M88 36l5-5"
-          />
-          <circle className="guandan-clock-face" cx="50" cy="34" r="27" />
-          <path
-            className="guandan-clock-bell"
-            d="M43 19c0-4 3-7 7-7s7 3 7 7v5c0 3 2 5 4 7H39c2-2 4-4 4-7Z"
-          />
-          <path className="guandan-clock-bell" d="M47 34h6" />
-          <circle className="guandan-clock-pin" cx="50" cy="35" r="1.8" />
-        </svg>
+        <span className="guandan-stopwatch" aria-hidden="true">
+          <span className="guandan-stopwatch-crown" />
+          <span className="guandan-stopwatch-hand" />
+        </span>
         <time dateTime={now.toISOString()}>{time}</time>
         <span className="guandan-header-clock-label">本局计时</span>
       </div>
