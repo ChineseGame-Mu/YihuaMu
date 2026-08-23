@@ -85,11 +85,7 @@ fn heart_level_card_is_global_wildcard_for_normal_combinations() {
         card(Suit::Diamonds, Rank::Nine),
         card(Suit::Clubs, Rank::Nine),
     ];
-    assert_pattern(
-        &steel_plate,
-        Rank::Three,
-        PlayPattern::ConsecutiveTriples,
-    );
+    assert_pattern(&steel_plate, Rank::Three, PlayPattern::ConsecutiveTriples);
     let strengths = strengths_at_level(&steel_plate, Rank::Three);
     assert!(strengths.iter().any(|strength| {
         strength.pattern == PlayPattern::ConsecutiveTriples
@@ -133,9 +129,6 @@ fn heart_level_wildcard_never_substitutes_for_a_joker() {
 #[test]
 fn non_heart_level_card_is_not_a_wildcard() {
     let club_three = card(Suit::Clubs, Rank::Three);
-    let patterns = classify_at_level(
-        &[club_three, card(Suit::Clubs, Rank::Eight)],
-        Rank::Three,
-    );
+    let patterns = classify_at_level(&[club_three, card(Suit::Clubs, Rank::Eight)], Rank::Three);
     assert!(!patterns.contains(&PlayPattern::Pair));
 }
