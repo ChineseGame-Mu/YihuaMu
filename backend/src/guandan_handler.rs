@@ -11,7 +11,7 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
-    team::{four_player_ace_win, four_player_promotion_steps, team_for_seat, Team, TeamLevels},
+    team::{team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
     CardFace, Rank, TableConfig,
 };
@@ -19,7 +19,8 @@ use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
 
 use crate::guandan_serving_types::{
-    GuandanGameState, GuandanStorageMessage, GuandanTablePlay, VersionedGuandanGame,
+    GuandanGameState, GuandanNextRoundPhase, GuandanStorageMessage, GuandanTablePlay,
+    VersionedGuandanGame,
 };
 
 const GUANDAN_PLAYER_COUNT: usize = 4;
@@ -34,13 +35,36 @@ lazy_static::lazy_static! {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum GuandanClientMessage {
-    Join { room: String, name: String },
-    ReorderPlayers { order: [usize; 2] },
-    SetParticipation { active: bool },
-    Start { player_count: usize },
-    Play { card_indexes: Vec<usize> },
-    TributeCard { card_index: usize },
-    ReturnTribute { card_index: usize },
+    Join {
+        room: String,
+        name: String,
+    },
+    ReorderPlayers {
+        order: [usize; 2],
+    },
+    SetParticipation {
+        active: bool,
+    },
+    SetBots {
+        count: usize,
+    },
+    Start {
+        player_count: usize,
+    },
+    ShuffleNextRound {
+        from_position: Option<usize>,
+        to_position: Option<usize>,
+    },
+    DealNextRound,
+    Play {
+        card_indexes: Vec<usize>,
+    },
+    TributeCard {
+        card_index: usize,
+    },
+    ReturnTribute {
+        card_index: usize,
+    },
     Pass,
     EndRound,
 }
@@ -80,6 +104,7 @@ pub enum GuandanServerMessage {
         table_plays: Vec<GuandanTablePlay>,
         passes: usize,
         trick_complete: bool,
+        last_trick_winner: Option<usize>,
         level: Rank,
         team_levels: TeamLevels,
         finish_order: Vec<usize>,
@@ -89,6 +114,7 @@ pub enum GuandanServerMessage {
         pending_tribute: Option<TributePlan>,
         tribute_resisted: bool,
         match_winner: Option<Team>,
+        next_round_phase: Option<GuandanNextRoundPhase>,
     },
     Error {
         message: String,
@@ -214,6 +240,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         table_plays: game.table_plays.clone(),
         passes: game.passes,
         trick_complete: game.trick_complete,
+        last_trick_winner: game.last_trick_winner,
         level: game.level,
         team_levels: game.team_levels,
         finish_order: game.finish_order.clone(),
@@ -223,6 +250,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         pending_tribute: game.pending_tribute.clone(),
         tribute_resisted: game.tribute_resisted,
         match_winner: game.match_winner,
+        next_round_phase: game.next_round_phase,
     }
 }
 
@@ -238,6 +266,82 @@ fn advance_turn(game: &mut GuandanGameState) {
     }
 }
 
+fn is_robot_name(name: &str) -> bool {
+    name.starts_with("机器人")
+}
+
+fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {
+        if game.normal_play_blocked() || !game.started || game.trick_complete {
+            break;
+        }
+        let seat = game.turn;
+        if !game
+            .player_names
+            .get(seat)
+            .is_some_and(|name| is_robot_name(name))
+        {
+            break;
+        }
+
+        let chosen = game.hands[seat]
+            .iter()
+            .enumerate()
+            .find_map(|(index, card)| {
+                validate_play_against_table(&[*card], &game.last_play, game.level)
+                    .is_ok()
+                    .then_some(index)
+            });
+
+        if let Some(index) = chosen {
+            let card = game.hands[seat].remove(index);
+            let cards = vec![card];
+            game.last_play = cards.clone();
+            game.last_player = Some(seat);
+            game.table_plays.push(GuandanTablePlay {
+                player: seat,
+                cards,
+            });
+            game.passes = 0;
+            if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
+                game.finish_order.push(seat);
+            }
+            let settled = settle_and_redeal_if_complete(game)?;
+            if !settled {
+                advance_turn(game);
+            }
+            continue;
+        }
+
+        if game.last_player.is_none() {
+            return Err("robot has no legal lead");
+        }
+        game.passes += 1;
+        let winner = game.last_player.unwrap_or(game.turn);
+        let required_passes = game
+            .hands
+            .iter()
+            .enumerate()
+            .filter(|(index, hand)| *index != winner && !hand.is_empty())
+            .count();
+        if game.passes >= required_passes {
+            game.last_trick_winner = Some(winner);
+            game.turn = winner;
+            if game.hands[winner].is_empty() {
+                advance_turn(game);
+            }
+            game.last_play.clear();
+            game.last_player = None;
+            game.table_plays.clear();
+            game.passes = 0;
+            game.trick_complete = false;
+        } else {
+            advance_turn(game);
+        }
+    }
+    Ok(())
+}
+
 fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
     let active_players = game.hands.iter().filter(|hand| !hand.is_empty()).count();
     if active_players > 1 || game.finish_order.is_empty() {
@@ -245,28 +349,44 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     }
 
     let player_count = game.hands.len();
-    let table = validate_start(player_count)?;
+    if player_count != GUANDAN_PLAYER_COUNT {
+        return Err("Guandan settlement requires exactly four players");
+    }
     let previous_finish_order = game.finish_order.clone();
-    let winner = previous_finish_order[0];
-    let winner_team = team_for_seat(table, winner)?;
+    let winner = *previous_finish_order
+        .first()
+        .ok_or("finish order is empty")?;
+    if winner >= player_count {
+        return Err("winner seat is outside the table");
+    }
+    let winner_team = if winner % 2 == 0 { Team::A } else { Team::B };
     let winner_level = game.team_levels.level_for(winner_team);
 
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
 
-    let promotion_steps = if player_count == 4 {
-        four_player_promotion_steps(table, &previous_finish_order)?
-    } else {
-        1
+    let mut completed_finish_order = previous_finish_order.clone();
+    for seat in 0..player_count {
+        if !completed_finish_order.contains(&seat) {
+            completed_finish_order.push(seat);
+        }
+    }
+    let partner = (winner + 2) % player_count;
+    let partner_place = completed_finish_order
+        .iter()
+        .position(|seat| *seat == partner)
+        .ok_or("winner partner is missing from finish order")?
+        + 1;
+    let promotion_steps = match partner_place {
+        2 => 3,
+        3 => 2,
+        4 => 1,
+        _ => return Err("invalid partner finishing place"),
     };
     game.last_promotion_steps = Some(promotion_steps);
 
     if winner_level == Rank::Ace {
-        let wins_match = if player_count == 4 {
-            four_player_ace_win(table, &previous_finish_order)?
-        } else {
-            true
-        };
+        let wins_match = promotion_steps >= 2;
         if wins_match {
             game.match_winner = Some(winner_team);
             game.trick_complete = true;
@@ -281,17 +401,10 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
             .advance_winner_by(winner_team, promotion_steps)
     };
 
-    let mut deck = build_deck(table);
-    deck.shuffle(&mut thread_rng());
-    let (hands, remainder) = deal(table, &deck)?;
-    if !remainder.is_empty() {
-        return Err("next Guandan deal left undealt cards");
-    }
-
-    game.hands = hands;
     game.turn = winner;
     game.level = next_level;
-    game.finish_order.clear();
+    game.next_round_finish_order = previous_finish_order;
+    game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
     game.last_play.clear();
     game.last_player = None;
     game.table_plays.clear();
@@ -301,15 +414,6 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     game.tribute_cards.clear();
     game.return_cards.clear();
     game.tribute_resisted = false;
-
-    if player_count == 4 {
-        let plan = four_player_tribute_plan(table, &previous_finish_order)?;
-        if can_resist_tribute(&plan, &game.hands) {
-            game.tribute_resisted = true;
-        } else {
-            game.pending_tribute = Some(plan);
-        }
-    }
 
     Ok(true)
 }
@@ -427,13 +531,21 @@ pub async fn websocket(
                     Some(seat)
                 } else {
                     let name_for_state = name.clone();
+                    let room_has_connected_players = GUANDAN_CONNECTIONS
+                        .lock()
+                        .ok()
+                        .and_then(|rooms| rooms.get(&key).cloned())
+                        .is_some_and(|players| players.values().any(|count| *count > 0));
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
                             if state.game.started
                                 || state.game.player_names.len() >= GUANDAN_PLAYER_COUNT
                             {
-                                return Err(());
+                                if room_has_connected_players {
+                                    return Err(());
+                                }
+                                state.game = GuandanGameState::default();
                             }
                             state.game.player_names.push(name_for_state);
                             state.bump_version();
@@ -488,13 +600,16 @@ pub async fn websocket(
                             },
                         );
                         send(&tx, &state_message(&key, &state.game));
-                        if let Some(hand) = seat.and_then(|seat| state.game.private_hand(seat)) {
-                            send(
-                                &tx,
-                                &GuandanServerMessage::Hand {
-                                    cards: hand.to_vec(),
-                                },
-                            );
+                        if state.game.next_round_phase.is_none() {
+                            if let Some(hand) = seat.and_then(|seat| state.game.private_hand(seat))
+                            {
+                                send(
+                                    &tx,
+                                    &GuandanServerMessage::Hand {
+                                        cards: hand.to_vec(),
+                                    },
+                                );
+                            }
                         }
                     } else {
                         send(&tx, &waiting_message(&key, &state.game));
@@ -518,15 +633,24 @@ pub async fn websocket(
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
+                                send(
+                                    &tx_sub,
+                                    &GuandanServerMessage::Started {
+                                        player_count: state.game.hands.len(),
+                                        cards_per_player: CARDS_PER_PLAYER,
+                                    },
+                                );
                                 send(&tx_sub, &state_message(&key_sub, &state.game));
-                                if let Some(seat_sub) = seat_sub {
-                                    if let Some(hand) = state.game.private_hand(seat_sub) {
-                                        send(
-                                            &tx_sub,
-                                            &GuandanServerMessage::Hand {
-                                                cards: hand.to_vec(),
-                                            },
-                                        );
+                                if state.game.next_round_phase.is_none() {
+                                    if let Some(seat_sub) = seat_sub {
+                                        if let Some(hand) = state.game.private_hand(seat_sub) {
+                                            send(
+                                                &tx_sub,
+                                                &GuandanServerMessage::Hand {
+                                                    cards: hand.to_vec(),
+                                                },
+                                            );
+                                        }
                                     }
                                 }
                             } else {
@@ -598,6 +722,45 @@ pub async fn websocket(
                         &tx,
                         &GuandanServerMessage::Error {
                             message: "participation can only be changed before the game starts"
+                                .to_string(),
+                        },
+                    );
+                }
+            }
+            GuandanClientMessage::SetBots { count } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                if current_seat(&storage, &key, &name).await.is_none() {
+                    continue;
+                }
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if state.game.started || !(1..=3).contains(&count) {
+                            return Err(());
+                        }
+                        state
+                            .game
+                            .player_names
+                            .retain(|player| !is_robot_name(player));
+                        let human_count = state.game.player_names.len();
+                        if human_count + count > GUANDAN_PLAYER_COUNT {
+                            return Err(());
+                        }
+                        for index in 1..=count {
+                            state.game.player_names.push(format!("机器人{index}"));
+                        }
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "robot count must fit the four-player table before start"
                                 .to_string(),
                         },
                     );
@@ -694,6 +857,7 @@ pub async fn websocket(
                         state.game.table_plays.clear();
                         state.game.passes = 0;
                         state.game.trick_complete = false;
+                        state.game.last_trick_winner = None;
                         state.game.finish_order.clear();
                         state.game.last_game_winner = None;
                         state.game.last_game_winner_team = None;
@@ -703,6 +867,8 @@ pub async fn websocket(
                         state.game.return_cards.clear();
                         state.game.tribute_resisted = false;
                         state.game.match_winner = None;
+                        state.game.next_round_phase = None;
+                        state.game.next_round_finish_order.clear();
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -735,6 +901,119 @@ pub async fn websocket(
                             },
                         );
                     }
+                }
+            }
+            GuandanClientMessage::ShuffleNextRound {
+                from_position,
+                to_position,
+            } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                let seat = match current_seat(&storage, &key, &name).await {
+                    Some(seat) => seat,
+                    None => continue,
+                };
+                let result: Result<u64, PlayError> = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if state.game.next_round_phase
+                            != Some(GuandanNextRoundPhase::AwaitingShuffle)
+                        {
+                            return Err(PlayError::Invalid(
+                                "the next round is not ready to shuffle",
+                            ));
+                        }
+                        let table = validate_start(state.game.player_names.len())
+                            .map_err(PlayError::Invalid)?;
+                        let winner_team = state
+                            .game
+                            .last_game_winner_team
+                            .ok_or(PlayError::Invalid("the previous winner is unavailable"))?;
+                        if team_for_seat(table, seat).map_err(PlayError::Invalid)? == winner_team {
+                            return Err(PlayError::Invalid(
+                                "only a player on the losing team may shuffle",
+                            ));
+                        }
+                        let mut deck = build_deck(table);
+                        match (from_position, to_position) {
+                            (None, None) => deck.shuffle(&mut thread_rng()),
+                            (Some(from), Some(to))
+                                if (1..=deck.len()).contains(&from)
+                                    && (1..=deck.len()).contains(&to) =>
+                            {
+                                let card = deck.remove(from - 1);
+                                deck.insert(to - 1, card);
+                            }
+                            _ => {
+                                return Err(PlayError::Invalid(
+                                    "shuffle positions must both be between 1 and 108",
+                                ));
+                            }
+                        }
+                        let (hands, remainder) = deal(table, &deck).map_err(PlayError::Invalid)?;
+                        if !remainder.is_empty() {
+                            return Err(PlayError::Invalid("next Guandan deal left undealt cards"));
+                        }
+                        state.game.hands = hands;
+                        state.game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if let Err(error) = result {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: error.to_string(),
+                        },
+                    );
+                }
+            }
+            GuandanClientMessage::DealNextRound => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                let seat = match current_seat(&storage, &key, &name).await {
+                    Some(seat) => seat,
+                    None => continue,
+                };
+                let result: Result<u64, PlayError> = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if state.game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal)
+                        {
+                            return Err(PlayError::Invalid("the next round is not ready to deal"));
+                        }
+                        if state.game.last_game_winner != Some(seat) {
+                            return Err(PlayError::Invalid("only the previous winner may deal"));
+                        }
+                        let table = validate_start(state.game.player_names.len())
+                            .map_err(PlayError::Invalid)?;
+                        let plan =
+                            four_player_tribute_plan(table, &state.game.next_round_finish_order)
+                                .map_err(PlayError::Invalid)?;
+                        if can_resist_tribute(&plan, &state.game.hands) {
+                            state.game.tribute_resisted = true;
+                        } else {
+                            state.game.pending_tribute = Some(plan);
+                        }
+                        state.game.finish_order.clear();
+                        state.game.next_round_finish_order.clear();
+                        state.game.next_round_phase = None;
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if let Err(error) = result {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: error.to_string(),
+                        },
+                    );
                 }
             }
             GuandanClientMessage::Play { mut card_indexes } => {
@@ -797,6 +1076,7 @@ pub async fn websocket(
                         if !settled {
                             advance_turn(&mut state.game);
                         }
+                        run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -910,6 +1190,7 @@ pub async fn websocket(
                             .filter(|(index, hand)| *index != winner && !hand.is_empty())
                             .count();
                         if state.game.passes >= required_passes {
+                            state.game.last_trick_winner = Some(winner);
                             state.game.turn = winner;
                             if state.game.hands[winner].is_empty() {
                                 advance_turn(&mut state.game);
@@ -922,6 +1203,7 @@ pub async fn websocket(
                         } else {
                             advance_turn(&mut state.game);
                         }
+                        run_robot_turns(&mut state.game).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -950,6 +1232,7 @@ pub async fn websocket(
                             return Err(());
                         }
                         let winner = state.game.last_player.ok_or(())?;
+                        state.game.last_trick_winner = Some(winner);
                         state.game.turn = winner;
                         if state.game.hands[winner].is_empty() {
                             advance_turn(&mut state.game);
@@ -1072,6 +1355,35 @@ mod tests {
     }
 
     #[test]
+    fn next_round_commands_deserialize() {
+        let random: GuandanClientMessage = serde_json::from_str(
+            r#"{"type":"shuffle_next_round","from_position":null,"to_position":null}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            random,
+            GuandanClientMessage::ShuffleNextRound {
+                from_position: None,
+                to_position: None
+            }
+        ));
+        let manual: GuandanClientMessage = serde_json::from_str(
+            r#"{"type":"shuffle_next_round","from_position":8,"to_position":88}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            manual,
+            GuandanClientMessage::ShuffleNextRound {
+                from_position: Some(8),
+                to_position: Some(88)
+            }
+        ));
+        let deal: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"deal_next_round"}"#).unwrap();
+        assert!(matches!(deal, GuandanClientMessage::DealNextRound));
+    }
+
+    #[test]
     fn state_message_exposes_observers_tribute_and_promotion() {
         let key = b"test-room";
         if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
@@ -1097,7 +1409,7 @@ mod tests {
     }
 
     #[test]
-    fn one_two_finish_advances_and_activates_double_tribute() {
+    fn one_two_finish_advances_and_waits_for_loser_shuffle() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
@@ -1106,12 +1418,16 @@ mod tests {
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
         assert_eq!(game.team_levels.team_a, Rank::Five);
         assert_eq!(game.last_promotion_steps, Some(3));
-        assert!(game.pending_tribute.is_some() || game.tribute_resisted);
-        assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+        assert_eq!(
+            game.next_round_phase,
+            Some(GuandanNextRoundPhase::AwaitingShuffle)
+        );
+        assert_eq!(game.next_round_finish_order, vec![0, 2, 1]);
+        assert!(game.pending_tribute.is_none());
     }
 
     #[test]
-    fn one_three_finish_activates_single_tribute() {
+    fn one_three_finish_waits_for_loser_shuffle() {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
@@ -1120,7 +1436,11 @@ mod tests {
         assert!(settle_and_redeal_if_complete(&mut game).unwrap());
         assert_eq!(game.team_levels.team_a, Rank::Four);
         assert_eq!(game.last_promotion_steps, Some(2));
-        assert!(game.pending_tribute.is_some() || game.tribute_resisted);
+        assert_eq!(
+            game.next_round_phase,
+            Some(GuandanNextRoundPhase::AwaitingShuffle)
+        );
+        assert!(game.pending_tribute.is_none());
     }
 
     #[test]
