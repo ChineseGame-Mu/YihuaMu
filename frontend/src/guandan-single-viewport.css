@@ -222,6 +222,14 @@
   padding-top: 2px;
 }
 
+/* Hand cards are solid, fully opaque SVG cards. */
+.guandan-card-stack > button,
+.guandan-card-stack > button:disabled,
+.guandan-card-stack > button svg {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
 .guandan-card-stack > button {
   position: relative;
   flex: 0 0 auto;
