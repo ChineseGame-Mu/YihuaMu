@@ -1,0 +1,93 @@
+name: Fix Guandan ace-high groups once
+
+on:
+  push:
+    branches: [fix/guandan-single-viewport-20260822]
+    paths: [.github/workflows/fix-guandan-ace-high-groups-once.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Patch ace-high same-rank groups and AAA222 sequence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new, label):
+              p = Path(path)
+              s = p.read_text()
+              if s.count(old) != 1:
+                  raise SystemExit(f'{label}: expected one anchor, found {s.count(old)}')
+              p.write_text(s.replace(old, new, 1))
+
+          # Same-rank groups compare by natural rank, so A is highest even when another rank is level.
+          replace_once(
+              'core/src/guandan/compare.rs',
+              '''fn sequence_pattern(pattern: PlayPattern) -> bool {\n    matches!(\n        pattern,\n        PlayPattern::Straight\n            | PlayPattern::StraightFlush\n            | PlayPattern::ConsecutivePairs\n            | PlayPattern::ConsecutiveTriples\n    )\n}\n\nfn sequence_rank_value(rank: Rank) -> u8 {\n    natural_rank_value(rank)\n}\n''',
+              '''fn sequence_pattern(pattern: PlayPattern) -> bool {\n    matches!(\n        pattern,\n        PlayPattern::Straight\n            | PlayPattern::StraightFlush\n            | PlayPattern::ConsecutivePairs\n            | PlayPattern::ConsecutiveTriples\n    )\n}\n\nfn natural_group_pattern(pattern: PlayPattern) -> bool {\n    matches!(\n        pattern,\n        PlayPattern::Pair\n            | PlayPattern::Triple\n            | PlayPattern::TripleWithPair\n            | PlayPattern::Bomb\n    )\n}\n\nfn sequence_rank_value(rank: Rank) -> u8 {\n    natural_rank_value(rank)\n}\n''',
+              'compare natural group helper',
+          )
+
+          replace_once(
+              'core/src/guandan/compare.rs',
+              '''fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {\n    if sequence_pattern(candidate.pattern) || sequence_pattern(current.pattern) {\n        sequence_rank_value(candidate.main_rank).cmp(&sequence_rank_value(current.main_rank))\n    } else {\n        main_power(candidate, level).cmp(&main_power(current, level))\n    }\n}\n''',
+              '''fn compare_main_rank(candidate: PlayStrength, current: PlayStrength, level: Rank) -> Ordering {\n    if sequence_pattern(candidate.pattern)\n        || sequence_pattern(current.pattern)\n        || (natural_group_pattern(candidate.pattern) && natural_group_pattern(current.pattern))\n    {\n        natural_rank_value(candidate.main_rank).cmp(&natural_rank_value(current.main_rank))\n    } else {\n        main_power(candidate, level).cmp(&main_power(current, level))\n    }\n}\n''',
+              'compare natural rank',
+          )
+
+          # AAA222 is a legal consecutive-triples play and is the highest two-triple sequence.
+          replace_once(
+              'core/src/guandan/rules.rs',
+              '''fn can_fill_consecutive_groups(\n    fixed: &[CardFace],\n    wild_count: usize,\n    group_count: usize,\n    copies_per_rank: usize,\n) -> bool {\n    if fixed.len() + wild_count != group_count * copies_per_rank {\n        return false;\n    }\n    let ranks = ranks_in_order();\n    (0..=ranks.len() - group_count).any(|start| {\n        let targets = (0..group_count)\n            .map(|offset| (ranks[start + offset], copies_per_rank))\n            .collect::<Vec<_>>();\n        can_fill_targets(fixed, wild_count, &targets)\n    })\n}\n''',
+              '''fn can_fill_consecutive_groups(\n    fixed: &[CardFace],\n    wild_count: usize,\n    group_count: usize,\n    copies_per_rank: usize,\n) -> bool {\n    if fixed.len() + wild_count != group_count * copies_per_rank {\n        return false;\n    }\n    if group_count == 2\n        && can_fill_targets(\n            fixed,\n            wild_count,\n            &[(Rank::Ace, copies_per_rank), (Rank::Two, copies_per_rank)],\n        )\n    {\n        return true;\n    }\n    let ranks = ranks_in_order();\n    (0..=ranks.len() - group_count).any(|start| {\n        let targets = (0..group_count)\n            .map(|offset| (ranks[start + offset], copies_per_rank))\n            .collect::<Vec<_>>();\n        can_fill_targets(fixed, wild_count, &targets)\n    })\n}\n''',
+              'wild AAA222 classification',
+          )
+
+          replace_once(
+              'core/src/guandan/rules.rs',
+              '''fn is_consecutive_triples(cards: &[CardFace]) -> bool {\n    if cards.len() != 6 {\n        return false;\n    }\n    let Some(counts) = rank_counts(cards) else {\n        return false;\n    };\n    counts.len() == 2\n        && counts.values().all(|count| *count == 3)\n        && consecutive(&counts.keys().copied().collect::<Vec<_>>())\n}\n''',
+              '''fn is_consecutive_triples(cards: &[CardFace]) -> bool {\n    if cards.len() != 6 {\n        return false;\n    }\n    let Some(counts) = rank_counts(cards) else {\n        return false;\n    };\n    let ranks = counts.keys().copied().collect::<Vec<_>>();\n    let ace_two = ranks.len() == 2 && ranks.contains(&Rank::Ace) && ranks.contains(&Rank::Two);\n    counts.len() == 2\n        && counts.values().all(|count| *count == 3)\n        && (consecutive(&ranks) || ace_two)\n}\n''',
+              'basic AAA222 classification',
+          )
+
+          replace_once(
+              'core/src/guandan/strength.rs',
+              '''        PlayPattern::ConsecutivePairs | PlayPattern::ConsecutiveTriples => {\n            let (groups, copies) = if pattern == PlayPattern::ConsecutivePairs {\n                (3, 2)\n            } else {\n                (2, 3)\n            };\n            let ranks = rank_targets();\n            (0..=ranks.len() - groups)\n                .filter_map(|start| {\n                    let targets = (0..groups)\n                        .map(|offset| (ranks[start + offset], copies))\n                        .collect::<Vec<_>>();\n                    target_fits(&fixed, &targets, wild_count).then_some(ranks[start + groups - 1])\n                })\n                .collect()\n        }\n''',
+              '''        PlayPattern::ConsecutivePairs | PlayPattern::ConsecutiveTriples => {\n            let (groups, copies) = if pattern == PlayPattern::ConsecutivePairs {\n                (3, 2)\n            } else {\n                (2, 3)\n            };\n            let ranks = rank_targets();\n            let mut result = (0..=ranks.len() - groups)\n                .filter_map(|start| {\n                    let targets = (0..groups)\n                        .map(|offset| (ranks[start + offset], copies))\n                        .collect::<Vec<_>>();\n                    target_fits(&fixed, &targets, wild_count).then_some(ranks[start + groups - 1])\n                })\n                .collect::<Vec<_>>();\n            if pattern == PlayPattern::ConsecutiveTriples\n                && target_fits(\n                    &fixed,\n                    &[(Rank::Ace, 3), (Rank::Two, 3)],\n                    wild_count,\n                )\n                && !result.contains(&Rank::Ace)\n            {\n                result.push(Rank::Ace);\n            }\n            result\n        }\n''',
+              'wild AAA222 strength',
+          )
+
+          # Focused regression tests.
+          with Path('core/src/guandan/compare.rs').open('a') as f:
+              f.write('''\n#[cfg(test)]\nmod yihua_ace_high_regression_tests {\n    use super::*;\n\n    #[test]\n    fn ace_is_highest_equal_size_same_rank_group_even_against_level_rank() {\n        let ace_triple = PlayStrength::new(PlayPattern::Triple, Rank::Ace, 3);\n        let level_triple = PlayStrength::new(PlayPattern::Triple, Rank::Nine, 3);\n        assert!(beats_at_level(ace_triple, level_triple, Rank::Nine));\n\n        let ace_bomb = PlayStrength::new(PlayPattern::Bomb, Rank::Ace, 4);\n        let level_bomb = PlayStrength::new(PlayPattern::Bomb, Rank::Nine, 4);\n        assert!(beats_at_level(ace_bomb, level_bomb, Rank::Nine));\n    }\n}\n''')
+
+          with Path('core/src/guandan/rules.rs').open('a') as f:
+              f.write('''\n#[cfg(test)]\nmod yihua_aaa222_regression_tests {\n    use super::*;\n\n    fn c(suit: Suit, rank: Rank) -> CardFace {\n        CardFace::Suited { suit, rank }\n    }\n\n    #[test]\n    fn aaa222_is_legal_consecutive_triples() {\n        let cards = [\n            c(Suit::Clubs, Rank::Ace), c(Suit::Diamonds, Rank::Ace), c(Suit::Spades, Rank::Ace),\n            c(Suit::Clubs, Rank::Two), c(Suit::Diamonds, Rank::Two), c(Suit::Spades, Rank::Two),\n        ];\n        assert_eq!(classify_basic(&cards), Some(PlayPattern::ConsecutiveTriples));\n    }\n}\n''')
+
+          with Path('core/src/guandan/strength.rs').open('a') as f:
+              f.write('''\n#[cfg(test)]\nmod yihua_aaa222_strength_regression_tests {\n    use super::*;\n    use crate::guandan::Suit;\n\n    fn c(suit: Suit, rank: Rank) -> CardFace {\n        CardFace::Suited { suit, rank }\n    }\n\n    #[test]\n    fn aaa222_beats_444555() {\n        let high = strength_basic(&[\n            c(Suit::Clubs, Rank::Ace), c(Suit::Diamonds, Rank::Ace), c(Suit::Spades, Rank::Ace),\n            c(Suit::Clubs, Rank::Two), c(Suit::Diamonds, Rank::Two), c(Suit::Spades, Rank::Two),\n        ]).unwrap();\n        let low = strength_basic(&[\n            c(Suit::Clubs, Rank::Four), c(Suit::Diamonds, Rank::Four), c(Suit::Spades, Rank::Four),\n            c(Suit::Clubs, Rank::Five), c(Suit::Diamonds, Rank::Five), c(Suit::Spades, Rank::Five),\n        ]).unwrap();\n        assert!(crate::guandan::compare::beats_at_level(high, low, Rank::Nine));\n    }\n}\n''')
+          PY
+
+      - name: Format and test Guandan core
+        run: |
+          cargo fmt --all
+          cargo test -p shengji-core guandan --no-fail-fast
+          cargo clippy -p shengji-core --all-targets -- -D warnings
+
+      - name: Commit rule fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add core/src/guandan/compare.rs core/src/guandan/rules.rs core/src/guandan/strength.rs
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: make ace highest in Guandan same-rank groups and AAA222"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
