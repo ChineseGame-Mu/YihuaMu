@@ -224,6 +224,10 @@ const GuandanTable: React.FunctionComponent = () => {
   const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
   const myTurn =
     state.seat !== null && effectiveTurn === state.seat && gameStarted;
+  const currentPlayerName =
+    state.seat === null
+      ? null
+      : (state.players[state.seat] ?? `玩家${state.seat + 1}`);
   const lastWinnerName =
     state.lastGameWinner === null
       ? null
@@ -850,13 +854,22 @@ const GuandanTable: React.FunctionComponent = () => {
           </div>
 
           {!observing && (
-            <div className="guandan-private-zone" aria-label="我的桌面">
+            <div
+              className="guandan-private-zone"
+              aria-label={`我的桌面${currentPlayerName ? `｜${currentPlayerName}` : ""}`}
+            >
               <div className="guandan-zone-title">
-                <span>我的桌面</span>
+                <span>
+                  我的桌面
+                  {currentPlayerName !== null && `｜${currentPlayerName}`}
+                </span>
                 <small>仅显示我的手牌与操作</small>
               </div>
               <section className="guandan-hand-section">
-                <h2>我的手牌（{visibleHand.length}）</h2>
+                <h2>
+                  {currentPlayerName !== null && `${currentPlayerName}｜`}我的手牌（
+                  {visibleHand.length}）
+                </h2>
                 <div className="guandan-hand">
                   {stackedHand.map((stack) => (
                     <div
