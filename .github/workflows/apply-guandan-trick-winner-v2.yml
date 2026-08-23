@@ -1,0 +1,91 @@
+name: Apply Guandan trick winner v2
+
+on:
+  push:
+    branches: [fix/guandan-single-viewport-20260822]
+    paths: [.github/workflows/apply-guandan-trick-winner-v2.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - name: Apply trick-winner state
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def repl(path, old, new, count=1):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f"anchor missing in {path}: {old!r}")
+              p.write_text(s.replace(old, new, count))
+
+          repl("backend/src/guandan_serving_types.rs",
+               "    pub trick_complete: bool,\n    pub level: Rank,",
+               "    pub trick_complete: bool,\n    #[serde(default)]\n    pub last_trick_winner: Option<usize>,\n    pub level: Rank,")
+          repl("backend/src/guandan_serving_types.rs",
+               "            trick_complete: false,\n            level: Rank::Two,",
+               "            trick_complete: false,\n            last_trick_winner: None,\n            level: Rank::Two,")
+
+          repl("backend/src/guandan_handler.rs",
+               "        trick_complete: bool,\n        level: Rank,",
+               "        trick_complete: bool,\n        last_trick_winner: Option<usize>,\n        level: Rank,")
+          repl("backend/src/guandan_handler.rs",
+               "        trick_complete: game.trick_complete,\n        level: game.level,",
+               "        trick_complete: game.trick_complete,\n        last_trick_winner: game.last_trick_winner,\n        level: game.level,")
+          repl("backend/src/guandan_handler.rs",
+               "                        state.game.trick_complete = false;\n                        state.game.finish_order.clear();",
+               "                        state.game.trick_complete = false;\n                        state.game.last_trick_winner = None;\n                        state.game.finish_order.clear();")
+          repl("backend/src/guandan_handler.rs",
+               "        if game.passes >= required_passes {\n            game.turn = winner;",
+               "        if game.passes >= required_passes {\n            game.last_trick_winner = Some(winner);\n            game.turn = winner;")
+          repl("backend/src/guandan_handler.rs",
+               "                        if state.game.passes >= required_passes {\n                            state.game.turn = winner;",
+               "                        if state.game.passes >= required_passes {\n                            state.game.last_trick_winner = Some(winner);\n                            state.game.turn = winner;")
+          repl("backend/src/guandan_handler.rs",
+               "                        let winner = state.game.last_player.ok_or(())?;\n                        state.game.turn = winner;",
+               "                        let winner = state.game.last_player.ok_or(())?;\n                        state.game.last_trick_winner = Some(winner);\n                        state.game.turn = winner;")
+
+          repl("frontend/src/guandanProtocol.ts",
+               "      trick_complete: boolean;\n      level: GuandanRank;",
+               "      trick_complete: boolean;\n      last_trick_winner: number | null;\n      level: GuandanRank;")
+          repl("frontend/src/GuandanStateProvider.tsx",
+               "  trickComplete: boolean;\n  level: GuandanRank | null;",
+               "  trickComplete: boolean;\n  lastTrickWinner: number | null;\n  level: GuandanRank | null;")
+          repl("frontend/src/GuandanStateProvider.tsx",
+               "  trickComplete: false,\n  level: null,",
+               "  trickComplete: false,\n  lastTrickWinner: null,\n  level: null,")
+          repl("frontend/src/GuandanStateProvider.tsx",
+               "        trickComplete: false,\n        finishOrder: [],",
+               "        trickComplete: false,\n        lastTrickWinner: null,\n        finishOrder: [],")
+          repl("frontend/src/GuandanStateProvider.tsx",
+               "        trickComplete: message.trick_complete,\n        level: message.level,",
+               "        trickComplete: message.trick_complete,\n        lastTrickWinner: message.last_trick_winner,\n        level: message.level,")
+          repl("frontend/src/GuandanTable.tsx",
+               "            <section className=\"guandan-table-stage\">\n              <h2>本轮出牌</h2>",
+               "            <section className=\"guandan-table-stage\">\n              <h2>本轮出牌</h2>\n              {state.lastTrickWinner !== null && (\n                <div className=\"guandan-notice-panel\" role=\"status\" aria-label=\"本轮赢家\">\n                  <strong>本轮赢家：</strong>\n                  {state.players[state.lastTrickWinner] ?? `玩家${state.lastTrickWinner + 1}`}\n                </div>\n              )}")
+          PY
+      - name: Format 341 and Rust
+        run: |
+          cd frontend
+          npx --yes prettier@3.4.1 --write src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts
+          npx --yes prettier@3.4.1 --check src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts
+          cd ..
+          cargo fmt --all
+          cargo fmt --all -- --check
+      - name: Commit feature
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs frontend/src/GuandanTable.tsx frontend/src/GuandanStateProvider.tsx frontend/src/guandanProtocol.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: show Guandan trick winner on public table"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
