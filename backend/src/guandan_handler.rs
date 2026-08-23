@@ -45,6 +45,9 @@ pub enum GuandanClientMessage {
     SetParticipation {
         active: bool,
     },
+    SetBots {
+        count: usize,
+    },
     Start {
         player_count: usize,
     },
@@ -259,6 +262,81 @@ fn advance_turn(game: &mut GuandanGameState) {
             break;
         }
     }
+}
+
+fn is_robot_name(name: &str) -> bool {
+    name.starts_with("机器人")
+}
+
+fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {
+        if game.normal_play_blocked() || !game.started || game.trick_complete {
+            break;
+        }
+        let seat = game.turn;
+        if !game
+            .player_names
+            .get(seat)
+            .is_some_and(|name| is_robot_name(name))
+        {
+            break;
+        }
+
+        let chosen = game.hands[seat]
+            .iter()
+            .enumerate()
+            .find_map(|(index, card)| {
+                validate_play_against_table(&[*card], &game.last_play, game.level)
+                    .is_ok()
+                    .then_some(index)
+            });
+
+        if let Some(index) = chosen {
+            let card = game.hands[seat].remove(index);
+            let cards = vec![card];
+            game.last_play = cards.clone();
+            game.last_player = Some(seat);
+            game.table_plays.push(GuandanTablePlay {
+                player: seat,
+                cards,
+            });
+            game.passes = 0;
+            if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
+                game.finish_order.push(seat);
+            }
+            let settled = settle_and_redeal_if_complete(game)?;
+            if !settled {
+                advance_turn(game);
+            }
+            continue;
+        }
+
+        if game.last_player.is_none() {
+            return Err("robot has no legal lead");
+        }
+        game.passes += 1;
+        let winner = game.last_player.unwrap_or(game.turn);
+        let required_passes = game
+            .hands
+            .iter()
+            .enumerate()
+            .filter(|(index, hand)| *index != winner && !hand.is_empty())
+            .count();
+        if game.passes >= required_passes {
+            game.turn = winner;
+            if game.hands[winner].is_empty() {
+                advance_turn(game);
+            }
+            game.last_play.clear();
+            game.last_player = None;
+            game.table_plays.clear();
+            game.passes = 0;
+            game.trick_complete = false;
+        } else {
+            advance_turn(game);
+        }
+    }
+    Ok(())
 }
 
 fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
@@ -646,6 +724,45 @@ pub async fn websocket(
                     );
                 }
             }
+            GuandanClientMessage::SetBots { count } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                if current_seat(&storage, &key, &name).await.is_none() {
+                    continue;
+                }
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if state.game.started || !(1..=3).contains(&count) {
+                            return Err(());
+                        }
+                        state
+                            .game
+                            .player_names
+                            .retain(|player| !is_robot_name(player));
+                        let human_count = state.game.player_names.len();
+                        if human_count + count > GUANDAN_PLAYER_COUNT {
+                            return Err(());
+                        }
+                        for index in 1..=count {
+                            state.game.player_names.push(format!("机器人{index}"));
+                        }
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "robot count must fit the four-player table before start"
+                                .to_string(),
+                        },
+                    );
+                }
+            }
             GuandanClientMessage::ReorderPlayers { order } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
                     (Some(key), Some(name)) => (key, name),
@@ -955,6 +1072,7 @@ pub async fn websocket(
                         if !settled {
                             advance_turn(&mut state.game);
                         }
+                        run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1080,6 +1198,7 @@ pub async fn websocket(
                         } else {
                             advance_turn(&mut state.game);
                         }
+                        run_robot_turns(&mut state.game).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })

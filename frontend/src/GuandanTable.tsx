@@ -527,6 +527,31 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="four">四色（黑 / 红 / 蓝 / 绿）</option>
           </select>
           <p>此选择只影响您自己的牌面显示，并会保存在当前浏览器。</p>
+          <div className="guandan-bot-settings">
+            <strong>机器人陪玩：</strong>{" "}
+            {[1, 2, 3].map((count) => {
+              const humanCount = state.players.filter(
+                (player) => !player.startsWith("机器人"),
+              ).length;
+              return (
+                <button
+                  key={count}
+                  type="button"
+                  className="normal"
+                  disabled={!joined || gameStarted || humanCount + count > 4}
+                  onClick={() =>
+                    send({ type: "set_bots", count: count as 1 | 2 | 3 })
+                  }
+                >
+                  {count} 个机器人
+                </button>
+              );
+            })}
+          </div>
+          <p>
+            任何已入座玩家都可在开局前选择 1 至 3 个机器人；真人与机器人合计仍为
+            4 位。
+          </p>
         </section>
       )}
 

@@ -24,6 +24,7 @@ export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
+  | { type: "set_bots"; count: 1 | 2 | 3 }
   | { type: "start"; player_count: 4 }
   | {
       type: "shuffle_next_round";
