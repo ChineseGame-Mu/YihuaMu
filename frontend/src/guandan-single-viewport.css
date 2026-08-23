@@ -173,6 +173,7 @@
 
 /* My table = lower half; it must never overlap the public table. */
 .guandan-private-zone {
+  position: relative;
   flex: 1 1 54%;
   min-height: 0;
   margin: 0;
@@ -188,9 +189,9 @@
 }
 
 .guandan-hand-section {
-  height: calc(100% - 44px);
+  height: calc(100% - 8px);
   margin: 0 !important;
-  padding: 5px 7px !important;
+  padding: 5px 116px 5px 7px !important;
   overflow: hidden;
 }
 
@@ -241,18 +242,29 @@
   margin-bottom: 0 !important;
 }
 
+/* Play/pass controls float at the lower-right instead of consuming a full row. */
 .guandan-play-actions {
-  height: 40px;
-  margin: 2px 0 0 !important;
-  padding: 3px 7px !important;
+  position: absolute;
+  z-index: 30;
+  right: 12px;
+  bottom: 10px;
+  width: auto;
+  height: auto;
+  margin: 0 !important;
+  padding: 0 !important;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 9px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 
 .guandan-play-actions button {
-  padding: 5px 20px;
+  min-width: 88px;
+  padding: 8px 16px;
+  white-space: nowrap;
 }
 
 @media (max-width: 760px) {
@@ -279,6 +291,21 @@
   .guandan-topbar > :last-child {
     right: 6px;
     transform: scale(0.62);
+  }
+
+  .guandan-hand-section {
+    padding-right: 102px !important;
+  }
+
+  .guandan-play-actions {
+    right: 7px;
+    bottom: 7px;
+    gap: 6px;
+  }
+
+  .guandan-play-actions button {
+    min-width: 78px;
+    padding: 7px 12px;
   }
 }
 
