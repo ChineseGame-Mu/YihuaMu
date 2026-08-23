@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+printf '%s\n' '341 gate: checking frontend with Prettier 3.4.1 before commit...'
+cd frontend
+version="$(yarn --silent prettier --version)"
+if [ "$version" != "3.4.1" ]; then
+  printf '%s\n' "341 gate failed: expected Prettier 3.4.1, got $version" >&2
+  exit 1
+fi
+yarn prettier src --check
+printf '%s\n' '341 gate passed.'
