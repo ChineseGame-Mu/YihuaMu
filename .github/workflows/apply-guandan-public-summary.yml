@@ -1,0 +1,43 @@
+name: Apply Guandan public summary
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/workflows/apply-guandan-public-summary.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+      - name: Update public participant names and finish order
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/GuandanTable.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          old = '''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="当前参赛玩家"\n            >\n              <strong>当前参赛玩家：</strong>\n              {state.players.length === 0\n                ? "等待玩家加入"\n                : state.players\n                    .map((player, index) => `玩家${index + 1}：${player}`)\n                    .join(" ｜ ")}\n            </div>'''
+          new = '''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="参赛玩家"\n            >\n              <strong>参赛玩家：</strong>\n              {state.players.length === 0\n                ? "等待玩家加入"\n                : state.players.join(" ｜ ")}\n            </div>\n            {state.finishOrder.length === 4 && (\n              <div\n                className="guandan-notice-panel"\n                role="status"\n                aria-label="输赢顺序"\n              >\n                <strong>输赢顺序：</strong>\n                {state.finishOrder\n                  .map(\n                    (seat, index) =>\n                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,\n                  )\n                  .join(" ｜ ")}\n              </div>\n            )}'''
+          if old not in text:
+              raise SystemExit('participant block not found')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Format frontend file
+        working-directory: frontend
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx
+      - name: Commit change
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/GuandanTable.tsx
+          git commit -m "fix(guandan): show public finish order and simplify participants" || exit 0
+          git push
