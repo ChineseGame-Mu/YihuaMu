@@ -115,6 +115,15 @@ const reduceMessage = (
         playerCount: message.player_count,
         cardsPerPlayer: message.cards_per_player,
         turn: 0,
+        lastPlay: [],
+        lastPlayer: null,
+        tablePlays: [],
+        passes: 0,
+        trickComplete: false,
+        finishOrder: [],
+        pendingTribute: null,
+        tributeResisted: false,
+        nextRoundPhase: null,
         error: null,
       };
     case "hand":
