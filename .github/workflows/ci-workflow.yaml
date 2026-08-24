@@ -54,6 +54,7 @@ jobs:
 
       - name: Lint frontend
         run: yarn lint
+        working-directory: ./frontend
 
       - name: Lint Rust code
         run: cargo clippy
