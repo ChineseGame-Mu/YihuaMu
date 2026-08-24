@@ -1,8 +1,29 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
+import { GuandanStateContext } from "./GuandanStateProvider";
+
+const levelLabel: Record<string, string> = {
+  Two: "2",
+  Three: "3",
+  Four: "4",
+  Five: "5",
+  Six: "6",
+  Seven: "7",
+  Eight: "8",
+  Nine: "9",
+  Ten: "10",
+  Jack: "J",
+  Queen: "Q",
+  King: "K",
+  Ace: "A",
+};
+
 const GuandanCustomSortControls: React.FunctionComponent = () => {
+  const { state } = React.useContext(GuandanStateContext);
   const [playActionsTarget, setPlayActionsTarget] =
+    React.useState<HTMLElement | null>(null);
+  const [statusBarTarget, setStatusBarTarget] =
     React.useState<HTMLElement | null>(null);
 
   const nextIdRef = React.useRef(1);
@@ -89,6 +110,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       setPlayActionsTarget(
         document.querySelector<HTMLElement>(".guandan-play-actions"),
       );
+      setStatusBarTarget(
+        document.querySelector<HTMLElement>(".guandan-status-bar"),
+      );
       applyOrder();
     };
 
@@ -98,8 +122,53 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     return () => observer.disconnect();
   }, [applyOrder]);
 
+  const currentLevel =
+    state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
+
   const globalStyles = (
     <style>{`
+      .guandan-level-hud {
+        order: -100;
+        display: flex;
+        align-items: stretch;
+        gap: 8px;
+        padding: 0 !important;
+        background: transparent !important;
+      }
+      .guandan-level-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 5px 10px 5px 12px;
+        border: 2px solid #e2b54b;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #fff5cf, #efc966);
+        color: #713a08;
+        box-shadow: 0 3px 0 #8e631c, 0 5px 10px rgb(0 0 0 / 24%);
+        white-space: nowrap;
+      }
+      .guandan-level-badge span {
+        font-size: .9rem;
+        font-weight: 900;
+      }
+      .guandan-level-badge strong {
+        display: grid;
+        min-width: 34px;
+        height: 32px;
+        place-items: center;
+        padding: 0 5px;
+        border-radius: 8px;
+        background: #fffaf0;
+        color: #b44013;
+        font-size: 1.35rem;
+        line-height: 1;
+        box-shadow: inset 0 0 0 1px rgb(152 92 13 / 24%);
+      }
+      .guandan-level-badge small {
+        font-size: .78rem;
+        font-weight: 900;
+      }
       .guandan-play-actions {
         gap: 18px !important;
         align-items: center;
@@ -142,6 +211,24 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         color: #175336 !important;
       }
       @media (max-width: 760px) {
+        .guandan-level-hud {
+          width: 100%;
+          gap: 6px;
+        }
+        .guandan-level-badge {
+          flex: 1 1 0;
+          min-height: 38px;
+          padding: 4px 8px;
+          justify-content: center;
+        }
+        .guandan-level-badge span {
+          font-size: .8rem;
+        }
+        .guandan-level-badge strong {
+          min-width: 30px;
+          height: 29px;
+          font-size: 1.18rem;
+        }
         .guandan-one-click-sort {
           min-width: 112px !important;
           min-height: 52px !important;
@@ -162,6 +249,21 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   return (
     <>
       {globalStyles}
+      {statusBarTarget &&
+        createPortal(
+          <div className="guandan-level-hud" aria-label="本局级牌信息">
+            <div className="guandan-level-badge">
+              <span>本局打</span>
+              <strong>{currentLevel}</strong>
+            </div>
+            <div className="guandan-level-badge">
+              <span>当前级牌</span>
+              <strong>{currentLevel}</strong>
+              <small>级牌</small>
+            </div>
+          </div>,
+          statusBarTarget,
+        )}
       {playActionsTarget &&
         createPortal(
           <button
