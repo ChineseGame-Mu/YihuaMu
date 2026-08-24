@@ -378,7 +378,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         )}
       {handSectionTarget &&
         createPortal(
-          <div className="guandan-selected-preview" aria-label="已选待出牌核对区">
+          <div
+            className="guandan-selected-preview"
+            aria-label="已选待出牌核对区"
+          >
             <div className="guandan-selected-preview-header">
               <strong>已选待出（{selectedPreviewCards.length} 张）</strong>
               <small>请核对无误后再点“出牌”；点这里的牌可取消选择</small>
