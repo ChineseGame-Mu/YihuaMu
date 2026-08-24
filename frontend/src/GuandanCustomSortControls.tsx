@@ -48,7 +48,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       ),
     );
 
-    for (const [index, stack] of stacks.entries()) {
+    stacks.forEach((stack, index) => {
       if (!stack.dataset.oneClickSortId) {
         stack.dataset.oneClickSortId = `one-click-stack-${nextIdRef.current++}`;
       }
@@ -58,7 +58,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       stack.draggable = false;
       stack.style.cursor = "";
       stack.style.display = "";
-    }
+    });
 
     const liveIds = stacks.map((stack) => stack.dataset.oneClickSortId!);
     orderRef.current = [
