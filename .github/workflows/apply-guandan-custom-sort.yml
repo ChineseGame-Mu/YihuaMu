@@ -1,0 +1,242 @@
+name: Apply Guandan Custom Hand Sort
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+      - name: Add player custom hand sorting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('frontend/src/GuandanTable.tsx')
+          text = path.read_text()
+
+          text = text.replace(
+'''  const [handSortOrder, setHandSortOrder] = React.useState<"asc" | "desc">(
+    () =>
+      window.localStorage.getItem("guandan_hand_sort_order") === "desc"
+        ? "desc"
+        : "asc",
+  );''',
+'''  const [handSortOrder, setHandSortOrder] = React.useState<
+    "asc" | "desc" | "custom"
+  >(() => {
+    const saved = window.localStorage.getItem("guandan_hand_sort_order");
+    return saved === "desc" || saved === "custom" ? saved : "asc";
+  });
+  const [customHandOrder, setCustomHandOrder] = React.useState<number[]>([]);
+  const [draggedCardIndex, setDraggedCardIndex] = React.useState<number | null>(null);''')
+
+          text = text.replace(
+'''  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
+  }, [handSortOrder]);''',
+'''  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
+  }, [handSortOrder]);
+
+  React.useEffect(() => {
+    setCustomHandOrder(Array.from({ length: state.hand.length }, (_, index) => index));
+  }, [state.hand.length]);''')
+
+          old_visible = '''  const visibleHand = React.useMemo(() => {
+    const count =
+      dealStep === null || state.seat === null
+        ? state.hand.length
+        : dealtCount();
+    const direction = handSortOrder === "asc" ? 1 : -1;
+    return state.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ originalIndex }) => originalIndex < count)
+      .sort(
+        (a, b) =>
+          direction *
+            (cardSortValue(a.card, state.level) -
+              cardSortValue(b.card, state.level)) ||
+          a.originalIndex - b.originalIndex,
+      );
+  }, [
+    dealStep,
+    state.hand,
+    state.seat,
+    playerCount,
+    cardsPerPlayer,
+    state.level,
+    handSortOrder,
+  ]);'''
+          new_visible = '''  const visibleHand = React.useMemo(() => {
+    const count =
+      dealStep === null || state.seat === null
+        ? state.hand.length
+        : dealtCount();
+    const entries = state.hand
+      .map((card, originalIndex) => ({ card, originalIndex }))
+      .filter(({ originalIndex }) => originalIndex < count);
+    if (handSortOrder === "custom") {
+      const position = new Map(customHandOrder.map((index, order) => [index, order]));
+      return entries.sort(
+        (a, b) =>
+          (position.get(a.originalIndex) ?? a.originalIndex) -
+          (position.get(b.originalIndex) ?? b.originalIndex),
+      );
+    }
+    const direction = handSortOrder === "asc" ? 1 : -1;
+    return entries.sort(
+      (a, b) =>
+        direction *
+          (cardSortValue(a.card, state.level) - cardSortValue(b.card, state.level)) ||
+        a.originalIndex - b.originalIndex,
+    );
+  }, [
+    dealStep,
+    state.hand,
+    state.seat,
+    playerCount,
+    cardsPerPlayer,
+    state.level,
+    handSortOrder,
+    customHandOrder,
+  ]);
+
+  const moveSelectedCustom = (toEnd: "left" | "right"): void => {
+    if (selected.length === 0) return;
+    setCustomHandOrder((current) => {
+      const base = current.length === state.hand.length
+        ? current
+        : Array.from({ length: state.hand.length }, (_, index) => index);
+      const selectedSet = new Set(selected);
+      const picked = base.filter((index) => selectedSet.has(index));
+      const rest = base.filter((index) => !selectedSet.has(index));
+      return toEnd === "left" ? [...picked, ...rest] : [...rest, ...picked];
+    });
+  };
+
+  const dropCustomCard = (targetIndex: number): void => {
+    if (draggedCardIndex === null || draggedCardIndex === targetIndex) return;
+    setCustomHandOrder((current) => {
+      const base = current.length === state.hand.length
+        ? [...current]
+        : Array.from({ length: state.hand.length }, (_, index) => index);
+      const from = base.indexOf(draggedCardIndex);
+      const to = base.indexOf(targetIndex);
+      if (from < 0 || to < 0) return base;
+      base.splice(from, 1);
+      base.splice(to, 0, draggedCardIndex);
+      return base;
+    });
+    setDraggedCardIndex(null);
+  };'''
+          if old_visible not in text:
+              raise SystemExit('visibleHand block not found')
+          text = text.replace(old_visible, new_visible)
+
+          old_select = '''            onChange={(event) =>
+              setHandSortOrder(event.target.value === "desc" ? "desc" : "asc")
+            }
+          >
+            <option value="asc">从小到大</option>
+            <option value="desc">从大到小</option>
+          </select>
+          <p>牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。</p>'''
+          new_select = '''            onChange={(event) => {
+              const value = event.target.value;
+              setHandSortOrder(
+                value === "desc" || value === "custom" ? value : "asc",
+              );
+            }}
+          >
+            <option value="asc">从小到大</option>
+            <option value="desc">从大到小</option>
+            <option value="custom">玩家自由组合牌排序</option>
+          </select>
+          <p>
+            牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。自由组合模式下可拖动牌，
+            也可先选牌再用“移到左侧 / 移到右侧”组合。
+          </p>'''
+          if old_select not in text:
+              raise SystemExit('settings select block not found')
+          text = text.replace(old_select, new_select)
+
+          old_button = '''                          aria-pressed={selected.includes(originalIndex)}
+                          disabled={!gameStarted}
+                          onClick={() => toggleCard(originalIndex)}
+                          style={{'''
+          new_button = '''                          aria-pressed={selected.includes(originalIndex)}
+                          disabled={!gameStarted}
+                          draggable={handSortOrder === "custom"}
+                          onDragStart={() => setDraggedCardIndex(originalIndex)}
+                          onDragOver={(event) => {
+                            if (handSortOrder === "custom") event.preventDefault();
+                          }}
+                          onDrop={() => dropCustomCard(originalIndex)}
+                          onDragEnd={() => setDraggedCardIndex(null)}
+                          onClick={() => toggleCard(originalIndex)}
+                          style={{'''
+          if old_button not in text:
+              raise SystemExit('card button block not found')
+          text = text.replace(old_button, new_button)
+
+          old_hand_end = '''                </div>
+              </section>
+
+              <section className="guandan-actions guandan-play-actions">'''
+          new_hand_end = '''                </div>
+                {handSortOrder === "custom" && (
+                  <div className="guandan-actions" aria-label="自由组合牌排序">
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={selected.length === 0}
+                      onClick={() => moveSelectedCustom("left")}
+                    >
+                      所选牌移到左侧
+                    </button>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={selected.length === 0}
+                      onClick={() => moveSelectedCustom("right")}
+                    >
+                      所选牌移到右侧
+                    </button>
+                    <button
+                      type="button"
+                      className="normal"
+                      onClick={() =>
+                        setCustomHandOrder(
+                          Array.from({ length: state.hand.length }, (_, index) => index),
+                        )
+                      }
+                    >
+                      重置自由排序
+                    </button>
+                  </div>
+                )}
+              </section>
+
+              <section className="guandan-actions guandan-play-actions">'''
+          if old_hand_end not in text:
+              raise SystemExit('hand section end not found')
+          text = text.replace(old_hand_end, new_hand_end, 1)
+
+          path.write_text(text)
+          PY
+          rm .github/workflows/apply-guandan-custom-sort.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/GuandanTable.tsx .github/workflows/apply-guandan-custom-sort.yml
+          git commit -m "feat(guandan): add player custom hand sorting"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
