@@ -120,29 +120,49 @@ html body .guandan-private-zone > section.guandan-play-actions > button {
   white-space: nowrap !important;
 }
 
-html body .guandan-private-zone > section.guandan-play-actions > button:nth-last-of-type(2) {
+html
+  body
+  .guandan-private-zone
+  > section.guandan-play-actions
+  > button:nth-last-of-type(2) {
   left: 18px !important;
   right: auto !important;
   background: linear-gradient(180deg, #ffd95a, #f0a500) !important;
   color: #4b2c00 !important;
-  box-shadow: 0 4px 0 #a66b00, 0 5px 10px rgba(0, 0, 0, 0.2) !important;
+  box-shadow:
+    0 4px 0 #a66b00,
+    0 5px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
-html body .guandan-private-zone > section.guandan-play-actions > button:last-of-type {
+html
+  body
+  .guandan-private-zone
+  > section.guandan-play-actions
+  > button:last-of-type {
   left: auto !important;
   right: 18px !important;
   background: linear-gradient(180deg, #63cfff, #168fd0) !important;
   color: #073d5a !important;
-  box-shadow: 0 4px 0 #086a9d, 0 5px 10px rgba(0, 0, 0, 0.2) !important;
+  box-shadow:
+    0 4px 0 #086a9d,
+    0 5px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
-html body .guandan-private-zone > section.guandan-play-actions > button:disabled {
+html
+  body
+  .guandan-private-zone
+  > section.guandan-play-actions
+  > button:disabled {
   opacity: 0.55 !important;
   filter: saturate(0.72) !important;
 }
 
 /* Selected-card review occupies the large interior area. */
-html body .guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
+html
+  body
+  .guandan-private-zone
+  > section.guandan-play-actions
+  > .guandan-selected-preview {
   position: absolute !important;
   inset: 122px 18px 18px !important;
   display: flex !important;
@@ -249,15 +269,27 @@ html body .guandan-selected-preview-card:first-child {
     font-size: 13px !important;
   }
 
-  html body .guandan-private-zone > section.guandan-play-actions > button:nth-last-of-type(2) {
+  html
+    body
+    .guandan-private-zone
+    > section.guandan-play-actions
+    > button:nth-last-of-type(2) {
     left: 5px !important;
   }
 
-  html body .guandan-private-zone > section.guandan-play-actions > button:last-of-type {
+  html
+    body
+    .guandan-private-zone
+    > section.guandan-play-actions
+    > button:last-of-type {
     right: 5px !important;
   }
 
-  html body .guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
+  html
+    body
+    .guandan-private-zone
+    > section.guandan-play-actions
+    > .guandan-selected-preview {
     inset: 84px 7px 7px !important;
     padding: 6px !important;
   }
