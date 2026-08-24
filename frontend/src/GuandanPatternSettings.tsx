@@ -2,9 +2,8 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 
 const GuandanPatternSettings: React.FunctionComponent = () => {
-  const [settingsTarget, setSettingsTarget] = React.useState<HTMLElement | null>(
-    null,
-  );
+  const [settingsTarget, setSettingsTarget] =
+    React.useState<HTMLElement | null>(null);
 
   React.useEffect(() => {
     const refreshTarget = () => {
