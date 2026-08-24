@@ -45,9 +45,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   const applyOrder = React.useCallback(() => {
     const stacks = ensureStackIds();
-    const positions = new Map(
-      orderRef.current.map((id, index) => [id, index]),
-    );
+    const positions = new Map(orderRef.current.map((id, index) => [id, index]));
 
     for (const stack of stacks) {
       const id = stack.dataset.customSortId!;
