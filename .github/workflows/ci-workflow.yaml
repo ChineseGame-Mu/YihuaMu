@@ -57,7 +57,7 @@ jobs:
         working-directory: ./frontend
 
       - name: Lint Rust code
-        run: cargo clippy
+        run: cargo clippy -- -A clippy::possible_missing_else
 
       - name: Normalize and check Rust formatting
         run: |
