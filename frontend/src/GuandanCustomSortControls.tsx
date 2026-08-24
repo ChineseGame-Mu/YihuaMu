@@ -26,9 +26,13 @@ type SelectedPreviewCard = {
 
 const GuandanCustomSortControls: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
-  const [playActionsTarget, setPlayActionsTarget] = React.useState<HTMLElement | null>(null);
-  const [statusBarTarget, setStatusBarTarget] = React.useState<HTMLElement | null>(null);
-  const [selectedPreviewCards, setSelectedPreviewCards] = React.useState<SelectedPreviewCard[]>([]);
+  const [playActionsTarget, setPlayActionsTarget] =
+    React.useState<HTMLElement | null>(null);
+  const [statusBarTarget, setStatusBarTarget] =
+    React.useState<HTMLElement | null>(null);
+  const [selectedPreviewCards, setSelectedPreviewCards] = React.useState<
+    SelectedPreviewCard[]
+  >([]);
   const previewIdRef = React.useRef(1);
 
   const refreshSelectedPreview = React.useCallback(() => {
@@ -57,8 +61,12 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     const refreshTargets = () => {
-      setPlayActionsTarget(document.querySelector<HTMLElement>(".guandan-play-actions"));
-      setStatusBarTarget(document.querySelector<HTMLElement>(".guandan-status-bar"));
+      setPlayActionsTarget(
+        document.querySelector<HTMLElement>(".guandan-play-actions"),
+      );
+      setStatusBarTarget(
+        document.querySelector<HTMLElement>(".guandan-status-bar"),
+      );
     };
 
     refreshTargets();
@@ -82,7 +90,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     return () => observer.disconnect();
   }, [playActionsTarget, refreshSelectedPreview]);
 
-  const currentLevel = state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
+  const currentLevel =
+    state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
 
   const globalStyles = (
     <style>{`
@@ -115,14 +124,24 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       {statusBarTarget &&
         createPortal(
           <div className="guandan-level-hud" aria-label="本局级牌信息">
-            <div className="guandan-level-badge"><span>本局打</span><strong>{currentLevel}</strong></div>
-            <div className="guandan-level-badge"><span>当前级牌</span><strong>{currentLevel}</strong><small>级牌</small></div>
+            <div className="guandan-level-badge">
+              <span>本局打</span>
+              <strong>{currentLevel}</strong>
+            </div>
+            <div className="guandan-level-badge">
+              <span>当前级牌</span>
+              <strong>{currentLevel}</strong>
+              <small>级牌</small>
+            </div>
           </div>,
           statusBarTarget,
         )}
       {playActionsTarget &&
         createPortal(
-          <div className="guandan-selected-preview" aria-label="已选待出牌核对区">
+          <div
+            className="guandan-selected-preview"
+            aria-label="已选待出牌核对区"
+          >
             <div className="guandan-selected-preview-header">
               <strong>待出牌核对区（{selectedPreviewCards.length} 张）</strong>
               <small>请核对无误后再点“出牌”；点牌可取消</small>
@@ -130,11 +149,21 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             {selectedPreviewCards.length > 0 ? (
               <div className="guandan-selected-preview-cards">
                 {selectedPreviewCards.map((card) => (
-                  <button key={card.id} type="button" className="guandan-selected-preview-card" aria-label="取消这张待出牌" title="点击取消选择" onClick={() => deselectPreviewCard(card.id)} dangerouslySetInnerHTML={{ __html: card.html }} />
+                  <button
+                    key={card.id}
+                    type="button"
+                    className="guandan-selected-preview-card"
+                    aria-label="取消这张待出牌"
+                    title="点击取消选择"
+                    onClick={() => deselectPreviewCard(card.id)}
+                    dangerouslySetInnerHTML={{ __html: card.html }}
+                  />
                 ))}
               </div>
             ) : (
-              <div className="guandan-selected-preview-empty">请先选牌，确认后再出牌</div>
+              <div className="guandan-selected-preview-empty">
+                请先选牌，确认后再出牌
+              </div>
             )}
           </div>,
           playActionsTarget,
