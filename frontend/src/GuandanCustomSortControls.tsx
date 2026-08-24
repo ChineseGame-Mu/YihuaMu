@@ -4,6 +4,8 @@ import { createPortal } from "react-dom";
 const STORAGE_KEY = "guandan_custom_hand_sort_enabled";
 const CUSTOM_STACK_KEY = "guandan_custom_stack_mode_enabled";
 
+type Side = "left" | "right";
+
 const GuandanCustomSortControls: React.FunctionComponent = () => {
   const [enabled, setEnabled] = React.useState(
     () => window.localStorage.getItem(STORAGE_KEY) === "on",
@@ -16,13 +18,13 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   const [privateZoneTarget, setPrivateZoneTarget] =
     React.useState<HTMLElement | null>(null);
 
-  const orderRef = React.useRef<string[]>([]);
   const nextIdRef = React.useRef(1);
-  const draggedStackIdRef = React.useRef<string | null>(null);
-  const draggedCardIdRef = React.useRef<string | null>(null);
+  const nextGroupIdRef = React.useRef(1);
+  const stackOrderRef = React.useRef<string[]>([]);
   const cardOrderRef = React.useRef<string[]>([]);
   const cardGroupsRef = React.useRef<Map<string, string>>(new Map());
-  const nextGroupIdRef = React.useRef(1);
+  const draggedStackIdRef = React.useRef<string | null>(null);
+  const draggedCardIdRef = React.useRef<string | null>(null);
   const bulkClickRef = React.useRef(false);
   const customStackModeRef = React.useRef(customStackMode);
 
@@ -30,27 +32,59 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     customStackModeRef.current = customStackMode;
   }, [customStackMode]);
 
-  const ensureCardIds = React.useCallback((): HTMLButtonElement[] => {
-    const buttons = Array.from(
-      document.querySelectorAll<HTMLButtonElement>(
-        ".guandan-hand .guandan-card-stack > button",
+  const stacks = React.useCallback(
+    () =>
+      Array.from(
+        document.querySelectorAll<HTMLElement>(
+          ".guandan-hand .guandan-card-stack",
+        ),
       ),
+    [],
+  );
+
+  const buttons = React.useCallback(
+    () =>
+      Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          ".guandan-hand .guandan-card-stack > button",
+        ),
+      ),
+    [],
+  );
+
+  const ensureIds = React.useCallback(() => {
+    const currentStacks = stacks();
+    for (const stack of currentStacks) {
+      if (!stack.dataset.customSortId) {
+        stack.dataset.customSortId = `custom-stack-${nextIdRef.current++}`;
+      }
+    }
+    const liveStackIds = currentStacks.map(
+      (stack) => stack.dataset.customSortId!,
     );
-    for (const button of buttons) {
+    stackOrderRef.current = [
+      ...stackOrderRef.current.filter((id) => liveStackIds.includes(id)),
+      ...liveStackIds.filter((id) => !stackOrderRef.current.includes(id)),
+    ];
+
+    const currentButtons = buttons();
+    for (const button of currentButtons) {
       if (!button.dataset.customCardId) {
         button.dataset.customCardId = `custom-card-${nextIdRef.current++}`;
       }
     }
-    const liveIds = buttons.map((button) => button.dataset.customCardId!);
+    const liveCardIds = currentButtons.map(
+      (button) => button.dataset.customCardId!,
+    );
     cardOrderRef.current = [
-      ...cardOrderRef.current.filter((id) => liveIds.includes(id)),
-      ...liveIds.filter((id) => !cardOrderRef.current.includes(id)),
+      ...cardOrderRef.current.filter((id) => liveCardIds.includes(id)),
+      ...liveCardIds.filter((id) => !cardOrderRef.current.includes(id)),
     ];
     for (const id of Array.from(cardGroupsRef.current.keys())) {
-      if (!liveIds.includes(id)) cardGroupsRef.current.delete(id);
+      if (!liveCardIds.includes(id)) cardGroupsRef.current.delete(id);
     }
-    return buttons;
-  }, []);
+    return { currentStacks, currentButtons };
+  }, [buttons, stacks]);
 
   const normalizeGroups = React.useCallback(() => {
     const counts = new Map<string, number>();
@@ -62,33 +96,50 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     }
   }, []);
 
-  const applyCardGroups = React.useCallback(() => {
+  const applyLayout = React.useCallback(() => {
     const hand = document.querySelector<HTMLElement>(".guandan-hand");
-    const buttons = ensureCardIds();
+    const { currentStacks, currentButtons } = ensureIds();
     if (!hand) return;
 
     hand.classList.toggle("guandan-custom-stack-mode", customStackMode);
-    const position = new Map(
+
+    const stackPositions = new Map(
+      stackOrderRef.current.map((id, index) => [id, index]),
+    );
+    for (const stack of currentStacks) {
+      const id = stack.dataset.customSortId!;
+      stack.style.order =
+        enabled && !customStackMode ? String(stackPositions.get(id) ?? 0) : "";
+      stack.draggable = enabled && !customStackMode;
+      stack.style.cursor = enabled && !customStackMode ? "grab" : "";
+      // Important: custom mode must physically flatten the old rank stacks.
+      // Otherwise dragging one card still leaves the rest visually grouped by rank.
+      stack.style.display = customStackMode ? "contents" : "";
+    }
+
+    const cardPositions = new Map(
       cardOrderRef.current.map((id, index) => [id, index]),
     );
-    const buttonsById = new Map(
-      buttons.map((button) => [button.dataset.customCardId!, button]),
-    );
-
-    for (const button of buttons) {
+    for (const button of currentButtons) {
       const id = button.dataset.customCardId!;
       button.draggable = customStackMode;
-      button.style.order = customStackMode ? String(position.get(id) ?? 0) : "";
+      button.style.order = customStackMode
+        ? String(cardPositions.get(id) ?? 0)
+        : "";
       button.style.cursor = customStackMode ? "grab" : "";
+      button.style.margin = customStackMode ? "0" : "";
+      button.style.flex = customStackMode ? "0 0 78px" : "";
       button.classList.remove("guandan-custom-stack-member");
-      button.style.marginLeft = "";
     }
 
     if (!customStackMode) return;
 
+    const byId = new Map(
+      currentButtons.map((button) => [button.dataset.customCardId!, button]),
+    );
     for (let index = 0; index < cardOrderRef.current.length; index += 1) {
       const id = cardOrderRef.current[index]!;
-      const button = buttonsById.get(id);
+      const button = byId.get(id);
       if (!button) continue;
       const group = cardGroupsRef.current.get(id);
       if (!group) continue;
@@ -98,14 +149,13 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         button.style.marginLeft = "-58px";
       }
     }
-  }, [customStackMode, ensureCardIds]);
+  }, [customStackMode, enabled, ensureIds]);
 
   const stackCardOnto = React.useCallback(
     (sourceId: string, targetId: string) => {
       if (sourceId === targetId) return;
-      const sourceIndex = cardOrderRef.current.indexOf(sourceId);
-      const targetIndex = cardOrderRef.current.indexOf(targetId);
-      if (sourceIndex < 0 || targetIndex < 0) return;
+      if (!cardOrderRef.current.includes(sourceId)) return;
+      if (!cardOrderRef.current.includes(targetId)) return;
 
       const targetGroup =
         cardGroupsRef.current.get(targetId) ??
@@ -115,93 +165,58 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       cardGroupsRef.current.set(sourceId, targetGroup);
       normalizeGroups();
 
-      const withoutSource = cardOrderRef.current.filter(
-        (id) => id !== sourceId,
-      );
-      let insertAfter = withoutSource.indexOf(targetId);
+      const order = cardOrderRef.current.filter((id) => id !== sourceId);
+      let insertAfter = order.indexOf(targetId);
       while (
-        insertAfter + 1 < withoutSource.length &&
-        cardGroupsRef.current.get(withoutSource[insertAfter + 1]!) ===
-          targetGroup
+        insertAfter + 1 < order.length &&
+        cardGroupsRef.current.get(order[insertAfter + 1]!) === targetGroup
       ) {
         insertAfter += 1;
       }
-      withoutSource.splice(insertAfter + 1, 0, sourceId);
-      cardOrderRef.current = withoutSource;
-      applyCardGroups();
+      order.splice(insertAfter + 1, 0, sourceId);
+      cardOrderRef.current = order;
+      applyLayout();
     },
-    [applyCardGroups, normalizeGroups],
+    [applyLayout, normalizeGroups],
   );
 
-  const ensureStackIds = React.useCallback((): HTMLElement[] => {
-    const stacks = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        ".guandan-hand .guandan-card-stack",
-      ),
-    );
-    for (const stack of stacks) {
-      if (!stack.dataset.customSortId) {
-        stack.dataset.customSortId = `custom-stack-${nextIdRef.current++}`;
-      }
-    }
-    const liveIds = stacks.map((stack) => stack.dataset.customSortId!);
-    orderRef.current = [
-      ...orderRef.current.filter((id) => liveIds.includes(id)),
-      ...liveIds.filter((id) => !orderRef.current.includes(id)),
-    ];
-    return stacks;
-  }, []);
-
-  const applyOrder = React.useCallback(() => {
-    const stacks = ensureStackIds();
-    const positions = new Map(orderRef.current.map((id, index) => [id, index]));
-    for (const stack of stacks) {
-      const id = stack.dataset.customSortId!;
-      stack.style.order =
-        enabled && !customStackMode ? String(positions.get(id) ?? 0) : "";
-      stack.draggable = enabled && !customStackMode;
-      stack.style.cursor = enabled && !customStackMode ? "grab" : "";
-      if (stack.dataset.customSortBound !== "1") {
-        stack.dataset.customSortBound = "1";
-        stack.addEventListener("dragstart", (event) => {
-          if (customStackModeRef.current) {
-            event.preventDefault();
-            return;
-          }
-          draggedStackIdRef.current = stack.dataset.customSortId ?? null;
-        });
-        stack.addEventListener("dragover", (event) => {
-          if (!customStackModeRef.current) event.preventDefault();
-        });
-        stack.addEventListener("drop", (event) => {
-          if (customStackModeRef.current) return;
-          event.preventDefault();
-          const from = draggedStackIdRef.current;
-          const to = stack.dataset.customSortId;
-          if (!from || !to || from === to) return;
-          const order = [...orderRef.current];
-          const fromIndex = order.indexOf(from);
-          const toIndex = order.indexOf(to);
-          if (fromIndex < 0 || toIndex < 0) return;
-          order.splice(fromIndex, 1);
-          order.splice(toIndex, 0, from);
-          orderRef.current = order;
-          applyOrder();
-        });
-        stack.addEventListener("dragend", () => {
-          draggedStackIdRef.current = null;
-        });
-      }
-    }
-    applyCardGroups();
-  }, [applyCardGroups, customStackMode, enabled, ensureStackIds]);
-
-  const bindCardEvents = React.useCallback(() => {
+  const bindEvents = React.useCallback(() => {
     const hand = document.querySelector<HTMLElement>(".guandan-hand");
-    const buttons = ensureCardIds();
+    const { currentStacks, currentButtons } = ensureIds();
     if (!hand) return;
 
-    for (const button of buttons) {
+    for (const stack of currentStacks) {
+      if (stack.dataset.customSortBound === "1") continue;
+      stack.dataset.customSortBound = "1";
+      stack.addEventListener("dragstart", (event) => {
+        if (customStackModeRef.current) return;
+        draggedStackIdRef.current = stack.dataset.customSortId ?? null;
+        if (!draggedStackIdRef.current) event.preventDefault();
+      });
+      stack.addEventListener("dragover", (event) => {
+        if (!customStackModeRef.current) event.preventDefault();
+      });
+      stack.addEventListener("drop", (event) => {
+        if (customStackModeRef.current) return;
+        event.preventDefault();
+        const from = draggedStackIdRef.current;
+        const to = stack.dataset.customSortId;
+        if (!from || !to || from === to) return;
+        const order = [...stackOrderRef.current];
+        const fromIndex = order.indexOf(from);
+        const toIndex = order.indexOf(to);
+        if (fromIndex < 0 || toIndex < 0) return;
+        order.splice(fromIndex, 1);
+        order.splice(toIndex, 0, from);
+        stackOrderRef.current = order;
+        applyLayout();
+      });
+      stack.addEventListener("dragend", () => {
+        draggedStackIdRef.current = null;
+      });
+    }
+
+    for (const button of currentButtons) {
       if (button.dataset.customStackBound === "1") continue;
       button.dataset.customStackBound = "1";
       button.addEventListener("dragstart", (event) => {
@@ -224,7 +239,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         if (!customStackModeRef.current) return;
         event.preventDefault();
         event.stopPropagation();
-        const source = draggedCardIdRef.current;
+        const source =
+          draggedCardIdRef.current || event.dataTransfer?.getData("text/plain");
         const target = button.dataset.customCardId;
         if (source && target) stackCardOnto(source, target);
       });
@@ -234,104 +250,104 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       });
     }
 
-    if (hand.dataset.customStackClickBound !== "1") {
-      hand.dataset.customStackClickBound = "1";
-      hand.addEventListener(
-        "click",
-        (event) => {
-          if (!customStackModeRef.current || bulkClickRef.current) return;
-          const target = (
-            event.target as HTMLElement | null
-          )?.closest<HTMLButtonElement>(".guandan-card-stack > button");
-          if (!target) return;
-          const id = target.dataset.customCardId;
-          const group = id ? cardGroupsRef.current.get(id) : undefined;
-          if (!group) return;
-          const members = Array.from(
-            document.querySelectorAll<HTMLButtonElement>(
-              ".guandan-hand .guandan-card-stack > button",
-            ),
-          ).filter(
-            (button) =>
-              cardGroupsRef.current.get(button.dataset.customCardId ?? "") ===
-              group,
-          );
-          if (members.length < 2) return;
-          event.preventDefault();
-          event.stopPropagation();
-          bulkClickRef.current = true;
-          try {
-            for (const member of members) member.click();
-          } finally {
-            bulkClickRef.current = false;
+    if (hand.dataset.customStackClickBound === "1") return;
+    hand.dataset.customStackClickBound = "1";
+    hand.addEventListener(
+      "click",
+      (event) => {
+        if (!customStackModeRef.current || bulkClickRef.current) return;
+        const target = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>(
+          ".guandan-card-stack > button",
+        );
+        if (!target) return;
+        const id = target.dataset.customCardId;
+        const group = id ? cardGroupsRef.current.get(id) : undefined;
+        if (!group) return;
+        const members = buttons().filter(
+          (button) =>
+            cardGroupsRef.current.get(button.dataset.customCardId ?? "") === group,
+        );
+        if (members.length < 2) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+        const allSelected = members.every(
+          (member) => member.getAttribute("aria-pressed") === "true",
+        );
+        bulkClickRef.current = true;
+        try {
+          for (const member of members) {
+            const pressed = member.getAttribute("aria-pressed") === "true";
+            if (pressed === allSelected) member.click();
           }
-        },
-        true,
-      );
-    }
-  }, [ensureCardIds, stackCardOnto]);
+        } finally {
+          bulkClickRef.current = false;
+        }
+      },
+      true,
+    );
+  }, [applyLayout, buttons, ensureIds, stackCardOnto]);
 
   const moveSelected = React.useCallback(
-    (side: "left" | "right") => {
-      const stacks = ensureStackIds();
-      const selectedIds = stacks
+    (side: Side) => {
+      const currentStacks = stacks();
+      const selectedIds = currentStacks
         .filter((stack) => stack.querySelector('[aria-pressed="true"]'))
-        .map((stack) => stack.dataset.customSortId!);
+        .map((stack) => stack.dataset.customSortId)
+        .filter((id): id is string => Boolean(id));
       if (selectedIds.length === 0) return;
       const selectedSet = new Set(selectedIds);
-      const picked = orderRef.current.filter((id) => selectedSet.has(id));
-      const rest = orderRef.current.filter((id) => !selectedSet.has(id));
-      orderRef.current =
+      const picked = stackOrderRef.current.filter((id) => selectedSet.has(id));
+      const rest = stackOrderRef.current.filter((id) => !selectedSet.has(id));
+      stackOrderRef.current =
         side === "left" ? [...picked, ...rest] : [...rest, ...picked];
-      applyOrder();
+      applyLayout();
     },
-    [applyOrder, ensureStackIds],
+    [applyLayout, stacks],
   );
 
   const resetOrder = React.useCallback(() => {
-    orderRef.current = [];
-    const stacks = ensureStackIds();
-    orderRef.current = stacks.map((stack) => stack.dataset.customSortId!);
-    applyOrder();
-  }, [applyOrder, ensureStackIds]);
+    stackOrderRef.current = [];
+    cardOrderRef.current = [];
+    cardGroupsRef.current.clear();
+    ensureIds();
+    applyLayout();
+  }, [applyLayout, ensureIds]);
 
   const splitSelectedStack = React.useCallback(() => {
-    const selectedButtons = Array.from(
-      document.querySelectorAll<HTMLButtonElement>(
-        '.guandan-hand .guandan-card-stack > button[aria-pressed="true"]',
-      ),
+    const selected = buttons().filter(
+      (button) => button.getAttribute("aria-pressed") === "true",
     );
-    for (const button of selectedButtons) {
+    const groups = new Set<string>();
+    for (const button of selected) {
       const id = button.dataset.customCardId;
-      if (id) cardGroupsRef.current.delete(id);
+      if (!id) continue;
+      const group = cardGroupsRef.current.get(id);
+      if (group) groups.add(group);
+    }
+    for (const [id, group] of Array.from(cardGroupsRef.current.entries())) {
+      if (groups.has(group)) cardGroupsRef.current.delete(id);
     }
     normalizeGroups();
-    applyCardGroups();
-  }, [applyCardGroups, normalizeGroups]);
-
-  const toggleCustomStackMode = React.useCallback(() => {
-    setCustomStackMode((current) => {
-      const next = !current;
-      if (!next) {
-        cardGroupsRef.current.clear();
-        cardOrderRef.current = [];
-      }
-      return next;
-    });
-  }, []);
+    applyLayout();
+  }, [applyLayout, buttons, normalizeGroups]);
 
   React.useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, enabled ? "on" : "off");
-    applyOrder();
-  }, [enabled, applyOrder]);
+    applyLayout();
+  }, [enabled, applyLayout]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
       CUSTOM_STACK_KEY,
       customStackMode ? "on" : "off",
     );
-    applyOrder();
-  }, [customStackMode, applyOrder]);
+    if (!customStackMode) {
+      cardGroupsRef.current.clear();
+      cardOrderRef.current = [];
+    }
+    applyLayout();
+  }, [customStackMode, applyLayout]);
 
   React.useEffect(() => {
     const refresh = () => {
@@ -341,14 +357,14 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       setPrivateZoneTarget(
         document.querySelector<HTMLElement>(".guandan-private-zone"),
       );
-      bindCardEvents();
-      applyOrder();
+      bindEvents();
+      applyLayout();
     };
     refresh();
     const observer = new MutationObserver(refresh);
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [applyOrder, bindCardEvents]);
+  }, [applyLayout, bindEvents]);
 
   const globalStyles = (
     <style>{`
@@ -380,18 +396,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         padding: 7px 10px !important;
         font-size: .82rem !important;
       }
+      .guandan-hand.guandan-custom-stack-mode {
+        align-items: flex-end;
+      }
       .guandan-hand.guandan-custom-stack-mode .guandan-card-stack {
-        display: contents;
+        display: contents !important;
       }
       .guandan-hand.guandan-custom-stack-mode .guandan-card-stack > button {
-        flex: 0 0 78px;
+        flex: 0 0 78px !important;
         margin: 0 !important;
       }
       .guandan-hand.guandan-custom-stack-mode .guandan-card-stack > button.guandan-custom-stack-member {
         box-shadow: 0 4px 9px rgb(0 0 0 / 34%);
-      }
-      .guandan-hand.guandan-custom-stack-mode .guandan-card-stack > button.guandan-custom-stack-member + button.guandan-custom-stack-member {
-        position: relative;
       }
       .guandan-play-actions {
         gap: 18px !important;
@@ -454,22 +470,14 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
               玩家自由组合牌排序
             </label>
             <p>
-              数字自动叠加模式下，可拖动同数字牌组调整位置；切换到自定义叠牌后，改为逐张拖牌叠组。
+              数字自动叠加模式下，可拖动同数字牌组调整位置；切换到自定义叠牌后，所有牌先拆成单张，再由玩家自行叠组。
             </p>
             {enabled && !customStackMode && (
               <div className="guandan-actions" aria-label="自由组合牌排序操作">
-                <button
-                  type="button"
-                  className="normal"
-                  onClick={() => moveSelected("left")}
-                >
+                <button type="button" className="normal" onClick={() => moveSelected("left")}>
                   所选牌移到左侧
                 </button>
-                <button
-                  type="button"
-                  className="normal"
-                  onClick={() => moveSelected("right")}
-                >
+                <button type="button" className="normal" onClick={() => moveSelected("right")}>
                   所选牌移到右侧
                 </button>
                 <button type="button" className="normal" onClick={resetOrder}>
@@ -482,15 +490,12 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         )}
       {privateZoneTarget &&
         createPortal(
-          <div
-            className="guandan-stack-mode-controls"
-            aria-label="叠牌模式转换"
-          >
+          <div className="guandan-stack-mode-controls" aria-label="叠牌模式转换">
             <button
               type="button"
               className={`guandan-stack-mode-button ${customStackMode ? "is-on" : ""}`}
               aria-pressed={customStackMode}
-              onClick={toggleCustomStackMode}
+              onClick={() => setCustomStackMode((current) => !current)}
               title="切换数字自动叠加与玩家自定义叠牌"
             >
               自定义叠牌：{customStackMode ? "开" : "关"}
