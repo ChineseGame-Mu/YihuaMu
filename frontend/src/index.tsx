@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/react";
 import "./style.css";
 import "./guandan.css";
 import "./guandan-single-viewport.css";
+import "./guandan-review-panel-fix.css";
 import "./guandan-review-third.css";
 import "./guandan-header-decor.css";
 import "./game-logos.css";
@@ -59,48 +60,39 @@ const bootstrap = (): void => {
   ReactModal.setAppElement(root!);
   const root_ = createRoot(root!);
 
-  const rawGame = new URLSearchParams(window.location.search).get("game") ?? "";
-  const game = rawGame.trim().toLowerCase().replace(/\/+$/, "");
-  const isGuandan = game === "guandan";
+  const params = new URLSearchParams(window.location.search);
+  const game = params.get("game");
 
-  if (isGuandan) {
+  if (game === "guandan") {
     root_.render(
-      <Sentry.ErrorBoundary fallback={fallback}>
+      <React.Suspense fallback={fallback}>
         <GuandanWebsocketProvider>
           <GuandanStateProvider>
-            <div>
-              <div className="guandan-topbar">
-                <ExitGameButton onClick={returnToGameSelection} />
-                <GuandanHeaderDecor />
-              </div>
-              <GuandanNoBeatHint />
-              <GuandanNoBeatControls />
-              <GuandanTable />
-              <GuandanCustomSortControls />
-            </div>
+            <ExitGameButton onExit={returnToGameSelection} />
+            <GuandanHeaderDecor />
+            <GuandanCustomSortControls />
+            <GuandanTable />
+            <GuandanNoBeatHint />
+            <GuandanNoBeatControls />
           </GuandanStateProvider>
         </GuandanWebsocketProvider>
-      </Sentry.ErrorBoundary>,
+      </React.Suspense>,
     );
     return;
   }
 
   root_.render(
-    <Sentry.ErrorBoundary fallback={fallback}>
-      <React.Suspense fallback={"loading..."}>
-        <WasmProvider>
-          <TimerProvider>
-            <AppStateProvider>
-              <WebsocketProvider>
-                <Sentry.ErrorBoundary fallback={fallback}>
-                  <Root />
-                </Sentry.ErrorBoundary>
-              </WebsocketProvider>
-            </AppStateProvider>
-          </TimerProvider>
-        </WasmProvider>
-      </React.Suspense>
-    </Sentry.ErrorBoundary>,
+    <React.Suspense fallback={fallback}>
+      <WasmProvider>
+        <AppStateProvider>
+          <WebsocketProvider>
+            <TimerProvider>
+              <Root />
+            </TimerProvider>
+          </WebsocketProvider>
+        </AppStateProvider>
+      </WasmProvider>
+    </React.Suspense>,
   );
 };
 
