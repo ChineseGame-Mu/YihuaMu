@@ -71,7 +71,9 @@
   border-color: #fff2a8 !important;
   background: linear-gradient(180deg, #ffe36a 0%, #ffae00 100%) !important;
   color: #4d2b00 !important;
-  box-shadow: 0 3px 0 #9d6600, 0 4px 8px rgba(0, 0, 0, 0.22) !important;
+  box-shadow:
+    0 3px 0 #9d6600,
+    0 4px 8px rgba(0, 0, 0, 0.22) !important;
 }
 
 .guandan-private-zone > section.guandan-play-actions > button:nth-of-type(2) {
@@ -80,7 +82,9 @@
   border-color: #d8f6ff !important;
   background: linear-gradient(180deg, #72ddff 0%, #159fdf 100%) !important;
   color: #073d5a !important;
-  box-shadow: 0 3px 0 #08739f, 0 4px 8px rgba(0, 0, 0, 0.22) !important;
+  box-shadow:
+    0 3px 0 #08739f,
+    0 4px 8px rgba(0, 0, 0, 0.22) !important;
 }
 
 .guandan-private-zone > section.guandan-play-actions > button:disabled {
@@ -89,7 +93,9 @@
 }
 
 /* The preview itself fills the panel below the two action buttons. */
-.guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
+.guandan-private-zone
+  > section.guandan-play-actions
+  > .guandan-selected-preview {
   position: absolute !important;
   top: 94px !important;
   right: 10px !important;
@@ -145,7 +151,9 @@
     right: 9px !important;
   }
 
-  .guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
+  .guandan-private-zone
+    > section.guandan-play-actions
+    > .guandan-selected-preview {
     top: 88px !important;
     right: 8px !important;
     bottom: 8px !important;
