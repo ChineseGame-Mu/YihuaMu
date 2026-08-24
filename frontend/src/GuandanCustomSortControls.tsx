@@ -1,27 +1,13 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 
-const STORAGE_KEY = "guandan_custom_hand_sort_enabled";
-
-type Side = "left" | "right";
-
 const GuandanCustomSortControls: React.FunctionComponent = () => {
-  const [enabled, setEnabled] = React.useState(
-    () => window.localStorage.getItem(STORAGE_KEY) === "on",
-  );
-  const [settingsTarget, setSettingsTarget] =
-    React.useState<HTMLElement | null>(null);
   const [playActionsTarget, setPlayActionsTarget] =
     React.useState<HTMLElement | null>(null);
 
   const nextIdRef = React.useRef(1);
   const orderRef = React.useRef<string[]>([]);
-  const draggedStackIdRef = React.useRef<string | null>(null);
-  const enabledRef = React.useRef(enabled);
-
-  React.useEffect(() => {
-    enabledRef.current = enabled;
-  }, [enabled]);
+  const organizedRef = React.useRef(false);
 
   const ensureStackIds = React.useCallback((): HTMLElement[] => {
     const stacks = Array.from(
@@ -31,15 +17,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     );
 
     for (const [index, stack] of stacks.entries()) {
-      if (!stack.dataset.customSortId) {
-        stack.dataset.customSortId = `custom-stack-${nextIdRef.current++}`;
+      if (!stack.dataset.oneClickSortId) {
+        stack.dataset.oneClickSortId = `one-click-stack-${nextIdRef.current++}`;
       }
       if (!stack.dataset.naturalOrder) {
         stack.dataset.naturalOrder = String(index);
       }
+      stack.draggable = false;
+      stack.style.cursor = "";
+      stack.style.display = "";
     }
 
-    const liveIds = stacks.map((stack) => stack.dataset.customSortId!);
+    const liveIds = stacks.map((stack) => stack.dataset.oneClickSortId!);
     orderRef.current = [
       ...orderRef.current.filter((id) => liveIds.includes(id)),
       ...liveIds.filter((id) => !orderRef.current.includes(id)),
@@ -50,82 +39,17 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   const applyOrder = React.useCallback(() => {
     const stacks = ensureStackIds();
+    if (!organizedRef.current) {
+      for (const stack of stacks) stack.style.order = "";
+      return;
+    }
+
     const positions = new Map(orderRef.current.map((id, index) => [id, index]));
-
     for (const stack of stacks) {
-      const id = stack.dataset.customSortId!;
-      stack.style.order = enabledRef.current
-        ? String(positions.get(id) ?? 0)
-        : "";
-      stack.draggable = enabledRef.current;
-      stack.style.cursor = enabledRef.current ? "grab" : "";
-      stack.style.display = "";
-
-      if (stack.dataset.customSortBound === "1") continue;
-      stack.dataset.customSortBound = "1";
-
-      stack.addEventListener("dragstart", (event) => {
-        if (!enabledRef.current) {
-          event.preventDefault();
-          return;
-        }
-        draggedStackIdRef.current = stack.dataset.customSortId ?? null;
-      });
-
-      stack.addEventListener("dragover", (event) => {
-        if (enabledRef.current) event.preventDefault();
-      });
-
-      stack.addEventListener("drop", (event) => {
-        if (!enabledRef.current) return;
-        event.preventDefault();
-        const from = draggedStackIdRef.current;
-        const to = stack.dataset.customSortId;
-        if (!from || !to || from === to) return;
-
-        const order = [...orderRef.current];
-        const fromIndex = order.indexOf(from);
-        const toIndex = order.indexOf(to);
-        if (fromIndex < 0 || toIndex < 0) return;
-
-        order.splice(fromIndex, 1);
-        order.splice(toIndex, 0, from);
-        orderRef.current = order;
-        applyOrder();
-      });
-
-      stack.addEventListener("dragend", () => {
-        draggedStackIdRef.current = null;
-      });
+      const id = stack.dataset.oneClickSortId!;
+      stack.style.order = String(positions.get(id) ?? 0);
     }
   }, [ensureStackIds]);
-
-  const moveSelected = React.useCallback(
-    (side: Side) => {
-      const stacks = ensureStackIds();
-      const selectedIds = stacks
-        .filter((stack) => stack.querySelector('[aria-pressed="true"]'))
-        .map((stack) => stack.dataset.customSortId)
-        .filter((id): id is string => Boolean(id));
-
-      if (selectedIds.length === 0) return;
-
-      const selectedSet = new Set(selectedIds);
-      const picked = orderRef.current.filter((id) => selectedSet.has(id));
-      const rest = orderRef.current.filter((id) => !selectedSet.has(id));
-      orderRef.current =
-        side === "left" ? [...picked, ...rest] : [...rest, ...picked];
-      applyOrder();
-    },
-    [applyOrder, ensureStackIds],
-  );
-
-  const resetOrder = React.useCallback(() => {
-    orderRef.current = [];
-    const stacks = ensureStackIds();
-    orderRef.current = stacks.map((stack) => stack.dataset.customSortId!);
-    applyOrder();
-  }, [applyOrder, ensureStackIds]);
 
   const organizeHand = React.useCallback(() => {
     const stacks = ensureStackIds();
@@ -150,27 +74,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       );
     });
 
-    orderRef.current = arranged.map((stack) => stack.dataset.customSortId!);
-    enabledRef.current = true;
-    setEnabled(true);
+    orderRef.current = arranged.map((stack) => stack.dataset.oneClickSortId!);
+    organizedRef.current = true;
     applyOrder();
   }, [applyOrder, ensureStackIds]);
 
   React.useEffect(() => {
-    enabledRef.current = enabled;
-    window.localStorage.setItem(STORAGE_KEY, enabled ? "on" : "off");
+    window.localStorage.removeItem("guandan_custom_hand_sort_enabled");
     window.localStorage.removeItem("guandan_custom_stack_mode_enabled");
-    document
-      .querySelector<HTMLElement>(".guandan-hand")
-      ?.classList.remove("guandan-custom-stack-mode");
-    applyOrder();
-  }, [enabled, applyOrder]);
+  }, []);
 
   React.useEffect(() => {
     const refresh = () => {
-      setSettingsTarget(
-        document.querySelector<HTMLElement>(".guandan-settings"),
-      );
       setPlayActionsTarget(
         document.querySelector<HTMLElement>(".guandan-play-actions"),
       );
@@ -258,45 +173,6 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             一键理牌
           </button>,
           playActionsTarget,
-        )}
-      {settingsTarget &&
-        createPortal(
-          <div className="guandan-custom-sort-setting">
-            <hr />
-            <label>
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(event) => setEnabled(event.target.checked)}
-              />{" "}
-              玩家自由组合牌排序
-            </label>
-            <p>
-              同数字牌保持自动叠加；“一键理牌”会优先排列炸弹、三张、对子、单张，之后仍可拖动整组微调。
-            </p>
-            {enabled && (
-              <div className="guandan-actions" aria-label="自由组合牌排序操作">
-                <button
-                  type="button"
-                  className="normal"
-                  onClick={() => moveSelected("left")}
-                >
-                  所选牌移到左侧
-                </button>
-                <button
-                  type="button"
-                  className="normal"
-                  onClick={() => moveSelected("right")}
-                >
-                  所选牌移到右侧
-                </button>
-                <button type="button" className="normal" onClick={resetOrder}>
-                  重置自由排序
-                </button>
-              </div>
-            )}
-          </div>,
-          settingsTarget,
         )}
     </>
   );
