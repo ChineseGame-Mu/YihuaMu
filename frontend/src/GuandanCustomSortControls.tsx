@@ -11,6 +11,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   );
   const [settingsTarget, setSettingsTarget] =
     React.useState<HTMLElement | null>(null);
+  const [playActionsTarget, setPlayActionsTarget] =
+    React.useState<HTMLElement | null>(null);
 
   const nextIdRef = React.useRef(1);
   const orderRef = React.useRef<string[]>([]);
@@ -28,9 +30,12 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       ),
     );
 
-    for (const stack of stacks) {
+    for (const [index, stack] of stacks.entries()) {
       if (!stack.dataset.customSortId) {
         stack.dataset.customSortId = `custom-stack-${nextIdRef.current++}`;
+      }
+      if (!stack.dataset.naturalOrder) {
+        stack.dataset.naturalOrder = String(index);
       }
     }
 
@@ -49,9 +54,11 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
     for (const stack of stacks) {
       const id = stack.dataset.customSortId!;
-      stack.style.order = enabled ? String(positions.get(id) ?? 0) : "";
-      stack.draggable = enabled;
-      stack.style.cursor = enabled ? "grab" : "";
+      stack.style.order = enabledRef.current
+        ? String(positions.get(id) ?? 0)
+        : "";
+      stack.draggable = enabledRef.current;
+      stack.style.cursor = enabledRef.current ? "grab" : "";
       stack.style.display = "";
 
       if (stack.dataset.customSortBound === "1") continue;
@@ -91,7 +98,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         draggedStackIdRef.current = null;
       });
     }
-  }, [enabled, ensureStackIds]);
+  }, [ensureStackIds]);
 
   const moveSelected = React.useCallback(
     (side: Side) => {
@@ -120,7 +127,37 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     applyOrder();
   }, [applyOrder, ensureStackIds]);
 
+  const organizeHand = React.useCallback(() => {
+    const stacks = ensureStackIds();
+    if (stacks.length === 0) return;
+
+    const groupPriority = (count: number): number => {
+      if (count >= 4) return 0;
+      if (count === 3) return 1;
+      if (count === 2) return 2;
+      return 3;
+    };
+
+    const arranged = [...stacks].sort((a, b) => {
+      const aCount = a.querySelectorAll(":scope > button").length;
+      const bCount = b.querySelectorAll(":scope > button").length;
+      const priorityDifference = groupPriority(aCount) - groupPriority(bCount);
+      if (priorityDifference !== 0) return priorityDifference;
+      if (aCount !== bCount) return bCount - aCount;
+      return (
+        Number(a.dataset.naturalOrder ?? 0) -
+        Number(b.dataset.naturalOrder ?? 0)
+      );
+    });
+
+    orderRef.current = arranged.map((stack) => stack.dataset.customSortId!);
+    enabledRef.current = true;
+    setEnabled(true);
+    applyOrder();
+  }, [applyOrder, ensureStackIds]);
+
   React.useEffect(() => {
+    enabledRef.current = enabled;
     window.localStorage.setItem(STORAGE_KEY, enabled ? "on" : "off");
     window.localStorage.removeItem("guandan_custom_stack_mode_enabled");
     document
@@ -133,6 +170,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     const refresh = () => {
       setSettingsTarget(
         document.querySelector<HTMLElement>(".guandan-settings"),
+      );
+      setPlayActionsTarget(
+        document.querySelector<HTMLElement>(".guandan-play-actions"),
       );
       applyOrder();
     };
@@ -149,6 +189,20 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         gap: 18px !important;
         align-items: center;
         justify-content: center;
+      }
+      .guandan-one-click-sort {
+        order: -1;
+        min-width: 126px !important;
+        min-height: 54px !important;
+        padding: 11px 20px !important;
+        border: 2px solid #c9ffd6 !important;
+        border-radius: 16px !important;
+        background: linear-gradient(180deg, #35d36f, #159447) !important;
+        color: #fff !important;
+        font-size: 1.16rem !important;
+        font-weight: 950 !important;
+        letter-spacing: .06em;
+        box-shadow: 0 5px 0 #0a662f, 0 8px 15px rgb(0 0 0 / 22%) !important;
       }
       .guandan-play-actions > button:last-of-type,
       .guandan-play-actions > button:nth-last-of-type(2) {
@@ -173,6 +227,12 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         color: #175336 !important;
       }
       @media (max-width: 760px) {
+        .guandan-one-click-sort {
+          min-width: 112px !important;
+          min-height: 52px !important;
+          padding: 10px 16px !important;
+          font-size: 1.08rem !important;
+        }
         .guandan-play-actions > button:last-of-type,
         .guandan-play-actions > button:nth-last-of-type(2) {
           min-width: 132px;
@@ -187,6 +247,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   return (
     <>
       {globalStyles}
+      {playActionsTarget &&
+        createPortal(
+          <button
+            type="button"
+            className="guandan-one-click-sort"
+            onClick={organizeHand}
+            title="自动把炸弹、三张、对子和单张分类排列"
+          >
+            一键理牌
+          </button>,
+          playActionsTarget,
+        )}
       {settingsTarget &&
         createPortal(
           <div className="guandan-custom-sort-setting">
@@ -199,7 +271,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
               />{" "}
               玩家自由组合牌排序
             </label>
-            <p>同数字牌保持自动叠加；开启后可拖动整组同数字牌调整位置。</p>
+            <p>
+              同数字牌保持自动叠加；“一键理牌”会优先排列炸弹、三张、对子、单张，之后仍可拖动整组微调。
+            </p>
             {enabled && (
               <div className="guandan-actions" aria-label="自由组合牌排序操作">
                 <button
