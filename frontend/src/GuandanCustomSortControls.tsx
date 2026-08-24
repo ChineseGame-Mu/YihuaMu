@@ -256,16 +256,17 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       "click",
       (event) => {
         if (!customStackModeRef.current || bulkClickRef.current) return;
-        const target = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>(
-          ".guandan-card-stack > button",
-        );
+        const target = (
+          event.target as HTMLElement | null
+        )?.closest<HTMLButtonElement>(".guandan-card-stack > button");
         if (!target) return;
         const id = target.dataset.customCardId;
         const group = id ? cardGroupsRef.current.get(id) : undefined;
         if (!group) return;
         const members = buttons().filter(
           (button) =>
-            cardGroupsRef.current.get(button.dataset.customCardId ?? "") === group,
+            cardGroupsRef.current.get(button.dataset.customCardId ?? "") ===
+            group,
         );
         if (members.length < 2) return;
 
@@ -474,10 +475,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             </p>
             {enabled && !customStackMode && (
               <div className="guandan-actions" aria-label="自由组合牌排序操作">
-                <button type="button" className="normal" onClick={() => moveSelected("left")}>
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={() => moveSelected("left")}
+                >
                   所选牌移到左侧
                 </button>
-                <button type="button" className="normal" onClick={() => moveSelected("right")}>
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={() => moveSelected("right")}
+                >
                   所选牌移到右侧
                 </button>
                 <button type="button" className="normal" onClick={resetOrder}>
@@ -490,7 +499,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         )}
       {privateZoneTarget &&
         createPortal(
-          <div className="guandan-stack-mode-controls" aria-label="叠牌模式转换">
+          <div
+            className="guandan-stack-mode-controls"
+            aria-label="叠牌模式转换"
+          >
             <button
               type="button"
               className={`guandan-stack-mode-button ${customStackMode ? "is-on" : ""}`}
