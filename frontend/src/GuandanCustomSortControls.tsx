@@ -142,9 +142,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
       .guandan-private-zone {
         display: grid !important;
-        grid-template-columns: minmax(0, 1fr) 230px;
+        grid-template-columns: minmax(0, 1fr) 260px;
         grid-template-rows: auto minmax(0, 1fr);
-        column-gap: 12px;
+        column-gap: 14px;
         align-items: stretch;
       }
       .guandan-private-zone > .guandan-zone-title {
@@ -174,39 +174,44 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         flex-direction: column;
         align-items: stretch !important;
         justify-content: flex-end !important;
-        gap: 12px !important;
+        gap: 14px !important;
         min-width: 0;
         margin: 0 !important;
-        padding: 12px 10px !important;
-        border-left: 3px solid #c99a2b;
-        border-radius: 12px 0 0 12px;
-        background: linear-gradient(180deg, #fffdf4 0%, #f5e8b8 100%);
+        padding: 14px 12px !important;
+        border: 4px solid #d4a52f;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #fffef6 0%, #f8e7aa 100%);
+        box-shadow: 0 5px 16px rgb(0 0 0 / 20%), inset 0 1px 0 #fff;
       }
       .guandan-selected-preview {
         order: -100;
         display: flex;
         flex: 1 1 auto;
-        min-height: 210px;
+        min-height: 350px;
         flex-direction: column;
-        padding: 8px 8px 10px;
-        border: 2px solid #d5ad45;
-        border-radius: 13px;
-        background: #fffaf0;
+        padding: 12px 10px 14px;
+        border: 3px solid #d5ad45;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #fffdf2, #fff3c7);
+        box-shadow: inset 0 1px 0 #fff, 0 3px 10px rgb(0 0 0 / 14%);
       }
       .guandan-selected-preview-header {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 3px;
-        color: #65410b;
+        gap: 5px;
+        color: #5f3d08;
         text-align: center;
-        font-weight: 900;
+        font-weight: 950;
+      }
+      .guandan-selected-preview-header strong {
+        font-size: 1.06rem;
       }
       .guandan-selected-preview-header small {
-        color: #7a6333;
-        font-size: .74rem;
-        font-weight: 700;
-        line-height: 1.3;
+        color: #725a29;
+        font-size: .78rem;
+        font-weight: 750;
+        line-height: 1.35;
       }
       .guandan-selected-preview-cards {
         display: flex;
@@ -214,21 +219,21 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         flex-direction: column;
         align-items: center;
         justify-content: flex-start;
-        min-height: 120px;
+        min-height: 230px;
         overflow-y: auto;
-        padding: 10px 2px 4px;
+        padding: 14px 2px 6px;
       }
       .guandan-selected-preview-card {
-        width: 84px;
-        min-width: 84px;
-        height: 118px;
-        margin-top: -72px;
+        width: 96px;
+        min-width: 96px;
+        height: 134px;
+        margin-top: -80px;
         padding: 0;
         overflow: hidden;
-        border: 2px solid #fff1a8;
-        border-radius: 9px;
+        border: 3px solid #ffe68a;
+        border-radius: 10px;
         background: transparent;
-        box-shadow: 0 3px 7px rgb(0 0 0 / 28%);
+        box-shadow: 0 4px 9px rgb(0 0 0 / 30%);
         cursor: pointer;
       }
       .guandan-selected-preview-card:first-child {
@@ -241,64 +246,72 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       .guandan-selected-preview-empty {
         display: grid;
         flex: 1 1 auto;
-        min-height: 130px;
+        min-height: 220px;
         place-items: center;
-        color: #87744e;
+        color: #7c6942;
         text-align: center;
-        font-weight: 800;
-        line-height: 1.4;
+        font-weight: 850;
+        line-height: 1.5;
       }
       .guandan-private-zone > .guandan-play-actions > button {
         width: 100% !important;
         min-width: 0 !important;
-        min-height: 58px !important;
-        padding: 12px 14px !important;
-        border-width: 2px !important;
-        border-radius: 15px !important;
-        font-size: 1.3rem !important;
+        height: 62px !important;
+        min-height: 62px !important;
+        max-height: 62px !important;
+        padding: 0 16px !important;
+        border-width: 3px !important;
+        border-radius: 16px !important;
+        font-size: 1.5rem !important;
         font-weight: 950 !important;
-        letter-spacing: .08em;
+        letter-spacing: .1em;
+        box-shadow: 0 5px 0 rgb(0 0 0 / 24%), 0 7px 14px rgb(0 0 0 / 22%) !important;
       }
       .guandan-private-zone > .guandan-play-actions > button:nth-last-of-type(2) {
-        border-color: #ffe08a !important;
-        background: linear-gradient(180deg, #ffdf64, #e7a92b) !important;
+        border-color: #fff0a5 !important;
+        background: linear-gradient(180deg, #ffd85a 0%, #ffb313 100%) !important;
         color: #4b2b00 !important;
+        text-shadow: 0 1px 0 rgb(255 255 255 / 40%);
       }
       .guandan-private-zone > .guandan-play-actions > button:last-of-type {
-        border-color: #f1c9bb !important;
-        background: linear-gradient(180deg, #d9997f, #b86750) !important;
-        color: #fff !important;
+        border-color: #d9f5ff !important;
+        background: linear-gradient(180deg, #67d7ff 0%, #20aee8 100%) !important;
+        color: #073d5a !important;
+        text-shadow: 0 1px 0 rgb(255 255 255 / 45%);
       }
 
       @media (max-width: 760px) {
         .guandan-private-zone {
-          grid-template-columns: minmax(0, 1fr) 150px;
-          column-gap: 6px;
+          grid-template-columns: minmax(0, 1fr) 170px;
+          column-gap: 7px;
         }
         .guandan-private-zone > .guandan-play-actions {
-          padding: 8px 6px !important;
-          gap: 8px !important;
+          padding: 9px 7px !important;
+          gap: 9px !important;
+          border-width: 3px;
         }
         .guandan-selected-preview {
-          min-height: 180px;
-          padding: 6px;
+          min-height: 260px;
+          padding: 8px 6px 10px;
         }
         .guandan-selected-preview-header strong {
-          font-size: .86rem;
+          font-size: .9rem;
         }
         .guandan-selected-preview-header small {
-          font-size: .66rem;
+          font-size: .68rem;
         }
         .guandan-selected-preview-card {
-          width: 66px;
-          min-width: 66px;
-          height: 94px;
-          margin-top: -56px;
+          width: 72px;
+          min-width: 72px;
+          height: 102px;
+          margin-top: -60px;
         }
         .guandan-private-zone > .guandan-play-actions > button {
-          min-height: 54px !important;
-          padding: 10px 8px !important;
-          font-size: 1.12rem !important;
+          height: 58px !important;
+          min-height: 58px !important;
+          max-height: 58px !important;
+          padding: 0 8px !important;
+          font-size: 1.2rem !important;
         }
       }
     `}</style>
@@ -329,8 +342,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             aria-label="已选待出牌核对区"
           >
             <div className="guandan-selected-preview-header">
-              <strong>已选待出（{selectedPreviewCards.length} 张）</strong>
-              <small>核对无误后再点“出牌”；点牌可取消</small>
+              <strong>待出牌核对区（{selectedPreviewCards.length} 张）</strong>
+              <small>请核对无误后再点“出牌”；点牌可取消</small>
             </div>
             {selectedPreviewCards.length > 0 ? (
               <div className="guandan-selected-preview-cards">
@@ -348,7 +361,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
               </div>
             ) : (
               <div className="guandan-selected-preview-empty">
-                已选牌将在这里显示
+                请先选牌，确认后再出牌
               </div>
             )}
           </div>,
