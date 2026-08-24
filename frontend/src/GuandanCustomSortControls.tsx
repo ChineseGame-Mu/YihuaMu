@@ -7,14 +7,17 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   const [enabled, setEnabled] = React.useState(
     () => window.localStorage.getItem(STORAGE_KEY) === "on",
   );
-  const [settingsTarget, setSettingsTarget] = React.useState<HTMLElement | null>(null);
+  const [settingsTarget, setSettingsTarget] =
+    React.useState<HTMLElement | null>(null);
   const orderRef = React.useRef<string[]>([]);
   const nextIdRef = React.useRef(1);
   const draggedIdRef = React.useRef<string | null>(null);
 
   const ensureStackIds = React.useCallback((): HTMLElement[] => {
     const stacks = Array.from(
-      document.querySelectorAll<HTMLElement>(".guandan-hand .guandan-card-stack"),
+      document.querySelectorAll<HTMLElement>(
+        ".guandan-hand .guandan-card-stack",
+      ),
     );
     for (const stack of stacks) {
       if (!stack.dataset.customSortId) {
@@ -74,7 +77,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       const selectedSet = new Set(selectedIds);
       const picked = orderRef.current.filter((id) => selectedSet.has(id));
       const rest = orderRef.current.filter((id) => !selectedSet.has(id));
-      orderRef.current = side === "left" ? [...picked, ...rest] : [...rest, ...picked];
+      orderRef.current =
+        side === "left" ? [...picked, ...rest] : [...rest, ...picked];
       applyOrder();
     },
     [applyOrder, ensureStackIds],
@@ -94,7 +98,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     const refresh = () => {
-      setSettingsTarget(document.querySelector<HTMLElement>(".guandan-settings"));
+      setSettingsTarget(
+        document.querySelector<HTMLElement>(".guandan-settings"),
+      );
       applyOrder();
     };
     refresh();
@@ -121,10 +127,18 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       </p>
       {enabled && (
         <div className="guandan-actions" aria-label="自由组合牌排序操作">
-          <button type="button" className="normal" onClick={() => moveSelected("left")}>
+          <button
+            type="button"
+            className="normal"
+            onClick={() => moveSelected("left")}
+          >
             所选牌移到左侧
           </button>
-          <button type="button" className="normal" onClick={() => moveSelected("right")}>
+          <button
+            type="button"
+            className="normal"
+            onClick={() => moveSelected("right")}
+          >
             所选牌移到右侧
           </button>
           <button type="button" className="normal" onClick={resetOrder}>
