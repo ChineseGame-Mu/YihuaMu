@@ -115,11 +115,14 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       cardGroupsRef.current.set(sourceId, targetGroup);
       normalizeGroups();
 
-      const withoutSource = cardOrderRef.current.filter((id) => id !== sourceId);
+      const withoutSource = cardOrderRef.current.filter(
+        (id) => id !== sourceId,
+      );
       let insertAfter = withoutSource.indexOf(targetId);
       while (
         insertAfter + 1 < withoutSource.length &&
-        cardGroupsRef.current.get(withoutSource[insertAfter + 1]!) === targetGroup
+        cardGroupsRef.current.get(withoutSource[insertAfter + 1]!) ===
+          targetGroup
       ) {
         insertAfter += 1;
       }
@@ -154,7 +157,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     const positions = new Map(orderRef.current.map((id, index) => [id, index]));
     for (const stack of stacks) {
       const id = stack.dataset.customSortId!;
-      stack.style.order = enabled && !customStackMode ? String(positions.get(id) ?? 0) : "";
+      stack.style.order =
+        enabled && !customStackMode ? String(positions.get(id) ?? 0) : "";
       stack.draggable = enabled && !customStackMode;
       stack.style.cursor = enabled && !customStackMode ? "grab" : "";
       if (stack.dataset.customSortBound !== "1") {
@@ -236,9 +240,9 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         "click",
         (event) => {
           if (!customStackModeRef.current || bulkClickRef.current) return;
-          const target = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>(
-            ".guandan-card-stack > button",
-          );
+          const target = (
+            event.target as HTMLElement | null
+          )?.closest<HTMLButtonElement>(".guandan-card-stack > button");
           if (!target) return;
           const id = target.dataset.customCardId;
           const group = id ? cardGroupsRef.current.get(id) : undefined;
@@ -249,7 +253,8 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             ),
           ).filter(
             (button) =>
-              cardGroupsRef.current.get(button.dataset.customCardId ?? "") === group,
+              cardGroupsRef.current.get(button.dataset.customCardId ?? "") ===
+              group,
           );
           if (members.length < 2) return;
           event.preventDefault();
@@ -321,7 +326,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   }, [enabled, applyOrder]);
 
   React.useEffect(() => {
-    window.localStorage.setItem(CUSTOM_STACK_KEY, customStackMode ? "on" : "off");
+    window.localStorage.setItem(
+      CUSTOM_STACK_KEY,
+      customStackMode ? "on" : "off",
+    );
     applyOrder();
   }, [customStackMode, applyOrder]);
 
@@ -474,7 +482,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         )}
       {privateZoneTarget &&
         createPortal(
-          <div className="guandan-stack-mode-controls" aria-label="叠牌模式转换">
+          <div
+            className="guandan-stack-mode-controls"
+            aria-label="叠牌模式转换"
+          >
             <button
               type="button"
               className={`guandan-stack-mode-button ${customStackMode ? "is-on" : ""}`}
