@@ -19,14 +19,25 @@ const levelLabel: Record<string, string> = {
   Ace: "A",
 };
 
+type SelectedPreviewCard = {
+  id: string;
+  html: string;
+};
+
 const GuandanCustomSortControls: React.FunctionComponent = () => {
   const { state } = React.useContext(GuandanStateContext);
   const [playActionsTarget, setPlayActionsTarget] =
     React.useState<HTMLElement | null>(null);
   const [statusBarTarget, setStatusBarTarget] =
     React.useState<HTMLElement | null>(null);
+  const [handSectionTarget, setHandSectionTarget] =
+    React.useState<HTMLElement | null>(null);
+  const [selectedPreviewCards, setSelectedPreviewCards] = React.useState<
+    SelectedPreviewCard[]
+  >([]);
 
   const nextIdRef = React.useRef(1);
+  const previewIdRef = React.useRef(1);
   const orderRef = React.useRef<string[]>([]);
   const organizedRef = React.useRef(false);
 
@@ -100,6 +111,32 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     applyOrder();
   }, [applyOrder, ensureStackIds]);
 
+  const refreshSelectedPreview = React.useCallback(() => {
+    const selectedButtons = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(
+        '.guandan-hand .guandan-card-stack > button[aria-pressed="true"]',
+      ),
+    );
+
+    const cards = selectedButtons.map((button) => {
+      if (!button.dataset.selectedPreviewId) {
+        button.dataset.selectedPreviewId = `selected-preview-${previewIdRef.current++}`;
+      }
+      return {
+        id: button.dataset.selectedPreviewId,
+        html: button.innerHTML,
+      };
+    });
+    setSelectedPreviewCards(cards);
+  }, []);
+
+  const deselectPreviewCard = React.useCallback((id: string) => {
+    const button = document.querySelector<HTMLButtonElement>(
+      `.guandan-hand .guandan-card-stack > button[data-selected-preview-id="${id}"]`,
+    );
+    button?.click();
+  }, []);
+
   React.useEffect(() => {
     window.localStorage.removeItem("guandan_custom_hand_sort_enabled");
     window.localStorage.removeItem("guandan_custom_stack_mode_enabled");
@@ -113,14 +150,23 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       setStatusBarTarget(
         document.querySelector<HTMLElement>(".guandan-status-bar"),
       );
+      setHandSectionTarget(
+        document.querySelector<HTMLElement>(".guandan-hand-section"),
+      );
       applyOrder();
+      refreshSelectedPreview();
     };
 
     refresh();
     const observer = new MutationObserver(refresh);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["aria-pressed"],
+    });
     return () => observer.disconnect();
-  }, [applyOrder]);
+  }, [applyOrder, refreshSelectedPreview]);
 
   const currentLevel =
     state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
@@ -168,6 +214,62 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       .guandan-level-badge small {
         font-size: .78rem;
         font-weight: 900;
+      }
+      .guandan-selected-preview {
+        margin: 10px 8px 2px;
+        padding: 9px 12px 12px;
+        border: 2px solid #ddb851;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #fffdf1, #f5e9bd);
+        box-shadow: inset 0 1px 0 #fff, 0 3px 8px rgb(0 0 0 / 16%);
+      }
+      .guandan-selected-preview-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 7px;
+        color: #65410b;
+        font-weight: 900;
+      }
+      .guandan-selected-preview-header small {
+        color: #725b2e;
+        font-weight: 700;
+      }
+      .guandan-selected-preview-cards {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        min-height: 78px;
+        overflow-x: auto;
+        padding: 4px 6px 2px;
+      }
+      .guandan-selected-preview-card {
+        width: 58px;
+        min-width: 58px;
+        height: 82px;
+        margin-left: -13px;
+        padding: 0;
+        overflow: hidden;
+        border: 2px solid #fff7c7;
+        border-radius: 8px;
+        background: transparent;
+        box-shadow: 0 3px 7px rgb(0 0 0 / 28%);
+        cursor: pointer;
+      }
+      .guandan-selected-preview-card:first-child {
+        margin-left: 0;
+      }
+      .guandan-selected-preview-card > * {
+        width: 100% !important;
+        height: 100% !important;
+      }
+      .guandan-selected-preview-empty {
+        display: grid;
+        min-height: 58px;
+        place-items: center;
+        color: #7a6b4a;
+        font-weight: 800;
       }
       .guandan-play-actions {
         gap: 18px !important;
@@ -229,6 +331,16 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
           height: 29px;
           font-size: 1.18rem;
         }
+        .guandan-selected-preview {
+          margin: 8px 4px 2px;
+          padding: 8px;
+        }
+        .guandan-selected-preview-card {
+          width: 52px;
+          min-width: 52px;
+          height: 74px;
+          margin-left: -11px;
+        }
         .guandan-one-click-sort {
           min-width: 112px !important;
           min-height: 52px !important;
@@ -263,6 +375,35 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
             </div>
           </div>,
           statusBarTarget,
+        )}
+      {handSectionTarget &&
+        createPortal(
+          <div className="guandan-selected-preview" aria-label="已选待出牌核对区">
+            <div className="guandan-selected-preview-header">
+              <strong>已选待出（{selectedPreviewCards.length} 张）</strong>
+              <small>请核对无误后再点“出牌”；点这里的牌可取消选择</small>
+            </div>
+            {selectedPreviewCards.length > 0 ? (
+              <div className="guandan-selected-preview-cards">
+                {selectedPreviewCards.map((card) => (
+                  <button
+                    key={card.id}
+                    type="button"
+                    className="guandan-selected-preview-card"
+                    aria-label="取消这张待出牌"
+                    title="点击取消选择"
+                    onClick={() => deselectPreviewCard(card.id)}
+                    dangerouslySetInnerHTML={{ __html: card.html }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="guandan-selected-preview-empty">
+                请先从手牌中选择准备出的牌
+              </div>
+            )}
+          </div>,
+          handSectionTarget,
         )}
       {playActionsTarget &&
         createPortal(
