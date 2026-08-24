@@ -1,29 +1,51 @@
-/* Final approved Guandan split-table layout.
- * This file intentionally has higher specificity than older experimental
- * overrides and the temporary styles injected by GuandanCustomSortControls.
+/* Final four-block Guandan layout.
+ * 1) status/settings bar spans full width
+ * 2) public table occupies left 75% below it
+ * 3) my table occupies left 75% below public table
+ * 4) review panel occupies right 25% from status-bar bottom to page bottom
  */
+
+html body .guandan-table {
+  position: relative !important;
+}
+
+/* Left column: both table frames stop exactly at the review-panel border. */
+html body .guandan-public-zone,
+html body .guandan-private-zone {
+  box-sizing: border-box !important;
+  width: 75% !important;
+  min-width: 75% !important;
+  max-width: 75% !important;
+  margin-right: 25% !important;
+}
 
 html body .guandan-public-zone {
   position: relative !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  border-radius: 14px 0 0 14px !important;
 }
 
-html body .guandan-table-stage {
+/* Remove the old inner 75% split: the public-table content now fills its whole left block. */
+html body .guandan-public-zone .guandan-table-stage {
   box-sizing: border-box !important;
-  width: 75% !important;
-  max-width: 75% !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
   height: 100% !important;
-  margin-right: 25% !important;
-  border-right: 3px solid #d5a438 !important;
+  margin: 3px 0 0 !important;
+  border-right: 0 !important;
   border-radius: 12px 0 0 12px !important;
 }
 
+/* Keep My Table as the lower-left block. Position static makes the review panel
+ * use .guandan-table as its absolute-positioning container instead of this box. */
 html body .guandan-private-zone {
-  position: relative !important;
+  position: static !important;
   display: block !important;
   grid-template-columns: none !important;
   grid-template-rows: none !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  border-radius: 14px 0 0 14px !important;
 }
 
 html body .guandan-private-zone > .guandan-zone-title {
@@ -35,14 +57,14 @@ html body .guandan-private-zone > .guandan-hand-section {
   position: relative !important;
   z-index: 2 !important;
   box-sizing: border-box !important;
-  width: 75% !important;
-  min-width: 75% !important;
-  max-width: 75% !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
   height: calc(100% - 8px) !important;
   margin: 0 !important;
   padding: 5px 7px !important;
-  padding-right: 7px !important;
   pointer-events: auto !important;
+  border-right: 0 !important;
   border-radius: 12px 0 0 12px !important;
 }
 
@@ -52,20 +74,21 @@ html body .guandan-private-zone .guandan-hand .guandan-card-stack > button {
   pointer-events: auto !important;
 }
 
-/* Review panel occupies the right quarter and spans public table + hand area. */
+/* Right column: one continuous review frame from immediately under the
+ * status/settings bar to the same bottom edge as My Table. */
 html body .guandan-private-zone > section.guandan-play-actions {
   position: absolute !important;
-  z-index: 40 !important;
-  top: auto !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  z-index: 50 !important;
+  top: 60px !important;
+  right: 10px !important;
+  bottom: 6px !important;
   left: 75% !important;
   box-sizing: border-box !important;
   display: block !important;
-  width: 25% !important;
-  min-width: 25% !important;
-  max-width: 25% !important;
-  height: calc(200% + 7px) !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: auto !important;
   min-height: 0 !important;
   margin: 0 !important;
   padding: 94px 18px 16px !important;
@@ -98,7 +121,7 @@ html body .guandan-private-zone > section.guandan-play-actions::after {
   content: none !important;
 }
 
-/* Equal-size play/pass buttons, side by side. */
+/* Equal-size Play / Pass buttons side-by-side at the top of the review panel. */
 html body .guandan-private-zone > section.guandan-play-actions > button {
   position: absolute !important;
   top: 48px !important;
@@ -120,49 +143,29 @@ html body .guandan-private-zone > section.guandan-play-actions > button {
   white-space: nowrap !important;
 }
 
-html
-  body
-  .guandan-private-zone
-  > section.guandan-play-actions
-  > button:nth-last-of-type(2) {
+html body .guandan-private-zone > section.guandan-play-actions > button:nth-last-of-type(2) {
   left: 18px !important;
   right: auto !important;
   background: linear-gradient(180deg, #ffd95a, #f0a500) !important;
   color: #4b2c00 !important;
-  box-shadow:
-    0 4px 0 #a66b00,
-    0 5px 10px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 0 #a66b00, 0 5px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
-html
-  body
-  .guandan-private-zone
-  > section.guandan-play-actions
-  > button:last-of-type {
+html body .guandan-private-zone > section.guandan-play-actions > button:last-of-type {
   left: auto !important;
   right: 18px !important;
   background: linear-gradient(180deg, #63cfff, #168fd0) !important;
   color: #073d5a !important;
-  box-shadow:
-    0 4px 0 #086a9d,
-    0 5px 10px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 0 #086a9d, 0 5px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
-html
-  body
-  .guandan-private-zone
-  > section.guandan-play-actions
-  > button:disabled {
+html body .guandan-private-zone > section.guandan-play-actions > button:disabled {
   opacity: 0.55 !important;
   filter: saturate(0.72) !important;
 }
 
-/* Selected-card review occupies the large interior area. */
-html
-  body
-  .guandan-private-zone
-  > section.guandan-play-actions
-  > .guandan-selected-preview {
+/* Selected-card preview fills the review panel below the two action buttons. */
+html body .guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
   position: absolute !important;
   inset: 122px 18px 18px !important;
   display: flex !important;
@@ -236,18 +239,19 @@ html body .guandan-selected-preview-card:first-child {
 }
 
 @media (max-width: 760px) {
-  html body .guandan-table-stage,
-  html body .guandan-private-zone > .guandan-hand-section {
+  html body .guandan-public-zone,
+  html body .guandan-private-zone {
     width: 75% !important;
     min-width: 75% !important;
     max-width: 75% !important;
+    margin-right: 25% !important;
   }
 
   html body .guandan-private-zone > section.guandan-play-actions {
+    top: 54px !important;
+    right: 6px !important;
+    bottom: 5px !important;
     left: 75% !important;
-    width: 25% !important;
-    min-width: 25% !important;
-    max-width: 25% !important;
     padding: 78px 7px 7px !important;
   }
 
@@ -269,27 +273,15 @@ html body .guandan-selected-preview-card:first-child {
     font-size: 13px !important;
   }
 
-  html
-    body
-    .guandan-private-zone
-    > section.guandan-play-actions
-    > button:nth-last-of-type(2) {
+  html body .guandan-private-zone > section.guandan-play-actions > button:nth-last-of-type(2) {
     left: 5px !important;
   }
 
-  html
-    body
-    .guandan-private-zone
-    > section.guandan-play-actions
-    > button:last-of-type {
+  html body .guandan-private-zone > section.guandan-play-actions > button:last-of-type {
     right: 5px !important;
   }
 
-  html
-    body
-    .guandan-private-zone
-    > section.guandan-play-actions
-    > .guandan-selected-preview {
+  html body .guandan-private-zone > section.guandan-play-actions > .guandan-selected-preview {
     inset: 84px 7px 7px !important;
     padding: 6px !important;
   }
