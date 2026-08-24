@@ -49,4 +49,4 @@ jobs:
         if: always()
         run: tail -120 /tmp/guandan-server.log || true
 
-# Retrigger marker: verify complete four-player finish order after CI #781.
+# Retrigger marker: rerun three-round flow after heart-level wildcard regression and CI fixes.
