@@ -20,6 +20,7 @@ import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import ExitGameButton from "./ExitGameButton";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
+import GuandanCustomSortControls from "./GuandanCustomSortControls";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -73,6 +74,7 @@ const bootstrap = (): void => {
               <GuandanNoBeatHint />
               <GuandanNoBeatControls />
               <GuandanTable />
+              <GuandanCustomSortControls />
             </div>
           </GuandanStateProvider>
         </GuandanWebsocketProvider>
