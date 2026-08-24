@@ -304,7 +304,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         )}
       {playActionsTarget &&
         createPortal(
-          <div className="guandan-selected-preview" aria-label="已选待出牌核对区">
+          <div
+            className="guandan-selected-preview"
+            aria-label="已选待出牌核对区"
+          >
             <div className="guandan-selected-preview-header">
               <strong>已选待出（{selectedPreviewCards.length} 张）</strong>
               <small>核对无误后再点“出牌”；点牌可取消</small>
