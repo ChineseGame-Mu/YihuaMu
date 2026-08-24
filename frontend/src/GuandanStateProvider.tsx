@@ -131,12 +131,18 @@ const reduceMessage = (
       };
     case "hand":
       return { ...state, hand: message.cards, error: null };
-    case "state":
+    case "state": {
+      const ownSeat = state.seat;
+      const ownHandFinished =
+        ownSeat !== null &&
+        (message.hand_counts[ownSeat] === 0 ||
+          message.finish_order.includes(ownSeat));
       return {
         ...state,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,
+        hand: ownHandFinished ? [] : state.hand,
         turn: message.turn,
         handCounts: message.hand_counts,
         lastPlay: message.last_play,
@@ -157,6 +163,7 @@ const reduceMessage = (
         nextRoundPhase: message.next_round_phase,
         error: null,
       };
+    }
     case "error":
       return { ...state, error: message.message };
   }
