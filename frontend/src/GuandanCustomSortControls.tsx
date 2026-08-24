@@ -63,26 +63,35 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   }, []);
 
   React.useEffect(() => {
-    const refresh = () => {
+    const refreshTargets = () => {
       setPlayActionsTarget(
         document.querySelector<HTMLElement>(".guandan-play-actions"),
       );
       setStatusBarTarget(
         document.querySelector<HTMLElement>(".guandan-status-bar"),
       );
-      refreshSelectedPreview();
     };
 
-    refresh();
-    const observer = new MutationObserver(refresh);
-    observer.observe(document.body, {
+    refreshTargets();
+    const observer = new MutationObserver(refreshTargets);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
+  React.useEffect(() => {
+    const hand = document.querySelector<HTMLElement>(".guandan-hand");
+    refreshSelectedPreview();
+    if (hand === null) return;
+
+    const observer = new MutationObserver(refreshSelectedPreview);
+    observer.observe(hand, {
       childList: true,
       subtree: true,
       attributes: true,
       attributeFilter: ["aria-pressed"],
     });
     return () => observer.disconnect();
-  }, [refreshSelectedPreview]);
+  }, [playActionsTarget, refreshSelectedPreview]);
 
   const currentLevel =
     state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
@@ -146,10 +155,21 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         grid-column: 1;
         grid-row: 2;
         min-width: 0;
+        position: relative !important;
+        z-index: 1 !important;
+        pointer-events: auto !important;
+      }
+      .guandan-private-zone .guandan-hand,
+      .guandan-private-zone .guandan-hand .guandan-card-stack,
+      .guandan-private-zone .guandan-hand .guandan-card-stack > button {
+        pointer-events: auto !important;
       }
       .guandan-private-zone > .guandan-play-actions {
         grid-column: 2;
         grid-row: 2;
+        position: relative !important;
+        inset: auto !important;
+        z-index: 2 !important;
         display: flex !important;
         flex-direction: column;
         align-items: stretch !important;
