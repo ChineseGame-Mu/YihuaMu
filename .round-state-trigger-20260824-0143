@@ -1,1 +1,1 @@
-Trigger round-end state-machine patch after ec56c26d.
+Round-state fix is committed directly in backend/src/guandan_handler.rs.
