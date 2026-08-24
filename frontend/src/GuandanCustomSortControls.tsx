@@ -30,86 +30,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
     React.useState<HTMLElement | null>(null);
   const [statusBarTarget, setStatusBarTarget] =
     React.useState<HTMLElement | null>(null);
-  const [handSectionTarget, setHandSectionTarget] =
-    React.useState<HTMLElement | null>(null);
   const [selectedPreviewCards, setSelectedPreviewCards] = React.useState<
     SelectedPreviewCard[]
   >([]);
-
-  const nextIdRef = React.useRef(1);
   const previewIdRef = React.useRef(1);
-  const orderRef = React.useRef<string[]>([]);
-  const organizedRef = React.useRef(false);
-
-  const ensureStackIds = React.useCallback((): HTMLElement[] => {
-    const stacks = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        ".guandan-hand .guandan-card-stack",
-      ),
-    );
-
-    stacks.forEach((stack, index) => {
-      if (!stack.dataset.oneClickSortId) {
-        stack.dataset.oneClickSortId = `one-click-stack-${nextIdRef.current++}`;
-      }
-      if (!stack.dataset.naturalOrder) {
-        stack.dataset.naturalOrder = String(index);
-      }
-      stack.draggable = false;
-      stack.style.cursor = "";
-      stack.style.display = "";
-    });
-
-    const liveIds = stacks.map((stack) => stack.dataset.oneClickSortId!);
-    orderRef.current = [
-      ...orderRef.current.filter((id) => liveIds.includes(id)),
-      ...liveIds.filter((id) => !orderRef.current.includes(id)),
-    ];
-
-    return stacks;
-  }, []);
-
-  const applyOrder = React.useCallback(() => {
-    const stacks = ensureStackIds();
-    if (!organizedRef.current) {
-      for (const stack of stacks) stack.style.order = "";
-      return;
-    }
-
-    const positions = new Map(orderRef.current.map((id, index) => [id, index]));
-    for (const stack of stacks) {
-      const id = stack.dataset.oneClickSortId!;
-      stack.style.order = String(positions.get(id) ?? 0);
-    }
-  }, [ensureStackIds]);
-
-  const organizeHand = React.useCallback(() => {
-    const stacks = ensureStackIds();
-    if (stacks.length === 0) return;
-
-    const groupPriority = (count: number): number => {
-      if (count >= 4) return 0;
-      if (count === 3) return 1;
-      if (count === 2) return 2;
-      return 3;
-    };
-
-    const arranged = [...stacks].sort((a, b) => {
-      const aCount = a.querySelectorAll(":scope > button").length;
-      const bCount = b.querySelectorAll(":scope > button").length;
-      const priorityDifference = groupPriority(aCount) - groupPriority(bCount);
-      if (priorityDifference !== 0) return priorityDifference;
-      if (aCount !== bCount) return bCount - aCount;
-      return (
-        Number(a.dataset.naturalOrder ?? 0) -
-        Number(b.dataset.naturalOrder ?? 0)
-      );
-    });
-
-    orderRef.current = arranged.map((stack) => stack.dataset.oneClickSortId!);
-    organizedRef.current = true;
-    applyOrder();
-  }, [applyOrder, ensureStackIds]);
 
   const refreshSelectedPreview = React.useCallback(() => {
     const selectedButtons = Array.from(
@@ -118,16 +42,17 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       ),
     );
 
-    const cards = selectedButtons.map((button) => {
-      if (!button.dataset.selectedPreviewId) {
-        button.dataset.selectedPreviewId = `selected-preview-${previewIdRef.current++}`;
-      }
-      return {
-        id: button.dataset.selectedPreviewId,
-        html: button.innerHTML,
-      };
-    });
-    setSelectedPreviewCards(cards);
+    setSelectedPreviewCards(
+      selectedButtons.map((button) => {
+        if (!button.dataset.selectedPreviewId) {
+          button.dataset.selectedPreviewId = `selected-preview-${previewIdRef.current++}`;
+        }
+        return {
+          id: button.dataset.selectedPreviewId,
+          html: button.innerHTML,
+        };
+      }),
+    );
   }, []);
 
   const deselectPreviewCard = React.useCallback((id: string) => {
@@ -138,11 +63,6 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   }, []);
 
   React.useEffect(() => {
-    window.localStorage.removeItem("guandan_custom_hand_sort_enabled");
-    window.localStorage.removeItem("guandan_custom_stack_mode_enabled");
-  }, []);
-
-  React.useEffect(() => {
     const refresh = () => {
       setPlayActionsTarget(
         document.querySelector<HTMLElement>(".guandan-play-actions"),
@@ -150,10 +70,6 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       setStatusBarTarget(
         document.querySelector<HTMLElement>(".guandan-status-bar"),
       );
-      setHandSectionTarget(
-        document.querySelector<HTMLElement>(".guandan-hand-section"),
-      );
-      applyOrder();
       refreshSelectedPreview();
     };
 
@@ -166,7 +82,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       attributeFilter: ["aria-pressed"],
     });
     return () => observer.disconnect();
-  }, [applyOrder, refreshSelectedPreview]);
+  }, [refreshSelectedPreview]);
 
   const currentLevel =
     state.level === null ? "—" : (levelLabel[state.level] ?? state.level);
@@ -209,56 +125,94 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
         color: #b44013;
         font-size: 1.35rem;
         line-height: 1;
-        box-shadow: inset 0 0 0 1px rgb(152 92 13 / 24%);
       }
       .guandan-level-badge small {
         font-size: .78rem;
         font-weight: 900;
       }
+
+      .guandan-private-zone {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) 230px;
+        grid-template-rows: auto minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: stretch;
+      }
+      .guandan-private-zone > .guandan-zone-title {
+        grid-column: 1 / -1;
+        grid-row: 1;
+      }
+      .guandan-private-zone > .guandan-hand-section {
+        grid-column: 1;
+        grid-row: 2;
+        min-width: 0;
+      }
+      .guandan-private-zone > .guandan-play-actions {
+        grid-column: 2;
+        grid-row: 2;
+        display: flex !important;
+        flex-direction: column;
+        align-items: stretch !important;
+        justify-content: flex-end !important;
+        gap: 12px !important;
+        min-width: 0;
+        margin: 0 !important;
+        padding: 12px 10px !important;
+        border-left: 3px solid #c99a2b;
+        border-radius: 12px 0 0 12px;
+        background: linear-gradient(180deg, #fffdf4 0%, #f5e8b8 100%);
+      }
       .guandan-selected-preview {
-        margin: 10px 8px 2px;
-        padding: 9px 12px 12px;
-        border: 2px solid #ddb851;
-        border-radius: 14px;
-        background: linear-gradient(180deg, #fffdf1, #f5e9bd);
-        box-shadow: inset 0 1px 0 #fff, 0 3px 8px rgb(0 0 0 / 16%);
+        order: -100;
+        display: flex;
+        flex: 1 1 auto;
+        min-height: 210px;
+        flex-direction: column;
+        padding: 8px 8px 10px;
+        border: 2px solid #d5ad45;
+        border-radius: 13px;
+        background: #fffaf0;
       }
       .guandan-selected-preview-header {
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 7px;
+        gap: 3px;
         color: #65410b;
+        text-align: center;
         font-weight: 900;
       }
       .guandan-selected-preview-header small {
-        color: #725b2e;
+        color: #7a6333;
+        font-size: .74rem;
         font-weight: 700;
+        line-height: 1.3;
       }
       .guandan-selected-preview-cards {
         display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        min-height: 78px;
-        overflow-x: auto;
-        padding: 4px 6px 2px;
+        flex: 1 1 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        min-height: 120px;
+        overflow-y: auto;
+        padding: 10px 2px 4px;
       }
       .guandan-selected-preview-card {
-        width: 58px;
-        min-width: 58px;
-        height: 82px;
-        margin-left: -13px;
+        width: 84px;
+        min-width: 84px;
+        height: 118px;
+        margin-top: -72px;
         padding: 0;
         overflow: hidden;
-        border: 2px solid #fff7c7;
-        border-radius: 8px;
+        border: 2px solid #fff1a8;
+        border-radius: 9px;
         background: transparent;
         box-shadow: 0 3px 7px rgb(0 0 0 / 28%);
         cursor: pointer;
       }
       .guandan-selected-preview-card:first-child {
-        margin-left: 0;
+        margin-top: 0;
       }
       .guandan-selected-preview-card > * {
         width: 100% !important;
@@ -266,93 +220,65 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       }
       .guandan-selected-preview-empty {
         display: grid;
-        min-height: 58px;
+        flex: 1 1 auto;
+        min-height: 130px;
         place-items: center;
-        color: #7a6b4a;
+        color: #87744e;
+        text-align: center;
         font-weight: 800;
+        line-height: 1.4;
       }
-      .guandan-play-actions {
-        gap: 18px !important;
-        align-items: center;
-        justify-content: center;
-      }
-      .guandan-one-click-sort {
-        order: -1;
-        min-width: 126px !important;
-        min-height: 54px !important;
-        padding: 11px 20px !important;
-        border: 2px solid #c9ffd6 !important;
-        border-radius: 16px !important;
-        background: linear-gradient(180deg, #35d36f, #159447) !important;
-        color: #fff !important;
-        font-size: 1.16rem !important;
-        font-weight: 950 !important;
-        letter-spacing: .06em;
-        box-shadow: 0 5px 0 #0a662f, 0 8px 15px rgb(0 0 0 / 22%) !important;
-      }
-      .guandan-play-actions > button:last-of-type,
-      .guandan-play-actions > button:nth-last-of-type(2) {
-        min-width: 142px;
-        min-height: 62px;
-        padding: 13px 28px !important;
+      .guandan-private-zone > .guandan-play-actions > button {
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 58px !important;
+        padding: 12px 14px !important;
         border-width: 2px !important;
-        border-radius: 17px !important;
-        font-size: 1.35rem !important;
+        border-radius: 15px !important;
+        font-size: 1.3rem !important;
         font-weight: 950 !important;
         letter-spacing: .08em;
-        box-shadow: 0 5px 0 #8b681d, 0 8px 16px rgb(0 0 0 / 24%) !important;
       }
-      .guandan-play-actions > button:nth-last-of-type(2) {
+      .guandan-private-zone > .guandan-play-actions > button:nth-last-of-type(2) {
         border-color: #ffe08a !important;
         background: linear-gradient(180deg, #ffdf64, #e7a92b) !important;
         color: #4b2b00 !important;
       }
-      .guandan-play-actions > button:last-of-type {
-        border-color: #d8efe3 !important;
-        background: linear-gradient(180deg, #f6fff9, #cde8d7) !important;
-        color: #175336 !important;
+      .guandan-private-zone > .guandan-play-actions > button:last-of-type {
+        border-color: #f1c9bb !important;
+        background: linear-gradient(180deg, #d9997f, #b86750) !important;
+        color: #fff !important;
       }
+
       @media (max-width: 760px) {
-        .guandan-level-hud {
-          width: 100%;
-          gap: 6px;
+        .guandan-private-zone {
+          grid-template-columns: minmax(0, 1fr) 150px;
+          column-gap: 6px;
         }
-        .guandan-level-badge {
-          flex: 1 1 0;
-          min-height: 38px;
-          padding: 4px 8px;
-          justify-content: center;
-        }
-        .guandan-level-badge span {
-          font-size: .8rem;
-        }
-        .guandan-level-badge strong {
-          min-width: 30px;
-          height: 29px;
-          font-size: 1.18rem;
+        .guandan-private-zone > .guandan-play-actions {
+          padding: 8px 6px !important;
+          gap: 8px !important;
         }
         .guandan-selected-preview {
-          margin: 8px 4px 2px;
-          padding: 8px;
+          min-height: 180px;
+          padding: 6px;
+        }
+        .guandan-selected-preview-header strong {
+          font-size: .86rem;
+        }
+        .guandan-selected-preview-header small {
+          font-size: .66rem;
         }
         .guandan-selected-preview-card {
-          width: 52px;
-          min-width: 52px;
-          height: 74px;
-          margin-left: -11px;
+          width: 66px;
+          min-width: 66px;
+          height: 94px;
+          margin-top: -56px;
         }
-        .guandan-one-click-sort {
-          min-width: 112px !important;
-          min-height: 52px !important;
-          padding: 10px 16px !important;
-          font-size: 1.08rem !important;
-        }
-        .guandan-play-actions > button:last-of-type,
-        .guandan-play-actions > button:nth-last-of-type(2) {
-          min-width: 132px;
-          min-height: 60px;
-          padding: 12px 22px !important;
-          font-size: 1.25rem !important;
+        .guandan-private-zone > .guandan-play-actions > button {
+          min-height: 54px !important;
+          padding: 10px 8px !important;
+          font-size: 1.12rem !important;
         }
       }
     `}</style>
@@ -376,15 +302,12 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
           </div>,
           statusBarTarget,
         )}
-      {handSectionTarget &&
+      {playActionsTarget &&
         createPortal(
-          <div
-            className="guandan-selected-preview"
-            aria-label="已选待出牌核对区"
-          >
+          <div className="guandan-selected-preview" aria-label="已选待出牌核对区">
             <div className="guandan-selected-preview-header">
               <strong>已选待出（{selectedPreviewCards.length} 张）</strong>
-              <small>请核对无误后再点“出牌”；点这里的牌可取消选择</small>
+              <small>核对无误后再点“出牌”；点牌可取消</small>
             </div>
             {selectedPreviewCards.length > 0 ? (
               <div className="guandan-selected-preview-cards">
@@ -402,22 +325,10 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
               </div>
             ) : (
               <div className="guandan-selected-preview-empty">
-                请先从手牌中选择准备出的牌
+                已选牌将在这里显示
               </div>
             )}
           </div>,
-          handSectionTarget,
-        )}
-      {playActionsTarget &&
-        createPortal(
-          <button
-            type="button"
-            className="guandan-one-click-sort"
-            onClick={organizeHand}
-            title="自动把炸弹、三张、对子和单张分类排列"
-          >
-            一键理牌
-          </button>,
           playActionsTarget,
         )}
     </>
