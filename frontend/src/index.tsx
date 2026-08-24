@@ -8,6 +8,7 @@ import "./guandan.css";
 import "./guandan-single-viewport.css";
 import "./guandan-review-panel-fix.css";
 import "./guandan-review-third.css";
+import "./guandan-approved-layout.css";
 import "./guandan-header-decor.css";
 import "./game-logos.css";
 import "./guandan-settings-card-hints.css";
