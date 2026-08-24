@@ -54,7 +54,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   const normalizeGroups = React.useCallback(() => {
     const counts = new Map<string, number>();
-    for (const group of cardGroupsRef.current.values()) {
+    for (const group of Array.from(cardGroupsRef.current.values())) {
       counts.set(group, (counts.get(group) ?? 0) + 1);
     }
     for (const [id, group] of Array.from(cardGroupsRef.current.entries())) {
