@@ -68,7 +68,7 @@ const bootstrap = (): void => {
       <React.Suspense fallback={fallback}>
         <GuandanWebsocketProvider>
           <GuandanStateProvider>
-            <ExitGameButton onExit={returnToGameSelection} />
+            <ExitGameButton onClick={returnToGameSelection} />
             <GuandanHeaderDecor />
             <GuandanCustomSortControls />
             <GuandanTable />
