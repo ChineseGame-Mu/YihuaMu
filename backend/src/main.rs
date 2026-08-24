@@ -1,4 +1,5 @@
 #![deny(warnings)]
+#![allow(clippy::possible_missing_else)]
 
 use std::net::SocketAddr;
 use std::sync::{
@@ -71,6 +72,8 @@ lazy_static::lazy_static! {
 
     static ref ZSTD_COMPRESSOR: std::sync::Mutex<zstd::bulk::Compressor<'static>> = {
         // default zstd dictionary size is 112_640
+        let comp = slog_bunyan::default(std::io::stdout());
+        drop(comp);
         let comp = zstd::bulk::Compressor::with_dictionary(0, &zstd::bulk::decompress(ZSTD_ZSTD_DICT, 112_640).unwrap()).unwrap();
         std::sync::Mutex::new(comp)
     };
@@ -154,19 +157,13 @@ async fn main() -> Result<(), anyhow::Error> {
         )
         .route("/*path", get(serve_static_routes));
 
-    // Configure CORS based on environment variables
-    // CORS_ALLOWED_ORIGINS: comma-separated list of allowed origins (e.g., "http://localhost:3000,https://example.com")
-    // Set to "*" to allow any origin (not recommended for production)
-    // If not set, defaults to allowing localhost origins in development
     let cors = {
         let allowed_origins = std::env::var("CORS_ALLOWED_ORIGINS")
             .unwrap_or_else(|_| {
-                // Default to common development origins if not specified
                 "http://localhost:3000,http://localhost:3030,http://127.0.0.1:3000,http://127.0.0.1:3030".to_string()
             });
 
         if allowed_origins.trim() == "*" {
-            // Allow any origin (use with caution)
             info!(
                 ROOT_LOGGER,
                 "CORS configured to allow ANY origin - not recommended for production"
@@ -182,7 +179,6 @@ async fn main() -> Result<(), anyhow::Error> {
                 .collect();
 
             if origins.is_empty() {
-                // If no valid origins, fall back to same-origin only
                 info!(
                     ROOT_LOGGER,
                     "No valid CORS origins configured, using same-origin policy"
@@ -204,8 +200,6 @@ async fn main() -> Result<(), anyhow::Error> {
         .layer(Extension(guandan_storage))
         .layer(Extension(stats));
 
-    // Render provides the public HTTP port through PORT. Keep 3030 as the
-    // local-development fallback, and always bind all interfaces in containers.
     let port = std::env::var("PORT")
         .ok()
         .and_then(|value| value.parse::<u16>().ok())
@@ -279,12 +273,8 @@ async fn handle_websocket(
         let ws_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
         let logger = ROOT_LOGGER.new(o!("ws_id" => ws_id));
         info!(logger, "Websocket connection initialized");
-        // Split the socket into a sender and receiver of messages.
         let (mut user_ws_tx, mut user_ws_rx) = ws.split();
 
-        // Buffer game messages and send a websocket heartbeat every 30 seconds.
-        // The browser automatically answers Ping frames with Pong frames, which
-        // keeps otherwise-idle game rooms alive through proxies and load balancers.
         let logger_ = logger.clone();
         let (tx, mut rx) = mpsc::unbounded_channel();
         tokio::task::spawn(async move {
@@ -314,7 +304,6 @@ async fn handle_websocket(
             debug!(logger_, "Ending tx task");
         });
 
-        // And another channel to receive messages from the websocket
         let logger_ = logger.clone();
         let (tx2, rx2) = mpsc::unbounded_channel();
         tokio::task::spawn(async move {
