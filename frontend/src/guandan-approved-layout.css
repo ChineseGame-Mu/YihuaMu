@@ -69,12 +69,20 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone {
   display: contents !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > .guandan-zone-title {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > .guandan-zone-title {
   display: none !important;
 }
 
 /* 3) My table is the lower-left block and ends at the same vertical divider. */
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > .guandan-hand-section {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > .guandan-hand-section {
   grid-column: 1 !important;
   grid-row: 3 !important;
   position: relative !important;
@@ -93,7 +101,11 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > .gu
   border-radius: 0 0 0 14px !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > .guandan-hand-section::before {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > .guandan-hand-section::before {
   content: "我的桌面";
   position: absolute;
   top: 6px;
@@ -113,7 +125,11 @@ html body .guandan-private-zone .guandan-hand .guandan-card-stack > button {
 }
 
 /* 4) Review panel is one continuous right-side block spanning rows 2 + 3. */
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions {
   grid-column: 2 !important;
   grid-row: 2 / 4 !important;
   position: relative !important;
@@ -142,7 +158,11 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > sec
   backdrop-filter: none !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions::before {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions::before {
   content: "核对区" !important;
   position: absolute !important;
   top: 42px !important;
@@ -156,13 +176,22 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > sec
   pointer-events: none !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions::after {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions::after {
   display: none !important;
   content: none !important;
 }
 
 /* Play / Pass are the two equal cells across the very top of the review panel. */
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions > button {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button {
   position: absolute !important;
   top: 0 !important;
   box-sizing: border-box !important;
@@ -178,12 +207,17 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > sec
   border-radius: 0 !important;
   font-size: 18px !important;
   font-weight: 950 !important;
-  letter-spacing: .04em !important;
+  letter-spacing: 0.04em !important;
   white-space: nowrap !important;
   opacity: 1 !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions > button:nth-last-of-type(2) {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button:nth-last-of-type(2) {
   left: 0 !important;
   right: auto !important;
   border: 3px solid #2cad63 !important;
@@ -192,7 +226,12 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > sec
   box-shadow: none !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions > button:last-of-type {
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button:last-of-type {
   left: 50% !important;
   right: auto !important;
   border: 3px solid #4857c8 !important;
@@ -201,9 +240,14 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > sec
   box-shadow: none !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions > button:disabled {
-  opacity: .58 !important;
-  filter: saturate(.75) !important;
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button:disabled {
+  opacity: 0.58 !important;
+  filter: saturate(0.75) !important;
 }
 
 html body .guandan-table:has(.guandan-public-zone) .guandan-selected-preview {
@@ -220,7 +264,7 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-selected-preview {
   overflow: hidden !important;
   border: 2px dashed #d9b75b !important;
   border-radius: 12px !important;
-  background: rgba(255,255,255,.28) !important;
+  background: rgba(255, 255, 255, 0.28) !important;
 }
 
 html body .guandan-selected-preview-header {
@@ -270,16 +314,29 @@ html body .guandan-selected-preview-card:first-child {
     grid-template-columns: minmax(0, 3fr) minmax(180px, 1fr) !important;
   }
 
-  html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions {
     padding: 74px 7px 7px !important;
   }
 
-  html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions::before {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions::before {
     top: 36px !important;
     font-size: 13px !important;
   }
 
-  html body .guandan-table:has(.guandan-public-zone) > .guandan-private-zone > section.guandan-play-actions > button {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    > button {
     height: 34px !important;
     min-height: 34px !important;
     max-height: 34px !important;
@@ -291,8 +348,12 @@ html body .guandan-selected-preview-card:first-child {
     padding: 6px !important;
   }
 
-  html body .guandan-selected-preview-header strong { font-size: 11px !important; }
-  html body .guandan-selected-preview-header small { font-size: 9px !important; }
+  html body .guandan-selected-preview-header strong {
+    font-size: 11px !important;
+  }
+  html body .guandan-selected-preview-header small {
+    font-size: 9px !important;
+  }
   html body .guandan-selected-preview-card {
     width: 68px !important;
     min-width: 68px !important;
