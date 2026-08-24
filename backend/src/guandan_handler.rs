@@ -120,6 +120,18 @@ fn is_robot_name(name: &str) -> bool { name.starts_with("机器人") }
 fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
     let player_count = game.hands.len();
     if player_count != GUANDAN_PLAYER_COUNT { return Err("Guandan settlement requires exactly four players"); }
+    if game.finish_order.len() == 2 {
+        let first = game.finish_order[0];
+        let second = game.finish_order[1];
+        if first % 2 == second % 2 {
+            for seat in 0..player_count {
+                if !game.finish_order.contains(&seat) {
+                    game.finish_order.push(seat);
+                    game.hands[seat].clear();
+                }
+            }
+        }
+    }
     if game.finish_order.len() == player_count - 1 {
         let last_seat = (0..player_count).find(|seat| !game.finish_order.contains(seat)).ok_or("unable to determine fourth place")?;
         game.finish_order.push(last_seat);
@@ -278,5 +290,6 @@ mod tests {
     #[test] fn normalizes_room_names_for_reconnect() { assert_eq!(normalize_room_name(" test415/ "), "test415"); assert_eq!(normalize_room_name("test415///"), "test415"); }
     #[test] fn one_two_finish_auto_assigns_fourth_then_loser_shuffle() { let mut game = GuandanGameState::default(); game.started = true; game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()]; game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]]; game.finish_order = vec![0, 2, 1]; assert!(settle_and_redeal_if_complete(&mut game).unwrap()); assert!(game.hands[3].is_empty()); assert_eq!(game.finish_order, vec![0, 2, 1, 3]); assert_eq!(game.team_levels.team_a, Rank::Five); assert_eq!(game.last_promotion_steps, Some(3)); assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle)); assert_eq!(game.next_round_finish_order, vec![0, 2, 1]); assert!(game.pending_tribute.is_none()); }
     #[test] fn one_three_finish_auto_assigns_fourth_then_loser_shuffle() { let mut game = GuandanGameState::default(); game.started = true; game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()]; game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]]; game.finish_order = vec![0, 1, 2]; assert!(settle_and_redeal_if_complete(&mut game).unwrap()); assert!(game.hands[3].is_empty()); assert_eq!(game.finish_order, vec![0, 1, 2, 3]); assert_eq!(game.team_levels.team_a, Rank::Four); assert_eq!(game.last_promotion_steps, Some(2)); assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle)); assert_eq!(game.next_round_finish_order, vec![0, 1, 2]); assert!(game.pending_tribute.is_none()); }
+    #[test] fn double_down_finishes_immediately_after_partner_is_second() { let mut game = GuandanGameState::default(); game.started = true; game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()]; game.hands = vec![vec![], vec![card(Suit::Clubs, Rank::Ten)], vec![], vec![card(Suit::Spades, Rank::King)]]; game.finish_order = vec![0, 2]; assert!(settle_and_redeal_if_complete(&mut game).unwrap()); assert_eq!(game.finish_order, vec![0, 2, 1, 3]); assert!(game.hands[1].is_empty()); assert!(game.hands[3].is_empty()); assert_eq!(game.last_promotion_steps, Some(3)); assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle)); assert!(game.last_play.is_empty()); assert!(game.table_plays.is_empty()); }
     #[test] fn current_level_single_beats_ace() { assert!(validate_play_against_table(&[card(Suit::Spades, Rank::Five)], &[card(Suit::Clubs, Rank::Ace)], Rank::Five).is_ok()); }
 }
