@@ -26,7 +26,6 @@ jobs:
           start=s.index('fn run_robot_turns(game: &mut GuandanGameState)')
           end=s.index('\npub async fn websocket(', start)
           old=s[start:end]
-          # Preserve the existing robot decision/body, but make each invocation execute only one robot action.
           new=old.replace('    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {', '    for _ in 0..1 {', 1)
           if new == old:
               raise SystemExit('robot loop marker not found')
@@ -34,7 +33,7 @@ jobs:
           PY
           cargo fmt --all
           mkdir -p frontend/dist
-          cargo test -p shengji guandan_handler --lib
+          cargo test -p shengji guandan_handler || cargo test -p shengji
       - name: Commit patch
         run: |
           git config user.name github-actions[bot]
