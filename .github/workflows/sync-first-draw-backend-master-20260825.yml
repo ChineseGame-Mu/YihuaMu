@@ -34,6 +34,13 @@ jobs:
           p.write_text(s)
           PY
 
+      - name: Build frontend required by backend tests
+        working-directory: frontend
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+          yarn build
+
       - name: Format and test backend
         run: |
           cargo fmt --all
