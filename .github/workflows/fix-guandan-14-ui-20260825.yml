@@ -40,5 +40,7 @@ jobs:
             echo 'No UI changes to commit'
           else
             git commit -m 'fix(guandan): repair 14-player seating display and layout'
+            git fetch origin feature/guandan-up-to-14-players-20260825
+            git rebase origin/feature/guandan-up-to-14-players-20260825
             git push origin HEAD:feature/guandan-up-to-14-players-20260825
           fi
