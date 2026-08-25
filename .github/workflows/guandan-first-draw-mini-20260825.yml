@@ -1,5 +1,4 @@
-# trigger robust patch 2026-08-25
-name: Add Guandan first-draw mini display
+name: Update Guandan mini displays
 
 on:
   push:
@@ -20,73 +19,62 @@ jobs:
           ref: fix/guandan-single-viewport-20260822
           fetch-depth: 0
 
-      - name: Patch mini displays
+      - name: Move both mini screens to public-table top right
+        run: |
+          cat >> frontend/src/guandan-single-viewport.css <<'EOF'
+
+          /* 2026-08-25 final mini-screen placement: public-table upper-right. */
+          .guandan-round-winner-mini {
+            top: 34px !important;
+            right: 10px !important;
+            left: auto !important;
+          }
+          .guandan-initial-draw-mini {
+            top: 82px !important;
+            right: 10px !important;
+            left: auto !important;
+          }
+          EOF
+
+      - name: Exclude jokers from opening draw
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
-
-          p = Path('frontend/src/GuandanTable.tsx')
+          p = Path('backend/src/guandan_handler.rs')
           s = p.read_text()
-
-          if 'showInitialDrawMini' not in s:
-              s = s.replace(
-                  '  const [startRequested, setStartRequested] = React.useState(false);\n',
-                  '  const [startRequested, setStartRequested] = React.useState(false);\n  const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);\n',
-                  1,
-              )
-
-          if '5 * 60 * 1000' not in s:
-              anchor = '  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'
-              effect = '''\n  React.useEffect(() => {\n    if (\n      state.initialDraw.length !== 4 ||\n      state.initialDrawWinner === null ||\n      state.lastGameWinner !== null\n    ) {\n      setShowInitialDrawMini(false);\n      return;\n    }\n    setShowInitialDrawMini(true);\n    const timer = window.setTimeout(\n      () => setShowInitialDrawMini(false),\n      5 * 60 * 1000,\n    );\n    return () => window.clearTimeout(timer);\n  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);\n'''
-              if anchor not in s:
-                  raise SystemExit('missing effect anchor')
-              s = s.replace(anchor, anchor + effect, 1)
-
-          start = s.find('            {state.initialDraw.length === 4 &&')
-          end_marker = '            <aside className="guandan-scoreboard" aria-label="当前级数">'
-          end = s.find(end_marker, start)
-          if start != -1 and end != -1:
-              panel = '''            {showInitialDrawMini &&\n              state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <aside\n                  className="guandan-initial-draw-mini"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌</strong>\n                  <div className="guandan-initial-draw-mini-cards">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <span>{state.players[index] ?? `玩家${index + 1}`}</span>\n                        {fullCard(card, 44)}\n                      </div>\n                    ))}\n                  </div>\n                  <div className="guandan-initial-draw-mini-winner">\n                    首出：\n                    <strong>\n                      {state.players[state.initialDrawWinner] ??\n                        `玩家${state.initialDrawWinner + 1}`}\n                    </strong>\n                  </div>\n                </aside>\n              )}\n'''
-              s = s[:start] + panel + s[end:]
-
-          if 'className="guandan-round-winner-mini"' not in s:
-              anchor = '            <div\n              className="guandan-participant-names"'
-              winner = '''            {state.lastTrickWinner !== null && (\n              <aside\n                className="guandan-round-winner-mini"\n                role="status"\n                aria-label="本轮赢家"\n              >\n                <span>本轮赢家</span>\n                <strong>\n                  {state.players[state.lastTrickWinner] ??\n                    `玩家${state.lastTrickWinner + 1}`}\n                </strong>\n              </aside>\n            )}\n'''
-              if anchor not in s:
-                  raise SystemExit('missing participant anchor')
-              s = s.replace(anchor, winner + anchor, 1)
-
-          p.write_text(s)
-
-          cp = Path('frontend/src/guandan-single-viewport.css')
-          c = cp.read_text()
-          if '.guandan-round-winner-mini {' not in c:
-              marker = '.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'
-              rules = '''\n/* Compact public-table status overlays; they never resize the table. */\n.guandan-round-winner-mini {\n  position: absolute;\n  z-index: 36;\n  top: 34px;\n  left: 10px;\n  min-width: 122px;\n  padding: 5px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 9px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);\n  font-size: 0.72rem;\n  line-height: 1.1;\n  text-align: center;\n  pointer-events: none;\n}\n.guandan-round-winner-mini span,\n.guandan-round-winner-mini strong { display: block; }\n.guandan-round-winner-mini strong { margin-top: 2px; font-size: 0.84rem; }\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 86px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong { display: block; margin-bottom: 4px; text-align: center; }\n.guandan-initial-draw-mini-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; align-items: end; }\n.guandan-initial-draw-mini-cards > div { min-width: 0; text-align: center; }\n.guandan-initial-draw-mini-cards span { display: block; overflow: hidden; margin-bottom: 2px; text-overflow: ellipsis; white-space: nowrap; font-size: 0.65rem; }\n.guandan-initial-draw-mini-winner { margin-top: 4px; text-align: center; }\n'''
-              if marker not in c:
-                  raise SystemExit('missing css marker')
-              c = c.replace(marker, marker + rules, 1)
-          cp.write_text(c)
+          old = '''        let draw = deck
+            .iter()
+            .copied()
+            .take(GUANDAN_PLAYER_COUNT)
+            .collect::<Vec<_>>();'''
+          new = '''        let draw = deck
+            .iter()
+            .copied()
+            .filter(|card| !matches!(card, CardFace::Joker(_)))
+            .take(GUANDAN_PLAYER_COUNT)
+            .collect::<Vec<_>>();'''
+          if old not in s:
+              raise SystemExit('opening draw anchor not found')
+          p.write_text(s.replace(old, new, 1))
           PY
 
-      - name: Install frontend dependencies
+      - name: Build frontend
         run: |
           corepack enable
           cd frontend
           yarn install --frozen-lockfile
-
-      - name: Format and build
-        run: |
-          cd frontend
-          yarn prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
+          yarn prettier --write src/guandan-single-viewport.css
           yarn build
 
-      - name: Commit change
+      - name: Test backend
+        run: |
+          cargo fmt --all
+          cargo test -p shengji guandan --quiet
+
+      - name: Commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "feat(guandan): add timed draw and round winner mini displays"
+          git add frontend/src/guandan-single-viewport.css backend/src/guandan_handler.rs
+          git commit -m "fix(guandan): top-right mini screens and no jokers in opening draw"
           git push origin HEAD:fix/guandan-single-viewport-20260822
