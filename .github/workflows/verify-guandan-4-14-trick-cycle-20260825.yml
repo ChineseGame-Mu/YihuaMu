@@ -1,0 +1,170 @@
+name: Verify Guandan 4-14 player trick rotation
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/workflows/verify-guandan-4-14-trick-cycle-20260825.yml
+
+permissions:
+  contents: read
+
+jobs:
+  trick-rotation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+
+      - name: Install Python websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Start isolated branch backend
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan-trick-backend.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then
+              echo 'LOCAL_BACKEND_READY'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/guandan-trick-backend.log
+          exit 1
+
+      - name: Play and close one complete trick at every supported table size
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import time
+          import websockets
+
+          URI = 'ws://127.0.0.1:3030/api/guandan'
+          PLAYER_COUNTS = [4, 6, 8, 10, 12, 14]
+
+          async def recv_until(ws, predicate, timeout=20):
+              async def inner():
+                  while True:
+                      raw = await ws.recv()
+                      if isinstance(raw, bytes):
+                          raw = raw.decode('utf-8')
+                      msg = json.loads(raw)
+                      if msg.get('type') == 'error':
+                          raise AssertionError(f"server error: {msg.get('message')}")
+                      if predicate(msg):
+                          return msg
+              return await asyncio.wait_for(inner(), timeout=timeout)
+
+          async def run_table(player_count):
+              room = f'trick{player_count}_{int(time.time() * 1000)}'
+              sockets = []
+              try:
+                  for index in range(player_count):
+                      ws = await websockets.connect(URI, open_timeout=10)
+                      sockets.append(ws)
+                      await recv_until(ws, lambda m: m.get('type') == 'connected')
+                      await ws.send(json.dumps({
+                          'type': 'join',
+                          'room': room,
+                          'name': f'玩家{index + 1}',
+                      }, ensure_ascii=False))
+                      joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
+                      assert joined.get('seat') == index, (player_count, index, joined)
+
+                  await recv_until(
+                      sockets[0],
+                      lambda m: m.get('type') == 'waiting'
+                      and len(m.get('players', [])) == player_count,
+                  )
+                  await sockets[0].send(json.dumps({
+                      'type': 'start',
+                      'player_count': player_count,
+                  }))
+
+                  opening_states = []
+                  for ws in sockets:
+                      await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'started'
+                          and m.get('player_count') == player_count,
+                      )
+                      opening_states.append(await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'state'
+                          and len(m.get('initial_draw', [])) == player_count,
+                      ))
+                      await recv_until(ws, lambda m: m.get('type') == 'hand')
+
+                  lead = opening_states[0]['turn']
+                  assert all(state['turn'] == lead for state in opening_states)
+
+                  # Opening winner leads a legal single card.
+                  await sockets[lead].send(json.dumps({
+                      'type': 'play',
+                      'card_indexes': [0],
+                  }))
+                  control = await recv_until(
+                      sockets[0],
+                      lambda m: m.get('type') == 'state'
+                      and m.get('last_player') == lead
+                      and len(m.get('last_play', [])) == 1
+                      and m.get('hand_counts', [])[lead] == 26,
+                  )
+
+                  # Every other active player passes in server turn order.
+                  for _ in range(player_count - 1):
+                      current_turn = control['turn']
+                      assert current_turn != lead, (player_count, lead, control)
+                      previous_passes = control['passes']
+                      await sockets[current_turn].send(json.dumps({'type': 'pass'}))
+                      control = await recv_until(
+                          sockets[0],
+                          lambda m, prev=previous_passes, turn=current_turn: m.get('type') == 'state'
+                          and m.get('hand_counts', [])[lead] == 26
+                          and (
+                              m.get('last_player') is None
+                              or m.get('passes') != prev
+                              or m.get('turn') != turn
+                          ),
+                      )
+                      if control.get('last_player') is None:
+                          break
+
+                  assert control.get('last_player') is None, (player_count, control)
+                  assert control.get('last_play') == [], (player_count, control.get('last_play'))
+                  assert control.get('table_plays') == [], (player_count, control.get('table_plays'))
+                  assert control.get('passes') == 0, (player_count, control.get('passes'))
+                  assert control.get('last_trick_winner') == lead, (
+                      player_count,
+                      control.get('last_trick_winner'),
+                      lead,
+                  )
+                  assert control.get('turn') == lead, (player_count, control.get('turn'), lead)
+
+                  print(f'LOCAL_{player_count}_PLAYER_TRICK_OK')
+                  print(json.dumps({
+                      'room': room,
+                      'players': player_count,
+                      'lead_player': lead + 1,
+                      'lead_team': 1 if (lead + 1) % 2 == 1 else 2,
+                      'lead_hand_after_trick': 26,
+                      'next_trick_lead_player': control['turn'] + 1,
+                  }, ensure_ascii=False))
+              finally:
+                  await asyncio.gather(*(ws.close() for ws in sockets), return_exceptions=True)
+
+          async def main():
+              for player_count in PLAYER_COUNTS:
+                  await run_table(player_count)
+              print('LOCAL_ALL_EVEN_TABLES_TRICK_ROTATION_OK')
+
+          asyncio.run(main())
+          PY
+
+      - name: Show backend log on failure
+        if: failure()
+        run: cat /tmp/guandan-trick-backend.log || true
