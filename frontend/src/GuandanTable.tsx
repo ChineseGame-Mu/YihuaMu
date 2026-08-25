@@ -1204,6 +1204,26 @@ const GuandanTable: React.FunctionComponent = () => {
         </>
       )}
 
+      {joined &&
+        !observing &&
+        gameStarted &&
+        !dealing &&
+        !nextRoundPending &&
+        !tributePending &&
+        !state.trickComplete &&
+        effectiveTurn !== null && (
+          <div
+            className="guandan-current-turn-mini"
+            role="status"
+            aria-label="当前应出牌玩家"
+          >
+            <span>当前应出牌：</span>
+            <strong>
+              {state.players[effectiveTurn] ?? `玩家${effectiveTurn + 1}`}
+            </strong>
+          </div>
+        )}
+
       {state.error !== null && (
         <p role="alert">{guandanErrorLabel(state.error)}</p>
       )}

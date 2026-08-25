@@ -454,3 +454,31 @@ html
   min-height: 0 !important;
   height: 100% !important;
 }
+
+/* current-turn mini display 2026-08-25 */
+html body .guandan-current-turn-mini {
+  position: fixed !important;
+  z-index: 120 !important;
+  left: 14px !important;
+  bottom: 58px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+  min-width: 150px !important;
+  padding: 7px 11px !important;
+  border: 2px solid #d5a438 !important;
+  border-radius: 9px !important;
+  background: rgba(255, 250, 220, 0.97) !important;
+  color: #174331 !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.24) !important;
+  font-size: 14px !important;
+  line-height: 1.1 !important;
+  pointer-events: none !important;
+}
+
+html body .guandan-current-turn-mini strong {
+  font-size: 16px !important;
+  font-weight: 950 !important;
+  color: #9a2d1e !important;
+}
