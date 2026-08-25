@@ -517,7 +517,6 @@ const GuandanTable: React.FunctionComponent = () => {
         <h1>掼蛋</h1>
         <div>连接状态：{status}</div>
         {state.room !== null && <div>房间：{state.room}</div>}
-        {state.level !== null && <div>当前级牌：{rankLabel[state.level]}</div>}
         <button
           type="button"
           className="normal"

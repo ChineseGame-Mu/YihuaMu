@@ -128,11 +128,6 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
               <span>本局打</span>
               <strong>{currentLevel}</strong>
             </div>
-            <div className="guandan-level-badge">
-              <span>当前级牌</span>
-              <strong>{currentLevel}</strong>
-              <small>级牌</small>
-            </div>
           </div>,
           statusBarTarget,
         )}
