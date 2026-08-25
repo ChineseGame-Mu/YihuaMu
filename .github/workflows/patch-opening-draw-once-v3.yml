@@ -1,0 +1,57 @@
+name: Patch Guandan opening draw rule once v3
+
+on:
+  push:
+    paths:
+      - .github/workflows/patch-opening-draw-once-v3.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Reuse validated patch script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path('.github/workflows/patch-opening-draw-once-v2.yml').read_text()
+          start = text.index("          from pathlib import Path\n", text.index("python3 - <<'PY'"))
+          end = text.index("\n          PY", start)
+          lines = text[start:end].splitlines()
+          script = "\n".join(line[10:] if line.startswith("          ") else line for line in lines) + "\n"
+          Path('/tmp/opening_draw_patch.py').write_text(script)
+          PY
+          python3 /tmp/opening_draw_patch.py
+
+      - name: Format
+        run: |
+          cargo fmt --all
+          cd frontend
+          npx prettier --write src/guandanProtocol.ts src/GuandanStateProvider.tsx src/GuandanTable.tsx
+
+      - name: Focused backend test
+        run: |
+          mkdir -p frontend/dist
+          cargo test -p shengji guandan_handler::tests::opening_card_position_selects_the_player_who_receives_it -- --nocapture
+
+      - name: Frontend checks
+        run: |
+          cd frontend
+          npm ci
+          npm test -- --runInBand
+
+      - name: Commit source patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs frontend/src/guandanProtocol.ts frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx
+          git commit -m "feat(guandan): draw opening card to determine first lead [opening-draw-patched]"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
