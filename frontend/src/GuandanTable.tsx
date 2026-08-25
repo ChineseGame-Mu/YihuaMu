@@ -193,6 +193,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const [selected, setSelected] = React.useState<number[]>([]);
   const [dealStep, setDealStep] = React.useState<number | null>(null);
   const [startRequested, setStartRequested] = React.useState(false);
+  const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
   const [shuffleFrom, setShuffleFrom] = React.useState("1");
   const [shuffleTo, setShuffleTo] = React.useState("108");
@@ -291,6 +292,23 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     if (serverDealt) setStartRequested(true);
   }, [serverDealt]);
+
+  React.useEffect(() => {
+    if (
+      state.initialDraw.length !== 4 ||
+      state.initialDrawWinner === null ||
+      state.lastGameWinner !== null
+    ) {
+      setShowInitialDrawMini(false);
+      return;
+    }
+    setShowInitialDrawMini(true);
+    const timer = window.setTimeout(
+      () => setShowInitialDrawMini(false),
+      5 * 60 * 1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);
 
   React.useEffect(() => {
     const previousHandSize = lastAnimatedHandSizeRef.current;
@@ -673,29 +691,34 @@ const GuandanTable: React.FunctionComponent = () => {
                   .join(" ｜ ")}
               </div>
             )}
-            {state.initialDraw.length === 4 &&
+            {showInitialDrawMini &&
+              state.initialDraw.length === 4 &&
               state.initialDrawWinner !== null &&
               state.lastGameWinner === null && (
-                <div
-                  className="guandan-notice-panel"
+                <aside
+                  className="guandan-initial-draw-mini"
                   role="status"
                   aria-label="首局抽牌结果"
                 >
-                  <strong>首局抽牌决定首家：</strong>
-                  <div className="guandan-actions">
+                  <strong>首局抽牌</strong>
+                  <div className="guandan-initial-draw-mini-cards">
                     {state.initialDraw.map((card, index) => (
                       <div key={`initial-draw-${index}`}>
-                        <div>{state.players[index] ?? `玩家${index + 1}`}</div>
-                        {fullCard(card, 72)}
+                        <span>
+                          {state.players[index] ?? `玩家${index + 1}`}
+                        </span>
+                        {fullCard(card, 44)}
                       </div>
                     ))}
                   </div>
-                  <div>
-                    <strong>首出：</strong>
-                    {state.players[state.initialDrawWinner] ??
-                      `玩家${state.initialDrawWinner + 1}`}
+                  <div className="guandan-initial-draw-mini-winner">
+                    首出：
+                    <strong>
+                      {state.players[state.initialDrawWinner] ??
+                        `玩家${state.initialDrawWinner + 1}`}
+                    </strong>
                   </div>
-                </div>
+                </aside>
               )}
             <aside className="guandan-scoreboard" aria-label="当前级数">
               <span>当前级数</span>
