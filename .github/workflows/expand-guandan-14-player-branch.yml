@@ -27,6 +27,7 @@ jobs:
         run: cargo fmt --all
 
       - name: Build frontend
+        working-directory: frontend
         run: |
           corepack enable
           yarn install --frozen-lockfile
