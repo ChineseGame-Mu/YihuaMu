@@ -1,0 +1,44 @@
+name: Show four-player test links
+
+on:
+  push:
+    branches:
+      - fix/guandan-round-state-20260824
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[four-links-done]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-round-state-20260824
+          fetch-depth: 0
+      - name: Keep four-player links visible after joining
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '''      {testMode && !joined && (\n        <section className="guandan-test-section guandan-panel">\n          <h2>四人联机测试</h2>\n          <div className="guandan-actions">\n            {[1, 2, 3, 4].map((player) => (\n              <a\n                key={player}\n                href={testPlayerUrl(player)}\n                target="_blank"\n                rel="noreferrer"\n              >\n                打开测试玩家 {player}\n              </a>\n            ))}\n          </div>\n        </section>\n      )}'''
+          new = '''      {testMode && (\n        <section className="guandan-test-section guandan-panel">\n          <h2>四玩家测试入口</h2>\n          <p>只需保留这一页；点击下面按钮可分别打开同一房间的玩家1至玩家4。</p>\n          <div className="guandan-actions">\n            {[1, 2, 3, 4].map((player) => (\n              <a\n                key={player}\n                href={testPlayerUrl(player)}\n                target="_blank"\n                rel="noreferrer"\n              >\n                打开玩家 {player}\n              </a>\n            ))}\n          </div>\n        </section>\n      )}'''
+          if old not in s:
+              raise SystemExit('target block not found')
+          p.write_text(s.replace(old, new))
+          PY
+      - name: Format and build frontend
+        run: |
+          cd frontend
+          npm ci
+          npx prettier --write src/GuandanTable.tsx
+          npm run build
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx
+          git commit -m "fix: keep four-player test links visible [four-links-done]"
+          git push origin HEAD:fix/guandan-round-state-20260824
