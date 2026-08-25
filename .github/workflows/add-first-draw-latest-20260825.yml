@@ -20,16 +20,16 @@ jobs:
           fetch-depth: 0
       - name: Apply patch
         run: python .github/scripts/add_first_draw_latest_20260825.py
-      - name: Format and test backend
-        run: |
-          cargo fmt --all
-          cargo test -p shengji guandan --quiet
       - name: Build frontend
         run: |
           cd frontend
           npm ci
           npx prettier --write src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts
           npm run build
+      - name: Format and test backend
+        run: |
+          cargo fmt --all
+          cargo test -p shengji guandan --quiet
       - name: Commit feature
         run: |
           git config user.name "github-actions[bot]"
