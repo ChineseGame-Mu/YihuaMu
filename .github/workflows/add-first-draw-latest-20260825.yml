@@ -20,12 +20,14 @@ jobs:
           fetch-depth: 0
       - name: Apply patch
         run: python .github/scripts/add_first_draw_latest_20260825.py
-      - name: Build frontend
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+        working-directory: ./frontend
+      - name: Format and build frontend
         run: |
-          cd frontend
-          npm ci
-          npx prettier --write src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts
-          npm run build
+          yarn prettier --write
+          yarn build
+        working-directory: ./frontend
       - name: Format and test backend
         run: |
           cargo fmt --all
