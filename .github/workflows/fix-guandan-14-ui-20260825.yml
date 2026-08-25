@@ -1,0 +1,44 @@
+name: Fix Guandan 14-player UI
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/scripts/fix_guandan_14_ui_20260825.py
+      - .github/workflows/fix-guandan-14-ui-20260825.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+          fetch-depth: 0
+      - name: Apply UI repair
+        run: python .github/scripts/fix_guandan_14_ui_20260825.py
+      - name: Install frontend
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format changed frontend files
+        working-directory: frontend
+        run: yarn prettier --write src/GuandanTable.tsx src/GuandanWebsocketProvider.tsx src/guandan-approved-layout.css
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+      - name: Commit repaired UI
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/GuandanTable.tsx frontend/src/GuandanWebsocketProvider.tsx frontend/src/guandan-approved-layout.css
+          if git diff --cached --quiet; then
+            echo 'No UI changes to commit'
+          else
+            git commit -m 'fix(guandan): repair 14-player seating display and layout'
+            git push origin HEAD:feature/guandan-up-to-14-players-20260825
+          fi
