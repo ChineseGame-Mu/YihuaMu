@@ -377,7 +377,7 @@ fn validate_play_against_table(
 }
 
 fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
-    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {
+    for _ in 0..1 {
         if game.normal_play_blocked() || !game.started || game.trick_complete {
             break;
         }
