@@ -5,10 +5,15 @@ html
   > .guandan-private-zone
   > section.guandan-play-actions
   > button {
-  border-radius: 8px !important;
+  height: 60px !important;
+  min-height: 60px !important;
+  max-height: 60px !important;
+  padding: 8px 10px 11px !important;
+  border-radius: 10px !important;
   border-width: 2px !important;
   border-style: solid !important;
-  text-shadow: 0 1px 0 rgb(255 255 255 / 45%) !important;
+  font-size: 19px !important;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 58%) !important;
   transition:
     transform 90ms ease,
     box-shadow 90ms ease,
@@ -21,19 +26,20 @@ html
   > .guandan-private-zone
   > section.guandan-play-actions
   > button:nth-last-of-type(2) {
-  border-color: #c98200 !important;
+  border-color: #b87500 !important;
   background: linear-gradient(
     180deg,
-    #fff3a6 0%,
-    #ffd24f 48%,
-    #f2a900 100%
+    #fff9c9 0%,
+    #ffe275 22%,
+    #ffc933 58%,
+    #e89b00 100%
   ) !important;
   color: #4a2c00 !important;
   box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 72%),
-    inset 0 -3px 0 rgb(166 96 0 / 32%),
-    0 5px 0 #9d6500,
-    0 7px 12px rgb(0 0 0 / 24%) !important;
+    inset 0 3px 0 rgb(255 255 255 / 86%),
+    inset 0 -5px 0 rgb(154 82 0 / 36%),
+    0 7px 0 #8d5700,
+    0 10px 16px rgb(0 0 0 / 30%) !important;
 }
 
 html
@@ -42,19 +48,20 @@ html
   > .guandan-private-zone
   > section.guandan-play-actions
   > button:last-of-type {
-  border-color: #178bc2 !important;
+  border-color: #087cac !important;
   background: linear-gradient(
     180deg,
-    #d9f7ff 0%,
-    #73d8ff 46%,
-    #27a9e4 100%
+    #e8fbff 0%,
+    #9ae8ff 22%,
+    #51c8f3 58%,
+    #1597d0 100%
   ) !important;
   color: #073d5a !important;
   box-shadow:
-    inset 0 2px 0 rgb(255 255 255 / 78%),
-    inset 0 -3px 0 rgb(0 99 151 / 28%),
-    0 5px 0 #0a6f9e,
-    0 7px 12px rgb(0 0 0 / 24%) !important;
+    inset 0 3px 0 rgb(255 255 255 / 88%),
+    inset 0 -5px 0 rgb(0 84 132 / 32%),
+    0 7px 0 #075f88,
+    0 10px 16px rgb(0 0 0 / 30%) !important;
 }
 
 html
@@ -63,8 +70,8 @@ html
   > .guandan-private-zone
   > section.guandan-play-actions
   > button:not(:disabled):hover {
-  filter: brightness(1.05) saturate(1.08) !important;
-  transform: translateY(-1px) !important;
+  filter: brightness(1.06) saturate(1.1) !important;
+  transform: translateY(-2px) !important;
 }
 
 html
@@ -73,10 +80,10 @@ html
   > .guandan-private-zone
   > section.guandan-play-actions
   > button:not(:disabled):active {
-  transform: translateY(4px) !important;
+  transform: translateY(6px) !important;
   box-shadow:
-    inset 0 2px 5px rgb(0 0 0 / 16%),
-    0 1px 0 rgb(0 0 0 / 28%) !important;
+    inset 0 3px 7px rgb(0 0 0 / 20%),
+    0 1px 0 rgb(0 0 0 / 30%) !important;
 }
 
 html
@@ -86,5 +93,21 @@ html
   > section.guandan-play-actions
   > button:focus-visible {
   outline: 3px solid rgb(255 255 255 / 92%) !important;
-  outline-offset: -5px !important;
+  outline-offset: -6px !important;
+}
+
+@media (max-width: 760px) {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    > button {
+    height: 51px !important;
+    min-height: 51px !important;
+    max-height: 51px !important;
+    padding: 6px 7px 9px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+  }
 }
