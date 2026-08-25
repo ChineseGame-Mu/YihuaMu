@@ -1,0 +1,63 @@
+name: Apply public player backs simple
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+          fetch-depth: 0
+      - name: Patch UI
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('frontend/src/GuandanTable.tsx')
+          c=Path('frontend/src/guandan-single-viewport.css')
+          s=p.read_text(); css=c.read_text()
+          if 'guandan-card-count-alert-threshold' not in s:
+              a='''  const [handSortOrder, setHandSortOrder] = React.useState<"asc" | "desc">(\n    () =>\n      window.localStorage.getItem("guandan_hand_sort_order") === "desc"\n        ? "desc"\n        : "asc",\n  );'''
+              b=a+'''\n  const [cardCountAlertThreshold, setCardCountAlertThreshold] =\n    React.useState<number>(() => {\n      const saved = Number(\n        window.localStorage.getItem("guandan_card_count_alert_threshold") ?? "6",\n      );\n      return saved >= 6 && saved <= 10 ? saved : 6;\n    });'''
+              assert a in s
+              s=s.replace(a,b,1)
+              a='''  React.useEffect(() => {\n    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);\n  }, [handSortOrder]);'''
+              b=a+'''\n\n  React.useEffect(() => {\n    window.localStorage.setItem(\n      "guandan_card_count_alert_threshold",\n      String(cardCountAlertThreshold),\n    );\n  }, [cardCountAlertThreshold]);'''
+              assert a in s
+              s=s.replace(a,b,1)
+              a='''          </select>\n          <p>牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。</p>'''
+              b='''          </select>\n          <br />\n          <label htmlFor="guandan-card-count-alert-threshold">报牌阈值：</label>{" "}\n          <select\n            id="guandan-card-count-alert-threshold"\n            value={cardCountAlertThreshold}\n            onChange={(event) =>\n              setCardCountAlertThreshold(Number(event.target.value))\n            }\n          >\n            {[6, 7, 8, 9, 10].map((count) => (\n              <option key={count} value={count}>\n                剩余 {count} 张开始报牌\n              </option>\n            ))}\n          </select>\n          <p>\n            当任一玩家手牌降到所选张数或更少时，公共桌面的玩家牌背会持续显示实时剩余张数，直到 0 张。\n          </p>\n          <p>牌面配色、手牌排列和报牌阈值只影响您自己，并会保存在当前浏览器。</p>'''
+              assert a in s
+              s=s.replace(a,b,1)
+          if 'guandan-public-player-backs' not in s:
+              start_marker='''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="参赛玩家"\n            >'''
+              end_marker='''            {state.finishOrder.length === playerCount && playerCount >= 4 && ('''
+              st=s.index(start_marker); en=s.index(end_marker,st)
+              block='''            <div\n              className="guandan-public-player-backs"\n              role="status"\n              aria-label="公共桌面参赛玩家牌背"\n            >\n              {state.players.length === 0 ? (\n                <span className="guandan-public-player-empty">等待玩家加入</span>\n              ) : (\n                state.players.map((player, index) => {\n                  const remaining = remainingCountForSeat(index);\n                  const shouldReport =\n                    gameStarted &&\n                    !dealing &&\n                    remaining >= 0 &&\n                    remaining <= cardCountAlertThreshold;\n                  return (\n                    <div\n                      className={`guandan-public-player-back guandan-public-team-${\n                        index % 2 === 0 ? "a" : "b"\n                      } ${effectiveTurn === index && gameStarted && !dealing ? "is-active" : ""}`}\n                      key={`public-back-${index}-${player}`}\n                      aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${\n                        shouldReport ? `，剩余${remaining}张` : ""\n                      }`}\n                    >\n                      <span className="guandan-public-player-seat">玩家{index + 1}</span>\n                      <span className="guandan-public-card-back" aria-hidden="true"><span>掼蛋</span></span>\n                      <strong title={player}>{player}</strong>\n                      {shouldReport && (\n                        <span className="guandan-public-card-count" aria-label={`剩余 ${remaining} 张`}>\n                          {remaining}\n                        </span>\n                      )}\n                    </div>\n                  );\n                })\n              )}\n            </div>\n'''
+              s=s[:st]+block+s[en:]
+          marker='/* Public participant card backs with team colors and live low-card count. */'
+          if marker not in css:
+              css+='''\n\n/* Public participant card backs with team colors and live low-card count. */\n.guandan-public-player-backs {\n  position: absolute; z-index: 24; top: 32px; left: 148px; right: 26%;\n  display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 5px;\n  min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 2px 3px 5px;\n  scrollbar-width: thin; pointer-events: auto;\n}\n.guandan-public-player-empty { color: #f5e9b5; font-size: .78rem; font-weight: 700; }\n.guandan-public-player-back { position: relative; flex: 0 0 48px; width: 48px; min-width: 48px; text-align: center; color: #fff9dc; font-size: .58rem; line-height: 1.05; }\n.guandan-public-player-seat,.guandan-public-player-back>strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }\n.guandan-public-player-seat { margin-bottom:2px; font-weight:800; color:#fff4b8; }\n.guandan-public-player-back>strong { margin-top:2px; font-size:.61rem; }\n.guandan-public-card-back { position:relative; display:flex; width:36px; height:48px; margin:0 auto; align-items:center; justify-content:center; box-sizing:border-box; border:2px solid #fff8dc; border-radius:5px; box-shadow:0 1px 4px rgba(0,0,0,.4),inset 0 0 0 2px rgba(255,255,255,.16); font-size:.52rem; font-weight:900; letter-spacing:1px; }\n.guandan-public-card-back::before,.guandan-public-card-back::after { content:"◆"; position:absolute; left:50%; transform:translateX(-50%); color:rgba(255,255,255,.7); font-size:.55rem; }\n.guandan-public-card-back::before { top:5px; } .guandan-public-card-back::after { bottom:5px; }\n.guandan-public-team-a .guandan-public-card-back { background:linear-gradient(145deg,#9b2525,#5f1111); }\n.guandan-public-team-b .guandan-public-card-back { background:linear-gradient(145deg,#245b9b,#123766); }\n.guandan-public-player-back.is-active .guandan-public-card-back { outline:3px solid #ffd75a; outline-offset:1px; }\n.guandan-public-card-count { position:absolute; z-index:2; top:17px; right:0; display:flex; width:24px; height:24px; align-items:center; justify-content:center; border:2px solid #fff7c2; border-radius:50%; background:#f6d64b; color:#3e2600; box-shadow:0 2px 5px rgba(0,0,0,.32); font-size:.78rem; font-weight:900; line-height:1; }\n@media (max-width:900px) { .guandan-public-player-backs { left:136px; right:8px; } .guandan-public-player-back { flex-basis:44px; width:44px; min-width:44px; } .guandan-public-card-back { width:33px; height:44px; } }\n'''
+          p.write_text(s); c.write_text(css)
+          PY
+      - name: Install
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format
+        working-directory: frontend
+        run: yarn prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
+      - name: Build
+        working-directory: frontend
+        run: yarn build
+      - name: Commit
+        run: |
+          git config user.name ChineseGame-Mu
+          git config user.email muyihua@gmail.com
+          git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat(guandan): public player backs and card count alerts"
+          git push origin HEAD:feature/guandan-up-to-14-players-20260825
