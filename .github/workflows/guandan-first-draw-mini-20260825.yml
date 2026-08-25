@@ -42,20 +42,13 @@ jobs:
           from pathlib import Path
           p = Path('backend/src/guandan_handler.rs')
           s = p.read_text()
-          old = '''        let draw = deck
-            .iter()
-            .copied()
-            .take(GUANDAN_PLAYER_COUNT)
-            .collect::<Vec<_>>();'''
-          new = '''        let draw = deck
-            .iter()
-            .copied()
-            .filter(|card| !matches!(card, CardFace::Joker(_)))
-            .take(GUANDAN_PLAYER_COUNT)
-            .collect::<Vec<_>>();'''
-          if old not in s:
-              raise SystemExit('opening draw anchor not found')
-          p.write_text(s.replace(old, new, 1))
+          needle = '.copied()\n            .take(GUANDAN_PLAYER_COUNT)'
+          replacement = '.copied()\n            .filter(|card| !matches!(card, CardFace::Joker(_)))\n            .take(GUANDAN_PLAYER_COUNT)'
+          if replacement not in s:
+              if needle not in s:
+                  raise SystemExit('opening draw chain not found')
+              s = s.replace(needle, replacement, 1)
+          p.write_text(s)
           PY
 
       - name: Build frontend
