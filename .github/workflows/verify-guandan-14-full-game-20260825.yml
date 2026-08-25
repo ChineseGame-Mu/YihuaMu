@@ -1,0 +1,283 @@
+name: Verify isolated Guandan 14-player full game
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/workflows/verify-guandan-14-full-game-20260825.yml
+
+permissions:
+  contents: read
+
+jobs:
+  full-game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+
+      - name: Install Python websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Start isolated branch backend
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan14-full-backend.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then
+              echo 'LOCAL_BACKEND_READY'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/guandan14-full-backend.log
+          exit 1
+
+      - name: Run 14-player full-game robot and next-round flow
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import time
+          import websockets
+
+          URI = 'ws://127.0.0.1:3030/api/guandan'
+          PLAYER_COUNT = 14
+          CARDS_PER_PLAYER = 27
+
+          class Client:
+              def __init__(self, seat):
+                  self.seat = seat
+                  self.ws = None
+                  self.reader_task = None
+                  self.cond = asyncio.Condition()
+                  self.connected = False
+                  self.joined = None
+                  self.waiting = None
+                  self.started = None
+                  self.state = None
+                  self.state_seq = 0
+                  self.hand = None
+                  self.hand_seq = 0
+                  self.error = None
+
+              async def connect(self):
+                  self.ws = await websockets.connect(URI, open_timeout=10, max_queue=64)
+                  self.reader_task = asyncio.create_task(self._reader())
+                  await self.wait_for(lambda c: c.connected)
+
+              async def _reader(self):
+                  try:
+                      async for raw in self.ws:
+                          if isinstance(raw, bytes):
+                              raw = raw.decode('utf-8')
+                          msg = json.loads(raw)
+                          async with self.cond:
+                              kind = msg.get('type')
+                              if kind == 'connected':
+                                  self.connected = True
+                              elif kind == 'joined':
+                                  self.joined = msg
+                              elif kind == 'waiting':
+                                  self.waiting = msg
+                              elif kind == 'started':
+                                  self.started = msg
+                              elif kind == 'state':
+                                  self.state = msg
+                                  self.state_seq += 1
+                              elif kind == 'hand':
+                                  self.hand = msg.get('cards', [])
+                                  self.hand_seq += 1
+                              elif kind == 'error':
+                                  self.error = msg.get('message') or 'unknown server error'
+                              self.cond.notify_all()
+                  except Exception as exc:
+                      async with self.cond:
+                          if self.error is None:
+                              self.error = f'reader stopped: {exc!r}'
+                          self.cond.notify_all()
+
+              async def wait_for(self, predicate, timeout=30):
+                  async def inner():
+                      async with self.cond:
+                          await self.cond.wait_for(lambda: self.error is not None or predicate(self))
+                          if self.error is not None:
+                              raise AssertionError(f'player {self.seat + 1}: {self.error}')
+                          return self
+                  return await asyncio.wait_for(inner(), timeout=timeout)
+
+              async def send(self, message):
+                  await self.ws.send(json.dumps(message, ensure_ascii=False))
+
+              async def close(self):
+                  if self.ws is not None:
+                      await self.ws.close()
+                  if self.reader_task is not None:
+                      try:
+                          await self.reader_task
+                      except Exception:
+                          pass
+
+          def signature(state):
+              return (
+                  state.get('turn'),
+                  tuple(state.get('hand_counts', [])),
+                  state.get('last_player'),
+                  tuple(json.dumps(card, sort_keys=True) for card in state.get('last_play', [])),
+                  state.get('passes'),
+                  tuple(state.get('finish_order', [])),
+                  state.get('next_round_phase'),
+                  state.get('last_game_winner'),
+              )
+
+          async def main():
+              room = f'full14_{int(time.time() * 1000)}'
+              clients = [Client(i) for i in range(PLAYER_COUNT)]
+              try:
+                  for client in clients:
+                      await client.connect()
+                      await client.send({
+                          'type': 'join',
+                          'room': room,
+                          'name': f'玩家{client.seat + 1}',
+                      })
+                      await client.wait_for(lambda c: c.joined is not None)
+                      assert client.joined.get('seat') == client.seat, client.joined
+
+                  control = clients[0]
+                  await control.wait_for(
+                      lambda c: c.waiting is not None
+                      and len(c.waiting.get('players', [])) == PLAYER_COUNT
+                  )
+
+                  await control.send({'type': 'start', 'player_count': PLAYER_COUNT})
+                  for client in clients:
+                      await client.wait_for(
+                          lambda c: c.started is not None
+                          and c.started.get('player_count') == PLAYER_COUNT
+                      )
+                      await client.wait_for(
+                          lambda c: c.state is not None
+                          and len(c.state.get('initial_draw', [])) == PLAYER_COUNT
+                      )
+                      await client.wait_for(
+                          lambda c: c.hand is not None and len(c.hand) == CARDS_PER_PLAYER
+                      )
+
+                  opening = control.state
+                  opening_winner = opening['initial_draw_winner']
+                  assert opening['turn'] == opening_winner
+                  assert all('Joker' not in card for card in opening['initial_draw'])
+                  first_finisher = None
+                  actions = 0
+
+                  while True:
+                      state = control.state
+                      if state.get('next_round_phase') == 'awaiting_shuffle':
+                          break
+                      assert actions < 6000, f'full game exceeded action limit: {actions}'
+
+                      previous_seq = control.state_seq
+                      previous_sig = signature(state)
+
+                      if state.get('last_player') is None:
+                          seat = state['turn']
+                          before = state['hand_counts'][seat]
+                          assert before > 0, (seat, state['hand_counts'])
+                          await clients[seat].send({'type': 'play', 'card_indexes': [0]})
+                          await control.wait_for(
+                              lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq
+                              and signature(c.state) != sig
+                          )
+                          after_state = control.state
+                          if before == 1 and first_finisher is None:
+                              first_finisher = seat
+                      else:
+                          seat = state['turn']
+                          await clients[seat].send({'type': 'pass'})
+                          await control.wait_for(
+                              lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq
+                              and signature(c.state) != sig
+                          )
+
+                      actions += 1
+                      if actions % 250 == 0:
+                          print('FULL_GAME_PROGRESS', actions, control.state.get('hand_counts'))
+
+                  ended = control.state
+                  assert first_finisher is not None
+                  assert ended.get('last_game_winner') == first_finisher, (
+                      ended.get('last_game_winner'),
+                      first_finisher,
+                  )
+                  assert len(ended.get('finish_order', [])) == PLAYER_COUNT, ended.get('finish_order')
+                  assert ended.get('finish_order', [None])[0] == first_finisher
+                  assert ended.get('hand_counts') == [0] * PLAYER_COUNT, ended.get('hand_counts')
+                  expected_team = 'TeamA' if first_finisher % 2 == 0 else 'TeamB'
+                  assert ended.get('last_game_winner_team') == expected_team, ended.get('last_game_winner_team')
+                  assert ended.get('last_promotion_steps') == 1, ended.get('last_promotion_steps')
+                  assert ended.get('pending_tribute') is None
+
+                  # Losing team chooses random shuffle.
+                  losing_parity = 1 if first_finisher % 2 == 0 else 0
+                  losing_seat = next(i for i in range(PLAYER_COUNT) if i % 2 == losing_parity)
+                  shuffle_seq = control.state_seq
+                  await clients[losing_seat].send({
+                      'type': 'shuffle_next_round',
+                      'from_position': None,
+                      'to_position': None,
+                  })
+                  await control.wait_for(
+                      lambda c, seq=shuffle_seq: c.state_seq > seq
+                      and c.state.get('next_round_phase') == 'awaiting_deal'
+                  )
+                  shuffled = control.state
+                  assert shuffled.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT
+
+                  # Previous winner deals; expanded tables deliberately skip 4-player tribute rules.
+                  hand_seqs = [client.hand_seq for client in clients]
+                  deal_seq = control.state_seq
+                  await clients[first_finisher].send({'type': 'deal_next_round'})
+                  await control.wait_for(
+                      lambda c, seq=deal_seq: c.state_seq > seq
+                      and c.state.get('next_round_phase') is None
+                      and c.state.get('finish_order') == []
+                  )
+                  next_round = control.state
+                  assert next_round.get('pending_tribute') is None
+                  assert next_round.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT
+                  assert next_round.get('turn') == first_finisher, (
+                      next_round.get('turn'),
+                      first_finisher,
+                  )
+
+                  for client, old_hand_seq in zip(clients, hand_seqs):
+                      await client.wait_for(
+                          lambda c, old=old_hand_seq: c.hand_seq > old
+                          and c.hand is not None
+                          and len(c.hand) == CARDS_PER_PLAYER
+                      )
+
+                  print('LOCAL_14_PLAYER_FULL_GAME_OK')
+                  print(json.dumps({
+                      'room': room,
+                      'actions': actions,
+                      'opening_draw_winner_player': opening_winner + 1,
+                      'first_finisher_player': first_finisher + 1,
+                      'winner_team': 1 if first_finisher % 2 == 0 else 2,
+                      'finish_order_players': [seat + 1 for seat in ended['finish_order']],
+                      'losing_shuffle_player': losing_seat + 1,
+                      'next_round_cards_per_player': CARDS_PER_PLAYER,
+                      'next_round_lead_player': next_round['turn'] + 1,
+                  }, ensure_ascii=False))
+              finally:
+                  await asyncio.gather(*(client.close() for client in clients), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
+
+      - name: Show backend log on failure
+        if: failure()
+        run: cat /tmp/guandan14-full-backend.log || true
