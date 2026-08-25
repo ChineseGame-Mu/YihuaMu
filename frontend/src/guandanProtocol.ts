@@ -15,7 +15,6 @@ export type GuandanRank =
 
 export type GuandanSuit = "Clubs" | "Diamonds" | "Hearts" | "Spades";
 export type GuandanJoker = "Small" | "Big";
-export type GuandanPlayerCount = 4 | 6 | 8 | 10 | 12 | 14;
 
 export type GuandanCard =
   | { Suited: { suit: GuandanSuit; rank: GuandanRank } }
@@ -26,7 +25,7 @@ export type GuandanClientMessage =
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
   | { type: "set_bots"; count: 1 | 2 | 3 }
-  | { type: "start"; player_count: GuandanPlayerCount }
+  | { type: "start"; player_count: number }
   | {
       type: "shuffle_next_round";
       from_position: number | null;
