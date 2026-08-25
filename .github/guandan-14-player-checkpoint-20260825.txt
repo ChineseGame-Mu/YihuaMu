@@ -1,0 +1,2 @@
+Tested expansion checkpoint: a513c352f6254f1a329eb9a244d76254f0a0cb58
+Scope: isolated 4/6/8/10/12/14-player Guandan frontend/backend branch; classic four-player master/backups untouched.
