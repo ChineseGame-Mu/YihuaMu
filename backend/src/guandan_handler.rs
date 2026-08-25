@@ -13,7 +13,7 @@ use shengji_core::guandan::{
     strength::strengths_at_level,
     team::{team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Rank, TableConfig,
+    CardFace, Joker, Rank, Suit, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -105,6 +105,8 @@ pub enum GuandanServerMessage {
         passes: usize,
         trick_complete: bool,
         last_trick_winner: Option<usize>,
+        initial_draw: Vec<CardFace>,
+        initial_draw_winner: Option<usize>,
         level: Rank,
         team_levels: TeamLevels,
         finish_order: Vec<usize>,
@@ -241,6 +243,8 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         passes: game.passes,
         trick_complete: game.trick_complete,
         last_trick_winner: game.last_trick_winner,
+        initial_draw: game.initial_draw.clone(),
+        initial_draw_winner: game.initial_draw_winner,
         level: game.level,
         team_levels: game.team_levels,
         finish_order: game.finish_order.clone(),
@@ -268,6 +272,46 @@ fn advance_turn(game: &mut GuandanGameState) {
 
 fn is_robot_name(name: &str) -> bool {
     name.starts_with("机器人")
+}
+
+fn initial_draw_value(card: CardFace) -> usize {
+    match card {
+        CardFace::Joker(Joker::Big) => 1000,
+        CardFace::Joker(Joker::Small) => 900,
+        CardFace::Suited { suit, rank } => {
+            let suit_value = match suit {
+                Suit::Clubs => 0,
+                Suit::Diamonds => 1,
+                Suit::Spades => 2,
+                Suit::Hearts => 3,
+            };
+            (rank as usize) * 10 + suit_value
+        }
+    }
+}
+
+fn draw_starting_seat(deck: &mut Vec<CardFace>) -> (Vec<CardFace>, usize) {
+    loop {
+        deck.shuffle(&mut thread_rng());
+        let draw = deck
+            .iter()
+            .copied()
+            .take(GUANDAN_PLAYER_COUNT)
+            .collect::<Vec<_>>();
+        let values = draw
+            .iter()
+            .copied()
+            .map(initial_draw_value)
+            .collect::<Vec<_>>();
+        let max_value = *values.iter().max().expect("Guandan deck has cards");
+        if values.iter().filter(|value| **value == max_value).count() == 1 {
+            let winner = values
+                .iter()
+                .position(|value| *value == max_value)
+                .expect("unique winner");
+            return (draw, winner);
+        }
+    }
 }
 
 fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
@@ -849,9 +893,13 @@ pub async fn websocket(
                         if !remainder.is_empty() {
                             return Err(());
                         }
+                        let mut draw_deck = build_deck(table);
+                        let (initial_draw, draw_winner) = draw_starting_seat(&mut draw_deck);
                         state.game.started = true;
                         state.game.hands = hands;
-                        state.game.turn = 0;
+                        state.game.turn = draw_winner;
+                        state.game.initial_draw = initial_draw;
+                        state.game.initial_draw_winner = Some(draw_winner);
                         state.game.last_play.clear();
                         state.game.last_player = None;
                         state.game.table_plays.clear();
