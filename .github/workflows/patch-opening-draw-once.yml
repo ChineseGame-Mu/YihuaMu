@@ -1,0 +1,211 @@
+name: Patch Guandan opening draw rule once
+
+on:
+  push:
+    paths:
+      - .github/workflows/patch-opening-draw-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message || '', '[opening-draw-patched]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Apply opening-card first-lead rule
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace(path, old, new, count=1):
+              p = Path(path)
+              s = p.read_text()
+              if old not in s:
+                  raise SystemExit(f"missing expected snippet in {path}: {old[:100]!r}")
+              s2 = s.replace(old, new, count)
+              p.write_text(s2)
+
+          # Backend persistent state: keep the exact prepared deck and marker position.
+          replace(
+              'backend/src/guandan_serving_types.rs',
+              '''    #[serde(default)]\n    pub next_round_finish_order: Vec<usize>,\n''',
+              '''    #[serde(default)]\n    pub next_round_finish_order: Vec<usize>,\n    #[serde(default)]\n    pub opening_draw_card: Option<CardFace>,\n    #[serde(default)]\n    pub opening_draw_position: Option<usize>,\n    #[serde(default)]\n    pub opening_deck: Vec<CardFace>,\n'''
+          )
+          replace(
+              'backend/src/guandan_serving_types.rs',
+              '''            next_round_phase: None,\n            next_round_finish_order: Vec::new(),\n''',
+              '''            next_round_phase: None,\n            next_round_finish_order: Vec::new(),\n            opening_draw_card: None,\n            opening_draw_position: None,\n            opening_deck: Vec::new(),\n'''
+          )
+
+          h = Path('backend/src/guandan_handler.rs')
+          s = h.read_text()
+          s = s.replace(
+              '''    SetBots {\n        count: usize,\n    },\n    Start {\n''',
+              '''    SetBots {\n        count: usize,\n    },\n    DrawOpeningCard,\n    Start {\n''',
+              1,
+          )
+          s = s.replace(
+              '''        minimum_players: usize,\n        maximum_players: usize,\n    },\n''',
+              '''        minimum_players: usize,\n        maximum_players: usize,\n        opening_draw_card: Option<CardFace>,\n        opening_leader: Option<usize>,\n    },\n''',
+              1,
+          )
+          s = s.replace(
+              '''        next_round_phase: Option<GuandanNextRoundPhase>,\n    },\n''',
+              '''        next_round_phase: Option<GuandanNextRoundPhase>,\n        opening_draw_card: Option<CardFace>,\n        opening_leader: Option<usize>,\n    },\n''',
+              1,
+          )
+          s = s.replace(
+              '''        minimum_players: GUANDAN_PLAYER_COUNT,\n        maximum_players: GUANDAN_PLAYER_COUNT,\n    }\n}\n''',
+              '''        minimum_players: GUANDAN_PLAYER_COUNT,\n        maximum_players: GUANDAN_PLAYER_COUNT,\n        opening_draw_card: game.opening_draw_card,\n        opening_leader: game.opening_draw_position.map(|position| position % GUANDAN_PLAYER_COUNT),\n    }\n}\n''',
+              1,
+          )
+          s = s.replace(
+              '''        next_round_phase: game.next_round_phase,\n    }\n}\n''',
+              '''        next_round_phase: game.next_round_phase,\n        opening_draw_card: game.opening_draw_card,\n        opening_leader: game.opening_draw_position.map(|position| position % GUANDAN_PLAYER_COUNT),\n    }\n}\n''',
+              1,
+          )
+
+          # Replace the temporary dice helper with the exact deal-position rule.
+          import re
+          s, n = re.subn(
+              r'''fn roll_starting_seat<R: Rng \+ \?Sized>\(rng: &mut R\) -> usize \{.*?\n\}\n\nfn settle_and_redeal_if_complete''',
+              '''fn opening_leader_for_position(position: usize) -> usize {\n    position % GUANDAN_PLAYER_COUNT\n}\n\nfn settle_and_redeal_if_complete''',
+              s,
+              count=1,
+              flags=re.S,
+          )
+          if n != 1:
+              raise SystemExit('could not replace dice starting-seat helper')
+
+          # Insert the pre-start draw command immediately before Start handling.
+          marker = '''            GuandanClientMessage::Start { player_count } => {'''
+          if marker not in s:
+              raise SystemExit('Start command marker not found')
+          draw_arm = '''            GuandanClientMessage::DrawOpeningCard => {\n                let (key, name) = match (joined_room.clone(), joined_name.clone()) {\n                    (Some(key), Some(name)) => (key, name),\n                    _ => continue,\n                };\n                if current_seat(&storage, &key, &name).await.is_none() {\n                    continue;\n                }\n                let result = storage\n                    .clone()\n                    .execute_operation_with_messages(key, move |mut state| {\n                        if state.game.started || state.game.player_names.len() != GUANDAN_PLAYER_COUNT {\n                            return Err(());\n                        }\n                        let table = validate_start(state.game.player_names.len()).map_err(|_| ())?;\n                        let mut rng = thread_rng();\n                        let mut deck = build_deck(table);\n                        deck.shuffle(&mut rng);\n                        let drawn_index = rng.gen_range(0..deck.len());\n                        let drawn_card = deck.remove(drawn_index);\n                        let insertion_position = rng.gen_range(0..=deck.len());\n                        deck.insert(insertion_position, drawn_card);\n                        state.game.opening_draw_card = Some(drawn_card);\n                        state.game.opening_draw_position = Some(insertion_position);\n                        state.game.opening_deck = deck;\n                        state.bump_version();\n                        Ok((state, vec![GuandanStorageMessage::StateChanged]))\n                    })\n                    .await;\n                if result.is_err() {\n                    send(\n                        &tx,\n                        &GuandanServerMessage::Error {\n                            message: "four seated players are required before drawing the opening card".to_string(),\n                        },\n                    );\n                }\n            }\n'''
+          s = s.replace(marker, draw_arm + marker, 1)
+
+          # Start must use the prepared deck and marker position; no reshuffle and no fixed/dice turn.
+          old = '''                        let mut deck = build_deck(table);\n                        deck.shuffle(&mut thread_rng());\n                        let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;'''
+          if old not in s:
+              # tolerate the recent dice version using a named rng
+              old = '''                        let mut rng = thread_rng();\n                        let mut deck = build_deck(table);\n                        deck.shuffle(&mut rng);\n                        let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;'''
+          if old not in s:
+              raise SystemExit('current Start shuffle block not found')
+          new = '''                        let opening_position = state.game.opening_draw_position.ok_or(())?;\n                        if state.game.opening_deck.len() != table.player_count * CARDS_PER_PLAYER {\n                            return Err(());\n                        }\n                        let deck = state.game.opening_deck.clone();\n                        let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;'''
+          s = s.replace(old, new, 1)
+          s = re.sub(
+              r'''state\.game\.turn = (?:roll_starting_seat\(&mut rng\)|0);''',
+              '''state.game.turn = opening_leader_for_position(opening_position);''',
+              s,
+              count=1,
+          )
+          # Improve start failure message so the UI/user knows the draw is mandatory.
+          s = s.replace(
+              '''message: "the game is already underway or four seated players are required".to_string(),''',
+              '''message: "draw an opening card first; four seated players are required".to_string(),''',
+              1,
+          )
+          # Replace dice test with exact position-to-seat tests.
+          s, n = re.subn(
+              r'''    #\[test\]\n    fn dice_starting_seat_is_always_a_real_player\(\) \{.*?\n    \}\n''',
+              '''    #[test]\n    fn opening_card_position_selects_the_player_who_receives_it() {\n        for position in 0..108 {\n            assert_eq!(opening_leader_for_position(position), position % 4);\n        }\n    }\n''',
+              s,
+              count=1,
+              flags=re.S,
+          )
+          if n != 1:
+              raise SystemExit('dice test not found')
+          h.write_text(s)
+
+          # Frontend protocol.
+          p = Path('frontend/src/guandanProtocol.ts')
+          s = p.read_text()
+          s = s.replace(
+              '''  | { type: "set_bots"; count: 1 | 2 | 3 }\n  | { type: "start"; player_count: 4 }''',
+              '''  | { type: "set_bots"; count: 1 | 2 | 3 }\n  | { type: "draw_opening_card" }\n  | { type: "start"; player_count: 4 }''',
+              1,
+          )
+          s = s.replace(
+              '''      maximum_players: number;\n    }''',
+              '''      maximum_players: number;\n      opening_draw_card: GuandanCard | null;\n      opening_leader: number | null;\n    }''',
+              1,
+          )
+          s = s.replace(
+              '''      next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;\n    }''',
+              '''      next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;\n      opening_draw_card: GuandanCard | null;\n      opening_leader: number | null;\n    }''',
+              1,
+          )
+          p.write_text(s)
+
+          # Frontend state.
+          p = Path('frontend/src/GuandanStateProvider.tsx')
+          s = p.read_text()
+          s = s.replace(
+              '''  maximumPlayers: number | null;\n  error: string | null;''',
+              '''  maximumPlayers: number | null;\n  openingDrawCard: GuandanCard | null;\n  openingLeader: number | null;\n  error: string | null;''',
+              1,
+          )
+          s = s.replace(
+              '''  maximumPlayers: null,\n  error: null,''',
+              '''  maximumPlayers: null,\n  openingDrawCard: null,\n  openingLeader: null,\n  error: null,''',
+              1,
+          )
+          s = s.replace(
+              '''        maximumPlayers: message.maximum_players,\n        error: null,''',
+              '''        maximumPlayers: message.maximum_players,\n        openingDrawCard: message.opening_draw_card ?? null,\n        openingLeader: message.opening_leader ?? null,\n        error: null,''',
+              1,
+          )
+          s = s.replace(
+              '''        nextRoundPhase: message.next_round_phase,\n        error: null,''',
+              '''        nextRoundPhase: message.next_round_phase,\n        openingDrawCard: message.opening_draw_card ?? state.openingDrawCard,\n        openingLeader: message.opening_leader ?? state.openingLeader,\n        error: null,''',
+              1,
+          )
+          p.write_text(s)
+
+          # Frontend table: separate draw action, require it before Start, show exact card and leader.
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          s = s.replace(
+              '''  const startGame = (): void => {\n    if (state.seat === null || gameStarted || state.players.length < 4) return;''',
+              '''  const drawOpeningCard = (): void => {\n    if (state.seat === null || gameStarted || state.players.length !== 4) return;\n    send({ type: "draw_opening_card" });\n  };\n\n  const startGame = (): void => {\n    if (\n      state.seat === null ||\n      gameStarted ||\n      state.players.length < 4 ||\n      state.openingDrawCard === null\n    )\n      return;''',
+              1,
+          )
+          old = '''                <button\n                  className="guandan-start-button"\n                  disabled={state.seat === null || state.players.length < 4}\n                  onClick={startGame}\n                >\n                  开始四人局\n                </button>\n                <strong>\n                  {state.players.length === 4\n                    ? "四位玩家已到齐，任意已入座玩家均可开始"\n                    : `等待四位玩家全部进入（当前${state.players.length}/4）`}\n                </strong>'''
+          new = '''                <button\n                  type="button"\n                  className="normal"\n                  disabled={state.seat === null || state.players.length !== 4}\n                  onClick={drawOpeningCard}\n                >\n                  抽首出牌\n                </button>\n                {state.openingDrawCard !== null && (\n                  <div className="guandan-opening-draw" role="status">\n                    <strong>抽中牌：</strong>\n                    {fullCard(state.openingDrawCard, 68)}\n                    <span>\n                      这张牌已随机插回待发牌堆；\n                      {state.openingLeader === null\n                        ? "发牌后确定首出玩家"\n                        : `${state.players[state.openingLeader] ?? `玩家${state.openingLeader + 1}`} 将先出牌`}\n                    </span>\n                  </div>\n                )}\n                <button\n                  className="guandan-start-button"\n                  disabled={\n                    state.seat === null ||\n                    state.players.length < 4 ||\n                    state.openingDrawCard === null\n                  }\n                  onClick={startGame}\n                >\n                  开始四人局\n                </button>\n                <strong>\n                  {state.players.length !== 4\n                    ? `等待四位玩家全部进入（当前${state.players.length}/4）`\n                    : state.openingDrawCard === null\n                      ? "四位玩家已到齐：请任意玩家先抽一张首出牌"\n                      : "首出牌已放回牌堆，可以开始发牌"}\n                </strong>'''
+          if old not in s:
+              raise SystemExit('start panel snippet not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+      - name: Format changed files
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npx prettier --write src/guandanProtocol.ts src/GuandanStateProvider.tsx src/GuandanTable.tsx || true
+            cd ..
+          fi
+          cargo fmt --all
+
+      - name: Run focused tests
+        run: |
+          cargo test -p shengji-backend guandan_handler::tests::opening_card_position_selects_the_player_who_receives_it -- --nocapture
+
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs frontend/src/guandanProtocol.ts frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(guandan): draw opening card to determine first lead [opening-draw-patched]"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
