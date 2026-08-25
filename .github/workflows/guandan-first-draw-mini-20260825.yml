@@ -1,0 +1,88 @@
+name: Add Guandan first-draw mini display
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/workflows/guandan-first-draw-mini-20260825.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Patch mini display and five-minute timeout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          tsx_path = Path('frontend/src/GuandanTable.tsx')
+          tsx = tsx_path.read_text()
+
+          old_state = '''  const [startRequested, setStartRequested] = React.useState(false);\n  const [showSettings, setShowSettings] = React.useState(false);'''
+          new_state = '''  const [startRequested, setStartRequested] = React.useState(false);\n  const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);\n  const [showSettings, setShowSettings] = React.useState(false);'''
+          if old_state in tsx:
+              tsx = tsx.replace(old_state, new_state, 1)
+
+          anchor = '''  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'''
+          effect = '''\n  React.useEffect(() => {\n    if (\n      state.initialDraw.length !== 4 ||\n      state.initialDrawWinner === null ||\n      state.lastGameWinner !== null\n    ) {\n      setShowInitialDrawMini(false);\n      return;\n    }\n    setShowInitialDrawMini(true);\n    const timer = window.setTimeout(\n      () => setShowInitialDrawMini(false),\n      5 * 60 * 1000,\n    );\n    return () => window.clearTimeout(timer);\n  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);\n'''
+          if effect.strip() not in tsx:
+              if anchor not in tsx:
+                  raise SystemExit('Could not find serverDealt effect anchor')
+              tsx = tsx.replace(anchor, anchor + effect, 1)
+
+          old_panel = '''            {state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <div\n                  className="guandan-notice-panel"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌决定首家：</strong>\n                  <div className="guandan-actions">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <div>{state.players[index] ?? `玩家${index + 1}`}</div>\n                        {fullCard(card, 72)}\n                      </div>\n                    ))}\n                  </div>\n                  <div>\n                    <strong>首出：</strong>\n                    {state.players[state.initialDrawWinner] ??\n                      `玩家${state.initialDrawWinner + 1}`}\n                  </div>\n                </div>\n              )}\n'''
+          new_panel = '''            {showInitialDrawMini &&\n              state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <aside\n                  className="guandan-initial-draw-mini"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌</strong>\n                  <div className="guandan-initial-draw-mini-cards">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <span>{state.players[index] ?? `玩家${index + 1}`}</span>\n                        {fullCard(card, 44)}\n                      </div>\n                    ))}\n                  </div>\n                  <div className="guandan-initial-draw-mini-winner">\n                    首出：\n                    <strong>\n                      {state.players[state.initialDrawWinner] ??\n                        `玩家${state.initialDrawWinner + 1}`}\n                    </strong>\n                  </div>\n                </aside>\n              )}\n'''
+          if new_panel.strip() not in tsx:
+              if old_panel not in tsx:
+                  raise SystemExit('Could not find current initial draw panel')
+              tsx = tsx.replace(old_panel, new_panel, 1)
+
+          tsx_path.write_text(tsx)
+
+          css_path = Path('frontend/src/guandan-single-viewport.css')
+          css = css_path.read_text()
+          marker = '''.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'''
+          rules = '''\n/* First-game draw result: compact overlay only; never changes public-table size. */\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 58px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong {\n  display: block;\n  margin-bottom: 4px;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards {\n  display: grid;\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n  gap: 3px;\n  align-items: end;\n}\n.guandan-initial-draw-mini-cards > div {\n  min-width: 0;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards span {\n  display: block;\n  overflow: hidden;\n  margin-bottom: 2px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 0.65rem;\n}\n.guandan-initial-draw-mini-winner {\n  margin-top: 4px;\n  text-align: center;\n}\n'''
+          if '.guandan-initial-draw-mini {' not in css:
+              if marker not in css:
+                  raise SystemExit('Could not find CSS insertion marker')
+              css = css.replace(marker, marker + rules, 1)
+          css_path.write_text(css)
+          PY
+
+      - name: Install frontend dependencies
+        run: |
+          corepack enable
+          cd frontend
+          yarn install --frozen-lockfile
+
+      - name: Format changed files
+        run: |
+          cd frontend
+          yarn prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          yarn build
+
+      - name: Commit change
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
+          git commit -m "feat(guandan): move first draw to timed mini display"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
