@@ -1,0 +1,76 @@
+name: Fix Guandan dice first player once
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[dice-first-player-applied]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+
+      - name: Patch Guandan first-player selection to dice roll
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/src/guandan_handler.rs')
+          text = path.read_text()
+
+          old_import = 'use rand::thread_rng;'
+          new_import = 'use rand::{thread_rng, Rng};'
+          if old_import in text:
+              text = text.replace(old_import, new_import, 1)
+
+          marker = 'fn is_robot_name(name: &str) -> bool { name.starts_with("机器人") }\n'
+          helper = '''fn is_robot_name(name: &str) -> bool { name.starts_with("机器人") }\n\nfn roll_starting_seat<R: Rng + ?Sized>(rng: &mut R) -> usize {\n    loop {\n        let roll = rng.gen_range(1..=6);\n        if roll <= GUANDAN_PLAYER_COUNT {\n            return roll - 1;\n        }\n    }\n}\n'''
+          if 'fn roll_starting_seat<' not in text:
+              if marker not in text:
+                  raise SystemExit('robot-name marker not found')
+              text = text.replace(marker, helper, 1)
+
+          old_start = 'let mut deck = build_deck(table); deck.shuffle(&mut thread_rng()); let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;'
+          new_start = 'let mut rng = thread_rng(); let mut deck = build_deck(table); deck.shuffle(&mut rng); let (hands, remainder) = deal(table, &deck).map_err(|_| ())?;'
+          if old_start in text:
+              text = text.replace(old_start, new_start, 1)
+
+          old_turn = 'state.game.started = true; state.game.hands = hands; state.game.turn = 0;'
+          new_turn = 'state.game.started = true; state.game.hands = hands; state.game.turn = roll_starting_seat(&mut rng);'
+          if old_turn in text:
+              text = text.replace(old_turn, new_turn, 1)
+          elif new_turn not in text:
+              raise SystemExit('start-turn assignment not found')
+
+          test_marker = '    #[test] fn accepts_only_four_player_games()'
+          dice_test = '''    #[test]\n    fn dice_starting_seat_is_always_a_real_player() {\n        let mut rng = thread_rng();\n        for _ in 0..512 {\n            assert!(roll_starting_seat(&mut rng) < GUANDAN_PLAYER_COUNT);\n        }\n    }\n'''
+          if 'fn dice_starting_seat_is_always_a_real_player()' not in text:
+              if test_marker not in text:
+                  raise SystemExit('test marker not found')
+              text = text.replace(test_marker, dice_test + test_marker, 1)
+
+          path.write_text(text)
+          PY
+
+      - name: Format Rust
+        run: cargo fmt --all
+
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_handler.rs
+          git commit -m "fix(guandan): choose first player by dice roll [dice-first-player-applied]"
+          git push origin HEAD:fix/guandan-single-viewport-20260822
