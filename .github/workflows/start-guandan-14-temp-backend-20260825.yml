@@ -80,3 +80,5 @@ jobs:
         run: |
           echo 'Temporary 14-player browser backend is live.'
           sleep 10000
+
+# restart marker: public-table 14-seat verification 2026-08-25
