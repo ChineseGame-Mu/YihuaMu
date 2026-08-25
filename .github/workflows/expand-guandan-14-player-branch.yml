@@ -1,10 +1,11 @@
-name: Expand Guandan to 14 players safely
+name: Expand Guandan 14-player branch
 
 on:
   push:
     branches:
       - feature/guandan-up-to-14-players-20260825
     paths:
+      - .github/scripts/expand_guandan_14_players_20260825.py
       - .github/workflows/expand-guandan-14-player-branch.yml
 
 permissions:
@@ -19,212 +20,29 @@ jobs:
           ref: feature/guandan-up-to-14-players-20260825
           fetch-depth: 0
 
-      - name: Patch backend and frontend for 4-14 even-player tables
-        run: |
-          python - <<'PY'
-          from pathlib import Path
+      - name: Apply isolated multiplayer patch
+        run: python .github/scripts/expand_guandan_14_players_20260825.py
 
-          backend = Path('backend/src/guandan_handler.rs')
-          s = backend.read_text()
-
-          s = s.replace(
-              'const GUANDAN_PLAYER_COUNT: usize = 4;',
-              'const GUANDAN_MIN_PLAYER_COUNT: usize = 4;\nconst GUANDAN_MAX_PLAYER_COUNT: usize = 14;\nconst GUANDAN_CLASSIC_PLAYER_COUNT: usize = 4;',
-              1,
-          )
-
-          old = '''pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {\n    if player_count != GUANDAN_PLAYER_COUNT {\n        return Err("Guandan requires exactly 4 players");\n    }\n    TableConfig::new(player_count)\n}'''
-          new = '''pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> {\n    if !(GUANDAN_MIN_PLAYER_COUNT..=GUANDAN_MAX_PLAYER_COUNT).contains(&player_count)\n        || !player_count.is_multiple_of(2)\n    {\n        return Err("Guandan requires an even player count from 4 through 14");\n    }\n    TableConfig::new(player_count)\n}'''
-          if old not in s:
-              raise SystemExit('validate_start anchor missing')
-          s = s.replace(old, new, 1)
-
-          s = s.replace('minimum_players: GUANDAN_PLAYER_COUNT,\n        maximum_players: GUANDAN_PLAYER_COUNT,',
-                        'minimum_players: GUANDAN_MIN_PLAYER_COUNT,\n        maximum_players: GUANDAN_MAX_PLAYER_COUNT,', 1)
-
-          # Joining/participation can use the expanded capacity.
-          s = s.replace('state.game.player_names.len() >= GUANDAN_PLAYER_COUNT',
-                        'state.game.player_names.len() >= GUANDAN_MAX_PLAYER_COUNT', 2)
-
-          # Keep robot helper strictly classic-four-player so the existing robot program is untouched.
-          s = s.replace('human_count + count > GUANDAN_PLAYER_COUNT',
-                        'human_count + count > GUANDAN_CLASSIC_PLAYER_COUNT', 1)
-
-          s = s.replace('fn draw_starting_seat(deck: &mut Vec<CardFace>) -> (Vec<CardFace>, usize) {',
-                        'fn draw_starting_seat(\n    deck: &mut Vec<CardFace>,\n    player_count: usize,\n) -> (Vec<CardFace>, usize) {', 1)
-          s = s.replace('.take(GUANDAN_PLAYER_COUNT)', '.take(player_count)', 1)
-          s = s.replace('let (initial_draw, draw_winner) = draw_starting_seat(&mut draw_deck);',
-                        'let (initial_draw, draw_winner) =\n                            draw_starting_seat(&mut draw_deck, table.player_count);', 1)
-
-          helper = r'''
-fn settle_multiplayer_if_complete(
-    game: &mut GuandanGameState,
-) -> Result<bool, &'static str> {
-    let player_count = game.hands.len();
-    if player_count <= GUANDAN_CLASSIC_PLAYER_COUNT
-        || player_count > GUANDAN_MAX_PLAYER_COUNT
-        || !player_count.is_multiple_of(2)
-    {
-        return Err("expanded Guandan settlement requires 6 to 14 even players");
-    }
-    if game.finish_order.len() == player_count - 1 {
-        let last_seat = (0..player_count)
-            .find(|seat| !game.finish_order.contains(seat))
-            .ok_or("unable to determine final place")?;
-        game.finish_order.push(last_seat);
-        game.hands[last_seat].clear();
-    }
-    let active_players = game.hands.iter().filter(|hand| !hand.is_empty()).count();
-    if active_players > 0 || game.finish_order.is_empty() {
-        return Ok(false);
-    }
-    if game.finish_order.len() != player_count {
-        return Err("expanded Guandan settlement requires a complete finish order");
-    }
-    let winner = *game.finish_order.first().ok_or("finish order is empty")?;
-    if winner >= player_count {
-        return Err("winner seat is outside the table");
-    }
-    let winner_team = if winner % 2 == 0 { Team::A } else { Team::B };
-    let winner_level = game.team_levels.level_for(winner_team);
-    game.last_game_winner = Some(winner);
-    game.last_game_winner_team = Some(winner_team);
-    game.last_promotion_steps = Some(1);
-    if winner_level == Rank::Ace {
-        game.match_winner = Some(winner_team);
-        game.trick_complete = true;
-        return Ok(true);
-    }
-    game.level = game.team_levels.advance_winner(winner_team);
-    game.turn = winner;
-    game.next_round_finish_order = game.finish_order[..player_count - 1].to_vec();
-    game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
-    game.last_play.clear();
-    game.last_player = None;
-    game.table_plays.clear();
-    game.passes = 0;
-    game.trick_complete = false;
-    game.last_trick_winner = None;
-    game.pending_tribute = None;
-    game.tribute_cards.clear();
-    game.return_cards.clear();
-    game.tribute_resisted = false;
-    Ok(true)
-}
-
-'''
-          anchor = 'fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, \'static str> {'
-          # escaped anchor above is awkward; use literal search instead
-          anchor = "fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {"
-          if helper.strip() not in s:
-              if anchor not in s:
-                  raise SystemExit('settlement anchor missing')
-              s = s.replace(anchor, helper + anchor, 1)
-
-          s = s.replace(
-              '    if player_count != GUANDAN_PLAYER_COUNT {\n        return Err("Guandan settlement requires exactly four players");\n    }',
-              '    if player_count != GUANDAN_CLASSIC_PLAYER_COUNT {\n        return settle_multiplayer_if_complete(game);\n    }',
-              1,
-          )
-
-          old_tribute = '''                        let plan =\n                            four_player_tribute_plan(table, &state.game.next_round_finish_order)\n                                .map_err(PlayError::Invalid)?;\n                        if can_resist_tribute(&plan, &state.game.hands) {\n                            state.game.tribute_resisted = true;\n                        } else {\n                            state.game.pending_tribute = Some(plan);\n                        }'''
-          new_tribute = '''                        if table.player_count == GUANDAN_CLASSIC_PLAYER_COUNT {\n                            let plan = four_player_tribute_plan(\n                                table,\n                                &state.game.next_round_finish_order,\n                            )\n                            .map_err(PlayError::Invalid)?;\n                            if can_resist_tribute(&plan, &state.game.hands) {\n                                state.game.tribute_resisted = true;\n                            } else {\n                                state.game.pending_tribute = Some(plan);\n                            }\n                        } else {\n                            // Larger tables deliberately bypass the four-player-only tribute rules.\n                            state.game.pending_tribute = None;\n                            state.game.tribute_resisted = false;\n                        }'''
-          if old_tribute not in s:
-              raise SystemExit('tribute anchor missing')
-          s = s.replace(old_tribute, new_tribute, 1)
-
-          s = s.replace('"the game is already underway or four seated players are required"',
-                        '"the game is already underway or the requested seated player count is not ready"', 1)
-
-          # Update tests without weakening the four-player regression coverage.
-          s = s.replace('let (draw, winner) = draw_starting_seat(&mut deck);\n            assert_eq!(draw.len(), 4);\n            assert!(winner < GUANDAN_PLAYER_COUNT);',
-                        'let (draw, winner) = draw_starting_seat(&mut deck, 4);\n            assert_eq!(draw.len(), 4);\n            assert!(winner < GUANDAN_CLASSIC_PLAYER_COUNT);\n            assert!(draw.iter().all(|card| !matches!(card, CardFace::Joker(_))));', 1)
-          s = s.replace('fn accepts_only_four_player_games() {\n        assert_eq!(validate_start(4).unwrap().player_count, 4);\n        for count in [3usize, 5, 6, 8, 10, 12, 14] {\n            assert!(validate_start(count).is_err());\n        }\n    }',
-                        'fn accepts_even_tables_from_four_through_fourteen() {\n        for count in [4usize, 6, 8, 10, 12, 14] {\n            assert_eq!(validate_start(count).unwrap().player_count, count);\n        }\n        for count in [3usize, 5, 7, 9, 11, 13, 15] {\n            assert!(validate_start(count).is_err());\n        }\n    }', 1)
-          s = s.replace('for seat in 0..GUANDAN_PLAYER_COUNT {',
-                        'for seat in 0..GUANDAN_CLASSIC_PLAYER_COUNT {', 1)
-
-          # Add an explicit 14-player draw/deal regression test.
-          test_anchor = '    #[test]\n    fn seat_reorder_command_deserializes() {'
-          extra_test = '''    #[test]\n    fn fourteen_player_opening_draw_and_deal_are_supported() {\n        let table = validate_start(14).unwrap();\n        let mut deck = build_deck(table);\n        let (draw, winner) = draw_starting_seat(&mut deck, 14);\n        assert_eq!(draw.len(), 14);\n        assert!(winner < 14);\n        assert!(draw.iter().all(|card| !matches!(card, CardFace::Joker(_))));\n        let deck = build_deck(table);\n        let (hands, remainder) = deal(table, &deck).unwrap();\n        assert_eq!(hands.len(), 14);\n        assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));\n        assert!(remainder.is_empty());\n    }\n\n'''
-          if extra_test.strip() not in s:
-              if test_anchor not in s:
-                  raise SystemExit('test insertion anchor missing')
-              s = s.replace(test_anchor, extra_test + test_anchor, 1)
-
-          backend.write_text(s)
-
-          frontend = Path('frontend/src/GuandanTable.tsx')
-          f = frontend.read_text()
-
-          # Preserve four-player default; expansion is opt-in by table-size selector/query.
-          f = f.replace('  const testMode = query.get("test") === "1";\n  const playerCount = state.playerCount ?? state.players.length;',
-'''  const testMode = query.get("test") === "1";\n  const supportedPlayerCounts = [4, 6, 8, 10, 12, 14] as const;\n  const queryPlayerCount = Number(query.get("players") ?? "4");\n  const [requestedPlayerCount, setRequestedPlayerCount] = React.useState<number>(\n    supportedPlayerCounts.includes(queryPlayerCount as (typeof supportedPlayerCounts)[number])\n      ? queryPlayerCount\n      : 4,\n  );\n  const playerCount = state.playerCount ?? state.players.length;''', 1)
-
-          f = f.replace('  const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;',
-                        '  const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;\n  const deckSize = Math.max(108, playerCount * cardsPerPlayer);', 1)
-
-          f = f.replace('      state.initialDraw.length !== 4 ||',
-                        '      state.initialDraw.length !== playerCount ||', 1)
-          f = f.replace('  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);',
-                        '  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner, playerCount]);', 1)
-
-          old_start = '''  const startGame = (): void => {\n    if (state.seat === null || gameStarted || state.players.length < 4) return;\n    if (send({ type: "start", player_count: 4 })) {'''
-          new_start = '''  const startGame = (): void => {\n    if (\n      state.seat === null ||\n      gameStarted ||\n      state.players.length !== requestedPlayerCount\n    )\n      return;\n    if (send({ type: "start", player_count: requestedPlayerCount })) {'''
-          if old_start not in f:
-              raise SystemExit('frontend start anchor missing')
-          f = f.replace(old_start, new_start, 1)
-
-          f = f.replace('    "the game is already underway or four seated players are required":\n      "游戏已经开始，或者尚未坐满4位玩家。",',
-                        '    "the game is already underway or the requested seated player count is not ready":\n      "游戏已经开始，或者所选人数尚未全部到齐。",', 1)
-
-          f = f.replace('          <h2>四人联机测试</h2>\n          <div className="guandan-actions">\n            {[1, 2, 3, 4].map((player) => (',
-'''          <h2>{requestedPlayerCount}人联机测试</h2>\n          <div className="guandan-actions">\n            {Array.from({ length: requestedPlayerCount }, (_, index) => index + 1).map((player) => (''', 1)
-
-          f = f.replace('            {state.finishOrder.length === 4 && (',
-                        '            {state.finishOrder.length === playerCount && playerCount >= 4 && (', 1)
-          f = f.replace('              state.initialDraw.length === 4 &&',
-                        '              state.initialDraw.length === playerCount &&', 1)
-
-          start_panel_old = '''            {!gameStarted && !observing && (\n              <section className="guandan-actions guandan-start-panel">\n                <button\n                  className="guandan-start-button"\n                  disabled={state.seat === null || state.players.length < 4}\n                  onClick={startGame}\n                >\n                  抽牌决定首家并开始四人局\n                </button>\n                <strong>\n                  {state.players.length === 4\n                    ? "四位玩家已到齐，任意已入座玩家均可开始"\n                    : `等待四位玩家全部进入（当前${state.players.length}/4）`}\n                </strong>\n              </section>\n            )}'''
-          start_panel_new = '''            {!gameStarted && !observing && (\n              <section className="guandan-actions guandan-start-panel">\n                <label>\n                  本桌人数：\n                  <select\n                    value={requestedPlayerCount}\n                    onChange={(event) => setRequestedPlayerCount(Number(event.target.value))}\n                    disabled={state.players.length > 4}\n                  >\n                    {supportedPlayerCounts.map((count) => (\n                      <option key={count} value={count}>\n                        {count} 人\n                      </option>\n                    ))}\n                  </select>\n                </label>\n                <button\n                  className="guandan-start-button"\n                  disabled={\n                    state.seat === null ||\n                    state.players.length !== requestedPlayerCount\n                  }\n                  onClick={startGame}\n                >\n                  抽牌决定首家并开始{requestedPlayerCount}人局\n                </button>\n                <strong>\n                  {state.players.length === requestedPlayerCount\n                    ? `${requestedPlayerCount}位玩家已到齐，任意已入座玩家均可开始`\n                    : `等待${requestedPlayerCount}位玩家全部进入（当前${state.players.length}/${requestedPlayerCount}）`}\n                </strong>\n                {requestedPlayerCount > 4 && (\n                  <small>大桌使用两队交替座位；四人局原有规则保持不变。</small>\n                )}\n              </section>\n            )}'''
-          if start_panel_old not in f:
-              raise SystemExit('start panel anchor missing')
-          f = f.replace(start_panel_old, start_panel_new, 1)
-
-          f = f.replace('                四位玩家正在同步收牌，请稍候…',
-                        '                {playerCount}位玩家正在同步收牌，请稍候…', 1)
-
-          f = f.replace('            {state.finishOrder.length === 4 && (\n              <section\n                className="guandan-notice-panel"\n                role="status"\n                aria-label="四位玩家输赢顺序"\n              >\n                <strong>四位玩家输赢顺序：</strong>',
-                        '            {state.finishOrder.length === playerCount && playerCount >= 4 && (\n              <section\n                className="guandan-notice-panel"\n                role="status"\n                aria-label="玩家输赢顺序"\n              >\n                <strong>{playerCount}位玩家输赢顺序：</strong>', 1)
-
-          f = f.replace('                          max="108"', '                          max={deckSize}', 2)
-          f = f.replace('                          Number(shuffleFrom) > 108 ||\n                          Number(shuffleTo) < 1 ||\n                          Number(shuffleTo) > 108',
-                        '                          Number(shuffleFrom) > deckSize ||\n                          Number(shuffleTo) < 1 ||\n                          Number(shuffleTo) > deckSize', 1)
-
-          frontend.write_text(f)
-          PY
-
-      - name: Format backend
+      - name: Format Rust
         run: cargo fmt --all
 
-      - name: Install and build frontend
-        working-directory: frontend
+      - name: Build frontend
         run: |
-          npm install
-          npm run build
+          corepack enable
+          yarn install --frozen-lockfile
+          yarn build
 
       - name: Test Guandan backend and core
         run: cargo test -p shengji guandan --quiet
 
-      - name: Commit isolated expansion
+      - name: Commit expansion only to feature branch
         run: |
+          if git diff --quiet -- backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx; then
+            echo "No expansion changes needed"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx
-          if git diff --cached --quiet; then
-            echo "No expansion changes to commit"
-            exit 0
-          fi
-          git commit -m "feat(guandan): add isolated 6-14 player tables"
+          git commit -m "feat(guandan): isolated tables up to 14 players"
           git push origin HEAD:feature/guandan-up-to-14-players-20260825
