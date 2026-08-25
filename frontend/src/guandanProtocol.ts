@@ -70,6 +70,8 @@ export type GuandanServerMessage =
       passes: number;
       trick_complete: boolean;
       last_trick_winner: number | null;
+      initial_draw: GuandanCard[];
+      initial_draw_winner: number | null;
       level: GuandanRank;
       team_levels: unknown;
       finish_order: number[];
