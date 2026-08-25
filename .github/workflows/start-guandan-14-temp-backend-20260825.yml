@@ -1,0 +1,66 @@
+name: Start temporary Guandan 14-player browser backend
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/workflows/start-guandan-14-temp-backend-20260825.yml
+
+permissions:
+  contents: write
+
+jobs:
+  temporary-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+          fetch-depth: 0
+      - name: Start isolated 14-player backend
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan14-browser-backend.log 2>&1 &
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then
+              echo LOCAL_BACKEND_READY
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/guandan14-browser-backend.log
+          exit 1
+      - name: Start temporary public tunnel
+        run: |
+          curl -L --fail --silent --show-error \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o /tmp/cloudflared
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared tunnel --url http://127.0.0.1:3030 --no-autoupdate > /tmp/cloudflared.log 2>&1 &
+          for i in $(seq 1 90); do
+            URL=$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared.log | head -1 || true)
+            if [ -n "$URL" ]; then
+              echo "$URL" > /tmp/guandan14-url.txt
+              echo "TEMP_GUANDAN14_TUNNEL=$URL"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/cloudflared.log
+          exit 1
+      - name: Verify tunnel and publish websocket URL
+        run: |
+          URL=$(cat /tmp/guandan14-url.txt)
+          curl -fsS "$URL/runtime.js" >/dev/null
+          printf 'wss://%s/api/guandan\n' "${URL#https://}" > .github/guandan14-temp-backend-url.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/guandan14-temp-backend-url.txt
+          git commit -m 'test: publish temporary Guandan 14-player websocket' || true
+          git push origin HEAD:feature/guandan-up-to-14-players-20260825
+          cat .github/guandan14-temp-backend-url.txt
+      - name: Keep isolated browser backend alive
+        run: |
+          echo 'Temporary 14-player browser backend is live.'
+          sleep 10000
