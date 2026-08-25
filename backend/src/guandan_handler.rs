@@ -1038,7 +1038,7 @@ pub async fn websocket(
                             }
                             _ => {
                                 return Err(PlayError::Invalid(
-                                    "shuffle positions must both be between 1 and 108",
+                                    "shuffle positions must both be inside the current deck",
                                 ))
                             }
                         }

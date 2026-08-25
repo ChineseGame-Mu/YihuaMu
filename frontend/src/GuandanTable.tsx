@@ -233,6 +233,8 @@ const GuandanTable: React.FunctionComponent = () => {
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
   const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;
+  const effectiveTableSize = playerCount > 0 ? playerCount : requestedPlayerCount;
+  const deckSize = Math.max(108, effectiveTableSize * cardsPerPlayer);
   const dealing = dealStep !== null && dealStep < totalDealSteps;
   const serverDealt =
     state.hand.length > 0 || state.handCounts.some((count) => count > 0);
@@ -259,6 +261,10 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
+
+  React.useEffect(() => {
+    if (!gameStarted) setShuffleTo(String(deckSize));
+  }, [deckSize, gameStarted]);
 
   React.useEffect(() => {
     if (
@@ -595,7 +601,12 @@ const GuandanTable: React.FunctionComponent = () => {
                   key={count}
                   type="button"
                   className="normal"
-                  disabled={!joined || gameStarted || humanCount + count > 4}
+                  disabled={
+                    !joined ||
+                    gameStarted ||
+                    requestedPlayerCount !== 4 ||
+                    humanCount + count > 4
+                  }
                   onClick={() =>
                     send({ type: "set_bots", count: count as 1 | 2 | 3 })
                   }
@@ -606,8 +617,8 @@ const GuandanTable: React.FunctionComponent = () => {
             })}
           </div>
           <p>
-            任何已入座玩家都可在开局前选择 1 至 3 个机器人；真人与机器人合计仍为
-            4 位。
+            四人局可在开局前选择 1 至 3 个机器人；6至14人大桌保持真人联机，
+            不调用原四人机器人程序。
           </p>
         </section>
       )}
@@ -938,7 +949,7 @@ const GuandanTable: React.FunctionComponent = () => {
                         <input
                           type="number"
                           min="1"
-                          max="108"
+                          max={deckSize}
                           value={shuffleFrom}
                           disabled={!canShuffleNextRound}
                           onChange={(event) =>
@@ -952,7 +963,7 @@ const GuandanTable: React.FunctionComponent = () => {
                         <input
                           type="number"
                           min="1"
-                          max="108"
+                          max={deckSize}
                           value={shuffleTo}
                           disabled={!canShuffleNextRound}
                           onChange={(event) => setShuffleTo(event.target.value)}
@@ -965,9 +976,9 @@ const GuandanTable: React.FunctionComponent = () => {
                         disabled={
                           !canShuffleNextRound ||
                           Number(shuffleFrom) < 1 ||
-                          Number(shuffleFrom) > 108 ||
+                          Number(shuffleFrom) > deckSize ||
                           Number(shuffleTo) < 1 ||
-                          Number(shuffleTo) > 108
+                          Number(shuffleTo) > deckSize
                         }
                         onClick={placeCardAndShuffle}
                       >
