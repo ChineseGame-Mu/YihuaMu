@@ -1,0 +1,72 @@
+name: Add Guandan round winner mini display
+
+on:
+  push:
+    branches:
+      - fix/guandan-round-state-20260824
+    paths:
+      - .github/workflows/add-guandan-round-winner-mini-20260825.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-round-state-20260824
+          fetch-depth: 0
+
+      - name: Add round winner mini display
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          tsx_path = Path('frontend/src/GuandanTable.tsx')
+          tsx = tsx_path.read_text()
+          winner_class = 'className="guandan-round-winner-mini"'
+          if winner_class not in tsx:
+              anchor = '''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="参赛玩家"\n            >'''
+              winner = '''            {state.lastTrickWinner !== null && (\n              <aside\n                className="guandan-round-winner-mini"\n                role="status"\n                aria-label="本轮赢家"\n              >\n                <span>本轮赢家</span>\n                <strong>\n                  {state.players[state.lastTrickWinner] ??\n                    `玩家${state.lastTrickWinner + 1}`}\n                </strong>\n              </aside>\n            )}\n'''
+              if anchor not in tsx:
+                  raise SystemExit('Could not find participant names anchor')
+              tsx = tsx.replace(anchor, winner + anchor, 1)
+              tsx_path.write_text(tsx)
+
+          css_path = Path('frontend/src/guandan-single-viewport.css')
+          css = css_path.read_text()
+          if '.guandan-round-winner-mini {' not in css:
+              marker = '''.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'''
+              rules = '''\n/* Public-table round winner screen: overlay only; never resizes the table. */\n.guandan-public-zone {\n  position: relative;\n}\n\n.guandan-round-winner-mini {\n  position: absolute;\n  z-index: 36;\n  top: 8px;\n  left: 10px;\n  min-width: 108px;\n  padding: 4px 7px;\n  border: 1px solid rgba(255, 230, 154, 0.92);\n  border-radius: 8px;\n  background: rgba(15, 78, 58, 0.94);\n  color: #fff4c7;\n  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);\n  font-size: 0.68rem;\n  line-height: 1.08;\n  text-align: center;\n  pointer-events: none;\n}\n\n.guandan-round-winner-mini span,\n.guandan-round-winner-mini strong {\n  display: block;\n}\n\n.guandan-round-winner-mini strong {\n  margin-top: 2px;\n  font-size: 0.82rem;\n  font-weight: 800;\n}\n'''
+              if marker not in css:
+                  raise SystemExit('Could not find CSS insertion marker')
+              css = css.replace(marker, marker + rules, 1)
+              css_path.write_text(css)
+          PY
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Format changed files
+        working-directory: frontend
+        run: npx prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Commit feature
+        run: |
+          if git diff --quiet -- frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
+          git commit -m "feat: show Guandan round winner on public table"
+          git push origin HEAD:fix/guandan-round-state-20260824
