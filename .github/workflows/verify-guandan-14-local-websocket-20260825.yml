@@ -1,4 +1,4 @@
-name: Verify isolated Guandan 14-player websocket
+name: Verify isolated Guandan 4-14 player websocket
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  fourteen-player-websocket:
+  multiplayer-websocket:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -36,7 +36,7 @@ jobs:
           cat /tmp/guandan14-backend.log
           exit 1
 
-      - name: Run 14-player WebSocket robot opening test
+      - name: Run 4-14 player WebSocket robot opening tests
         run: |
           python - <<'PY'
           import asyncio
@@ -45,8 +45,7 @@ jobs:
           import websockets
 
           URI = 'ws://127.0.0.1:3030/api/guandan'
-          ROOM = f'robot14{int(time.time())}'
-          PLAYER_COUNT = 14
+          PLAYER_COUNTS = [4, 6, 8, 10, 12, 14]
           CARDS_PER_PLAYER = 27
 
           async def recv_until(ws, predicate, timeout=15):
@@ -62,37 +61,42 @@ jobs:
                           return msg
               return await asyncio.wait_for(inner(), timeout=timeout)
 
-          async def main():
+          async def run_table(player_count):
+              room = f'robot{player_count}_{int(time.time() * 1000)}'
               sockets = []
               try:
-                  for index in range(PLAYER_COUNT):
+                  for index in range(player_count):
                       ws = await websockets.connect(URI, open_timeout=10)
                       sockets.append(ws)
                       await recv_until(ws, lambda m: m.get('type') == 'connected')
                       await ws.send(json.dumps({
                           'type': 'join',
-                          'room': ROOM,
+                          'room': room,
                           'name': f'玩家{index + 1}',
                       }, ensure_ascii=False))
                       joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
-                      assert joined.get('seat') == index, (index, joined)
+                      assert joined.get('seat') == index, (player_count, index, joined)
 
-                  # Wait until player 1 sees all 14 seats before starting.
                   waiting = await recv_until(
                       sockets[0],
-                      lambda m: m.get('type') == 'waiting' and len(m.get('players', [])) == PLAYER_COUNT,
+                      lambda m: m.get('type') == 'waiting'
+                      and len(m.get('players', [])) == player_count,
                       timeout=20,
                   )
                   assert waiting.get('minimum_players') == 4, waiting
                   assert waiting.get('maximum_players') == 14, waiting
 
-                  await sockets[0].send(json.dumps({'type': 'start', 'player_count': PLAYER_COUNT}))
+                  await sockets[0].send(json.dumps({
+                      'type': 'start',
+                      'player_count': player_count,
+                  }))
 
-                  results = []
+                  winners = []
                   for seat, ws in enumerate(sockets):
                       started = await recv_until(
                           ws,
-                          lambda m: m.get('type') == 'started' and m.get('player_count') == PLAYER_COUNT,
+                          lambda m: m.get('type') == 'started'
+                          and m.get('player_count') == player_count,
                           timeout=20,
                       )
                       assert started.get('cards_per_player') == CARDS_PER_PLAYER, started
@@ -100,34 +104,51 @@ jobs:
                       state = await recv_until(
                           ws,
                           lambda m: m.get('type') == 'state'
-                          and len(m.get('players', [])) == PLAYER_COUNT
-                          and len(m.get('initial_draw', [])) == PLAYER_COUNT,
+                          and len(m.get('players', [])) == player_count
+                          and len(m.get('initial_draw', [])) == player_count,
                           timeout=20,
                       )
                       hand = await recv_until(ws, lambda m: m.get('type') == 'hand', timeout=20)
 
-                      assert len(hand.get('cards', [])) == CARDS_PER_PLAYER, (seat, len(hand.get('cards', [])))
-                      assert state.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT, state.get('hand_counts')
+                      assert len(hand.get('cards', [])) == CARDS_PER_PLAYER, (
+                          player_count,
+                          seat,
+                          len(hand.get('cards', [])),
+                      )
+                      assert state.get('hand_counts') == [CARDS_PER_PLAYER] * player_count, (
+                          player_count,
+                          state.get('hand_counts'),
+                      )
                       winner = state.get('initial_draw_winner')
-                      assert isinstance(winner, int) and 0 <= winner < PLAYER_COUNT, winner
-                      assert state.get('turn') == winner, (state.get('turn'), winner)
-                      assert all('Joker' not in card for card in state.get('initial_draw', [])), state.get('initial_draw')
-                      results.append((seat + 1, winner + 1))
+                      assert isinstance(winner, int) and 0 <= winner < player_count, winner
+                      assert state.get('turn') == winner, (player_count, state.get('turn'), winner)
+                      assert all(
+                          'Joker' not in card for card in state.get('initial_draw', [])
+                      ), state.get('initial_draw')
+                      winners.append(winner + 1)
 
-                  winner = results[0][1]
-                  assert all(item[1] == winner for item in results), results
-                  print('LOCAL_14_PLAYER_WEBSOCKET_OK')
-                  print(json.dumps({
-                      'room': ROOM,
-                      'players': PLAYER_COUNT,
+                  winner = winners[0]
+                  assert all(item == winner for item in winners), (player_count, winners)
+                  result = {
+                      'room': room,
+                      'players': player_count,
                       'cards_per_player': CARDS_PER_PLAYER,
-                      'opening_draw_count': PLAYER_COUNT,
+                      'opening_draw_count': player_count,
                       'winner_player': winner,
-                      'team_1_seats': [i for i in range(1, PLAYER_COUNT + 1) if i % 2 == 1],
-                      'team_2_seats': [i for i in range(1, PLAYER_COUNT + 1) if i % 2 == 0],
-                  }, ensure_ascii=False))
+                      'winner_team': 1 if winner % 2 == 1 else 2,
+                  }
+                  print(f'LOCAL_{player_count}_PLAYER_WEBSOCKET_OK')
+                  print(json.dumps(result, ensure_ascii=False))
+                  return result
               finally:
                   await asyncio.gather(*(ws.close() for ws in sockets), return_exceptions=True)
+
+          async def main():
+              results = []
+              for player_count in PLAYER_COUNTS:
+                  results.append(await run_table(player_count))
+              print('LOCAL_ALL_EVEN_TABLES_4_TO_14_OK')
+              print(json.dumps(results, ensure_ascii=False))
 
           asyncio.run(main())
           PY
