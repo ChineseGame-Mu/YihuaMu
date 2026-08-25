@@ -13,6 +13,7 @@ import "./guandan-header-decor.css";
 import "./game-logos.css";
 import "./guandan-settings-card-hints.css";
 import "./guandan-statusbar-restore.css";
+import "./guandan-topbar-final.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
