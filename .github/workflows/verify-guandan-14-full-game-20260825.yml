@@ -138,33 +138,17 @@ jobs:
               try:
                   for client in clients:
                       await client.connect()
-                      await client.send({
-                          'type': 'join',
-                          'room': room,
-                          'name': f'玩家{client.seat + 1}',
-                      })
+                      await client.send({'type': 'join','room': room,'name': f'玩家{client.seat + 1}'})
                       await client.wait_for(lambda c: c.joined is not None)
                       assert client.joined.get('seat') == client.seat, client.joined
 
                   control = clients[0]
-                  await control.wait_for(
-                      lambda c: c.waiting is not None
-                      and len(c.waiting.get('players', [])) == PLAYER_COUNT
-                  )
-
+                  await control.wait_for(lambda c: c.waiting is not None and len(c.waiting.get('players', [])) == PLAYER_COUNT)
                   await control.send({'type': 'start', 'player_count': PLAYER_COUNT})
                   for client in clients:
-                      await client.wait_for(
-                          lambda c: c.started is not None
-                          and c.started.get('player_count') == PLAYER_COUNT
-                      )
-                      await client.wait_for(
-                          lambda c: c.state is not None
-                          and len(c.state.get('initial_draw', [])) == PLAYER_COUNT
-                      )
-                      await client.wait_for(
-                          lambda c: c.hand is not None and len(c.hand) == CARDS_PER_PLAYER
-                      )
+                      await client.wait_for(lambda c: c.started is not None and c.started.get('player_count') == PLAYER_COUNT)
+                      await client.wait_for(lambda c: c.state is not None and len(c.state.get('initial_draw', [])) == PLAYER_COUNT)
+                      await client.wait_for(lambda c: c.hand is not None and len(c.hand) == CARDS_PER_PLAYER)
 
                   opening = control.state
                   opening_winner = opening['initial_draw_winner']
@@ -178,99 +162,56 @@ jobs:
                       if state.get('next_round_phase') == 'awaiting_shuffle':
                           break
                       assert actions < 6000, f'full game exceeded action limit: {actions}'
-
                       previous_seq = control.state_seq
                       previous_sig = signature(state)
-
                       if state.get('last_player') is None:
                           seat = state['turn']
                           before = state['hand_counts'][seat]
                           assert before > 0, (seat, state['hand_counts'])
                           await clients[seat].send({'type': 'play', 'card_indexes': [0]})
-                          await control.wait_for(
-                              lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq
-                              and signature(c.state) != sig
-                          )
+                          await control.wait_for(lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq and signature(c.state) != sig)
                           if before == 1 and first_finisher is None:
                               first_finisher = seat
                       else:
                           seat = state['turn']
                           await clients[seat].send({'type': 'pass'})
-                          await control.wait_for(
-                              lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq
-                              and signature(c.state) != sig
-                          )
-
+                          await control.wait_for(lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq and signature(c.state) != sig)
                       actions += 1
                       if actions % 250 == 0:
                           print('FULL_GAME_PROGRESS', actions, control.state.get('hand_counts'))
 
                   ended = control.state
                   assert first_finisher is not None
-                  assert ended.get('last_game_winner') == first_finisher, (
-                      ended.get('last_game_winner'),
-                      first_finisher,
-                  )
-                  assert len(ended.get('finish_order', [])) == PLAYER_COUNT, ended.get('finish_order')
+                  assert ended.get('last_game_winner') == first_finisher
+                  assert len(ended.get('finish_order', [])) == PLAYER_COUNT
                   assert ended.get('finish_order', [None])[0] == first_finisher
-                  assert ended.get('hand_counts') == [0] * PLAYER_COUNT, ended.get('hand_counts')
+                  assert ended.get('hand_counts') == [0] * PLAYER_COUNT
                   expected_team = 'A' if first_finisher % 2 == 0 else 'B'
-                  assert ended.get('last_game_winner_team') == expected_team, ended.get('last_game_winner_team')
-                  assert ended.get('last_promotion_steps') == 1, ended.get('last_promotion_steps')
+                  assert ended.get('last_game_winner_team') == expected_team
+                  assert ended.get('last_promotion_steps') == 1
                   assert ended.get('pending_tribute') is None
 
-                  # Losing team chooses random shuffle.
                   losing_parity = 1 if first_finisher % 2 == 0 else 0
                   losing_seat = next(i for i in range(PLAYER_COUNT) if i % 2 == losing_parity)
                   shuffle_seq = control.state_seq
-                  await clients[losing_seat].send({
-                      'type': 'shuffle_next_round',
-                      'from_position': None,
-                      'to_position': None,
-                  })
-                  await control.wait_for(
-                      lambda c, seq=shuffle_seq: c.state_seq > seq
-                      and c.state.get('next_round_phase') == 'awaiting_deal'
-                  )
+                  await clients[losing_seat].send({'type': 'shuffle_next_round','from_position': None,'to_position': None})
+                  await control.wait_for(lambda c, seq=shuffle_seq: c.state_seq > seq and c.state.get('next_round_phase') == 'awaiting_deal')
                   shuffled = control.state
                   assert shuffled.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT
 
-                  # Previous winner deals; expanded tables deliberately skip 4-player tribute rules.
                   hand_seqs = [client.hand_seq for client in clients]
                   deal_seq = control.state_seq
                   await clients[first_finisher].send({'type': 'deal_next_round'})
-                  await control.wait_for(
-                      lambda c, seq=deal_seq: c.state_seq > seq
-                      and c.state.get('next_round_phase') is None
-                      and c.state.get('finish_order') == []
-                  )
+                  await control.wait_for(lambda c, seq=deal_seq: c.state_seq > seq and c.state.get('next_round_phase') is None and c.state.get('finish_order') == [])
                   next_round = control.state
                   assert next_round.get('pending_tribute') is None
                   assert next_round.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT
-                  assert next_round.get('turn') == first_finisher, (
-                      next_round.get('turn'),
-                      first_finisher,
-                  )
-
+                  assert next_round.get('turn') == first_finisher
                   for client, old_hand_seq in zip(clients, hand_seqs):
-                      await client.wait_for(
-                          lambda c, old=old_hand_seq: c.hand_seq > old
-                          and c.hand is not None
-                          and len(c.hand) == CARDS_PER_PLAYER
-                      )
+                      await client.wait_for(lambda c, old=old_hand_seq: c.hand_seq > old and c.hand is not None and len(c.hand) == CARDS_PER_PLAYER)
 
                   print('LOCAL_14_PLAYER_FULL_GAME_OK')
-                  print(json.dumps({
-                      'room': room,
-                      'actions': actions,
-                      'opening_draw_winner_player': opening_winner + 1,
-                      'first_finisher_player': first_finisher + 1,
-                      'winner_team': 1 if first_finisher % 2 == 0 else 2,
-                      'finish_order_players': [seat + 1 for seat in ended['finish_order']],
-                      'losing_shuffle_player': losing_seat + 1,
-                      'next_round_cards_per_player': CARDS_PER_PLAYER,
-                      'next_round_lead_player': next_round['turn'] + 1,
-                  }, ensure_ascii=False))
+                  print(json.dumps({'room': room,'actions': actions,'opening_draw_winner_player': opening_winner + 1,'first_finisher_player': first_finisher + 1,'winner_team': 1 if first_finisher % 2 == 0 else 2,'finish_order_players': [seat + 1 for seat in ended['finish_order']],'losing_shuffle_player': losing_seat + 1,'next_round_cards_per_player': CARDS_PER_PLAYER,'next_round_lead_player': next_round['turn'] + 1}, ensure_ascii=False))
               finally:
                   await asyncio.gather(*(client.close() for client in clients), return_exceptions=True)
 
@@ -280,3 +221,5 @@ jobs:
       - name: Show backend log on failure
         if: failure()
         run: cat /tmp/guandan14-full-backend.log || true
+
+# three-game robot test trigger 1
