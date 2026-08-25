@@ -122,6 +122,78 @@
   display: none !important;
 }
 
+/* Compact public-table status overlays; they never resize the table. */
+.guandan-round-winner-mini {
+  position: absolute;
+  z-index: 36;
+  top: 34px;
+  left: 10px;
+  min-width: 122px;
+  padding: 5px 8px;
+  border: 2px solid #d5a438;
+  border-radius: 9px;
+  background: rgba(255, 253, 245, 0.96);
+  color: #173528;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-align: center;
+  pointer-events: none;
+}
+.guandan-round-winner-mini span,
+.guandan-round-winner-mini strong {
+  display: block;
+}
+.guandan-round-winner-mini strong {
+  margin-top: 2px;
+  font-size: 0.84rem;
+}
+.guandan-initial-draw-mini {
+  position: absolute;
+  z-index: 35;
+  top: 86px;
+  left: 10px;
+  box-sizing: border-box;
+  width: 210px;
+  max-width: calc(100% - 20px);
+  padding: 7px 8px;
+  border: 2px solid #d5a438;
+  border-radius: 10px;
+  background: rgba(255, 253, 245, 0.96);
+  color: #173528;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  font-size: 0.76rem;
+  line-height: 1.15;
+  pointer-events: none;
+}
+.guandan-initial-draw-mini > strong {
+  display: block;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+}
+.guandan-initial-draw-mini-cards > div {
+  min-width: 0;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards span {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+}
+.guandan-initial-draw-mini-winner {
+  margin-top: 4px;
+  text-align: center;
+}
+
 /* First-game draw result: compact overlay only; never changes public-table size. */
 .guandan-initial-draw-mini {
   position: absolute;
