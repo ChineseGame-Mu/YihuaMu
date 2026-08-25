@@ -649,6 +649,19 @@ const GuandanTable: React.FunctionComponent = () => {
               <span>公共桌面</span>
               <small>所有玩家共同可见</small>
             </div>
+            {state.lastTrickWinner !== null && (
+              <aside
+                className="guandan-round-winner-mini"
+                role="status"
+                aria-label="本轮赢家"
+              >
+                <span>本轮赢家</span>
+                <strong>
+                  {state.players[state.lastTrickWinner] ??
+                    `玩家${state.lastTrickWinner + 1}`}
+                </strong>
+              </aside>
+            )}
             <div
               className="guandan-participant-names"
               role="status"

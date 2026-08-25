@@ -135,6 +135,40 @@
   display: none !important;
 }
 
+/* Public-table round winner screen: overlay only; never resizes the table. */
+.guandan-public-zone {
+  position: relative;
+}
+
+.guandan-round-winner-mini {
+  position: absolute;
+  z-index: 36;
+  top: 8px;
+  left: 10px;
+  min-width: 108px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 230, 154, 0.92);
+  border-radius: 8px;
+  background: rgba(15, 78, 58, 0.94);
+  color: #fff4c7;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+  font-size: 0.68rem;
+  line-height: 1.08;
+  text-align: center;
+  pointer-events: none;
+}
+
+.guandan-round-winner-mini span,
+.guandan-round-winner-mini strong {
+  display: block;
+}
+
+.guandan-round-winner-mini strong {
+  margin-top: 2px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .guandan-start-panel,
 .guandan-notice-panel,
 .guandan-result-panel,
