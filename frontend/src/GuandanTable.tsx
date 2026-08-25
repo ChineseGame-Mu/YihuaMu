@@ -222,18 +222,20 @@ const GuandanTable: React.FunctionComponent = () => {
   const testMode = query.get("test") === "1";
   const supportedPlayerCounts = [4, 6, 8, 10, 12, 14] as const;
   const queryPlayerCount = Number(query.get("players") ?? "4");
-  const [requestedPlayerCount, setRequestedPlayerCount] = React.useState<number>(
-    supportedPlayerCounts.includes(
-      queryPlayerCount as (typeof supportedPlayerCounts)[number],
-    )
-      ? queryPlayerCount
-      : 4,
-  );
+  const [requestedPlayerCount, setRequestedPlayerCount] =
+    React.useState<number>(
+      supportedPlayerCounts.includes(
+        queryPlayerCount as (typeof supportedPlayerCounts)[number],
+      )
+        ? queryPlayerCount
+        : 4,
+    );
   const playerCount = state.playerCount ?? state.players.length;
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
   const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;
-  const effectiveTableSize = playerCount > 0 ? playerCount : requestedPlayerCount;
+  const effectiveTableSize =
+    playerCount > 0 ? playerCount : requestedPlayerCount;
   const deckSize = Math.max(108, effectiveTableSize * cardsPerPlayer);
   const dealing = dealStep !== null && dealStep < totalDealSteps;
   const serverDealt =
@@ -323,7 +325,12 @@ const GuandanTable: React.FunctionComponent = () => {
       5 * 60 * 1000,
     );
     return () => window.clearTimeout(timer);
-  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner, playerCount]);
+  }, [
+    state.initialDraw,
+    state.initialDrawWinner,
+    state.lastGameWinner,
+    playerCount,
+  ]);
 
   React.useEffect(() => {
     const previousHandSize = lastAnimatedHandSizeRef.current;
@@ -669,7 +676,9 @@ const GuandanTable: React.FunctionComponent = () => {
             测试人数：
             <select
               value={requestedPlayerCount}
-              onChange={(event) => setRequestedPlayerCount(Number(event.target.value))}
+              onChange={(event) =>
+                setRequestedPlayerCount(Number(event.target.value))
+              }
             >
               {supportedPlayerCounts.map((count) => (
                 <option key={count} value={count}>
@@ -679,7 +688,10 @@ const GuandanTable: React.FunctionComponent = () => {
             </select>
           </label>
           <div className="guandan-actions">
-            {Array.from({ length: requestedPlayerCount }, (_, index) => index + 1).map((player) => (
+            {Array.from(
+              { length: requestedPlayerCount },
+              (_, index) => index + 1,
+            ).map((player) => (
               <a
                 key={player}
                 href={testPlayerUrl(player)}
@@ -698,6 +710,15 @@ const GuandanTable: React.FunctionComponent = () => {
           {observing && (
             <section className="guandan-observer-notice" role="status">
               您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。
+              {testMode &&
+                requestedPlayerCount > 4 &&
+                state.maximumPlayers !== null &&
+                state.maximumPlayers < requestedPlayerCount && (
+                  <strong className="guandan-test-backend-mismatch">
+                    当前测试页仍连接{state.maximumPlayers}
+                    人后端；请使用14人独立测试后端链接。
+                  </strong>
+                )}
             </section>
           )}
           <div className="guandan-public-zone" aria-label="公共桌面">
@@ -724,9 +745,24 @@ const GuandanTable: React.FunctionComponent = () => {
               aria-label="参赛玩家"
             >
               <strong>参赛玩家：</strong>
-              {state.players.length === 0
-                ? "等待玩家加入"
-                : state.players.join(" ｜ ")}
+              <span className="guandan-participant-list">
+                {state.players.length === 0
+                  ? "等待玩家加入"
+                  : state.players.map((player, index) => (
+                      <span
+                        className="guandan-participant-entry"
+                        key={`participant-${index}-${player}`}
+                      >
+                        <span
+                          className="guandan-participant-team"
+                          aria-label={`队伍 ${index % 2 === 0 ? 1 : 2}`}
+                        >
+                          {index % 2 === 0 ? "1" : "2"}
+                        </span>
+                        <span>{player}</span>
+                      </span>
+                    ))}
+              </span>
             </div>
             {state.finishOrder.length === playerCount && playerCount >= 4 && (
               <div
@@ -859,7 +895,9 @@ const GuandanTable: React.FunctionComponent = () => {
                   本桌人数：
                   <select
                     value={requestedPlayerCount}
-                    onChange={(event) => setRequestedPlayerCount(Number(event.target.value))}
+                    onChange={(event) =>
+                      setRequestedPlayerCount(Number(event.target.value))
+                    }
                   >
                     {supportedPlayerCounts.map((count) => (
                       <option key={count} value={count}>
