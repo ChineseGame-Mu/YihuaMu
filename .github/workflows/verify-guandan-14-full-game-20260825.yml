@@ -191,7 +191,6 @@ jobs:
                               lambda c, seq=previous_seq, sig=previous_sig: c.state_seq > seq
                               and signature(c.state) != sig
                           )
-                          after_state = control.state
                           if before == 1 and first_finisher is None:
                               first_finisher = seat
                       else:
@@ -215,7 +214,7 @@ jobs:
                   assert len(ended.get('finish_order', [])) == PLAYER_COUNT, ended.get('finish_order')
                   assert ended.get('finish_order', [None])[0] == first_finisher
                   assert ended.get('hand_counts') == [0] * PLAYER_COUNT, ended.get('hand_counts')
-                  expected_team = 'TeamA' if first_finisher % 2 == 0 else 'TeamB'
+                  expected_team = 'A' if first_finisher % 2 == 0 else 'B'
                   assert ended.get('last_game_winner_team') == expected_team, ended.get('last_game_winner_team')
                   assert ended.get('last_promotion_steps') == 1, ended.get('last_promotion_steps')
                   assert ended.get('pending_tribute') is None
