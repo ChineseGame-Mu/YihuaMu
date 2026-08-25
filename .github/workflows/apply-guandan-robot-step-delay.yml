@@ -1,0 +1,44 @@
+name: Apply Guandan stepped robot turns
+
+on:
+  push:
+    paths:
+      - .github/workflows/apply-guandan-robot-step-delay.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - name: Patch robot turns to one action per state update
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('backend/src/guandan_handler.rs')
+          s=p.read_text()
+          start=s.index('fn run_robot_turns(game: &mut GuandanGameState)')
+          end=s.index('\npub async fn websocket(', start)
+          old=s[start:end]
+          # Preserve the existing robot decision/body, but make each invocation execute only one robot action.
+          new=old.replace('    for _ in 0..(GUANDAN_PLAYER_COUNT * 8) {', '    for _ in 0..1 {', 1)
+          if new == old:
+              raise SystemExit('robot loop marker not found')
+          p.write_text(s[:start]+new+s[end:])
+          PY
+          cargo fmt --all
+          mkdir -p frontend/dist
+          cargo test -p shengji guandan_handler --lib
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs
+          git commit -m 'fix(guandan): advance robots one visible turn at a time'
+          git push origin HEAD:fix/guandan-single-viewport-20260822
