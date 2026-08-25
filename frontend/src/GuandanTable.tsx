@@ -673,6 +673,30 @@ const GuandanTable: React.FunctionComponent = () => {
                   .join(" ｜ ")}
               </div>
             )}
+            {state.initialDraw.length === 4 &&
+              state.initialDrawWinner !== null &&
+              state.lastGameWinner === null && (
+                <div
+                  className="guandan-notice-panel"
+                  role="status"
+                  aria-label="首局抽牌结果"
+                >
+                  <strong>首局抽牌决定首家：</strong>
+                  <div className="guandan-actions">
+                    {state.initialDraw.map((card, index) => (
+                      <div key={`initial-draw-${index}`}>
+                        <div>{state.players[index] ?? `玩家${index + 1}`}</div>
+                        {fullCard(card, 72)}
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <strong>首出：</strong>
+                    {state.players[state.initialDrawWinner] ??
+                      `玩家${state.initialDrawWinner + 1}`}
+                  </div>
+                </div>
+              )}
             <aside className="guandan-scoreboard" aria-label="当前级数">
               <span>当前级数</span>
               <strong>
@@ -755,7 +779,7 @@ const GuandanTable: React.FunctionComponent = () => {
                   disabled={state.seat === null || state.players.length < 4}
                   onClick={startGame}
                 >
-                  开始四人局
+                  抽牌决定首家并开始四人局
                 </button>
                 <strong>
                   {state.players.length === 4

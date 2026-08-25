@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt, sync::Mutex};
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
@@ -13,7 +13,7 @@ use shengji_core::guandan::{
     strength::strengths_at_level,
     team::{team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Rank, TableConfig,
+    CardFace, Joker, Rank, Suit, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -105,6 +105,8 @@ pub enum GuandanServerMessage {
         passes: usize,
         trick_complete: bool,
         last_trick_winner: Option<usize>,
+        initial_draw: Vec<CardFace>,
+        initial_draw_winner: Option<usize>,
         level: Rank,
         team_levels: TeamLevels,
         finish_order: Vec<usize>,
@@ -229,6 +231,8 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         passes: game.passes,
         trick_complete: game.trick_complete,
         last_trick_winner: game.last_trick_winner,
+        initial_draw: game.initial_draw.clone(),
+        initial_draw_winner: game.initial_draw_winner,
         level: game.level,
         team_levels: game.team_levels,
         finish_order: game.finish_order.clone(),
@@ -256,11 +260,42 @@ fn is_robot_name(name: &str) -> bool {
     name.starts_with("机器人")
 }
 
-fn roll_starting_seat<R: Rng + ?Sized>(rng: &mut R) -> usize {
+fn initial_draw_value(card: CardFace) -> usize {
+    match card {
+        CardFace::Joker(Joker::Big) => 1000,
+        CardFace::Joker(Joker::Small) => 900,
+        CardFace::Suited { suit, rank } => {
+            let suit_value = match suit {
+                Suit::Clubs => 0,
+                Suit::Diamonds => 1,
+                Suit::Spades => 2,
+                Suit::Hearts => 3,
+            };
+            (rank as usize) * 10 + suit_value
+        }
+    }
+}
+
+fn draw_starting_seat(deck: &mut Vec<CardFace>) -> (Vec<CardFace>, usize) {
     loop {
-        let roll = rng.gen_range(1..=6);
-        if roll <= GUANDAN_PLAYER_COUNT {
-            return roll - 1;
+        deck.shuffle(&mut thread_rng());
+        let draw = deck
+            .iter()
+            .copied()
+            .take(GUANDAN_PLAYER_COUNT)
+            .collect::<Vec<_>>();
+        let values = draw
+            .iter()
+            .copied()
+            .map(initial_draw_value)
+            .collect::<Vec<_>>();
+        let max_value = *values.iter().max().expect("Guandan deck has cards");
+        if values.iter().filter(|value| **value == max_value).count() == 1 {
+            let winner = values
+                .iter()
+                .position(|value| *value == max_value)
+                .expect("unique winner");
+            return (draw, winner);
         }
     }
 }
@@ -845,9 +880,13 @@ pub async fn websocket(
                         if !remainder.is_empty() {
                             return Err(());
                         }
+                        let mut draw_deck = build_deck(table);
+                        let (initial_draw, draw_winner) = draw_starting_seat(&mut draw_deck);
                         state.game.started = true;
                         state.game.hands = hands;
-                        state.game.turn = roll_starting_seat(&mut rng);
+                        state.game.turn = draw_winner;
+                        state.game.initial_draw = initial_draw;
+                        state.game.initial_draw_winner = Some(draw_winner);
                         state.game.last_play.clear();
                         state.game.last_player = None;
                         state.game.table_plays.clear();
@@ -1293,10 +1332,13 @@ mod tests {
         CardFace::Suited { suit, rank }
     }
     #[test]
-    fn dice_starting_seat_is_always_a_real_player() {
-        let mut rng = thread_rng();
-        for _ in 0..512 {
-            assert!(roll_starting_seat(&mut rng) < GUANDAN_PLAYER_COUNT);
+    fn initial_draw_always_selects_a_real_player() {
+        let table = validate_start(4).unwrap();
+        for _ in 0..128 {
+            let mut deck = build_deck(table);
+            let (draw, winner) = draw_starting_seat(&mut deck);
+            assert_eq!(draw.len(), 4);
+            assert!(winner < GUANDAN_PLAYER_COUNT);
         }
     }
     #[test]

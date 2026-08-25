@@ -44,6 +44,10 @@ pub struct GuandanGameState {
     pub trick_complete: bool,
     #[serde(default)]
     pub last_trick_winner: Option<usize>,
+    #[serde(default)]
+    pub initial_draw: Vec<CardFace>,
+    #[serde(default)]
+    pub initial_draw_winner: Option<usize>,
     pub level: Rank,
     pub team_levels: TeamLevels,
     pub finish_order: Vec<usize>,
@@ -74,6 +78,8 @@ impl Default for GuandanGameState {
             passes: 0,
             trick_complete: false,
             last_trick_winner: None,
+            initial_draw: Vec::new(),
+            initial_draw_winner: None,
             level: Rank::Two,
             team_levels: TeamLevels::default(),
             finish_order: Vec::new(),
