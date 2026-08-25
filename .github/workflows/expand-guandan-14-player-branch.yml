@@ -5,7 +5,6 @@ on:
     branches:
       - feature/guandan-up-to-14-players-20260825
     paths:
-      - .github/scripts/expand_guandan_14_players_20260825.py
       - .github/scripts/polish_guandan_14_players_20260825.py
       - .github/workflows/expand-guandan-14-player-branch.yml
       - frontend/src/guandanProtocol.ts
@@ -22,10 +21,8 @@ jobs:
           ref: feature/guandan-up-to-14-players-20260825
           fetch-depth: 0
 
-      - name: Apply isolated multiplayer patch
-        run: |
-          python .github/scripts/expand_guandan_14_players_20260825.py
-          python .github/scripts/polish_guandan_14_players_20260825.py
+      - name: Apply multiplayer safety polish
+        run: python .github/scripts/polish_guandan_14_players_20260825.py
 
       - name: Format Rust
         run: cargo fmt --all
@@ -40,10 +37,10 @@ jobs:
       - name: Test Guandan backend and core
         run: cargo test -p shengji guandan --quiet
 
-      - name: Commit expansion only to feature branch
+      - name: Commit polish only to feature branch
         run: |
           if git diff --quiet -- backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts frontend/src/style.scss frontend/src/style.css; then
-            echo "No expansion changes needed"
+            echo "No polish changes needed"
             exit 0
           fi
           git config user.name "github-actions[bot]"
