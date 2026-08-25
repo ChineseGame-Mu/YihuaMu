@@ -1,0 +1,53 @@
+name: Remove only Guandan current-level displays
+
+on:
+  push:
+    paths:
+      - .github/workflows/remove-guandan-current-level-only.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - name: Remove only current-level displays
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '        {state.level !== null && <div>当前级牌：{rankLabel[state.level]}</div>}\n'
+          if old not in s:
+              raise SystemExit('native current-level display not found')
+          p.write_text(s.replace(old, '', 1))
+
+          p = Path('frontend/src/GuandanCustomSortControls.tsx')
+          s = p.read_text()
+          old = '''            <div className="guandan-level-badge">\n              <span>当前级牌</span>\n              <strong>{currentLevel}</strong>\n              <small>级牌</small>\n            </div>\n'''
+          if old not in s:
+              raise SystemExit('HUD current-level badge not found')
+          p.write_text(s.replace(old, '', 1))
+          PY
+          npx prettier --write frontend/src/GuandanTable.tsx frontend/src/GuandanCustomSortControls.tsx
+      - name: Verify only requested labels are gone
+        run: |
+          if grep -R "当前级牌" frontend/src/GuandanTable.tsx frontend/src/GuandanCustomSortControls.tsx; then
+            echo 'current-level display still present' >&2
+            exit 1
+          fi
+          grep -q "本局打" frontend/src/GuandanCustomSortControls.tsx
+      - name: Commit exact UI removal
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/GuandanTable.tsx frontend/src/GuandanCustomSortControls.tsx
+          git commit -m 'fix(guandan): remove only current-level displays'
+          git push origin HEAD:fix/guandan-single-viewport-20260822
