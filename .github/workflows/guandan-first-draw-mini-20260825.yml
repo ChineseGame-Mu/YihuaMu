@@ -1,4 +1,4 @@
-# trigger 2026-08-25
+# trigger 2026-08-25 round-winner
 name: Add Guandan first-draw mini display
 
 on:
@@ -20,7 +20,7 @@ jobs:
           ref: fix/guandan-single-viewport-20260822
           fetch-depth: 0
 
-      - name: Patch mini display and five-minute timeout
+      - name: Patch mini displays
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -47,13 +47,20 @@ jobs:
                   raise SystemExit('Could not find current initial draw panel')
               tsx = tsx.replace(old_panel, new_panel, 1)
 
+          zone_anchor = '''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="参赛玩家"\n            >'''
+          winner = '''            {state.lastTrickWinner !== null && (\n              <aside\n                className="guandan-round-winner-mini"\n                role="status"\n                aria-label="本轮赢家"\n              >\n                <span>本轮赢家</span>\n                <strong>\n                  {state.players[state.lastTrickWinner] ??\n                    `玩家${state.lastTrickWinner + 1}`}\n                </strong>\n              </aside>\n            )}\n'''
+          if winner.strip() not in tsx:
+              if zone_anchor not in tsx:
+                  raise SystemExit('Could not find participant anchor')
+              tsx = tsx.replace(zone_anchor, winner + zone_anchor, 1)
+
           tsx_path.write_text(tsx)
 
           css_path = Path('frontend/src/guandan-single-viewport.css')
           css = css_path.read_text()
           marker = '''.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'''
-          rules = '''\n/* First-game draw result: compact overlay only; never changes public-table size. */\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 58px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong {\n  display: block;\n  margin-bottom: 4px;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards {\n  display: grid;\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n  gap: 3px;\n  align-items: end;\n}\n.guandan-initial-draw-mini-cards > div {\n  min-width: 0;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards span {\n  display: block;\n  overflow: hidden;\n  margin-bottom: 2px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 0.65rem;\n}\n.guandan-initial-draw-mini-winner {\n  margin-top: 4px;\n  text-align: center;\n}\n'''
-          if '.guandan-initial-draw-mini {' not in css:
+          rules = '''\n/* Small public-table status screens; absolute overlays do not resize the table. */\n.guandan-round-winner-mini {\n  position: absolute;\n  z-index: 36;\n  top: 34px;\n  left: 10px;\n  min-width: 122px;\n  padding: 5px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 9px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);\n  font-size: 0.72rem;\n  line-height: 1.1;\n  text-align: center;\n  pointer-events: none;\n}\n.guandan-round-winner-mini span,\n.guandan-round-winner-mini strong {\n  display: block;\n}\n.guandan-round-winner-mini strong {\n  margin-top: 2px;\n  font-size: 0.84rem;\n}\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 86px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong {\n  display: block;\n  margin-bottom: 4px;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards {\n  display: grid;\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n  gap: 3px;\n  align-items: end;\n}\n.guandan-initial-draw-mini-cards > div {\n  min-width: 0;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards span {\n  display: block;\n  overflow: hidden;\n  margin-bottom: 2px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 0.65rem;\n}\n.guandan-initial-draw-mini-winner {\n  margin-top: 4px;\n  text-align: center;\n}\n'''
+          if '.guandan-round-winner-mini {' not in css:
               if marker not in css:
                   raise SystemExit('Could not find CSS insertion marker')
               css = css.replace(marker, marker + rules, 1)
@@ -85,5 +92,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
-          git commit -m "feat(guandan): move first draw to timed mini display"
+          git commit -m "feat(guandan): add compact draw and round winner displays"
           git push origin HEAD:fix/guandan-single-viewport-20260822
