@@ -1,0 +1,308 @@
+name: Add Guandan public player backs
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, 'feat(guandan): public player backs') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+          fetch-depth: 0
+
+      - name: Patch public player backs and count alert setting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          tsx_path = Path('frontend/src/GuandanTable.tsx')
+          css_path = Path('frontend/src/guandan-single-viewport.css')
+          tsx = tsx_path.read_text()
+          css = css_path.read_text()
+
+          state_anchor = '''  const [handSortOrder, setHandSortOrder] = React.useState<"asc" | "desc">(
+    () =>
+      window.localStorage.getItem("guandan_hand_sort_order") === "desc"
+        ? "desc"
+        : "asc",
+  );'''
+          state_replacement = state_anchor + '''
+  const [cardCountAlertThreshold, setCardCountAlertThreshold] =
+    React.useState<number>(() => {
+      const saved = Number(
+        window.localStorage.getItem("guandan_card_count_alert_threshold") ?? "6",
+      );
+      return saved >= 6 && saved <= 10 ? saved : 6;
+    });'''
+          if 'guandan_card_count_alert_threshold' not in tsx:
+              if state_anchor not in tsx:
+                  raise SystemExit('handSortOrder state anchor not found')
+              tsx = tsx.replace(state_anchor, state_replacement, 1)
+
+          effect_anchor = '''  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
+  }, [handSortOrder]);'''
+          effect_replacement = effect_anchor + '''
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_card_count_alert_threshold",
+      String(cardCountAlertThreshold),
+    );
+  }, [cardCountAlertThreshold]);'''
+          if 'String(cardCountAlertThreshold)' not in tsx:
+              if effect_anchor not in tsx:
+                  raise SystemExit('hand sort effect anchor not found')
+              tsx = tsx.replace(effect_anchor, effect_replacement, 1)
+
+          settings_anchor = '''          </select>
+          <p>牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。</p>'''
+          settings_replacement = '''          </select>
+          <br />
+          <label htmlFor="guandan-card-count-alert-threshold">报牌阈值：</label>{" "}
+          <select
+            id="guandan-card-count-alert-threshold"
+            value={cardCountAlertThreshold}
+            onChange={(event) =>
+              setCardCountAlertThreshold(Number(event.target.value))
+            }
+          >
+            {[6, 7, 8, 9, 10].map((count) => (
+              <option key={count} value={count}>
+                剩余 {count} 张开始报牌
+              </option>
+            ))}
+          </select>
+          <p>
+            当任一玩家手牌降到所选张数或更少时，公共桌面的玩家牌背会持续显示实时剩余张数，直到 0 张。
+          </p>
+          <p>牌面配色、手牌排列和报牌阈值只影响您自己，并会保存在当前浏览器。</p>'''
+          if 'guandan-card-count-alert-threshold' not in tsx:
+              if settings_anchor not in tsx:
+                  raise SystemExit('settings anchor not found')
+              tsx = tsx.replace(settings_anchor, settings_replacement, 1)
+
+          participant_start = '''            <div
+              className="guandan-participant-names"
+              role="status"
+              aria-label="参赛玩家"
+            >'''
+          finish_anchor = '''            {state.finishOrder.length === playerCount && playerCount >= 4 && ('''
+          if 'guandan-public-player-backs' not in tsx:
+              start = tsx.find(participant_start)
+              if start < 0:
+                  raise SystemExit('participant block start not found')
+              end = tsx.find(finish_anchor, start)
+              if end < 0:
+                  raise SystemExit('participant block end not found')
+              replacement = '''            <div
+              className="guandan-public-player-backs"
+              role="status"
+              aria-label="公共桌面参赛玩家牌背"
+            >
+              {state.players.length === 0 ? (
+                <span className="guandan-public-player-empty">等待玩家加入</span>
+              ) : (
+                state.players.map((player, index) => {
+                  const remaining = remainingCountForSeat(index);
+                  const shouldReport =
+                    gameStarted &&
+                    !dealing &&
+                    remaining >= 0 &&
+                    remaining <= cardCountAlertThreshold;
+                  return (
+                    <div
+                      className={`guandan-public-player-back guandan-public-team-${
+                        index % 2 === 0 ? "a" : "b"
+                      } ${effectiveTurn === index && gameStarted && !dealing ? "is-active" : ""}`}
+                      key={`public-back-${index}-${player}`}
+                      aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${
+                        shouldReport ? `，剩余${remaining}张` : ""
+                      }`}
+                    >
+                      <span className="guandan-public-player-seat">
+                        玩家{index + 1}
+                      </span>
+                      <span className="guandan-public-card-back" aria-hidden="true">
+                        <span>掼蛋</span>
+                      </span>
+                      <strong title={player}>{player}</strong>
+                      {shouldReport && (
+                        <span
+                          className="guandan-public-card-count"
+                          aria-label={`剩余 ${remaining} 张`}
+                        >
+                          {remaining}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+'''
+              tsx = tsx[:start] + replacement + tsx[end:]
+
+          css_marker = '/* Public participant card backs with team colors and live low-card count. */'
+          if css_marker not in css:
+              css += '''
+
+/* Public participant card backs with team colors and live low-card count. */
+.guandan-public-player-backs {
+  position: absolute;
+  z-index: 24;
+  top: 32px;
+  left: 148px;
+  right: 26%;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 3px 5px;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+.guandan-public-player-empty {
+  color: #f5e9b5;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.guandan-public-player-back {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+  color: #fff9dc;
+  font-size: 0.58rem;
+  line-height: 1.05;
+}
+.guandan-public-player-seat,
+.guandan-public-player-back > strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guandan-public-player-seat {
+  margin-bottom: 2px;
+  font-weight: 800;
+  color: #fff4b8;
+}
+.guandan-public-player-back > strong {
+  margin-top: 2px;
+  font-size: 0.61rem;
+}
+.guandan-public-card-back {
+  position: relative;
+  display: flex;
+  width: 36px;
+  height: 48px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid #fff8dc;
+  border-radius: 5px;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.16);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+.guandan-public-card-back::before,
+.guandan-public-card-back::after {
+  content: "◆";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.55rem;
+}
+.guandan-public-card-back::before { top: 5px; }
+.guandan-public-card-back::after { bottom: 5px; }
+.guandan-public-team-a .guandan-public-card-back {
+  background: linear-gradient(145deg, #9b2525, #5f1111);
+}
+.guandan-public-team-b .guandan-public-card-back {
+  background: linear-gradient(145deg, #245b9b, #123766);
+}
+.guandan-public-player-back.is-active .guandan-public-card-back {
+  outline: 3px solid #ffd75a;
+  outline-offset: 1px;
+}
+.guandan-public-card-count {
+  position: absolute;
+  z-index: 2;
+  top: 17px;
+  right: 0;
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff7c2;
+  border-radius: 50%;
+  background: #f6d64b;
+  color: #3e2600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (max-width: 900px) {
+  .guandan-public-player-backs {
+    left: 136px;
+    right: 8px;
+  }
+  .guandan-public-player-back {
+    flex-basis: 44px;
+    width: 44px;
+    min-width: 44px;
+  }
+  .guandan-public-card-back {
+    width: 33px;
+    height: 44px;
+  }
+}
+'''
+
+          tsx_path.write_text(tsx)
+          css_path.write_text(css)
+          PY
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Format changed files
+        working-directory: frontend
+        run: yarn prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Commit feature
+        run: |
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
+          if git diff --cached --quiet; then
+            echo "No feature changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(guandan): public player backs and card count alerts"
+          git push origin HEAD:feature/guandan-up-to-14-players-20260825
