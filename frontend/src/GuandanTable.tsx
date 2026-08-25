@@ -163,8 +163,8 @@ const guandanErrorLabel = (message: string): string => {
     "play must beat the current table play": "所选牌型不能压过桌面上的牌。",
     "cannot pass now": "现在不能过牌。首位出牌者必须出牌。",
     "observers cannot start the game": "围观者不能开始游戏。",
-    "the game is already underway or four seated players are required":
-      "游戏已经开始，或者尚未坐满4位玩家。",
+    "the game is already underway or the requested seated player count is not ready":
+      "游戏已经开始，或者所选人数尚未全部到齐。",
     "round is not ready to end": "本轮尚未结束，暂时不能收牌。",
     "the next round is not ready to shuffle": "现在还不能洗牌。",
     "only a player on the losing team may shuffle": "只能由输方玩家洗牌。",
@@ -220,6 +220,15 @@ const GuandanTable: React.FunctionComponent = () => {
   const tributePending = state.pendingTribute !== null;
   const nextRoundPending = state.nextRoundPhase !== null;
   const testMode = query.get("test") === "1";
+  const supportedPlayerCounts = [4, 6, 8, 10, 12, 14] as const;
+  const queryPlayerCount = Number(query.get("players") ?? "4");
+  const [requestedPlayerCount, setRequestedPlayerCount] = React.useState<number>(
+    supportedPlayerCounts.includes(
+      queryPlayerCount as (typeof supportedPlayerCounts)[number],
+    )
+      ? queryPlayerCount
+      : 4,
+  );
   const playerCount = state.playerCount ?? state.players.length;
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
@@ -295,7 +304,7 @@ const GuandanTable: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     if (
-      state.initialDraw.length !== 4 ||
+      state.initialDraw.length !== playerCount ||
       state.initialDrawWinner === null ||
       state.lastGameWinner !== null
     ) {
@@ -308,7 +317,7 @@ const GuandanTable: React.FunctionComponent = () => {
       5 * 60 * 1000,
     );
     return () => window.clearTimeout(timer);
-  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);
+  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner, playerCount]);
 
   React.useEffect(() => {
     const previousHandSize = lastAnimatedHandSizeRef.current;
@@ -388,8 +397,13 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const startGame = (): void => {
-    if (state.seat === null || gameStarted || state.players.length < 4) return;
-    if (send({ type: "start", player_count: 4 })) {
+    if (
+      state.seat === null ||
+      gameStarted ||
+      state.players.length !== requestedPlayerCount
+    )
+      return;
+    if (send({ type: "start", player_count: requestedPlayerCount })) {
       setStartRequested(true);
       setSelected([]);
       hasAnimatedCurrentDealRef.current = true;
@@ -437,6 +451,7 @@ const GuandanTable: React.FunctionComponent = () => {
       "room",
       isValidRoomCode(room) ? room : DEFAULT_ROOM_CODE,
     );
+    url.searchParams.set("players", String(requestedPlayerCount));
     url.searchParams.set("name", `玩家${player}`);
     return url.toString();
   };
@@ -638,9 +653,22 @@ const GuandanTable: React.FunctionComponent = () => {
 
       {testMode && !joined && (
         <section className="guandan-test-section guandan-panel">
-          <h2>四人联机测试</h2>
+          <h2>{requestedPlayerCount}人联机测试</h2>
+          <label>
+            测试人数：
+            <select
+              value={requestedPlayerCount}
+              onChange={(event) => setRequestedPlayerCount(Number(event.target.value))}
+            >
+              {supportedPlayerCounts.map((count) => (
+                <option key={count} value={count}>
+                  {count} 人
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="guandan-actions">
-            {[1, 2, 3, 4].map((player) => (
+            {Array.from({ length: requestedPlayerCount }, (_, index) => index + 1).map((player) => (
               <a
                 key={player}
                 href={testPlayerUrl(player)}
@@ -689,7 +717,7 @@ const GuandanTable: React.FunctionComponent = () => {
                 ? "等待玩家加入"
                 : state.players.join(" ｜ ")}
             </div>
-            {state.finishOrder.length === 4 && (
+            {state.finishOrder.length === playerCount && playerCount >= 4 && (
               <div
                 className="guandan-notice-panel"
                 role="status"
@@ -705,7 +733,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </div>
             )}
             {showInitialDrawMini &&
-              state.initialDraw.length === 4 &&
+              state.initialDraw.length === playerCount &&
               state.initialDrawWinner !== null &&
               state.lastGameWinner === null && (
                 <aside
@@ -762,6 +790,12 @@ const GuandanTable: React.FunctionComponent = () => {
                     >
                       {index + 1}
                     </span>
+                    <span
+                      className="guandan-team-marker"
+                      aria-label={`队伍 ${index % 2 === 0 ? 1 : 2}`}
+                    >
+                      {index % 2 === 0 ? "1" : "2"}
+                    </span>
                     <strong>
                       {index === state.seat ? `${player}（我）` : player}
                     </strong>
@@ -810,17 +844,33 @@ const GuandanTable: React.FunctionComponent = () => {
 
             {!gameStarted && !observing && (
               <section className="guandan-actions guandan-start-panel">
+                <label>
+                  本桌人数：
+                  <select
+                    value={requestedPlayerCount}
+                    onChange={(event) => setRequestedPlayerCount(Number(event.target.value))}
+                  >
+                    {supportedPlayerCounts.map((count) => (
+                      <option key={count} value={count}>
+                        {count} 人
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <button
                   className="guandan-start-button"
-                  disabled={state.seat === null || state.players.length < 4}
+                  disabled={
+                    state.seat === null ||
+                    state.players.length !== requestedPlayerCount
+                  }
                   onClick={startGame}
                 >
-                  抽牌决定首家并开始四人局
+                  抽牌决定首家并开始{requestedPlayerCount}人局
                 </button>
                 <strong>
-                  {state.players.length === 4
-                    ? "四位玩家已到齐，任意已入座玩家均可开始"
-                    : `等待四位玩家全部进入（当前${state.players.length}/4）`}
+                  {state.players.length === requestedPlayerCount
+                    ? `${requestedPlayerCount}位玩家已到齐，任意已入座玩家均可开始`
+                    : `等待${requestedPlayerCount}位玩家全部进入（当前${state.players.length}/${requestedPlayerCount}）`}
                 </strong>
               </section>
             )}
@@ -828,11 +878,11 @@ const GuandanTable: React.FunctionComponent = () => {
             {dealing && (
               <section className="guandan-notice-panel">
                 <strong>正在发牌：</strong>
-                四位玩家正在同步收牌，请稍候…
+                {playerCount}位玩家正在同步收牌，请稍候…
               </section>
             )}
 
-            {state.finishOrder.length === 4 && (
+            {state.finishOrder.length === playerCount && playerCount >= 4 && (
               <section
                 className="guandan-notice-panel"
                 role="status"
