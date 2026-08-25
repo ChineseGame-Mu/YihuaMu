@@ -1,0 +1,49 @@
+name: Remove Guandan top level badges
+on:
+  push:
+    paths:
+      - .github/workflows/remove-guandan-level-badges.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-single-viewport-20260822
+          fetch-depth: 0
+      - name: Remove the two level badges from top status bar
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files=list(Path('frontend/src').rglob('*.tsx'))+list(Path('frontend/src').rglob('*.ts'))
+          changed=[]
+          for p in files:
+            s=p.read_text()
+            old=s
+            # Remove JSX blocks containing the two visible labels while leaving game level state/rules intact.
+            import re
+            patterns=[
+              r'<[^>]+className=["\'][^"\']*["\'][^>]*>\s*本局打[\s\S]{0,300}?</[^>]+>',
+              r'<[^>]+className=["\'][^"\']*["\'][^>]*>\s*当前级牌[\s\S]{0,300}?</[^>]+>',
+            ]
+            for pat in patterns:
+              s=re.sub(pat,'',s,count=1)
+            if s!=old:
+              p.write_text(s); changed.append(str(p))
+          if not changed:
+            raise SystemExit('Could not locate the two top-bar level badge JSX blocks')
+          print('\n'.join(changed))
+          PY
+          cd frontend
+          yarn prettier --write src
+          yarn build
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src
+          git commit -m 'style(guandan): remove top bar level badges'
+          git push origin HEAD:fix/guandan-single-viewport-20260822
