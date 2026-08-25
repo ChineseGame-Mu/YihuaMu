@@ -1,11 +1,11 @@
-name: Sync first draw backend master
+name: Sync no-joker opening draw backend
 
 on:
   push:
     branches:
       - fix/guandan-single-viewport-20260822
     paths:
-      - .github/trigger-sync-first-draw-backend-master-20260825.txt
+      - .github/workflows/sync-first-draw-backend-master-20260825.yml
 
 permissions:
   contents: write
@@ -18,17 +18,35 @@ jobs:
         with:
           ref: master
           fetch-depth: 0
-      - name: Load backend-only patch from tested branch
+
+      - name: Exclude jokers from live opening draw
         run: |
-          git fetch origin fix/guandan-single-viewport-20260822
-          git show origin/fix/guandan-single-viewport-20260822:.github/scripts/sync_first_draw_backend_master_20260825.py > /tmp/sync_first_draw.py
-          python /tmp/sync_first_draw.py
-      - name: Format backend
-        run: cargo fmt --all
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+          needle = '.copied()\n            .take(GUANDAN_PLAYER_COUNT)'
+          replacement = '.copied()\n            .filter(|card| !matches!(card, CardFace::Joker(_)))\n            .take(GUANDAN_PLAYER_COUNT)'
+          if replacement not in s:
+              if needle not in s:
+                  raise SystemExit('opening draw chain not found on master')
+              s = s.replace(needle, replacement, 1)
+          p.write_text(s)
+          PY
+
+      - name: Format and test backend
+        run: |
+          cargo fmt --all
+          cargo test -p shengji guandan --quiet
+
       - name: Commit backend-only change
         run: |
+          if git diff --quiet -- backend/src/guandan_handler.rs; then
+            echo "No backend change needed"
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs
-          git commit -m "fix: sync Guandan first-draw backend to master"
+          git add backend/src/guandan_handler.rs
+          git commit -m "fix: exclude jokers from Guandan opening draw"
           git push origin HEAD:master
