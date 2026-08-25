@@ -1,0 +1,44 @@
+name: Add Guandan current-turn mini display
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/scripts/add_guandan_current_turn_mini_20260825.py
+      - .github/workflows/add-guandan-current-turn-mini-20260825.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+          fetch-depth: 0
+      - name: Apply current-turn display
+        run: python .github/scripts/add_guandan_current_turn_mini_20260825.py
+      - name: Install frontend
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format changed files
+        working-directory: frontend
+        run: yarn prettier --write src/GuandanTable.tsx src/guandan-approved-layout.css
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+      - name: Commit current-turn display
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/GuandanTable.tsx frontend/src/guandan-approved-layout.css
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'feat(guandan): show current player at lower left'
+            git push origin HEAD:feature/guandan-up-to-14-players-20260825
+          fi
