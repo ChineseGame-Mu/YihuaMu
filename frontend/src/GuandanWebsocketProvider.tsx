@@ -27,7 +27,24 @@ interface GuandanWebsocketProviderProps {
   children: JSX.Element[] | JSX.Element;
 }
 
+const testWebsocketOverride = (): string | null => {
+  const query = new URLSearchParams(window.location.search);
+  if (query.get("test") !== "1") return null;
+  const raw = query.get("ws");
+  if (raw === null || raw.trim() === "") return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "ws:" && url.protocol !== "wss:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
 const websocketUri = (): string => {
+  const override = testWebsocketOverride();
+  if (override !== null) return override;
+
   const runtimeWebsocketHost = (window as any)._WEBSOCKET_HOST;
   if (runtimeWebsocketHost !== undefined && runtimeWebsocketHost !== null) {
     const base = String(runtimeWebsocketHost).replace(/\/$/, "");
@@ -72,8 +89,6 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       if (next === undefined) return;
 
       sequenceRef.current += 1;
-      // Sequence is part of the state update so even two identical protocol
-      // messages are distinct React deliveries and cannot collapse together.
       setDelivery({ message: next, sequence: sequenceRef.current });
 
       if (messageQueueRef.current.length > 0) {
