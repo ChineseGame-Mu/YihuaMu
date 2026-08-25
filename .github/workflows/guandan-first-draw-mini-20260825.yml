@@ -1,4 +1,4 @@
-# trigger 2026-08-25 round-winner
+# trigger robust patch 2026-08-25
 name: Add Guandan first-draw mini display
 
 on:
@@ -24,47 +24,50 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
 
-          tsx_path = Path('frontend/src/GuandanTable.tsx')
-          tsx = tsx_path.read_text()
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
 
-          old_state = '''  const [startRequested, setStartRequested] = React.useState(false);\n  const [showSettings, setShowSettings] = React.useState(false);'''
-          new_state = '''  const [startRequested, setStartRequested] = React.useState(false);\n  const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);\n  const [showSettings, setShowSettings] = React.useState(false);'''
-          if old_state in tsx:
-              tsx = tsx.replace(old_state, new_state, 1)
+          if 'showInitialDrawMini' not in s:
+              s = s.replace(
+                  '  const [startRequested, setStartRequested] = React.useState(false);\n',
+                  '  const [startRequested, setStartRequested] = React.useState(false);\n  const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);\n',
+                  1,
+              )
 
-          anchor = '''  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'''
-          effect = '''\n  React.useEffect(() => {\n    if (\n      state.initialDraw.length !== 4 ||\n      state.initialDrawWinner === null ||\n      state.lastGameWinner !== null\n    ) {\n      setShowInitialDrawMini(false);\n      return;\n    }\n    setShowInitialDrawMini(true);\n    const timer = window.setTimeout(\n      () => setShowInitialDrawMini(false),\n      5 * 60 * 1000,\n    );\n    return () => window.clearTimeout(timer);\n  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);\n'''
-          if effect.strip() not in tsx:
-              if anchor not in tsx:
-                  raise SystemExit('Could not find serverDealt effect anchor')
-              tsx = tsx.replace(anchor, anchor + effect, 1)
+          if '5 * 60 * 1000' not in s:
+              anchor = '  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'
+              effect = '''\n  React.useEffect(() => {\n    if (\n      state.initialDraw.length !== 4 ||\n      state.initialDrawWinner === null ||\n      state.lastGameWinner !== null\n    ) {\n      setShowInitialDrawMini(false);\n      return;\n    }\n    setShowInitialDrawMini(true);\n    const timer = window.setTimeout(\n      () => setShowInitialDrawMini(false),\n      5 * 60 * 1000,\n    );\n    return () => window.clearTimeout(timer);\n  }, [state.initialDraw, state.initialDrawWinner, state.lastGameWinner]);\n'''
+              if anchor not in s:
+                  raise SystemExit('missing effect anchor')
+              s = s.replace(anchor, anchor + effect, 1)
 
-          old_panel = '''            {state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <div\n                  className="guandan-notice-panel"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌决定首家：</strong>\n                  <div className="guandan-actions">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <div>{state.players[index] ?? `玩家${index + 1}`}</div>\n                        {fullCard(card, 72)}\n                      </div>\n                    ))}\n                  </div>\n                  <div>\n                    <strong>首出：</strong>\n                    {state.players[state.initialDrawWinner] ??\n                      `玩家${state.initialDrawWinner + 1}`}\n                  </div>\n                </div>\n              )}\n'''
-          new_panel = '''            {showInitialDrawMini &&\n              state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <aside\n                  className="guandan-initial-draw-mini"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌</strong>\n                  <div className="guandan-initial-draw-mini-cards">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <span>{state.players[index] ?? `玩家${index + 1}`}</span>\n                        {fullCard(card, 44)}\n                      </div>\n                    ))}\n                  </div>\n                  <div className="guandan-initial-draw-mini-winner">\n                    首出：\n                    <strong>\n                      {state.players[state.initialDrawWinner] ??\n                        `玩家${state.initialDrawWinner + 1}`}\n                    </strong>\n                  </div>\n                </aside>\n              )}\n'''
-          if new_panel.strip() not in tsx:
-              if old_panel not in tsx:
-                  raise SystemExit('Could not find current initial draw panel')
-              tsx = tsx.replace(old_panel, new_panel, 1)
+          start = s.find('            {state.initialDraw.length === 4 &&')
+          end_marker = '            <aside className="guandan-scoreboard" aria-label="当前级数">'
+          end = s.find(end_marker, start)
+          if start != -1 and end != -1:
+              panel = '''            {showInitialDrawMini &&\n              state.initialDraw.length === 4 &&\n              state.initialDrawWinner !== null &&\n              state.lastGameWinner === null && (\n                <aside\n                  className="guandan-initial-draw-mini"\n                  role="status"\n                  aria-label="首局抽牌结果"\n                >\n                  <strong>首局抽牌</strong>\n                  <div className="guandan-initial-draw-mini-cards">\n                    {state.initialDraw.map((card, index) => (\n                      <div key={`initial-draw-${index}`}>\n                        <span>{state.players[index] ?? `玩家${index + 1}`}</span>\n                        {fullCard(card, 44)}\n                      </div>\n                    ))}\n                  </div>\n                  <div className="guandan-initial-draw-mini-winner">\n                    首出：\n                    <strong>\n                      {state.players[state.initialDrawWinner] ??\n                        `玩家${state.initialDrawWinner + 1}`}\n                    </strong>\n                  </div>\n                </aside>\n              )}\n'''
+              s = s[:start] + panel + s[end:]
 
-          zone_anchor = '''            <div\n              className="guandan-participant-names"\n              role="status"\n              aria-label="参赛玩家"\n            >'''
-          winner = '''            {state.lastTrickWinner !== null && (\n              <aside\n                className="guandan-round-winner-mini"\n                role="status"\n                aria-label="本轮赢家"\n              >\n                <span>本轮赢家</span>\n                <strong>\n                  {state.players[state.lastTrickWinner] ??\n                    `玩家${state.lastTrickWinner + 1}`}\n                </strong>\n              </aside>\n            )}\n'''
-          if winner.strip() not in tsx:
-              if zone_anchor not in tsx:
-                  raise SystemExit('Could not find participant anchor')
-              tsx = tsx.replace(zone_anchor, winner + zone_anchor, 1)
+          if 'className="guandan-round-winner-mini"' not in s:
+              anchor = '            <div\n              className="guandan-participant-names"'
+              winner = '''            {state.lastTrickWinner !== null && (\n              <aside\n                className="guandan-round-winner-mini"\n                role="status"\n                aria-label="本轮赢家"\n              >\n                <span>本轮赢家</span>\n                <strong>\n                  {state.players[state.lastTrickWinner] ??\n                    `玩家${state.lastTrickWinner + 1}`}\n                </strong>\n              </aside>\n            )}\n'''
+              if anchor not in s:
+                  raise SystemExit('missing participant anchor')
+              s = s.replace(anchor, winner + anchor, 1)
 
-          tsx_path.write_text(tsx)
+          p.write_text(s)
 
-          css_path = Path('frontend/src/guandan-single-viewport.css')
-          css = css_path.read_text()
-          marker = '''.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'''
-          rules = '''\n/* Small public-table status screens; absolute overlays do not resize the table. */\n.guandan-round-winner-mini {\n  position: absolute;\n  z-index: 36;\n  top: 34px;\n  left: 10px;\n  min-width: 122px;\n  padding: 5px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 9px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);\n  font-size: 0.72rem;\n  line-height: 1.1;\n  text-align: center;\n  pointer-events: none;\n}\n.guandan-round-winner-mini span,\n.guandan-round-winner-mini strong {\n  display: block;\n}\n.guandan-round-winner-mini strong {\n  margin-top: 2px;\n  font-size: 0.84rem;\n}\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 86px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong {\n  display: block;\n  margin-bottom: 4px;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards {\n  display: grid;\n  grid-template-columns: repeat(4, minmax(0, 1fr));\n  gap: 3px;\n  align-items: end;\n}\n.guandan-initial-draw-mini-cards > div {\n  min-width: 0;\n  text-align: center;\n}\n.guandan-initial-draw-mini-cards span {\n  display: block;\n  overflow: hidden;\n  margin-bottom: 2px;\n  text-overflow: ellipsis;\n  white-space: nowrap;\n  font-size: 0.65rem;\n}\n.guandan-initial-draw-mini-winner {\n  margin-top: 4px;\n  text-align: center;\n}\n'''
-          if '.guandan-round-winner-mini {' not in css:
-              if marker not in css:
-                  raise SystemExit('Could not find CSS insertion marker')
-              css = css.replace(marker, marker + rules, 1)
-          css_path.write_text(css)
+          cp = Path('frontend/src/guandan-single-viewport.css')
+          c = cp.read_text()
+          if '.guandan-round-winner-mini {' not in c:
+              marker = '.guandan-scoreboard,\n.guandan-player-section {\n  display: none !important;\n}\n'
+              rules = '''\n/* Compact public-table status overlays; they never resize the table. */\n.guandan-round-winner-mini {\n  position: absolute;\n  z-index: 36;\n  top: 34px;\n  left: 10px;\n  min-width: 122px;\n  padding: 5px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 9px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);\n  font-size: 0.72rem;\n  line-height: 1.1;\n  text-align: center;\n  pointer-events: none;\n}\n.guandan-round-winner-mini span,\n.guandan-round-winner-mini strong { display: block; }\n.guandan-round-winner-mini strong { margin-top: 2px; font-size: 0.84rem; }\n.guandan-initial-draw-mini {\n  position: absolute;\n  z-index: 35;\n  top: 86px;\n  left: 10px;\n  box-sizing: border-box;\n  width: 210px;\n  max-width: calc(100% - 20px);\n  padding: 7px 8px;\n  border: 2px solid #d5a438;\n  border-radius: 10px;\n  background: rgba(255, 253, 245, 0.96);\n  color: #173528;\n  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);\n  font-size: 0.76rem;\n  line-height: 1.15;\n  pointer-events: none;\n}\n.guandan-initial-draw-mini > strong { display: block; margin-bottom: 4px; text-align: center; }\n.guandan-initial-draw-mini-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; align-items: end; }\n.guandan-initial-draw-mini-cards > div { min-width: 0; text-align: center; }\n.guandan-initial-draw-mini-cards span { display: block; overflow: hidden; margin-bottom: 2px; text-overflow: ellipsis; white-space: nowrap; font-size: 0.65rem; }\n.guandan-initial-draw-mini-winner { margin-top: 4px; text-align: center; }\n'''
+              if marker not in c:
+                  raise SystemExit('missing css marker')
+              c = c.replace(marker, marker + rules, 1)
+          cp.write_text(c)
           PY
 
       - name: Install frontend dependencies
@@ -73,24 +76,17 @@ jobs:
           cd frontend
           yarn install --frozen-lockfile
 
-      - name: Format changed files
+      - name: Format and build
         run: |
           cd frontend
           yarn prettier --write src/GuandanTable.tsx src/guandan-single-viewport.css
-
-      - name: Build frontend
-        run: |
-          cd frontend
           yarn build
 
       - name: Commit change
         run: |
-          if git diff --quiet; then
-            echo "No changes to commit"
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/src/GuandanTable.tsx frontend/src/guandan-single-viewport.css
-          git commit -m "feat(guandan): add compact draw and round winner displays"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "feat(guandan): add timed draw and round winner mini displays"
           git push origin HEAD:fix/guandan-single-viewport-20260822
