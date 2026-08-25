@@ -1,0 +1,37 @@
+name: Run Guandan first draw patch
+
+on:
+  push:
+    branches:
+      - fix/guandan-round-state-20260824
+    paths:
+      - .github/workflows/run-guandan-first-draw-20260825.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-round-state-20260824
+          fetch-depth: 0
+      - name: Apply patch
+        run: python3 .github/scripts/add_guandan_first_draw_20260825.py
+      - name: Format frontend
+        working-directory: frontend
+        run: npx --yes prettier@3.4.1 --write src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn install --frozen-lockfile && yarn build
+      - name: Format Rust
+        run: cargo fmt --all && cargo fmt --all -- --check
+      - name: Commit feature
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs frontend/src/GuandanTable.tsx frontend/src/GuandanStateProvider.tsx frontend/src/guandanProtocol.ts
+          git commit -m "feat: draw cards to choose first Guandan leader"
+          git push origin HEAD:fix/guandan-round-state-20260824
