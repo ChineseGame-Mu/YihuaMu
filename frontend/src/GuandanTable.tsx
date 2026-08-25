@@ -206,6 +206,14 @@ const GuandanTable: React.FunctionComponent = () => {
         ? "desc"
         : "asc",
   );
+  const [cardCountAlertThreshold, setCardCountAlertThreshold] =
+    React.useState<number>(() => {
+      const saved = Number(
+        window.localStorage.getItem("guandan_card_count_alert_threshold") ??
+          "6",
+      );
+      return saved >= 6 && saved <= 10 ? saved : 6;
+    });
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
@@ -263,6 +271,13 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_card_count_alert_threshold",
+      String(cardCountAlertThreshold),
+    );
+  }, [cardCountAlertThreshold]);
 
   React.useEffect(() => {
     if (!gameStarted) setShuffleTo(String(deckSize));
@@ -596,7 +611,30 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="asc">从小到大</option>
             <option value="desc">从大到小</option>
           </select>
-          <p>牌面配色和手牌排列只影响您自己，并会保存在当前浏览器。</p>
+          <br />
+          <label htmlFor="guandan-card-count-alert-threshold">
+            报牌阈值：
+          </label>{" "}
+          <select
+            id="guandan-card-count-alert-threshold"
+            value={cardCountAlertThreshold}
+            onChange={(event) =>
+              setCardCountAlertThreshold(Number(event.target.value))
+            }
+          >
+            {[6, 7, 8, 9, 10].map((count) => (
+              <option key={count} value={count}>
+                剩余 {count} 张开始报牌
+              </option>
+            ))}
+          </select>
+          <p>
+            当任一玩家手牌降到所选张数或更少时，公共桌面的玩家牌背会持续显示实时剩余张数，直到
+            0 张。
+          </p>
+          <p>
+            牌面配色、手牌排列和报牌阈值只影响您自己，并会保存在当前浏览器。
+          </p>
           <div className="guandan-bot-settings">
             <strong>机器人陪玩：</strong>{" "}
             {[1, 2, 3].map((count) => {
@@ -740,29 +778,54 @@ const GuandanTable: React.FunctionComponent = () => {
               </aside>
             )}
             <div
-              className="guandan-participant-names"
+              className="guandan-public-player-backs"
               role="status"
-              aria-label="参赛玩家"
+              aria-label="公共桌面参赛玩家牌背"
             >
-              <strong>参赛玩家：</strong>
-              <span className="guandan-participant-list">
-                {state.players.length === 0
-                  ? "等待玩家加入"
-                  : state.players.map((player, index) => (
-                      <span
-                        className="guandan-participant-entry"
-                        key={`participant-${index}-${player}`}
-                      >
-                        <span
-                          className="guandan-participant-team"
-                          aria-label={`队伍 ${index % 2 === 0 ? 1 : 2}`}
-                        >
-                          {index % 2 === 0 ? "1" : "2"}
-                        </span>
-                        <span>{player}</span>
+              {state.players.length === 0 ? (
+                <span className="guandan-public-player-empty">
+                  等待玩家加入
+                </span>
+              ) : (
+                state.players.map((player, index) => {
+                  const remaining = remainingCountForSeat(index);
+                  const shouldReport =
+                    gameStarted &&
+                    !dealing &&
+                    remaining >= 0 &&
+                    remaining <= cardCountAlertThreshold;
+                  return (
+                    <div
+                      className={`guandan-public-player-back guandan-public-team-${
+                        index % 2 === 0 ? "a" : "b"
+                      } ${effectiveTurn === index && gameStarted && !dealing ? "is-active" : ""}`}
+                      key={`public-back-${index}-${player}`}
+                      aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${
+                        shouldReport ? `，剩余${remaining}张` : ""
+                      }`}
+                    >
+                      <span className="guandan-public-player-seat">
+                        玩家{index + 1}
                       </span>
-                    ))}
-              </span>
+                      <span
+                        className="guandan-public-card-back"
+                        aria-hidden="true"
+                      >
+                        <span>掼蛋</span>
+                      </span>
+                      <strong title={player}>{player}</strong>
+                      {shouldReport && (
+                        <span
+                          className="guandan-public-card-count"
+                          aria-label={`剩余 ${remaining} 张`}
+                        >
+                          {remaining}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
             {state.finishOrder.length === playerCount && playerCount >= 4 && (
               <div

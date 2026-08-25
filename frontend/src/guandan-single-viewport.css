@@ -566,3 +566,130 @@
   right: 10px !important;
   left: auto !important;
 }
+
+/* Public participant card backs with team colors and live low-card count. */
+.guandan-public-player-backs {
+  position: absolute;
+  z-index: 24;
+  top: 32px;
+  left: 148px;
+  right: 26%;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 3px 5px;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+.guandan-public-player-empty {
+  color: #f5e9b5;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.guandan-public-player-back {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+  color: #fff9dc;
+  font-size: 0.58rem;
+  line-height: 1.05;
+}
+.guandan-public-player-seat,
+.guandan-public-player-back > strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guandan-public-player-seat {
+  margin-bottom: 2px;
+  font-weight: 800;
+  color: #fff4b8;
+}
+.guandan-public-player-back > strong {
+  margin-top: 2px;
+  font-size: 0.61rem;
+}
+.guandan-public-card-back {
+  position: relative;
+  display: flex;
+  width: 36px;
+  height: 48px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid #fff8dc;
+  border-radius: 5px;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.16);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+.guandan-public-card-back::before,
+.guandan-public-card-back::after {
+  content: "◆";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.55rem;
+}
+.guandan-public-card-back::before {
+  top: 5px;
+}
+.guandan-public-card-back::after {
+  bottom: 5px;
+}
+.guandan-public-team-a .guandan-public-card-back {
+  background: linear-gradient(145deg, #9b2525, #5f1111);
+}
+.guandan-public-team-b .guandan-public-card-back {
+  background: linear-gradient(145deg, #245b9b, #123766);
+}
+.guandan-public-player-back.is-active .guandan-public-card-back {
+  outline: 3px solid #ffd75a;
+  outline-offset: 1px;
+}
+.guandan-public-card-count {
+  position: absolute;
+  z-index: 2;
+  top: 17px;
+  right: 0;
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff7c2;
+  border-radius: 50%;
+  background: #f6d64b;
+  color: #3e2600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (max-width: 900px) {
+  .guandan-public-player-backs {
+    left: 136px;
+    right: 8px;
+  }
+  .guandan-public-player-back {
+    flex-basis: 44px;
+    width: 44px;
+    min-width: 44px;
+  }
+  .guandan-public-card-back {
+    width: 33px;
+    height: 44px;
+  }
+}
