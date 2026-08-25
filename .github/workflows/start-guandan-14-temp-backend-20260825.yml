@@ -49,17 +49,31 @@ jobs:
           done
           cat /tmp/cloudflared.log
           exit 1
-      - name: Verify tunnel and publish websocket URL
+      - name: Publish websocket URL
         run: |
           URL=$(cat /tmp/guandan14-url.txt)
-          curl -fsS "$URL/runtime.js" >/dev/null
           printf 'wss://%s/api/guandan\n' "${URL#https://}" > .github/guandan14-temp-backend-url.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add .github/guandan14-temp-backend-url.txt
           git commit -m 'test: publish temporary Guandan 14-player websocket' || true
+          git fetch origin feature/guandan-up-to-14-players-20260825
+          git rebase origin/feature/guandan-up-to-14-players-20260825
           git push origin HEAD:feature/guandan-up-to-14-players-20260825
           cat .github/guandan14-temp-backend-url.txt
+      - name: Wait for public DNS and verify tunnel
+        run: |
+          URL=$(cat /tmp/guandan14-url.txt)
+          for i in $(seq 1 60); do
+            if curl -fsS "$URL/runtime.js" >/dev/null 2>&1; then
+              echo TEMP_TUNNEL_READY
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Tunnel URL was published but public verification timed out.'
+          cat /tmp/cloudflared.log
+          exit 1
       - name: Keep isolated browser backend alive
         run: |
           echo 'Temporary 14-player browser backend is live.'
