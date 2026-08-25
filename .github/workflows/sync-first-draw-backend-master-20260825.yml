@@ -1,0 +1,34 @@
+name: Sync first draw backend master
+
+on:
+  push:
+    branches:
+      - fix/guandan-single-viewport-20260822
+    paths:
+      - .github/trigger-sync-first-draw-backend-master-20260825.txt
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Load backend-only patch from tested branch
+        run: |
+          git fetch origin fix/guandan-single-viewport-20260822
+          git show origin/fix/guandan-single-viewport-20260822:.github/scripts/sync_first_draw_backend_master_20260825.py > /tmp/sync_first_draw.py
+          python /tmp/sync_first_draw.py
+      - name: Format backend
+        run: cargo fmt --all
+      - name: Commit backend-only change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs
+          git commit -m "fix: sync Guandan first-draw backend to master"
+          git push origin HEAD:master
