@@ -1,0 +1,137 @@
+name: Verify isolated Guandan 14-player websocket
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/workflows/verify-guandan-14-local-websocket-20260825.yml
+
+permissions:
+  contents: read
+
+jobs:
+  fourteen-player-websocket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+
+      - name: Install Python websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Start isolated branch backend
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic > /tmp/guandan14-backend.log 2>&1 &
+          echo $! > /tmp/guandan14-backend.pid
+          for i in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then
+              echo 'LOCAL_BACKEND_READY'
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/guandan14-backend.log
+          exit 1
+
+      - name: Run 14-player WebSocket robot opening test
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import time
+          import websockets
+
+          URI = 'ws://127.0.0.1:3030/api/guandan'
+          ROOM = f'robot14{int(time.time())}'
+          PLAYER_COUNT = 14
+          CARDS_PER_PLAYER = 27
+
+          async def recv_until(ws, predicate, timeout=15):
+              async def inner():
+                  while True:
+                      raw = await ws.recv()
+                      if isinstance(raw, bytes):
+                          raw = raw.decode('utf-8')
+                      msg = json.loads(raw)
+                      if msg.get('type') == 'error':
+                          raise AssertionError(f"server error: {msg.get('message')}")
+                      if predicate(msg):
+                          return msg
+              return await asyncio.wait_for(inner(), timeout=timeout)
+
+          async def main():
+              sockets = []
+              try:
+                  for index in range(PLAYER_COUNT):
+                      ws = await websockets.connect(URI, open_timeout=10)
+                      sockets.append(ws)
+                      await recv_until(ws, lambda m: m.get('type') == 'connected')
+                      await ws.send(json.dumps({
+                          'type': 'join',
+                          'room': ROOM,
+                          'name': f'玩家{index + 1}',
+                      }, ensure_ascii=False))
+                      joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
+                      assert joined.get('seat') == index, (index, joined)
+
+                  # Wait until player 1 sees all 14 seats before starting.
+                  waiting = await recv_until(
+                      sockets[0],
+                      lambda m: m.get('type') == 'waiting' and len(m.get('players', [])) == PLAYER_COUNT,
+                      timeout=20,
+                  )
+                  assert waiting.get('minimum_players') == 4, waiting
+                  assert waiting.get('maximum_players') == 14, waiting
+
+                  await sockets[0].send(json.dumps({'type': 'start', 'player_count': PLAYER_COUNT}))
+
+                  results = []
+                  for seat, ws in enumerate(sockets):
+                      started = await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'started' and m.get('player_count') == PLAYER_COUNT,
+                          timeout=20,
+                      )
+                      assert started.get('cards_per_player') == CARDS_PER_PLAYER, started
+
+                      state = await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'state'
+                          and len(m.get('players', [])) == PLAYER_COUNT
+                          and len(m.get('initial_draw', [])) == PLAYER_COUNT,
+                          timeout=20,
+                      )
+                      hand = await recv_until(ws, lambda m: m.get('type') == 'hand', timeout=20)
+
+                      assert len(hand.get('cards', [])) == CARDS_PER_PLAYER, (seat, len(hand.get('cards', [])))
+                      assert state.get('hand_counts') == [CARDS_PER_PLAYER] * PLAYER_COUNT, state.get('hand_counts')
+                      winner = state.get('initial_draw_winner')
+                      assert isinstance(winner, int) and 0 <= winner < PLAYER_COUNT, winner
+                      assert state.get('turn') == winner, (state.get('turn'), winner)
+                      assert all('Joker' not in card for card in state.get('initial_draw', [])), state.get('initial_draw')
+                      results.append((seat + 1, winner + 1))
+
+                  winner = results[0][1]
+                  assert all(item[1] == winner for item in results), results
+                  print('LOCAL_14_PLAYER_WEBSOCKET_OK')
+                  print(json.dumps({
+                      'room': ROOM,
+                      'players': PLAYER_COUNT,
+                      'cards_per_player': CARDS_PER_PLAYER,
+                      'opening_draw_count': PLAYER_COUNT,
+                      'winner_player': winner,
+                      'team_1_seats': [i for i in range(1, PLAYER_COUNT + 1) if i % 2 == 1],
+                      'team_2_seats': [i for i in range(1, PLAYER_COUNT + 1) if i % 2 == 0],
+                  }, ensure_ascii=False))
+              finally:
+                  await asyncio.gather(*(ws.close() for ws in sockets), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
+
+      - name: Show backend log on failure
+        if: failure()
+        run: cat /tmp/guandan14-backend.log || true
