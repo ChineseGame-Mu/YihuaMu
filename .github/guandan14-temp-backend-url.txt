@@ -1,1 +1,1 @@
-wss://participating-mud-tip-conferences.trycloudflare.com/api/guandan
+wss://parliament-written-sleep-grams.trycloudflare.com/api/guandan
