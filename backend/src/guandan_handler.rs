@@ -282,6 +282,7 @@ fn draw_starting_seat(deck: &mut Vec<CardFace>) -> (Vec<CardFace>, usize) {
         let draw = deck
             .iter()
             .copied()
+            .filter(|card| !matches!(card, CardFace::Joker(_)))
             .take(GUANDAN_PLAYER_COUNT)
             .collect::<Vec<_>>();
         let values = draw

@@ -554,3 +554,15 @@
     margin-bottom: -88px !important;
   }
 }
+
+/* 2026-08-25 final mini-screen placement: public-table upper-right. */
+.guandan-round-winner-mini {
+  top: 34px !important;
+  right: 10px !important;
+  left: auto !important;
+}
+.guandan-initial-draw-mini {
+  top: 82px !important;
+  right: 10px !important;
+  left: auto !important;
+}
