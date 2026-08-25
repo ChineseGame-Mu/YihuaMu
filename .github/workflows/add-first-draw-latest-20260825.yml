@@ -23,7 +23,7 @@ jobs:
       - name: Format and test backend
         run: |
           cargo fmt --all
-          cargo test -p shengji --lib guandan --quiet
+          cargo test -p shengji guandan --quiet
       - name: Build frontend
         run: |
           cd frontend
