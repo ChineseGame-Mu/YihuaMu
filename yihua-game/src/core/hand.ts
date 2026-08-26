@@ -35,7 +35,7 @@ const suitedCards = (
   cards: readonly Card[],
 ): readonly Extract<Card, { kind: "suited" }>[] | null =>
   cards.every((card) => card.kind === "suited")
-    ? (cards as readonly Extract<Card, { kind: "suited" }>[])
+    ? (cards as readonly Extract<Card, { kind: "suited" }>[]) 
     : null;
 
 const groupedRanks = (
@@ -174,8 +174,7 @@ const compareBombLike = (
   }
 
   if (current.kind === "bomb") {
-    if (current.size >= 5) return false;
-    return true;
+    return current.size <= 5;
   }
 
   return false;
