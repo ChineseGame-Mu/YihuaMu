@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   determineUniqueOpeningWinner,
   type Card,
+  type Rank,
+  type Suit,
 } from "../src/core/cards.js";
 import { robotDelayMs } from "../src/core/robot.js";
 import {
@@ -43,7 +45,7 @@ describe("table configuration", () => {
 });
 
 describe("opening draw", () => {
-  const card = (rank: Card extends infer _ ? any : never, suit: any): Card => ({
+  const card = (rank: Rank, suit: Suit): Card => ({
     kind: "suited",
     rank,
     suit,
