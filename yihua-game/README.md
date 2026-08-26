@@ -23,13 +23,15 @@ Implementation code in this directory must be written from behavioral requiremen
 
 ## Current clean-room milestone
 
-The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, standard hand classification, level-card rules, and validated turn-by-turn play state.
+The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, standard hand classification, level-card rules, validated turn-by-turn play state, and legal robot turn selection.
 
 Recognized hands include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. The current bomb order is four-joker bomb, six-card-or-larger bombs, straight flush, five-card bomb, then four-card bomb.
 
 A separate level-card rule layer treats the current level rank as stronger than ordinary suited ranks and treats the heart card of the current level rank as a wildcard when it is played with other cards. Wildcard interpretations cover pairs, triples, three-with-pair, straights, wood boards, steel boards, straight flushes, and bombs while leaving the already-verified base classifier unchanged. Wildcard matching is pattern-based rather than exponential substitution, so multi-deck tables can handle many heart-level wildcards safely.
 
-The play-state layer validates turn ownership, verifies that selected card IDs are actually in the player's hand, resolves the declared wildcard hand, rejects plays that cannot beat the current resolved hand, removes played cards, records public play/pass actions, and resets a trick to the last successful player after all other seats pass.
+The play-state layer validates turn ownership, verifies that selected card IDs are actually in the player's hand, resolves the declared wildcard hand, rejects plays that cannot beat the current resolved hand, removes played cards, records public play/pass actions, and tracks seats that have finished. Finished seats are skipped. When a player goes out on the current winning play, only active opponents may respond; if all active opponents pass, the trick clears and the next active teammate receives the lead. This covers the four-player case where player 2 goes out, players 1 and 3 do not beat the final play, and player 4 receives the next lead.
+
+The robot layer keeps the randomized human-like delay and chooses only legal plays that can beat the current resolved hand, passing when no legal response is available.
 
 ## Migration principle
 
