@@ -83,13 +83,57 @@ export const startGame = (
   };
 };
 
+const sameCard = (left: Card, right: Card): boolean => {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "joker" && right.kind === "joker") {
+    return left.size === right.size;
+  }
+  return (
+    left.kind === "suited" &&
+    right.kind === "suited" &&
+    left.suit === right.suit &&
+    left.rank === right.rank
+  );
+};
+
+const removeCardsFromHand = (
+  hand: readonly DeckCard[],
+  cards: readonly Card[],
+): DeckCard[] => {
+  const remaining = [...hand];
+  for (const card of cards) {
+    const index = remaining.findIndex((deckCard) =>
+      sameCard(deckCard.card, card),
+    );
+    if (index < 0) {
+      throw new Error("played card is not in seat's hand");
+    }
+    remaining.splice(index, 1);
+  }
+  return remaining;
+};
+
 export const playGameCards = (
   state: PlayingState,
   seat: number,
   cards: readonly Card[],
-): PlayingState => {
+): PlayingState | RoundCompleteState => {
   const trick = playCards(state.trick, seat, cards);
-  return { ...state, currentTurn: trick.currentTurn, trick };
+  const hand = state.hands[seat];
+  if (hand === undefined) throw new Error("seat is outside the table");
+  const remainingHand = removeCardsFromHand(hand, cards);
+  const hands = state.hands.map((currentHand, currentSeat) =>
+    currentSeat === seat ? remainingHand : currentHand,
+  );
+  const nextState: PlayingState = {
+    ...state,
+    hands,
+    currentTurn: trick.currentTurn,
+    trick,
+  };
+  return remainingHand.length === 0
+    ? completeRound(nextState, seat)
+    : nextState;
 };
 
 export const passGameTurn = (
