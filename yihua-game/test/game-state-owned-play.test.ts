@@ -165,7 +165,8 @@ describe("game-state owned-card play integration", () => {
     );
 
     const afterFinal = playGameCards(state, 1, [eight]);
-    if (afterFinal.phase !== "playing") throw new Error("round ended too early");
+    if (afterFinal.phase !== "playing")
+      throw new Error("round ended too early");
     const afterBeat = playGameCards(afterFinal, 2, [nine]);
     if (afterBeat.phase !== "playing") throw new Error("round ended too early");
     expect(afterBeat.trick.leadingPlay?.seat).toBe(2);
@@ -190,7 +191,8 @@ describe("game-state owned-card play integration", () => {
     );
 
     const afterFinal = playGameCards(state, 1, [eight]);
-    if (afterFinal.phase !== "playing") throw new Error("round ended too early");
+    if (afterFinal.phase !== "playing")
+      throw new Error("round ended too early");
     expect(afterFinal.finishedSeats).toEqual([1]);
     expect(afterFinal.currentTurn).toBe(2);
 
