@@ -43,7 +43,9 @@ const rankCounts = (cards: readonly Card[]): Map<Rank, number> => {
 const rankIndex = (rank: Rank): number => RANKS.indexOf(rank);
 
 const consecutiveHighRank = (ranks: readonly Rank[]): Rank | null => {
-  const unique = [...new Set(ranks)].sort((a, b) => rankIndex(a) - rankIndex(b));
+  const unique = [...new Set(ranks)].sort(
+    (a, b) => rankIndex(a) - rankIndex(b),
+  );
   if (unique.length !== ranks.length) return null;
 
   const indexes = unique.map(rankIndex);
@@ -107,11 +109,15 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   if (cards.length === 5) {
     const groups = [...counts.entries()].map(([, count]) => count).sort();
     if (groups.length === 2 && groups[0] === 2 && groups[1] === 3) {
-      const tripleRank = [...counts.entries()].find(([, count]) => count === 3)![0];
+      const tripleRank = [...counts.entries()].find(
+        ([, count]) => count === 3,
+      )![0];
       return { kind: "full-house", size: 5, rank: tripleRank };
     }
 
-    const ranks = cards.map((card) => (card as Extract<Card, { kind: "suited" }>).rank);
+    const ranks = cards.map(
+      (card) => (card as Extract<Card, { kind: "suited" }>).rank,
+    );
     const highRank = consecutiveHighRank(ranks);
     if (highRank !== null) {
       const suits = new Set(
