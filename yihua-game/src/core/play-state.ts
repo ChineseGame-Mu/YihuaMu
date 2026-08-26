@@ -27,6 +27,7 @@ export interface TurnState {
   readonly currentPlay: ResolvedPlay | null;
   readonly consecutivePasses: number;
   readonly finishedSeats: readonly number[];
+  readonly finishOrder: readonly number[];
   readonly publicActions: readonly PublicAction[];
 }
 
@@ -41,6 +42,7 @@ export const createTurnState = (
   currentPlay: null,
   consecutivePasses: 0,
   finishedSeats: [],
+  finishOrder: [],
   publicActions: [],
 });
 
@@ -123,8 +125,7 @@ export const playCards = (
   declaredKind?: HandKind,
 ): TurnState => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
-  if (state.finishedSeats.includes(seat))
-    throw new Error("this seat has finished");
+  if (state.finishedSeats.includes(seat)) throw new Error("this seat has finished");
 
   const hand = state.hands[seat];
   if (!hand) throw new Error("seat is outside the table");
@@ -138,11 +139,7 @@ export const playCards = (
 
   if (
     state.currentPlay !== null &&
-    !canClassifiedBeatWithLevelRules(
-      resolved.hand,
-      state.currentPlay.hand,
-      rules,
-    )
+    !canClassifiedBeatWithLevelRules(resolved.hand, state.currentPlay.hand, rules)
   ) {
     throw new Error("played hand does not beat the current hand");
   }
@@ -153,14 +150,13 @@ export const playCards = (
   );
   const remaining = hands[seat] ?? [];
   const finishedSeats = new Set(state.finishedSeats);
-  if (remaining.length === 0) finishedSeats.add(seat);
+  const justFinished = remaining.length === 0 && !finishedSeats.has(seat);
+  if (justFinished) finishedSeats.add(seat);
+  const finishOrder = justFinished ? [...state.finishOrder, seat] : state.finishOrder;
 
   const play: ResolvedPlay = { seat, cards: selected, hand: resolved.hand };
   const responders = responseSeats(state, seat, finishedSeats);
-  const publicActions = [
-    ...state.publicActions,
-    { type: "play", play } as const,
-  ];
+  const publicActions = [...state.publicActions, { type: "play", play } as const];
 
   if (responders.length === 0) {
     return {
@@ -170,6 +166,7 @@ export const playCards = (
       currentPlay: null,
       consecutivePasses: 0,
       finishedSeats: [...finishedSeats],
+      finishOrder,
       publicActions,
     };
   }
@@ -178,29 +175,22 @@ export const playCards = (
   return {
     ...state,
     hands,
-    currentTurn: findSeatAfter(state, seat, (candidate) =>
-      responderSet.has(candidate),
-    )!,
+    currentTurn: findSeatAfter(state, seat, (candidate) => responderSet.has(candidate))!,
     currentPlay: play,
     consecutivePasses: 0,
     finishedSeats: [...finishedSeats],
+    finishOrder,
     publicActions,
   };
 };
 
 export const passTurn = (state: TurnState, seat: number): TurnState => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
-  if (state.currentPlay === null)
-    throw new Error("the leading seat cannot pass");
+  if (state.currentPlay === null) throw new Error("the leading seat cannot pass");
 
   const finishedSeats = new Set(state.finishedSeats);
-  const responders = responseSeats(
-    state,
-    state.currentPlay.seat,
-    finishedSeats,
-  );
-  if (!responders.includes(seat))
-    throw new Error("this seat is not a responder");
+  const responders = responseSeats(state, state.currentPlay.seat, finishedSeats);
+  if (!responders.includes(seat)) throw new Error("this seat is not a responder");
 
   const passes = state.consecutivePasses + 1;
   const action: PublicAction = { type: "pass", seat };
@@ -223,9 +213,7 @@ export const passTurn = (state: TurnState, seat: number): TurnState => {
   const responderSet = new Set(responders);
   return {
     ...state,
-    currentTurn: findSeatAfter(state, seat, (candidate) =>
-      responderSet.has(candidate),
-    )!,
+    currentTurn: findSeatAfter(state, seat, (candidate) => responderSet.has(candidate))!,
     consecutivePasses: passes,
     publicActions,
   };
