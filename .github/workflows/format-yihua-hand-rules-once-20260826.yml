@@ -33,3 +33,5 @@ jobs:
           git add yihua-game/src/core/hand.ts yihua-game/src/core/opening-draw.ts yihua-game/test/hand.test.ts yihua-game/test/hand-edge.test.ts
           git diff --cached --quiet || git commit -m "style(yihua-game): apply exact Prettier output"
           git push
+
+# Triggered again after the straight-flush hierarchy fix.
