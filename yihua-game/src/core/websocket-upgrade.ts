@@ -77,7 +77,7 @@ export const attachUpgradedConnection = async (
     }
   });
 
-  await runtime.websocket.sendSnapshot(connection.socket, roomId);
+  await runtime.websocket.sendSnapshot(connection.socket, roomId, playerId);
 
   connection.onText(async (text) => {
     await runtime.websocket.handleText(
