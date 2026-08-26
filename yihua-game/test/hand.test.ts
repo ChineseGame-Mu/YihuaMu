@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { classifyHand } from "../src/core/hand.js";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
+import { canHandBeat, classifyHand } from "../src/core/hand.js";
 
 const suited = (rank: Rank, suit: Suit): Card => ({
   kind: "suited",
@@ -106,5 +106,63 @@ describe("classifyHand", () => {
     expect(
       classifyHand([suited("2", "clubs"), suited("3", "clubs")]).kind,
     ).toBe("invalid");
+  });
+});
+
+describe("canHandBeat", () => {
+  it("requires a strictly higher hand of the same ordinary kind", () => {
+    const pair8 = classifyHand([suited("8", "clubs"), suited("8", "hearts")]);
+    const pair9 = classifyHand([suited("9", "clubs"), suited("9", "hearts")]);
+    const triple9 = classifyHand([
+      suited("9", "clubs"),
+      suited("9", "diamonds"),
+      suited("9", "hearts"),
+    ]);
+
+    expect(canHandBeat(pair9, pair8)).toBe(true);
+    expect(canHandBeat(pair8, pair8)).toBe(false);
+    expect(canHandBeat(triple9, pair8)).toBe(false);
+  });
+
+  it("orders bombs by the clean-room bomb hierarchy", () => {
+    const fourBomb = classifyHand([
+      suited("A", "clubs"),
+      suited("A", "diamonds"),
+      suited("A", "hearts"),
+      suited("A", "spades"),
+    ]);
+    const fiveBomb = classifyHand([
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
+    ]);
+    const straightFlush = classifyHand([
+      suited("5", "hearts"),
+      suited("6", "hearts"),
+      suited("7", "hearts"),
+      suited("8", "hearts"),
+      suited("9", "hearts"),
+    ]);
+    const sixBomb = classifyHand([
+      suited("4", "clubs"),
+      suited("4", "diamonds"),
+      suited("4", "hearts"),
+      suited("4", "spades"),
+      suited("4", "clubs"),
+      suited("4", "diamonds"),
+    ]);
+    const jokerBomb = classifyHand([
+      { kind: "joker", size: "small" },
+      { kind: "joker", size: "small" },
+      { kind: "joker", size: "big" },
+      { kind: "joker", size: "big" },
+    ]);
+
+    expect(canHandBeat(fiveBomb, fourBomb)).toBe(true);
+    expect(canHandBeat(straightFlush, fiveBomb)).toBe(true);
+    expect(canHandBeat(sixBomb, straightFlush)).toBe(true);
+    expect(canHandBeat(jokerBomb, sixBomb)).toBe(true);
   });
 });
