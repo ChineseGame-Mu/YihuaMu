@@ -33,43 +33,92 @@ export const compareOrdinaryRanks = (
   ordinaryRankStrength(challenger, rules.levelRank) -
   ordinaryRankStrength(current, rules.levelRank);
 
-const replacementCards = (): readonly Extract<Card, { kind: "suited" }>[] =>
-  RANKS.flatMap((rank) =>
-    SUITS.map((suit) => ({ kind: "suited" as const, rank, suit })),
-  );
-
-const REPLACEMENTS = replacementCards();
-
-const interpretationKey = (interpretation: WildcardInterpretation): string => {
-  const { hand } = interpretation;
-  return `${hand.kind}:${hand.size}:${hand.rank ?? ""}:${hand.suit ?? ""}`;
+const sequenceWindows = (): readonly (readonly Rank[])[] => {
+  const windows: Rank[][] = [["A", "2", "3", "4", "5"]];
+  for (let start = 0; start + 5 <= RANKS.length; start += 1) {
+    windows.push(RANKS.slice(start, start + 5) as Rank[]);
+  }
+  return windows;
 };
 
-const enumerateAssignments = (
-  cards: readonly Card[],
-  wildcardIndexes: readonly number[],
-  index: number,
-  working: Card[],
-  output: WildcardInterpretation[],
-): void => {
-  if (index === wildcardIndexes.length) {
-    const hand = classifyHand(working);
-    if (hand.kind !== "invalid") {
-      output.push({
-        hand,
-        substitutedCards: [...working],
-        wildcardCount: wildcardIndexes.length,
-      });
-    }
-    return;
+const SEQUENCE_WINDOWS = sequenceWindows();
+
+const rankCounts = (
+  cards: readonly Extract<Card, { kind: "suited" }>[],
+): Map<Rank, number> => {
+  const counts = new Map<Rank, number>();
+  for (const card of cards) {
+    counts.set(card.rank, (counts.get(card.rank) ?? 0) + 1);
+  }
+  return counts;
+};
+
+const materializeTargets = (
+  fixed: readonly Extract<Card, { kind: "suited" }>[],
+  wildcardCount: number,
+  targets: readonly { readonly rank: Rank; readonly suit?: Suit }[],
+): readonly Card[] => {
+  const remaining = [...targets];
+  for (const card of fixed) {
+    const index = remaining.findIndex(
+      (target) =>
+        target.rank === card.rank &&
+        (target.suit === undefined || target.suit === card.suit),
+    );
+    if (index >= 0) remaining.splice(index, 1);
   }
 
-  const cardIndex = wildcardIndexes[index]!;
-  for (const replacement of REPLACEMENTS) {
-    working[cardIndex] = replacement;
-    enumerateAssignments(cards, wildcardIndexes, index + 1, working, output);
+  const replacements = remaining.slice(0, wildcardCount).map((target) => ({
+    kind: "suited" as const,
+    rank: target.rank,
+    suit: target.suit ?? ("clubs" as const),
+  }));
+  return [...fixed, ...replacements];
+};
+
+const addInterpretation = (
+  output: Map<string, WildcardInterpretation>,
+  hand: ClassifiedHand,
+  fixed: readonly Extract<Card, { kind: "suited" }>[],
+  wildcardCount: number,
+  targets: readonly { readonly rank: Rank; readonly suit?: Suit }[],
+): void => {
+  const key = `${hand.kind}:${hand.size}:${hand.rank ?? ""}:${hand.suit ?? ""}`;
+  if (output.has(key)) return;
+  output.set(key, {
+    hand,
+    substitutedCards: materializeTargets(fixed, wildcardCount, targets),
+    wildcardCount,
+  });
+};
+
+const matchesTargetCounts = (
+  fixedCounts: ReadonlyMap<Rank, number>,
+  targetCounts: ReadonlyMap<Rank, number>,
+  wildcardCount: number,
+): boolean => {
+  let missing = 0;
+  for (const [rank, count] of fixedCounts) {
+    const target = targetCounts.get(rank);
+    if (target === undefined || count > target) return false;
   }
-  working[cardIndex] = cards[cardIndex]!;
+  for (const [rank, target] of targetCounts) {
+    missing += target - (fixedCounts.get(rank) ?? 0);
+  }
+  return missing === wildcardCount;
+};
+
+const targetsFromCounts = (
+  counts: ReadonlyMap<Rank, number>,
+  suit?: Suit,
+): readonly { readonly rank: Rank; readonly suit?: Suit }[] => {
+  const targets: { rank: Rank; suit?: Suit }[] = [];
+  for (const [rank, count] of counts) {
+    for (let index = 0; index < count; index += 1) {
+      targets.push(suit === undefined ? { rank } : { rank, suit });
+    }
+  }
+  return targets;
 };
 
 export const enumerateWildcardInterpretations = (
@@ -78,26 +127,113 @@ export const enumerateWildcardInterpretations = (
 ): readonly WildcardInterpretation[] => {
   if (cards.length === 0) return [];
 
-  const wildcardIndexes = cards
-    .map((card, index) => (isHeartLevelWildcard(card, rules) ? index : -1))
-    .filter((index) => index >= 0);
-
-  if (wildcardIndexes.length === 0 || cards.length === 1) {
+  const wildcards = cards.filter((card) => isHeartLevelWildcard(card, rules));
+  if (wildcards.length === 0 || cards.length === 1) {
     const hand = classifyHand(cards);
     return hand.kind === "invalid"
       ? []
       : [{ hand, substitutedCards: [...cards], wildcardCount: 0 }];
   }
 
-  const interpretations: WildcardInterpretation[] = [];
-  enumerateAssignments(cards, wildcardIndexes, 0, [...cards], interpretations);
+  const fixedCards = cards.filter(
+    (card) => !isHeartLevelWildcard(card, rules),
+  );
+  if (fixedCards.some((card) => card.kind === "joker")) return [];
 
-  const unique = new Map<string, WildcardInterpretation>();
-  for (const interpretation of interpretations) {
-    const key = interpretationKey(interpretation);
-    if (!unique.has(key)) unique.set(key, interpretation);
+  const fixed = fixedCards as readonly Extract<Card, { kind: "suited" }>[];
+  const wildcardCount = wildcards.length;
+  const fixedCounts = rankCounts(fixed);
+  const output = new Map<string, WildcardInterpretation>();
+
+  if (cards.length === 2 || cards.length === 3 || cards.length >= 4) {
+    const kind: HandKind =
+      cards.length === 2 ? "pair" : cards.length === 3 ? "triple" : "bomb";
+    for (const rank of RANKS) {
+      const targets = new Map<Rank, number>([[rank, cards.length]]);
+      if (!matchesTargetCounts(fixedCounts, targets, wildcardCount)) continue;
+      addInterpretation(
+        output,
+        { kind, size: cards.length, rank },
+        fixed,
+        wildcardCount,
+        targetsFromCounts(targets),
+      );
+    }
   }
-  return [...unique.values()];
+
+  if (cards.length === 5) {
+    for (const tripleRank of RANKS) {
+      for (const pairRank of RANKS) {
+        if (tripleRank === pairRank) continue;
+        const targets = new Map<Rank, number>([
+          [tripleRank, 3],
+          [pairRank, 2],
+        ]);
+        if (!matchesTargetCounts(fixedCounts, targets, wildcardCount)) continue;
+        addInterpretation(
+          output,
+          { kind: "triple-pair", size: 5, rank: tripleRank },
+          fixed,
+          wildcardCount,
+          targetsFromCounts(targets),
+        );
+      }
+    }
+
+    for (const window of SEQUENCE_WINDOWS) {
+      const targets = new Map<Rank, number>(window.map((rank) => [rank, 1]));
+      if (!matchesTargetCounts(fixedCounts, targets, wildcardCount)) continue;
+      const topRank = window[0] === "A" ? "5" : window[4]!;
+      addInterpretation(
+        output,
+        { kind: "straight", size: 5, rank: topRank },
+        fixed,
+        wildcardCount,
+        targetsFromCounts(targets),
+      );
+
+      for (const suit of SUITS) {
+        if (fixed.some((card) => card.suit !== suit)) continue;
+        addInterpretation(
+          output,
+          { kind: "straight-flush", size: 5, rank: topRank, suit },
+          fixed,
+          wildcardCount,
+          targetsFromCounts(targets, suit),
+        );
+      }
+    }
+  }
+
+  if (cards.length === 6) {
+    for (let start = 0; start + 3 <= RANKS.length; start += 1) {
+      const ranks = RANKS.slice(start, start + 3);
+      const targets = new Map<Rank, number>(ranks.map((rank) => [rank, 2]));
+      if (!matchesTargetCounts(fixedCounts, targets, wildcardCount)) continue;
+      addInterpretation(
+        output,
+        { kind: "wood-board", size: 6, rank: ranks[2]! },
+        fixed,
+        wildcardCount,
+        targetsFromCounts(targets),
+      );
+    }
+
+    for (let start = 0; start + 2 <= RANKS.length; start += 1) {
+      const ranks = RANKS.slice(start, start + 2);
+      const targets = new Map<Rank, number>(ranks.map((rank) => [rank, 3]));
+      if (!matchesTargetCounts(fixedCounts, targets, wildcardCount)) continue;
+      addInterpretation(
+        output,
+        { kind: "steel-board", size: 6, rank: ranks[1]! },
+        fixed,
+        wildcardCount,
+        targetsFromCounts(targets),
+      );
+    }
+  }
+
+  return [...output.values()];
 };
 
 export const resolveWildcardInterpretation = (
@@ -161,12 +297,10 @@ export const canClassifiedBeatWithLevelRules = (
     if (challengerTier !== currentTier) return challengerTier > currentTier;
 
     if (challenger.kind === "bomb" && current.kind === "bomb") {
-      if (challenger.size !== current.size)
-        return challenger.size > current.size;
+      if (challenger.size !== current.size) return challenger.size > current.size;
     }
 
-    if (challenger.rank === undefined || current.rank === undefined)
-      return false;
+    if (challenger.rank === undefined || current.rank === undefined) return false;
     return compareOrdinaryRanks(challenger.rank, current.rank, rules) > 0;
   }
 
