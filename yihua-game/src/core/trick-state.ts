@@ -80,7 +80,8 @@ export const passTurn = (state: TrickState, seat: number): TrickState => {
     return {
       ...state,
       currentTurn: nextSeat(seat, state.playerCount),
-      passedSeats: passedSeats.length >= state.playerCount ? [] : passedSeats,
+      passedSeats:
+        passedSeats.length >= state.playerCount ? [] : passedSeats,
     };
   }
 
