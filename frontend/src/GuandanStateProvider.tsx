@@ -24,6 +24,9 @@ interface GuandanTableState {
   tablePlays: Array<{ player: number; cards: GuandanCard[] }>;
   passes: number;
   trickComplete: boolean;
+  lastTrickWinner: number | null;
+  initialDraw: GuandanCard[];
+  initialDrawWinner: number | null;
   level: GuandanRank | null;
   teamLevels: unknown;
   finishOrder: number[];
@@ -33,6 +36,7 @@ interface GuandanTableState {
   pendingTribute: unknown;
   tributeResisted: boolean;
   matchWinner: GuandanTeam | null;
+  nextRoundPhase: "awaiting_shuffle" | "awaiting_deal" | null;
   minimumPlayers: number | null;
   maximumPlayers: number | null;
   error: string | null;
@@ -54,6 +58,9 @@ const initialState: GuandanTableState = {
   tablePlays: [],
   passes: 0,
   trickComplete: false,
+  lastTrickWinner: null,
+  initialDraw: [],
+  initialDrawWinner: null,
   level: null,
   teamLevels: null,
   finishOrder: [],
@@ -63,6 +70,7 @@ const initialState: GuandanTableState = {
   pendingTribute: null,
   tributeResisted: false,
   matchWinner: null,
+  nextRoundPhase: null,
   minimumPlayers: null,
   maximumPlayers: null,
   error: null,
@@ -91,7 +99,12 @@ const reduceMessage = (
     case "connected":
       return { ...state, error: null };
     case "joined":
-      return { ...state, room: message.room, seat: message.seat, error: null };
+      return {
+        ...initialState,
+        room: message.room,
+        seat: message.seat,
+        error: null,
+      };
     case "waiting":
       return {
         ...state,
@@ -107,17 +120,35 @@ const reduceMessage = (
         ...state,
         playerCount: message.player_count,
         cardsPerPlayer: message.cards_per_player,
-        turn: state.turn ?? 0,
+        turn: 0,
+        lastPlay: [],
+        lastPlayer: null,
+        tablePlays: [],
+        passes: 0,
+        trickComplete: false,
+        lastTrickWinner: null,
+        initialDraw: [],
+        initialDrawWinner: null,
+        finishOrder: [],
+        pendingTribute: null,
+        tributeResisted: false,
+        nextRoundPhase: null,
         error: null,
       };
     case "hand":
       return { ...state, hand: message.cards, error: null };
-    case "state":
+    case "state": {
+      const ownSeat = state.seat;
+      const ownHandFinished =
+        ownSeat !== null &&
+        (message.hand_counts[ownSeat] === 0 ||
+          message.finish_order.includes(ownSeat));
       return {
         ...state,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,
+        hand: ownHandFinished ? [] : state.hand,
         turn: message.turn,
         handCounts: message.hand_counts,
         lastPlay: message.last_play,
@@ -125,6 +156,9 @@ const reduceMessage = (
         tablePlays: message.table_plays,
         passes: message.passes,
         trickComplete: message.trick_complete,
+        lastTrickWinner: message.last_trick_winner,
+        initialDraw: message.initial_draw,
+        initialDrawWinner: message.initial_draw_winner,
         level: message.level,
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,
@@ -134,8 +168,10 @@ const reduceMessage = (
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
+        nextRoundPhase: message.next_round_phase,
         error: null,
       };
+    }
     case "error":
       return { ...state, error: message.message };
   }

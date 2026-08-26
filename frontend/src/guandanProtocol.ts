@@ -24,7 +24,14 @@ export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
-  | { type: "start"; player_count: 4 }
+  | { type: "set_bots"; count: 1 | 2 | 3 }
+  | { type: "start"; player_count: number }
+  | {
+      type: "shuffle_next_round";
+      from_position: number | null;
+      to_position: number | null;
+    }
+  | { type: "deal_next_round" }
   | { type: "play"; card_indexes: number[] }
   | { type: "tribute_card"; card_index: number }
   | { type: "return_tribute"; card_index: number }
@@ -62,6 +69,9 @@ export type GuandanServerMessage =
       table_plays: Array<{ player: number; cards: GuandanCard[] }>;
       passes: number;
       trick_complete: boolean;
+      last_trick_winner: number | null;
+      initial_draw: GuandanCard[];
+      initial_draw_winner: number | null;
       level: GuandanRank;
       team_levels: unknown;
       finish_order: number[];
@@ -71,6 +81,7 @@ export type GuandanServerMessage =
       pending_tribute: GuandanTributePlan | null;
       tribute_resisted: boolean;
       match_winner: GuandanTeam | null;
+      next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
     }
   | { type: "error"; message: string };
 

@@ -1,0 +1,695 @@
+/* Single-viewport Guandan layout overrides.
+ * Approved reference: public play + hand on the left, review panel on the right.
+ * Keep established green/gold theme and card behavior unchanged.
+ */
+
+.guandan-topbar {
+  position: absolute;
+  z-index: 20;
+  top: 4px;
+  left: 0;
+  width: 100%;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+.guandan-topbar > * {
+  pointer-events: auto;
+}
+.guandan-topbar > :first-child {
+  position: absolute;
+  left: 12px;
+  top: 4px;
+  transform: scale(0.78);
+  transform-origin: left top;
+}
+.guandan-topbar > :last-child {
+  position: absolute;
+  right: 14px;
+  top: 1px;
+  width: 54px;
+  height: 54px;
+  overflow: visible;
+  transform: scale(0.76);
+  transform-origin: right top;
+}
+.guandan-topbar > :last-child img,
+.guandan-topbar > :last-child svg {
+  border-radius: 50% !important;
+}
+.guandan-topbar h1,
+.guandan-status-bar h1 {
+  display: none !important;
+}
+.guandan-table {
+  position: relative;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 4px 10px 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.guandan-status-bar {
+  position: relative;
+  flex: 0 0 52px;
+  min-height: 52px;
+  margin: 0 0 4px;
+  padding: 9px 86px 7px 82px;
+  gap: 6px 10px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.guandan-status-bar::after {
+  content: "🂡  🂱   掼 蛋   🃁  🃑";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  color: #ffe69a;
+  font-family: "STKaiti", "KaiTi", "Noto Serif CJK SC", serif;
+  font-size: clamp(20px, 2.1vw, 31px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 3px;
+  text-shadow:
+    0 2px 0 #7b1f13,
+    0 0 5px rgba(255, 215, 110, 0.65);
+  pointer-events: none;
+}
+.guandan-status-bar > div {
+  position: relative;
+  z-index: 2;
+  padding: 2px 7px;
+  font-size: 0.82rem;
+}
+.guandan-status-bar button {
+  position: relative;
+  z-index: 2;
+  padding: 4px 9px;
+}
+.guandan-status-bar > div:nth-of-type(3) {
+  display: none;
+}
+
+.guandan-public-zone {
+  position: relative;
+  flex: 1 1 46%;
+  min-height: 0;
+  margin: 3px 0 4px;
+  padding: 28px 7px 6px;
+  overflow: visible;
+  border-radius: 14px;
+}
+.guandan-public-zone > .guandan-zone-title,
+.guandan-private-zone > .guandan-zone-title {
+  min-width: 200px;
+  padding: 3px 14px 4px;
+}
+.guandan-zone-title span {
+  font-size: 0.96rem;
+}
+.guandan-zone-title small {
+  font-size: 0.66rem;
+}
+.guandan-scoreboard,
+.guandan-player-section {
+  display: none !important;
+}
+
+/* Compact public-table status overlays; they never resize the table. */
+.guandan-round-winner-mini {
+  position: absolute;
+  z-index: 36;
+  top: 34px;
+  left: 10px;
+  min-width: 122px;
+  padding: 5px 8px;
+  border: 2px solid #d5a438;
+  border-radius: 9px;
+  background: rgba(255, 253, 245, 0.96);
+  color: #173528;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  font-size: 0.72rem;
+  line-height: 1.1;
+  text-align: center;
+  pointer-events: none;
+}
+.guandan-round-winner-mini span,
+.guandan-round-winner-mini strong {
+  display: block;
+}
+.guandan-round-winner-mini strong {
+  margin-top: 2px;
+  font-size: 0.84rem;
+}
+.guandan-initial-draw-mini {
+  position: absolute;
+  z-index: 35;
+  top: 86px;
+  left: 10px;
+  box-sizing: border-box;
+  width: 210px;
+  max-width: calc(100% - 20px);
+  padding: 7px 8px;
+  border: 2px solid #d5a438;
+  border-radius: 10px;
+  background: rgba(255, 253, 245, 0.96);
+  color: #173528;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  font-size: 0.76rem;
+  line-height: 1.15;
+  pointer-events: none;
+}
+.guandan-initial-draw-mini > strong {
+  display: block;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+}
+.guandan-initial-draw-mini-cards > div {
+  min-width: 0;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards span {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+}
+.guandan-initial-draw-mini-winner {
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* First-game draw result: compact overlay only; never changes public-table size. */
+.guandan-initial-draw-mini {
+  position: absolute;
+  z-index: 35;
+  top: 58px;
+  left: 10px;
+  box-sizing: border-box;
+  width: 210px;
+  max-width: calc(100% - 20px);
+  padding: 7px 8px;
+  border: 2px solid #d5a438;
+  border-radius: 10px;
+  background: rgba(255, 253, 245, 0.96);
+  color: #173528;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  font-size: 0.76rem;
+  line-height: 1.15;
+  pointer-events: none;
+}
+.guandan-initial-draw-mini > strong {
+  display: block;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  align-items: end;
+}
+.guandan-initial-draw-mini-cards > div {
+  min-width: 0;
+  text-align: center;
+}
+.guandan-initial-draw-mini-cards span {
+  display: block;
+  overflow: hidden;
+  margin-bottom: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+}
+.guandan-initial-draw-mini-winner {
+  margin-top: 4px;
+  text-align: center;
+}
+.guandan-start-panel,
+.guandan-notice-panel,
+.guandan-result-panel,
+.guandan-next-round-panel,
+.guandan-tribute-panel {
+  margin: 3px 0 !important;
+  padding: 5px 8px !important;
+}
+
+/* Public play occupies the same left three-quarters as the hand below. */
+.guandan-table-stage {
+  box-sizing: border-box;
+  min-height: 0 !important;
+  height: 100%;
+  width: 75% !important;
+  margin: 3px 0 0 !important;
+  padding: 6px 8px !important;
+  overflow: auto;
+  border-right: 3px solid #d5a438;
+  border-radius: 12px 0 0 12px;
+}
+.guandan-table-stage h2 {
+  margin-bottom: 3px;
+  font-size: 0.94rem;
+}
+.guandan-trick-plays {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px !important;
+  width: 100%;
+}
+.guandan-trick-play {
+  display: contents;
+}
+.guandan-trick-play > strong {
+  display: none !important;
+}
+.guandan-table-play {
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  min-width: 0;
+  overflow: visible;
+}
+
+.guandan-private-zone {
+  position: relative;
+  flex: 1 1 54%;
+  min-height: 0;
+  margin: 0;
+  padding: 28px 7px 5px;
+  overflow: visible;
+  border-width: 3px;
+  border-radius: 14px;
+}
+.guandan-hand-section {
+  box-sizing: border-box;
+  width: 75% !important;
+  height: calc(100% - 8px);
+  margin: 0 !important;
+  padding: 5px 7px !important;
+  overflow: hidden;
+  border-radius: 12px 0 0 12px !important;
+}
+.guandan-hand-section h2 {
+  margin: 0 0 3px;
+  font-size: 0.98rem;
+}
+.guandan-hand {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: calc(100% - 26px);
+  min-height: 140px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 3px 3px 0;
+}
+.guandan-card-stack {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  min-width: 72px;
+  height: 100%;
+  padding-top: 2px;
+}
+.guandan-card-stack > button,
+.guandan-card-stack > button:disabled,
+.guandan-card-stack > button svg {
+  opacity: 1 !important;
+  filter: none !important;
+}
+.guandan-card-stack > button {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0 0 -82px !important;
+  box-shadow: none !important;
+}
+.guandan-card-stack > button:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Approved right-side review panel: exactly one quarter of the table width.
+ * Its left border meets the right edge of both left-side areas. */
+.guandan-private-zone > section.guandan-play-actions {
+  position: absolute !important;
+  z-index: 40 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 75% !important;
+  box-sizing: border-box !important;
+  width: 25% !important;
+  min-width: 25% !important;
+  max-width: 25% !important;
+  height: calc(200% + 7px) !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 94px 18px 16px !important;
+  display: block !important;
+  overflow: hidden !important;
+  background: linear-gradient(180deg, #fffdf5 0%, #fff4c9 100%) !important;
+  color: #173528 !important;
+  border: 3px solid #d5a438 !important;
+  border-radius: 0 12px 12px 0 !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 240, 185, 0.75) !important;
+  backdrop-filter: none !important;
+}
+.guandan-private-zone > section.guandan-play-actions::before {
+  content: "待出牌核对区（0 张）";
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  right: 14px;
+  height: 32px;
+  color: #5f3d08;
+  font-size: 18px;
+  font-weight: 900;
+  text-align: center;
+  line-height: 32px;
+  pointer-events: none;
+}
+.guandan-private-zone > section.guandan-play-actions::after {
+  content: "请从左侧手牌中选择要出的牌\A\A选中的牌会显示在这里\A\A确认无误后点击【出牌】";
+  white-space: pre-line;
+  position: absolute;
+  top: 46%;
+  left: 24px;
+  right: 24px;
+  color: #725a29;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.65;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button {
+  box-sizing: border-box !important;
+  position: absolute !important;
+  top: 52px !important;
+  display: block !important;
+  width: calc(50% - 27px) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 60px !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  white-space: nowrap !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 12px !important;
+  opacity: 1 !important;
+}
+.guandan-private-zone
+  > section.guandan-play-actions
+  > button:nth-last-child(2) {
+  left: 18px !important;
+  right: auto !important;
+  background: linear-gradient(180deg, #ffd95a, #f0a500) !important;
+  color: #4b2c00 !important;
+  box-shadow:
+    0 4px 0 #a66b00,
+    0 5px 10px rgba(0, 0, 0, 0.2) !important;
+}
+.guandan-private-zone > section.guandan-play-actions > button:last-child {
+  left: auto !important;
+  right: 18px !important;
+  background: linear-gradient(180deg, #63cfff, #168fd0) !important;
+  color: #073d5a !important;
+  box-shadow:
+    0 4px 0 #086a9d,
+    0 5px 10px rgba(0, 0, 0, 0.2) !important;
+}
+.guandan-private-zone > section.guandan-play-actions > button:disabled {
+  opacity: 0.55 !important;
+  filter: saturate(0.72) !important;
+}
+
+/* Existing React preview content uses the large interior of the right panel. */
+.guandan-selected-preview {
+  position: absolute !important;
+  inset: 126px 18px 18px !important;
+  min-height: 0 !important;
+  padding: 20px 12px !important;
+  border: 2px dashed #d9b75b !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.34) !important;
+  box-shadow: none !important;
+}
+.guandan-selected-preview::before {
+  display: none !important;
+}
+.guandan-selected-preview-header {
+  display: none !important;
+}
+.guandan-selected-preview-cards {
+  min-height: 0 !important;
+  height: 100% !important;
+  overflow: auto !important;
+}
+.guandan-selected-preview-empty {
+  min-height: 100% !important;
+  color: transparent !important;
+}
+
+@media (max-width: 760px) {
+  .guandan-status-bar {
+    padding-left: 66px;
+    padding-right: 64px;
+  }
+  .guandan-status-bar::after {
+    content: "🂡 🂱  掼蛋  🃁 🃑";
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+  .guandan-status-bar > div {
+    font-size: 0.7rem;
+  }
+  .guandan-topbar > :first-child {
+    left: 5px;
+    transform: scale(0.64);
+  }
+  .guandan-topbar > :last-child {
+    right: 6px;
+    transform: scale(0.62);
+  }
+  .guandan-table-stage,
+  .guandan-hand-section {
+    width: 75% !important;
+  }
+  .guandan-private-zone > section.guandan-play-actions {
+    left: 75% !important;
+    width: 25% !important;
+    min-width: 25% !important;
+    max-width: 25% !important;
+    padding: 78px 7px 7px !important;
+  }
+  .guandan-private-zone > section.guandan-play-actions::before {
+    top: 8px;
+    left: 5px;
+    right: 5px;
+    font-size: 12px;
+  }
+  .guandan-private-zone > section.guandan-play-actions::after {
+    left: 9px;
+    right: 9px;
+    font-size: 11px;
+    line-height: 1.45;
+  }
+  .guandan-private-zone > section.guandan-play-actions > button {
+    top: 38px !important;
+    width: calc(50% - 11px) !important;
+    height: 38px !important;
+    font-size: 13px !important;
+    padding: 4px !important;
+    border-radius: 8px !important;
+  }
+  .guandan-private-zone
+    > section.guandan-play-actions
+    > button:nth-last-child(2) {
+    left: 5px !important;
+  }
+  .guandan-private-zone > section.guandan-play-actions > button:last-child {
+    right: 5px !important;
+  }
+  .guandan-selected-preview {
+    inset: 84px 7px 7px !important;
+    padding: 6px !important;
+  }
+}
+
+@media (max-height: 760px) {
+  .guandan-status-bar {
+    flex-basis: 46px;
+    min-height: 46px;
+    padding-block: 6px;
+  }
+  .guandan-public-zone,
+  .guandan-private-zone {
+    padding-top: 25px;
+  }
+  .guandan-hand {
+    min-height: 120px;
+  }
+  .guandan-card-stack > button {
+    margin-bottom: -88px !important;
+  }
+}
+
+/* 2026-08-25 final mini-screen placement: public-table upper-right. */
+.guandan-round-winner-mini {
+  top: 34px !important;
+  right: 10px !important;
+  left: auto !important;
+}
+.guandan-initial-draw-mini {
+  top: 82px !important;
+  right: 10px !important;
+  left: auto !important;
+}
+
+/* Public participant card backs with team colors and live low-card count. */
+.guandan-public-player-backs {
+  position: absolute;
+  z-index: 24;
+  top: 32px;
+  left: 148px;
+  right: 26%;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 3px 5px;
+  scrollbar-width: thin;
+  pointer-events: auto;
+}
+.guandan-public-player-empty {
+  color: #f5e9b5;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.guandan-public-player-back {
+  position: relative;
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  text-align: center;
+  color: #fff9dc;
+  font-size: 0.58rem;
+  line-height: 1.05;
+}
+.guandan-public-player-seat,
+.guandan-public-player-back > strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.guandan-public-player-seat {
+  margin-bottom: 2px;
+  font-weight: 800;
+  color: #fff4b8;
+}
+.guandan-public-player-back > strong {
+  margin-top: 2px;
+  font-size: 0.61rem;
+}
+.guandan-public-card-back {
+  position: relative;
+  display: flex;
+  width: 36px;
+  height: 48px;
+  margin: 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 2px solid #fff8dc;
+  border-radius: 5px;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.16);
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+.guandan-public-card-back::before,
+.guandan-public-card-back::after {
+  content: "◆";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.55rem;
+}
+.guandan-public-card-back::before {
+  top: 5px;
+}
+.guandan-public-card-back::after {
+  bottom: 5px;
+}
+.guandan-public-team-a .guandan-public-card-back {
+  background: linear-gradient(145deg, #9b2525, #5f1111);
+}
+.guandan-public-team-b .guandan-public-card-back {
+  background: linear-gradient(145deg, #245b9b, #123766);
+}
+.guandan-public-player-back.is-active .guandan-public-card-back {
+  outline: 3px solid #ffd75a;
+  outline-offset: 1px;
+}
+.guandan-public-card-count {
+  position: absolute;
+  z-index: 2;
+  top: 17px;
+  right: 0;
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff7c2;
+  border-radius: 50%;
+  background: #f6d64b;
+  color: #3e2600;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+}
+@media (max-width: 900px) {
+  .guandan-public-player-backs {
+    left: 136px;
+    right: 8px;
+  }
+  .guandan-public-player-back {
+    flex-basis: 44px;
+    width: 44px;
+    min-width: 44px;
+  }
+  .guandan-public-card-back {
+    width: 33px;
+    height: 44px;
+  }
+}
