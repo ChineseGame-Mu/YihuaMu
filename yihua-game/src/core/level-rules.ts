@@ -1,7 +1,7 @@
 import { RANKS, SUITS } from "./cards.js";
 import type { Card, Rank, Suit } from "./cards.js";
 import { classifyHand } from "./hand.js";
-import type { ClassifiedHand } from "./hand.js";
+import type { ClassifiedHand, HandKind } from "./hand.js";
 
 export interface LevelRules {
   readonly levelRank: Rank;
@@ -100,6 +100,34 @@ export const enumerateWildcardInterpretations = (
   return [...unique.values()];
 };
 
+export const resolveWildcardInterpretation = (
+  cards: readonly Card[],
+  rules: LevelRules,
+  declaredKind?: HandKind,
+): WildcardInterpretation => {
+  const interpretations = enumerateWildcardInterpretations(cards, rules);
+  const candidates = declaredKind
+    ? interpretations.filter(({ hand }) => hand.kind === declaredKind)
+    : interpretations;
+
+  if (candidates.length === 0) {
+    throw new Error("cards do not form the declared hand");
+  }
+
+  const distinctKinds = new Set(candidates.map(({ hand }) => hand.kind));
+  if (declaredKind === undefined && distinctKinds.size > 1) {
+    throw new Error("ambiguous wildcard hand requires a declared kind");
+  }
+
+  return candidates.reduce((best, candidate) => {
+    if (best.hand.rank === undefined) return candidate;
+    if (candidate.hand.rank === undefined) return best;
+    return compareOrdinaryRanks(candidate.hand.rank, best.hand.rank, rules) > 0
+      ? candidate
+      : best;
+  });
+};
+
 const isBombLike = (hand: ClassifiedHand): boolean =>
   hand.kind === "bomb" ||
   hand.kind === "straight-flush" ||
@@ -116,7 +144,7 @@ const bombTier = (hand: ClassifiedHand): number => {
   return 0;
 };
 
-const canClassifiedBeat = (
+export const canClassifiedBeatWithLevelRules = (
   challenger: ClassifiedHand,
   current: ClassifiedHand,
   rules: LevelRules,
@@ -133,12 +161,10 @@ const canClassifiedBeat = (
     if (challengerTier !== currentTier) return challengerTier > currentTier;
 
     if (challenger.kind === "bomb" && current.kind === "bomb") {
-      if (challenger.size !== current.size)
-        return challenger.size > current.size;
+      if (challenger.size !== current.size) return challenger.size > current.size;
     }
 
-    if (challenger.rank === undefined || current.rank === undefined)
-      return false;
+    if (challenger.rank === undefined || current.rank === undefined) return false;
     return compareOrdinaryRanks(challenger.rank, current.rank, rules) > 0;
   }
 
@@ -160,7 +186,7 @@ export const canBeatWithLevelRules = (
 
   return challengers.some((challenger) =>
     currents.some((current) =>
-      canClassifiedBeat(challenger.hand, current.hand, rules),
+      canClassifiedBeatWithLevelRules(challenger.hand, current.hand, rules),
     ),
   );
 };
