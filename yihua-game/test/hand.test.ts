@@ -10,16 +10,24 @@ const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
 
 const ranks = (values: readonly Rank[], suit?: Suit): Card[] =>
   values.map((rank, index) =>
-    suited(rank, suit ?? (["clubs", "diamonds", "spades", "hearts"][index % 4] as Suit)),
+    suited(
+      rank,
+      suit ?? (["clubs", "diamonds", "spades", "hearts"][index % 4] as Suit),
+    ),
   );
 
 describe("classifyHand", () => {
   it("classifies singles, pairs, triples and bombs", () => {
     expect(classifyHand([suited("A")]).kind).toBe("single");
-    expect(classifyHand([suited("3"), suited("3", "hearts")]).kind).toBe("pair");
+    expect(classifyHand([suited("3"), suited("3", "hearts")]).kind).toBe(
+      "pair",
+    );
     expect(
-      classifyHand([suited("2"), suited("2", "diamonds"), suited("2", "hearts")])
-        .kind,
+      classifyHand([
+        suited("2"),
+        suited("2", "diamonds"),
+        suited("2", "hearts"),
+      ]).kind,
     ).toBe("triple");
     expect(
       classifyHand([
@@ -49,7 +57,10 @@ describe("classifyHand", () => {
       suited("K"),
       suited("K", "spades"),
     ];
-    expect(classifyHand(hand)).toMatchObject({ kind: "triple-pair", rank: "7" });
+    expect(classifyHand(hand)).toMatchObject({
+      kind: "triple-pair",
+      rank: "7",
+    });
   });
 
   it("recognizes ordinary straights and A2345", () => {
@@ -65,7 +76,9 @@ describe("classifyHand", () => {
   });
 
   it("recognizes a straight flush", () => {
-    expect(classifyHand(ranks(["8", "9", "10", "J", "Q"], "hearts"))).toMatchObject({
+    expect(
+      classifyHand(ranks(["8", "9", "10", "J", "Q"], "hearts")),
+    ).toMatchObject({
       kind: "straight-flush",
       rank: "Q",
       suit: "hearts",
@@ -76,28 +89,55 @@ describe("classifyHand", () => {
     const wood = ranks(["4", "4", "5", "5", "6", "6"]);
     const steel = ranks(["9", "9", "9", "10", "10", "10"]);
     expect(classifyHand(wood)).toMatchObject({ kind: "wood-board", rank: "6" });
-    expect(classifyHand(steel)).toMatchObject({ kind: "steel-board", rank: "10" });
+    expect(classifyHand(steel)).toMatchObject({
+      kind: "steel-board",
+      rank: "10",
+    });
   });
 
   it("rejects malformed groups", () => {
     expect(classifyHand([suited("2"), suited("3")]).kind).toBe("invalid");
-    expect(classifyHand(ranks(["3", "3", "4", "4", "6", "6"])).kind).toBe("invalid");
+    expect(classifyHand(ranks(["3", "3", "4", "4", "6", "6"])).kind).toBe(
+      "invalid",
+    );
   });
 });
 
 describe("canBeat", () => {
   it("compares matching ordinary hand kinds by their deciding rank", () => {
-    expect(canBeat(ranks(["7", "8", "9", "10", "J"]), ranks(["6", "7", "8", "9", "10"]))).toBe(true);
-    expect(canBeat(ranks(["6", "7", "8", "9", "10"]), ranks(["7", "8", "9", "10", "J"]))).toBe(false);
-    expect(canBeat([suited("4"), suited("4", "hearts")], [suited("3"), suited("3", "hearts")])).toBe(true);
+    expect(
+      canBeat(
+        ranks(["7", "8", "9", "10", "J"]),
+        ranks(["6", "7", "8", "9", "10"]),
+      ),
+    ).toBe(true);
+    expect(
+      canBeat(
+        ranks(["6", "7", "8", "9", "10"]),
+        ranks(["7", "8", "9", "10", "J"]),
+      ),
+    ).toBe(false);
+    expect(
+      canBeat(
+        [suited("4"), suited("4", "hearts")],
+        [suited("3"), suited("3", "hearts")],
+      ),
+    ).toBe(true);
   });
 
   it("does not compare unrelated ordinary hand kinds", () => {
-    expect(canBeat(ranks(["3", "4", "5", "6", "7"]), [suited("8")])).toBe(false);
+    expect(canBeat(ranks(["3", "4", "5", "6", "7"]), [suited("8")])).toBe(
+      false,
+    );
   });
 
   it("lets bombs beat ordinary hands", () => {
-    const bomb = [suited("4"), suited("4", "diamonds"), suited("4", "spades"), suited("4", "hearts")];
+    const bomb = [
+      suited("4"),
+      suited("4", "diamonds"),
+      suited("4", "spades"),
+      suited("4", "hearts"),
+    ];
     expect(canBeat(bomb, ranks(["6", "7", "8", "9", "10"]))).toBe(true);
   });
 

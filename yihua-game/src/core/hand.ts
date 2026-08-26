@@ -35,14 +35,15 @@ const suitedCards = (
   cards: readonly Card[],
 ): readonly Extract<Card, { kind: "suited" }>[] | null =>
   cards.every((card) => card.kind === "suited")
-    ? (cards as readonly Extract<Card, { kind: "suited" }>[]) 
+    ? (cards as readonly Extract<Card, { kind: "suited" }>[])
     : null;
 
 const groupedRanks = (
   cards: readonly Extract<Card, { kind: "suited" }>[],
 ): Map<Rank, number> => {
   const counts = new Map<Rank, number>();
-  for (const card of cards) counts.set(card.rank, (counts.get(card.rank) ?? 0) + 1);
+  for (const card of cards)
+    counts.set(card.rank, (counts.get(card.rank) ?? 0) + 1);
   return counts;
 };
 
@@ -158,13 +159,17 @@ const compareBombLike = (
     return rankIndex(challenger.rank!) > rankIndex(current.rank!);
   }
 
-  if (challenger.kind === "straight-flush" && current.kind === "straight-flush") {
+  if (
+    challenger.kind === "straight-flush" &&
+    current.kind === "straight-flush"
+  ) {
     return rankIndex(challenger.rank!) > rankIndex(current.rank!);
   }
 
   if (challenger.kind === "bomb") {
     if (challenger.size >= 6) return true;
-    if (challenger.size === 5) return current.kind !== "bomb" || current.size < 5;
+    if (challenger.size === 5)
+      return current.kind !== "bomb" || current.size < 5;
     return false;
   }
 

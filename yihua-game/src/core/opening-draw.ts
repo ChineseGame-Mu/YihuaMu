@@ -42,7 +42,11 @@ export const runOpeningDraw = (
   const pool = shuffleDeck(ordinaryCards(deck), random);
   const attempts: OpeningDrawAttempt[] = [];
 
-  for (let offset = 0; offset + playerCount <= pool.length; offset += playerCount) {
+  for (
+    let offset = 0;
+    offset + playerCount <= pool.length;
+    offset += playerCount
+  ) {
     const cards = pool.slice(offset, offset + playerCount);
     const winnerSeat = uniqueWinner(cards);
     attempts.push({ cards, winnerSeat });
