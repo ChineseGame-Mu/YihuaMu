@@ -22,7 +22,9 @@ const deckCard = (card: Card): DeckCard => ({
   card,
 });
 
-const playingState = (hands: readonly (readonly DeckCard[])[]): PlayingState => ({
+const playingState = (
+  hands: readonly (readonly DeckCard[])[],
+): PlayingState => ({
   phase: "playing",
   config: createTableConfig(4, 0),
   openingDraw: { attempts: [], winnerSeat: 0 },
@@ -36,10 +38,7 @@ describe("play-state", () => {
       deckCard(suitedCard("9", "clubs")),
       deckCard(suitedCard("9", "spades")),
     ];
-    const state = createTurnState(
-      playingState([pair, [], [], []]),
-      "7",
-    );
+    const state = createTurnState(playingState([pair, [], [], []]), "7");
 
     const next = playCards(
       state,
@@ -49,7 +48,11 @@ describe("play-state", () => {
 
     expect(next.hands[0]).toHaveLength(0);
     expect(next.currentTurn).toBe(1);
-    expect(next.currentPlay?.hand).toEqual({ kind: "pair", size: 2, rank: "9" });
+    expect(next.currentPlay?.hand).toEqual({
+      kind: "pair",
+      size: 2,
+      rank: "9",
+    });
     expect(next.publicActions).toHaveLength(1);
   });
 
@@ -62,18 +65,29 @@ describe("play-state", () => {
       deckCard(suitedCard("8", "clubs")),
       deckCard(suitedCard("8", "spades")),
     ];
-    let state = createTurnState(
-      playingState([nines, eights, [], []]),
-      "7",
-    );
+    let state = createTurnState(playingState([nines, eights, [], []]), "7");
 
-    expect(() => playCards(state, 1, eights.map(({ id }) => id))).toThrow();
+    expect(() =>
+      playCards(
+        state,
+        1,
+        eights.map(({ id }) => id),
+      ),
+    ).toThrow();
     expect(() => playCards(state, 0, ["not-in-hand"])).toThrow();
 
-    state = playCards(state, 0, nines.map(({ id }) => id));
-    expect(() => playCards(state, 1, eights.map(({ id }) => id))).toThrow(
-      "does not beat",
+    state = playCards(
+      state,
+      0,
+      nines.map(({ id }) => id),
     );
+    expect(() =>
+      playCards(
+        state,
+        1,
+        eights.map(({ id }) => id),
+      ),
+    ).toThrow("does not beat");
   });
 
   it("uses a heart level wildcard when validating a response", () => {
@@ -90,7 +104,11 @@ describe("play-state", () => {
       "7",
     );
 
-    state = playCards(state, 0, kings.map(({ id }) => id));
+    state = playCards(
+      state,
+      0,
+      kings.map(({ id }) => id),
+    );
     state = playCards(
       state,
       1,
@@ -98,7 +116,11 @@ describe("play-state", () => {
       "pair",
     );
 
-    expect(state.currentPlay?.hand).toEqual({ kind: "pair", size: 2, rank: "A" });
+    expect(state.currentPlay?.hand).toEqual({
+      kind: "pair",
+      size: 2,
+      rank: "A",
+    });
     expect(state.currentTurn).toBe(2);
   });
 

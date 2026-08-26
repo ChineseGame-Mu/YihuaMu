@@ -81,7 +81,11 @@ export const playCards = (
 
   if (
     state.currentPlay !== null &&
-    !canClassifiedBeatWithLevelRules(resolved.hand, state.currentPlay.hand, rules)
+    !canClassifiedBeatWithLevelRules(
+      resolved.hand,
+      state.currentPlay.hand,
+      rules,
+    )
   ) {
     throw new Error("played hand does not beat the current hand");
   }
@@ -108,7 +112,8 @@ export const playCards = (
 
 export const passTurn = (state: TurnState, seat: number): TurnState => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
-  if (state.currentPlay === null) throw new Error("the leading seat cannot pass");
+  if (state.currentPlay === null)
+    throw new Error("the leading seat cannot pass");
 
   const passes = state.consecutivePasses + 1;
   const action: PublicAction = { type: "pass", seat };
