@@ -27,11 +27,14 @@ interface GuandanWebsocketProviderProps {
   children: JSX.Element[] | JSX.Element;
 }
 
+const EXPANDED_TEST_WEBSOCKET =
+  "wss://euro-adam-lib-schemes.trycloudflare.com/api/guandan";
+
 const testWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("test") !== "1") return null;
   const raw = query.get("ws");
-  if (raw === null || raw.trim() === "") return null;
+  if (raw === null || raw.trim() === "") return EXPANDED_TEST_WEBSOCKET;
   try {
     const url = new URL(raw);
     if (url.protocol !== "ws:" && url.protocol !== "wss:") return null;
