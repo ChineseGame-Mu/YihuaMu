@@ -18,6 +18,7 @@ export interface ClassifiedHand {
   readonly size: number;
   readonly rank?: Rank;
   readonly highRank?: Rank;
+  readonly jokerSize?: "small" | "big";
 }
 
 const suitedCards = (cards: readonly Card[]) =>
@@ -86,7 +87,7 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
     const card = cards[0]!;
     return card.kind === "suited"
       ? { kind: "single", size: 1, rank: card.rank }
-      : { kind: "single", size: 1 };
+      : { kind: "single", size: 1, jokerSize: card.size };
   }
 
   if (cards.length === 4 && cards.every((card) => card.kind === "joker")) {
@@ -144,4 +145,52 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   }
 
   return { kind: "invalid", size: cards.length };
+};
+
+const normalStrength = (hand: ClassifiedHand): number | null => {
+  if (hand.kind === "single" && hand.jokerSize !== undefined) {
+    return RANKS.length + (hand.jokerSize === "big" ? 1 : 0);
+  }
+  const rank = hand.rank ?? hand.highRank;
+  return rank === undefined ? null : rankIndex(rank);
+};
+
+const bombStrength = (hand: ClassifiedHand): number | null => {
+  if (hand.kind === "joker-bomb") return 10000;
+  if (hand.kind === "straight-flush") {
+    return 7000 + (normalStrength(hand) ?? 0);
+  }
+  if (hand.kind !== "bomb") return null;
+
+  const rank = normalStrength(hand) ?? 0;
+  if (hand.size >= 6) return 8000 + hand.size * 100 + rank;
+  if (hand.size === 5) return 6000 + rank;
+  return 5000 + rank;
+};
+
+export const canHandBeat = (
+  candidate: ClassifiedHand,
+  current: ClassifiedHand,
+): boolean => {
+  if (candidate.kind === "invalid" || current.kind === "invalid") return false;
+
+  const candidateBomb = bombStrength(candidate);
+  const currentBomb = bombStrength(current);
+  if (candidateBomb !== null || currentBomb !== null) {
+    if (candidateBomb === null) return false;
+    if (currentBomb === null) return true;
+    return candidateBomb > currentBomb;
+  }
+
+  if (candidate.kind !== current.kind || candidate.size !== current.size) {
+    return false;
+  }
+
+  const candidateStrength = normalStrength(candidate);
+  const currentStrength = normalStrength(current);
+  return (
+    candidateStrength !== null &&
+    currentStrength !== null &&
+    candidateStrength > currentStrength
+  );
 };
