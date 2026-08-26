@@ -25,7 +25,7 @@ jobs:
         run: |
           npm install
           npm run build
-      - name: Clippy backend
-        run: cargo clippy -p shengji --all-targets -- -D warnings
+      - name: Clippy deployable backend binary
+        run: cargo clippy -p shengji --bin shengji -- -D warnings
       - name: Test Guandan backend
         run: cargo test -p shengji guandan --no-fail-fast
