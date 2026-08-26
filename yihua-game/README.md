@@ -25,7 +25,7 @@ Implementation code in this directory must be written from behavioral requiremen
 
 The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, the initial table state machine, standard hand classification, and basic hand-to-hand comparison.
 
-Recognized hands now include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. Wild level-card substitution is intentionally deferred to the next rules stage.
+Recognized hands now include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. The current bomb order is four-joker bomb, six-card-or-larger bombs, straight flush, five-card bomb, then four-card bomb. Wild level-card substitution is intentionally deferred to the next rules stage.
 
 ## Migration principle
 
