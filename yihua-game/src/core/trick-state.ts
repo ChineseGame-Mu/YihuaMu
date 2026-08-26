@@ -15,6 +15,7 @@ export interface TrickState {
   readonly leadingPlay: TablePlay | null;
   readonly plays: readonly TablePlay[];
   readonly passedSeats: readonly number[];
+  readonly completedTricks: number;
 }
 
 const nextSeat = (seat: number, playerCount: number) =>
@@ -38,6 +39,7 @@ export const createTrickState = (
     leadingPlay: null,
     plays: [],
     passedSeats: [],
+    completedTricks: 0,
   };
 };
 
@@ -69,7 +71,19 @@ export const playCards = (
 
 export const passTurn = (state: TrickState, seat: number): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
-  if (state.leadingPlay === null) throw new Error("leader cannot pass");
+
+  if (state.leadingPlay === null) {
+    if (state.completedTricks === 0) {
+      throw new Error("opening leader cannot pass");
+    }
+    const passedSeats = [...state.passedSeats, seat];
+    return {
+      ...state,
+      currentTurn: nextSeat(seat, state.playerCount),
+      passedSeats:
+        passedSeats.length >= state.playerCount ? [] : passedSeats,
+    };
+  }
 
   const passedSeats = [...state.passedSeats, seat];
   if (passedSeats.length >= state.playerCount - 1) {
@@ -79,6 +93,7 @@ export const passTurn = (state: TrickState, seat: number): TrickState => {
       leaderSeat: state.leadingPlay.seat,
       leadingPlay: null,
       passedSeats: [],
+      completedTricks: state.completedTricks + 1,
     };
   }
 
