@@ -1,0 +1,121 @@
+name: Verify live expanded Guandan on Render
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/verify-live-expanded-guandan-20260826.yml
+
+permissions:
+  contents: read
+
+jobs:
+  live-expanded-websocket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Install Python websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Verify live Render supports 4-14 player tables
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import time
+          import websockets
+
+          URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
+          PLAYER_COUNTS = [4, 6, 8, 10, 12, 14]
+          CARDS_PER_PLAYER = 27
+
+          async def recv_until(ws, predicate, timeout=30):
+              async def inner():
+                  while True:
+                      raw = await ws.recv()
+                      if isinstance(raw, bytes):
+                          raw = raw.decode('utf-8')
+                      msg = json.loads(raw)
+                      if msg.get('type') == 'error':
+                          raise AssertionError(f"server error: {msg.get('message')}")
+                      if predicate(msg):
+                          return msg
+              return await asyncio.wait_for(inner(), timeout=timeout)
+
+          async def run_table(player_count):
+              room = f'live{player_count}_{int(time.time() * 1000)}'
+              sockets = []
+              try:
+                  for index in range(player_count):
+                      ws = await websockets.connect(URI, open_timeout=20)
+                      sockets.append(ws)
+                      await recv_until(ws, lambda m: m.get('type') == 'connected')
+                      await ws.send(json.dumps({
+                          'type': 'join',
+                          'room': room,
+                          'name': f'Live玩家{index + 1}',
+                      }, ensure_ascii=False))
+                      joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
+                      assert joined.get('seat') == index, (player_count, index, joined)
+
+                  waiting = await recv_until(
+                      sockets[0],
+                      lambda m: m.get('type') == 'waiting'
+                      and len(m.get('players', [])) == player_count,
+                      timeout=30,
+                  )
+                  assert waiting.get('minimum_players') == 4, waiting
+                  assert waiting.get('maximum_players') == 14, waiting
+
+                  await sockets[0].send(json.dumps({
+                      'type': 'start',
+                      'player_count': player_count,
+                  }))
+
+                  winners = []
+                  for seat, ws in enumerate(sockets):
+                      started = await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'started'
+                          and m.get('player_count') == player_count,
+                          timeout=30,
+                      )
+                      assert started.get('cards_per_player') == CARDS_PER_PLAYER, started
+                      state = await recv_until(
+                          ws,
+                          lambda m: m.get('type') == 'state'
+                          and len(m.get('players', [])) == player_count
+                          and len(m.get('initial_draw', [])) == player_count,
+                          timeout=30,
+                      )
+                      hand = await recv_until(ws, lambda m: m.get('type') == 'hand', timeout=30)
+                      assert len(hand.get('cards', [])) == CARDS_PER_PLAYER, (player_count, seat)
+                      assert state.get('hand_counts') == [CARDS_PER_PLAYER] * player_count, state.get('hand_counts')
+                      assert all('Joker' not in card for card in state.get('initial_draw', [])), state.get('initial_draw')
+                      winner = state.get('initial_draw_winner')
+                      assert isinstance(winner, int) and 0 <= winner < player_count, winner
+                      assert state.get('turn') == winner, (state.get('turn'), winner)
+                      winners.append(winner)
+                  assert len(set(winners)) == 1, winners
+                  print(f'LIVE_EXPANDED_{player_count}_OK')
+              finally:
+                  await asyncio.gather(*(ws.close() for ws in sockets), return_exceptions=True)
+
+          async def main():
+              last_error = None
+              for attempt in range(12):
+                  try:
+                      for player_count in PLAYER_COUNTS:
+                          await run_table(player_count)
+                      print('LIVE_EXPANDED_4_TO_14_OK')
+                      print('LIVE_EXPANDED_14_OK')
+                      return
+                  except Exception as exc:
+                      last_error = exc
+                      print(f'live attempt {attempt + 1} not ready: {exc!r}')
+                      await asyncio.sleep(20)
+              raise last_error
+
+          asyncio.run(main())
+          PY
