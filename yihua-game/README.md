@@ -23,9 +23,11 @@ Implementation code in this directory must be written from behavioral requiremen
 
 ## Current clean-room milestone
 
-The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, the initial table state machine, standard hand classification, and basic hand-to-hand comparison.
+The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, the initial table state machine, standard hand classification, and hand-to-hand comparison.
 
-Recognized hands now include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. The current bomb order is four-joker bomb, six-card-or-larger bombs, straight flush, five-card bomb, then four-card bomb. Wild level-card substitution is intentionally deferred to the next rules stage.
+Recognized hands include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. The current bomb order is four-joker bomb, six-card-or-larger bombs, straight flush, five-card bomb, then four-card bomb.
+
+A separate level-card rule layer now treats the current level rank as stronger than ordinary suited ranks and treats the heart card of the current level rank as a wildcard when it is played with other cards. Wildcard interpretations cover pairs, triples, three-with-pair, straights, wood boards, steel boards, straight flushes, and bombs while leaving the already-verified base classifier unchanged.
 
 ## Migration principle
 
