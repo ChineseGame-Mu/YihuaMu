@@ -34,7 +34,7 @@ jobs:
         working-directory: frontend
         run: npm test -- --runInBand
       - name: Guandan backend tests
-        run: cargo test -p backend guandan --no-fail-fast
+        run: cargo test -p shengji guandan --no-fail-fast
       - name: Commit update
         run: |
           git config user.name "github-actions[bot]"
