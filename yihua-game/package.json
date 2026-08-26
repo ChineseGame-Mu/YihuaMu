@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "npm run format:check && npm run typecheck && npm test",
+    "prepare": "node scripts/install-hooks.mjs",
+    "check": "npm run prettier:version && npm run format:check && npm run typecheck && npm test",
+    "prettier:version": "node scripts/check-prettier-version.mjs",
     "format": "prettier --write .",
+    "format:staged": "node scripts/format-staged.mjs",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
