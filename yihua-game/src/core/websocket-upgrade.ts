@@ -1,3 +1,4 @@
+import { disconnectHuman, reconnectHuman } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
 import type { ConnectionContext, TextSocket } from "./websocket-service.js";
 
@@ -30,19 +31,53 @@ export const websocketContextFromRequest = (
   return playerId === undefined ? { roomId } : { roomId, playerId };
 };
 
+const setExistingHumanConnection = async (
+  runtime: ServerRuntime,
+  roomId: string,
+  playerId: string,
+  connected: boolean,
+): Promise<void> => {
+  const managed = runtime.rooms.get(roomId);
+  const participant = managed.room.participants.find(
+    ({ id, kind }) => id === playerId && kind === "human",
+  );
+  if (!participant || participant.connected === connected) return;
+
+  const next = runtime.rooms.set(roomId, {
+    ...managed,
+    room: connected
+      ? reconnectHuman(managed.room, playerId)
+      : disconnectHuman(managed.room, playerId),
+  });
+  await runtime.websocket.broadcastRoomState(next);
+};
+
 export const attachUpgradedConnection = async (
   runtime: ServerRuntime,
   connection: UpgradedConnection,
 ): Promise<void> => {
-  runtime.sockets.register(connection.context.roomId, connection.socket);
-  connection.onClose(() => {
-    runtime.sockets.unregister(connection.context.roomId, connection.socket);
+  const { roomId, playerId } = connection.context;
+  runtime.sockets.register(roomId, connection.socket, playerId);
+
+  if (playerId !== undefined) {
+    await setExistingHumanConnection(runtime, roomId, playerId, true);
+  }
+
+  connection.onClose(async () => {
+    runtime.sockets.unregister(roomId, connection.socket);
+    if (
+      playerId !== undefined &&
+      runtime.sockets.playerConnectionCount(roomId, playerId) === 0
+    ) {
+      try {
+        await setExistingHumanConnection(runtime, roomId, playerId, false);
+      } catch {
+        // The room may already have been removed while the socket was closing.
+      }
+    }
   });
 
-  await runtime.websocket.sendSnapshot(
-    connection.socket,
-    connection.context.roomId,
-  );
+  await runtime.websocket.sendSnapshot(connection.socket, roomId);
 
   connection.onText(async (text) => {
     await runtime.websocket.handleText(
