@@ -33,7 +33,11 @@ export const createTableConfig = (
   if (!isSupportedPlayerCount(playerCount)) {
     throw new Error("player count must be one of 4, 6, 8, 10, 12, 14");
   }
-  if (!Number.isInteger(botCount) || botCount < MIN_BOT_COUNT || botCount > MAX_BOT_COUNT) {
+  if (
+    !Number.isInteger(botCount) ||
+    botCount < MIN_BOT_COUNT ||
+    botCount > MAX_BOT_COUNT
+  ) {
     throw new Error("bot count must be an integer from 0 through 3");
   }
   if (botCount >= playerCount) {
