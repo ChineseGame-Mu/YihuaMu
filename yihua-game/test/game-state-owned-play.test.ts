@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
-import { playGameCards, type PlayingState } from "../src/core/game-state.js";
+import {
+  passGameTurn,
+  playGameCards,
+  type PlayingState,
+} from "../src/core/game-state.js";
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
@@ -19,13 +23,16 @@ const deckCard = (id: string, card: Card): DeckCard => ({
 
 const playingState = (
   hands: readonly (readonly DeckCard[])[],
+  leaderSeat = 0,
+  finishedSeats: readonly number[] = [],
 ): PlayingState => ({
   phase: "playing",
   config: createTableConfig(4, 0),
-  openingDraw: { attempts: [], winnerSeat: 0 },
+  openingDraw: { attempts: [], winnerSeat: leaderSeat },
   hands,
-  currentTurn: 0,
-  trick: createTrickState(4, 0),
+  currentTurn: leaderSeat,
+  trick: createTrickState(4, leaderSeat),
+  finishedSeats,
 });
 
 describe("game-state owned-card play integration", () => {
@@ -97,17 +104,68 @@ describe("game-state owned-card play integration", () => {
     expect(afterBeat.trick.leadingPlay?.seat).toBe(1);
   });
 
-  it("marks the round complete when a seat plays its final owned card", () => {
+  it("records a seat that plays its final card without ending the round", () => {
     const ace = suited("A", "spades");
-    const state = playingState([[deckCard("0:spades:A", ace)], [], [], []]);
+    const state = playingState([
+      [deckCard("0:spades:A", ace)],
+      [deckCard("0:clubs:3", suited("3", "clubs"))],
+      [deckCard("0:clubs:4", suited("4", "clubs"))],
+      [deckCard("0:clubs:5", suited("5", "clubs"))],
+    ]);
 
     const finished = playGameCards(state, 0, [ace]);
 
-    expect(finished.phase).toBe("round-complete");
-    if (finished.phase !== "round-complete") {
+    expect(finished.phase).toBe("playing");
+    expect(finished.finishedSeats).toEqual([0]);
+    expect(finished.hands[0]).toHaveLength(0);
+  });
+
+  it("gives the lead to player 4 after player 2 finishes and both opponents pass", () => {
+    const eight = suited("8", "clubs");
+    const state = playingState(
+      [
+        [deckCard("0:clubs:3", suited("3", "clubs"))],
+        [deckCard("0:clubs:8", eight)],
+        [deckCard("0:clubs:4", suited("4", "clubs"))],
+        [deckCard("0:clubs:5", suited("5", "clubs"))],
+      ],
+      1,
+    );
+
+    const afterFinal = playGameCards(state, 1, [eight]);
+    expect(afterFinal.phase).toBe("playing");
+    if (afterFinal.phase !== "playing") throw new Error("round ended too early");
+    expect(afterFinal.finishedSeats).toEqual([1]);
+    expect(afterFinal.currentTurn).toBe(2);
+
+    const afterPlayer3Pass = passGameTurn(afterFinal, 2);
+    expect(afterPlayer3Pass.currentTurn).toBe(0);
+
+    const afterPlayer1Pass = passGameTurn(afterPlayer3Pass, 0);
+    expect(afterPlayer1Pass.trick.leadingPlay).toBeNull();
+    expect(afterPlayer1Pass.currentTurn).toBe(3);
+    expect(afterPlayer1Pass.trick.leaderSeat).toBe(3);
+  });
+
+  it("completes the round once the remaining last place is determined", () => {
+    const six = suited("6", "clubs");
+    const state = playingState(
+      [
+        [],
+        [],
+        [deckCard("0:clubs:6", six)],
+        [deckCard("0:clubs:7", suited("7", "clubs"))],
+      ],
+      2,
+      [0, 1],
+    );
+
+    const completed = playGameCards(state, 2, [six]);
+    expect(completed.phase).toBe("round-complete");
+    if (completed.phase !== "round-complete") {
       throw new Error("expected round completion");
     }
-    expect(finished.winnerSeat).toBe(0);
-    expect(finished.hands[0]).toHaveLength(0);
+    expect(completed.winnerSeat).toBe(0);
+    expect(completed.finishedSeats).toEqual([0, 1, 2, 3]);
   });
 });
