@@ -8,7 +8,11 @@ import {
   chooseRobotTurn,
   robotDelayMs,
 } from "../src/core/robot.js";
-import { createTableConfig } from "../src/core/table.js";
+import {
+  createTableConfig,
+  SUPPORTED_PLAYER_COUNTS,
+  type SupportedPlayerCount,
+} from "../src/core/table.js";
 
 const suited = (rank: Rank, suit: Suit): Card => ({
   kind: "suited",
@@ -21,13 +25,30 @@ const deckCard = (card: Card): DeckCard => ({
   copy: 0,
   card,
 });
-const playing = (hands: readonly (readonly DeckCard[])[]): PlayingState => ({
+const playing = (
+  hands: readonly (readonly DeckCard[])[],
+  playerCount: SupportedPlayerCount = 4,
+): PlayingState => ({
   phase: "playing",
-  config: createTableConfig(4, 1),
+  config: createTableConfig(playerCount, 1),
   openingDraw: { attempts: [], winnerSeat: 0 },
   hands,
   currentTurn: 0,
 });
+
+const runRobotGame = (playerCount: SupportedPlayerCount) => {
+  const hands = dealHands(createDeck(playerCount), playerCount);
+  let state = createTurnState(playing(hands, playerCount), "7");
+  let turns = 0;
+  const turnLimit = playerCount * 600;
+
+  while (state.finishedSeats.length < playerCount - 1 && turns < turnLimit) {
+    state = applyRobotTurn(state, state.currentTurn);
+    turns += 1;
+  }
+
+  return { state, turns, turnLimit };
+};
 
 describe("robot turns", () => {
   it("keeps the human-like delay inside the configured range", () => {
@@ -104,20 +125,14 @@ describe("robot turns", () => {
     expect(next.publicActions.at(-1)?.type).toBe("play");
   });
 
-  it("runs a complete four-robot 27-card game through the real turn state", () => {
-    const hands = dealHands(createDeck(4), 4);
-    let state = createTurnState(playing(hands), "7");
-    let turns = 0;
-
-    while (state.finishedSeats.length < 3 && turns < 2000) {
-      state = applyRobotTurn(state, state.currentTurn);
-      turns += 1;
+  it("runs every supported 27-card table to completion", () => {
+    for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
+      const { state, turns, turnLimit } = runRobotGame(playerCount);
+      expect(turns).toBeLessThan(turnLimit);
+      expect(state.finishedSeats).toHaveLength(playerCount - 1);
+      expect(new Set(state.finishOrder).size).toBe(state.finishOrder.length);
+      expect(state.finishOrder).toHaveLength(playerCount - 1);
+      expect(state.hands.flat()).toHaveLength(27);
     }
-
-    expect(turns).toBeLessThan(2000);
-    expect(state.finishedSeats.length).toBeGreaterThanOrEqual(3);
-    expect(new Set(state.finishOrder).size).toBe(state.finishOrder.length);
-    expect(state.finishOrder.length).toBeGreaterThanOrEqual(3);
-    expect(state.hands.flat().length).toBeLessThanOrEqual(27);
   });
 });
