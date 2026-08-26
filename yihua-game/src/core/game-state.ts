@@ -96,6 +96,24 @@ export const startGame = (
 ): PlayingState =>
   dealAfterOpeningDraw(startOpeningDraw(lobby, random), random);
 
+export const startNextRound = (
+  completed: RoundCompleteState,
+  random: RandomSource = Math.random,
+): PlayingState => {
+  const dealDeck = shuffleDeck(createDeck(completed.config.playerCount), random);
+  const hands = dealHands(dealDeck, completed.config.playerCount);
+  const trick = createTrickState(completed.config.playerCount, completed.winnerSeat);
+
+  return {
+    phase: "playing",
+    config: completed.config,
+    openingDraw: completed.openingDraw,
+    hands,
+    currentTurn: trick.currentTurn,
+    trick,
+  };
+};
+
 const sameCard = (left: Card, right: Card): boolean => {
   if (left.kind !== right.kind) return false;
   if (left.kind === "joker" && right.kind === "joker") {
