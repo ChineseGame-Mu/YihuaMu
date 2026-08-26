@@ -1,15 +1,16 @@
 import { createHash } from "node:crypto";
 import type { Socket } from "node:net";
-import type { ConnectionContext, TextSocket } from "./core/websocket-service.js";
+import type {
+  ConnectionContext,
+  TextSocket,
+} from "./core/websocket-service.js";
 import type { UpgradedConnection } from "./core/websocket-upgrade.js";
 
 const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME_BYTES = 1024 * 1024;
 
 export const websocketAcceptKey = (clientKey: string): string =>
-  createHash("sha1")
-    .update(`${clientKey}${WEBSOCKET_GUID}`)
-    .digest("base64");
+  createHash("sha1").update(`${clientKey}${WEBSOCKET_GUID}`).digest("base64");
 
 const encodeServerFrame = (opcode: number, payload: Buffer): Buffer => {
   if (payload.length > MAX_FRAME_BYTES) {
@@ -17,7 +18,10 @@ const encodeServerFrame = (opcode: number, payload: Buffer): Buffer => {
   }
 
   if (payload.length < 126) {
-    return Buffer.concat([Buffer.from([0x80 | opcode, payload.length]), payload]);
+    return Buffer.concat([
+      Buffer.from([0x80 | opcode, payload.length]),
+      payload,
+    ]);
   }
 
   if (payload.length <= 0xffff) {
@@ -94,9 +98,7 @@ export const decodeClientFrame = (
   };
 };
 
-export class NodeWebSocketConnection
-  implements UpgradedConnection, TextSocket
-{
+export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   private buffer = Buffer.alloc(0);
   private textHandler: ((text: string) => void | Promise<void>) | undefined;
 
