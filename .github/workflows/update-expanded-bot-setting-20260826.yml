@@ -1,0 +1,38 @@
+name: Update expanded Guandan bot setting
+
+on:
+  push:
+    branches:
+      - patch/guandan-expanded-bot-setting-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Update bot setting text
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '''          <p>\n            开局前可选择 1 至 3\n            个机器人补足本桌人数；真人加机器人总数不能超过所选桌人数。\n          </p>'''
+          new = '''          <p>\n            4至14人大桌开局前可选择 1 至 3 个机器人。\n            真人加机器人总数不能超过所选桌人数。\n          </p>'''
+          if old not in s:
+              raise SystemExit('expected bot-setting text not found')
+          s = s.replace(old, new)
+          p.write_text(s)
+          PY
+      - name: Commit to master
+        run: |
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add frontend/src/GuandanTable.tsx
+          git commit -m "feat(guandan): bot setting for 4-14 tables"
+          git push origin HEAD:master
