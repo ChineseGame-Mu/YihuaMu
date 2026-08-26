@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "smoke": "node scripts/smoke-server.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
