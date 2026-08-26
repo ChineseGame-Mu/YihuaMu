@@ -1,1 +1,1 @@
-Force Render redeploy after CI #381 formatting fix: Guandan white background, green borders, and prominent reselect buttons.
+Force Render redeploy after Guandan backend lead-pass rule update: opening lead must play; from the second trick onward an empty-table leader may pass. Target branch commit includes d6eb827bc2012cec5086722d5d4c9bba79d0480f.
