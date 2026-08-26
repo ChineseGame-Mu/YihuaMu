@@ -56,32 +56,44 @@ export const createLobbyState = (
   config: createTableConfig(playerCount, botCount),
 });
 
-export const startGame = (
+export const startOpeningDraw = (
   lobby: LobbyState,
   random: RandomSource = Math.random,
-): PlayingState => {
-  const openingDeck = createDeck(lobby.config.playerCount);
-  const openingDraw = runOpeningDraw(
-    openingDeck,
+): OpeningDrawState => ({
+  phase: "opening-draw",
+  config: lobby.config,
+  openingDraw: runOpeningDraw(
+    createDeck(lobby.config.playerCount),
     lobby.config.playerCount,
     random,
-  );
-  const dealDeck = shuffleDeck(createDeck(lobby.config.playerCount), random);
-  const hands = dealHands(dealDeck, lobby.config.playerCount);
+  ),
+});
+
+export const dealAfterOpeningDraw = (
+  opening: OpeningDrawState,
+  random: RandomSource = Math.random,
+): PlayingState => {
+  const dealDeck = shuffleDeck(createDeck(opening.config.playerCount), random);
+  const hands = dealHands(dealDeck, opening.config.playerCount);
   const trick = createTrickState(
-    lobby.config.playerCount,
-    openingDraw.winnerSeat,
+    opening.config.playerCount,
+    opening.openingDraw.winnerSeat,
   );
 
   return {
     phase: "playing",
-    config: lobby.config,
-    openingDraw,
+    config: opening.config,
+    openingDraw: opening.openingDraw,
     hands,
     currentTurn: trick.currentTurn,
     trick,
   };
 };
+
+export const startGame = (
+  lobby: LobbyState,
+  random: RandomSource = Math.random,
+): PlayingState => dealAfterOpeningDraw(startOpeningDraw(lobby, random), random);
 
 const sameCard = (left: Card, right: Card): boolean => {
   if (left.kind !== right.kind) return false;

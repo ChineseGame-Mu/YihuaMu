@@ -3,9 +3,11 @@ import { createDeck } from "../src/core/deck.js";
 import {
   completeRound,
   createLobbyState,
+  dealAfterOpeningDraw,
   passGameTurn,
   playGameCards,
   startGame,
+  startOpeningDraw,
 } from "../src/core/game-state.js";
 import { runOpeningDraw } from "../src/core/opening-draw.js";
 import {
@@ -29,6 +31,24 @@ describe("opening draw", () => {
         ),
       ).toBe(true);
     }
+  });
+
+  it("exposes opening draw as an independent state before dealing", () => {
+    const lobby = createLobbyState(4, 1);
+    const opening = startOpeningDraw(lobby, () => 0.37);
+
+    expect(opening.phase).toBe("opening-draw");
+    expect(opening.config).toBe(lobby.config);
+    expect(opening.openingDraw.winnerSeat).toBeGreaterThanOrEqual(0);
+    expect(opening.openingDraw.winnerSeat).toBeLessThan(4);
+
+    const playing = dealAfterOpeningDraw(opening, () => 0.42);
+    expect(playing.phase).toBe("playing");
+    expect(playing.openingDraw).toBe(opening.openingDraw);
+    expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
+    expect(playing.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(
+      true,
+    );
   });
 });
 
