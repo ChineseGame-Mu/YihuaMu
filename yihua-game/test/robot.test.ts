@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
 import type { PlayingState } from "../src/core/game-state.js";
-import { playCards, createTurnState } from "../src/core/play-state.js";
-import { chooseRobotTurn, robotDelayMs } from "../src/core/robot.js";
+import { createTurnState, playCards } from "../src/core/play-state.js";
+import {
+  applyRobotTurn,
+  chooseRobotTurn,
+  robotDelayMs,
+} from "../src/core/robot.js";
 import { createTableConfig } from "../src/core/table.js";
 
 const suited = (rank: Rank, suit: Suit): Card => ({
@@ -83,5 +87,20 @@ describe("robot turns", () => {
       aces.map(({ id }) => id),
     );
     expect(chooseRobotTurn(state, 1)).toEqual({ type: "pass" });
+  });
+
+  it("applies a robot play through the same turn state and records finishing", () => {
+    const robotCard = deckCard(suited("9", "clubs"));
+    const opponent = deckCard(suited("8", "clubs"));
+    const state = createTurnState(
+      playing([[robotCard], [opponent], [], []]),
+      "7",
+    );
+
+    const next = applyRobotTurn(state, 0);
+    expect(next.hands[0]).toHaveLength(0);
+    expect(next.finishedSeats).toContain(0);
+    expect(next.finishOrder).toEqual([0]);
+    expect(next.publicActions.at(-1)?.type).toBe("play");
   });
 });
