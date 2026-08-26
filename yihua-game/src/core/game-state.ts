@@ -7,7 +7,11 @@ import {
   type RandomSource,
 } from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
-import { createTableConfig, type TableConfig } from "./table.js";
+import {
+  createTableConfig,
+  teammateSeatsForSeat,
+  type TableConfig,
+} from "./table.js";
 import {
   createTrickState,
   passTurn,
@@ -35,11 +39,13 @@ export interface PlayingState {
   readonly hands: readonly (readonly DeckCard[])[];
   readonly currentTurn: number;
   readonly trick: TrickState;
+  readonly finishedSeats?: readonly number[];
 }
 
 export interface RoundCompleteState extends Omit<PlayingState, "phase"> {
   readonly phase: "round-complete";
   readonly winnerSeat: number;
+  readonly finishedSeats: readonly number[];
 }
 
 export type GameState =
@@ -87,6 +93,7 @@ export const dealAfterOpeningDraw = (
     hands,
     currentTurn: trick.currentTurn,
     trick,
+    finishedSeats: [],
   };
 };
 
@@ -117,6 +124,7 @@ export const startNextRound = (
     hands,
     currentTurn: trick.currentTurn,
     trick,
+    finishedSeats: [],
   };
 };
 
@@ -150,34 +158,102 @@ const removeCardsFromHand = (
   return remaining;
 };
 
+const finishedSeatsOf = (state: PlayingState): readonly number[] =>
+  state.finishedSeats ?? [];
+
+const activeSeatsFor = (
+  state: PlayingState,
+  finishedSeats: readonly number[] = finishedSeatsOf(state),
+): number[] =>
+  Array.from({ length: state.config.playerCount }, (_, seat) => seat).filter(
+    (seat) => !finishedSeats.includes(seat),
+  );
+
+const catchLeadSeat = (
+  state: PlayingState,
+  finishedLeader: number,
+  activeSeats: readonly number[],
+): number | null => {
+  const active = new Set(activeSeats);
+  const teammates = teammateSeatsForSeat(
+    state.config.playerCount,
+    finishedLeader,
+  ).filter((seat) => active.has(seat));
+  if (teammates.length === 0) return null;
+  return teammates.reduce((nearest, seat) => {
+    const nearestDistance =
+      (nearest - finishedLeader + state.config.playerCount) %
+      state.config.playerCount;
+    const seatDistance =
+      (seat - finishedLeader + state.config.playerCount) %
+      state.config.playerCount;
+    return seatDistance < nearestDistance ? seat : nearest;
+  });
+};
+
 export const playGameCards = (
   state: PlayingState,
   seat: number,
   cards: readonly Card[],
 ): PlayingState | RoundCompleteState => {
-  const trick = playCards(state.trick, seat, cards);
+  const priorFinishedSeats = finishedSeatsOf(state);
+  if (priorFinishedSeats.includes(seat)) {
+    throw new Error("finished seat cannot play");
+  }
   const hand = state.hands[seat];
   if (hand === undefined) throw new Error("seat is outside the table");
   const remainingHand = removeCardsFromHand(hand, cards);
+  const finishedSeats =
+    remainingHand.length === 0
+      ? [...priorFinishedSeats, seat]
+      : [...priorFinishedSeats];
+  const activeSeats = activeSeatsFor(state, finishedSeats);
+  const trick = playCards(state.trick, seat, cards, activeSeats);
   const hands = state.hands.map((currentHand, currentSeat) =>
     currentSeat === seat ? remainingHand : currentHand,
   );
   const nextState: PlayingState = {
     ...state,
     hands,
+    finishedSeats,
     currentTurn: trick.currentTurn,
     trick,
   };
-  return remainingHand.length === 0
-    ? completeRound(nextState, seat)
-    : nextState;
+
+  if (finishedSeats.length < state.config.playerCount - 1) return nextState;
+
+  const lastSeat = activeSeats[0];
+  const finishOrder =
+    lastSeat === undefined ? finishedSeats : [...finishedSeats, lastSeat];
+  return completeRound(
+    { ...nextState, finishedSeats: finishOrder },
+    finishOrder[0] ?? seat,
+  );
 };
 
 export const passGameTurn = (
   state: PlayingState,
   seat: number,
 ): PlayingState => {
-  const trick = passTurn(state.trick, seat);
+  const finishedSeats = finishedSeatsOf(state);
+  if (finishedSeats.includes(seat)) {
+    throw new Error("finished seat cannot pass");
+  }
+  const activeSeats = activeSeatsFor(state, finishedSeats);
+  const priorLeader = state.trick.leadingPlay?.seat ?? null;
+  let trick = passTurn(state.trick, seat, activeSeats);
+
+  if (
+    priorLeader !== null &&
+    trick.leadingPlay === null &&
+    finishedSeats.includes(priorLeader)
+  ) {
+    const catchSeat = catchLeadSeat(state, priorLeader, activeSeats);
+    if (catchSeat !== null) {
+      trick = { ...trick, leaderSeat: catchSeat, currentTurn: catchSeat };
+    }
+  }
+
   return { ...state, currentTurn: trick.currentTurn, trick };
 };
 
@@ -197,5 +273,6 @@ export const completeRound = (
     ...state,
     phase: "round-complete",
     winnerSeat,
+    finishedSeats: state.finishedSeats ?? [],
   };
 };
