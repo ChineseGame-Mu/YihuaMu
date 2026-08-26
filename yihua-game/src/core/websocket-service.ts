@@ -5,6 +5,7 @@ import {
 } from "./protocol.js";
 import { roomStateMessage, applyClientMessage } from "./session.js";
 import { RoomManager, type ManagedRoom } from "./room-manager.js";
+import { RoomSocketHub } from "./room-socket-hub.js";
 
 export interface TextSocket {
   send(text: string): void | Promise<void>;
@@ -17,7 +18,10 @@ export interface ConnectionContext {
 }
 
 export class WebSocketService {
-  constructor(private readonly rooms: RoomManager) {}
+  constructor(
+    private readonly rooms: RoomManager,
+    private readonly sockets: RoomSocketHub,
+  ) {}
 
   async handleText(
     socket: TextSocket,
@@ -30,15 +34,7 @@ export class WebSocketService {
 
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
-        await socket.send(
-          encodeServerMessage({
-            type: "room_state",
-            roomId: next.room.roomId,
-            playerCount: next.room.config.playerCount,
-            robotCount: next.room.config.botCount,
-            participants: next.room.participants,
-          }),
-        );
+        await this.broadcastRoomState(next);
         return next;
       }
 
@@ -47,7 +43,15 @@ export class WebSocketService {
         ...managed,
         room: result.room,
       });
-      await socket.send(encodeServerMessage(result.response));
+
+      if (result.response.type === "room_state") {
+        await this.sockets.broadcast(
+          context.roomId,
+          encodeServerMessage(result.response),
+        );
+      } else {
+        await socket.send(encodeServerMessage(result.response));
+      }
       return next;
     } catch (error) {
       const response: ServerMessage = {
@@ -63,5 +67,12 @@ export class WebSocketService {
   async sendSnapshot(socket: TextSocket, roomId: string): Promise<void> {
     const managed = this.rooms.get(roomId);
     await socket.send(encodeServerMessage(roomStateMessage(managed.room)));
+  }
+
+  async broadcastRoomState(managed: ManagedRoom): Promise<void> {
+    await this.sockets.broadcast(
+      managed.room.roomId,
+      encodeServerMessage(roomStateMessage(managed.room)),
+    );
   }
 }
