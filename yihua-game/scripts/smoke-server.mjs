@@ -211,7 +211,9 @@ try {
     firstGameState.currentTurn !== firstGameState.openingDrawWinner ||
     firstGameState.handCounts.some((count) => count !== 27)
   ) {
-    throw new Error(`invalid public game state: ${JSON.stringify(firstGameState)}`);
+    throw new Error(
+      `invalid public game state: ${JSON.stringify(firstGameState)}`,
+    );
   }
 
   for (const gameState of gameStates.slice(1)) {
