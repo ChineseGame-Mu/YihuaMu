@@ -1,0 +1,35 @@
+name: QA format Guandan CSS once
+
+on:
+  push:
+    branches: [optimize/guandan-online-performance-20260826]
+    paths:
+      - .github/workflows/qa-format-guandan-css-once-20260826.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: optimize/guandan-online-performance-20260826
+          fetch-depth: 0
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install
+      - name: Apply exact Prettier 3.4.1 formatting
+        working-directory: frontend
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier src/guandan-public-player-position.css --write
+      - name: Commit formatter output
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/guandan-public-player-position.css
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(qa): apply exact Prettier output"
+          git push origin HEAD:optimize/guandan-online-performance-20260826
