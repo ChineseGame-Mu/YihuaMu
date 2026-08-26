@@ -34,7 +34,10 @@ export const teammateSeatsForSeat = (
     throw new Error("seat is outside the table");
   }
   const team = teamForSeat(seat);
-  return Array.from({ length: playerCount }, (_, currentSeat) => currentSeat).filter(
+  return Array.from(
+    { length: playerCount },
+    (_, currentSeat) => currentSeat,
+  ).filter(
     (currentSeat) => currentSeat !== seat && teamForSeat(currentSeat) === team,
   );
 };
