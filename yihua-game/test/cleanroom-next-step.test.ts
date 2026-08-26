@@ -89,4 +89,36 @@ describe("clean-room next-step integration", () => {
     expect(state.leaderSeat).toBe(3);
     expect(state.passedSeats).toEqual([]);
   });
+
+  it("clears stale passes when a later seat overtakes the leading play", () => {
+    let state = createTrickState(4, 2);
+    state = playCards(state, 2, [suited("8", "clubs")]);
+    state = passTurn(state, 3);
+    expect(state.passedSeats).toEqual([3]);
+
+    state = playCards(state, 0, [suited("9", "clubs")]);
+    expect(state.leadingPlay?.seat).toBe(0);
+    expect(state.leaderSeat).toBe(0);
+    expect(state.currentTurn).toBe(1);
+    expect(state.passedSeats).toEqual([]);
+
+    state = passTurn(state, 1);
+    state = passTurn(state, 2);
+    expect(state.leadingPlay?.seat).toBe(0);
+    expect(state.completedTricks).toBe(0);
+
+    state = passTurn(state, 3);
+    expect(state.leadingPlay).toBeNull();
+    expect(state.currentTurn).toBe(0);
+    expect(state.leaderSeat).toBe(0);
+    expect(state.completedTricks).toBe(1);
+  });
+
+  it("rejects play or pass from a seat that is not on turn", () => {
+    const state = createTrickState(4, 1);
+    expect(() => playCards(state, 2, [suited("8", "clubs")])).toThrow(
+      "not this seat's turn",
+    );
+    expect(() => passTurn(state, 2)).toThrow("not this seat's turn");
+  });
 });
