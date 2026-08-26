@@ -34,4 +34,4 @@ jobs:
           git diff --cached --quiet || git commit -m "style(yihua-game): apply exact Prettier output"
           git push
 
-# Triggered again after adding validated table play state.
+# Triggered again after replacing exponential wildcard substitution with pattern matching.
