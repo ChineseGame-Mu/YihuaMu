@@ -49,6 +49,7 @@ describe("play-state", () => {
 
     expect(next.hands[0]).toHaveLength(0);
     expect(next.finishedSeats).toContain(0);
+    expect(next.finishOrder).toEqual([0]);
     expect(next.currentTurn).toBe(1);
     expect(next.currentPlay?.hand).toEqual({
       kind: "pair",
@@ -155,6 +156,7 @@ describe("play-state", () => {
 
     state = playCards(state, 1, [player2[0]!.id]);
     expect(state.finishedSeats).toContain(1);
+    expect(state.finishOrder).toEqual([1]);
     expect(state.currentTurn).toBe(2);
 
     state = passTurn(state, 2);
@@ -165,6 +167,7 @@ describe("play-state", () => {
     expect(state.currentTurn).toBe(3);
 
     state = playCards(state, 3, [player4[0]!.id]);
+    expect(state.finishOrder).toEqual([1, 3]);
     expect(state.publicActions.at(-1)?.type).toBe("play");
   });
 });
