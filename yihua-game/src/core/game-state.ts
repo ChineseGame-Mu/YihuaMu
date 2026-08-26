@@ -9,6 +9,7 @@ import {
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
 import {
   createTableConfig,
+  teamForSeat,
   teammateSeatsForSeat,
   type TableConfig,
 } from "./table.js";
@@ -169,6 +170,16 @@ const activeSeatsFor = (
     (seat) => !finishedSeats.includes(seat),
   );
 
+const respondingSeatsFor = (
+  leaderSeat: number,
+  activeSeats: readonly number[],
+  finishedSeats: readonly number[],
+): number[] => {
+  if (!finishedSeats.includes(leaderSeat)) return [...activeSeats];
+  const leaderTeam = teamForSeat(leaderSeat);
+  return activeSeats.filter((seat) => teamForSeat(seat) !== leaderTeam);
+};
+
 const catchLeadSeat = (
   state: PlayingState,
   finishedLeader: number,
@@ -208,7 +219,8 @@ export const playGameCards = (
       ? [...priorFinishedSeats, seat]
       : [...priorFinishedSeats];
   const activeSeats = activeSeatsFor(state, finishedSeats);
-  const trick = playCards(state.trick, seat, cards, activeSeats);
+  const rotationSeats = respondingSeatsFor(seat, activeSeats, finishedSeats);
+  const trick = playCards(state.trick, seat, cards, rotationSeats);
   const hands = state.hands.map((currentHand, currentSeat) =>
     currentSeat === seat ? remainingHand : currentHand,
   );
@@ -241,7 +253,11 @@ export const passGameTurn = (
   }
   const activeSeats = activeSeatsFor(state, finishedSeats);
   const priorLeader = state.trick.leadingPlay?.seat ?? null;
-  let trick = passTurn(state.trick, seat, activeSeats);
+  const rotationSeats =
+    priorLeader === null
+      ? activeSeats
+      : respondingSeatsFor(priorLeader, activeSeats, finishedSeats);
+  let trick = passTurn(state.trick, seat, rotationSeats);
 
   if (
     priorLeader !== null &&
