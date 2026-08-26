@@ -95,21 +95,25 @@ jobs:
                       await ctl.wait(lambda old=old,oldsig=oldsig:ctl.seq>old and sig(ctl.state)!=oldsig)
                       actions+=1; assert actions<4000
                   ended=ctl.state; winner=ended.get('last_game_winner'); order=ended.get('finish_order',[]); first=order[0] if order else None
-                  assert first is not None and winner is not None and len(order)==N and ended.get('hand_counts')==[0]*N and bot_actions>0
-                  assert winner==first, (winner,first,order)
-                  print('MIXED6_END_DIAG',json.dumps({'game':no,'first_finisher':name(first),'server_winner':name(winner),'finish_order':[name(x) for x in order]},ensure_ascii=False))
+                  print('MIXED6_RAW_END',json.dumps({'game':no,'opening_draw_winner':name(opening_winner),'actions':actions,'bot_actions':bot_actions,'winner':name(winner) if winner is not None else None,'finish_order':[name(x) for x in order],'hand_counts':ended.get('hand_counts'),'phase':ended.get('next_round_phase')},ensure_ascii=False),flush=True)
+                  assert first is not None, 'missing finish_order winner'
+                  assert winner is not None, 'missing server winner'
+                  assert len(order)==N, ('finish order length',order)
+                  assert ended.get('hand_counts')==[0]*N, ('nonzero hand counts',ended.get('hand_counts'))
+                  assert bot_actions>0, ('robot never acted',opening_winner,order)
+                  assert winner==first, ('winner mismatch',winner,first,order)
                   losing_parity=1 if winner%2==0 else 0; losing=next(i for i in range(N) if i%2==losing_parity); old=ctl.seq
                   await cs[losing].send({'type':'shuffle_next_round','from_position':None,'to_position':None}); await ctl.wait(lambda old=old:ctl.seq>old and ctl.state.get('next_round_phase')=='awaiting_deal'); assert ctl.state.get('hand_counts')==[CARDS]*N
                   hs=[c.hand_seq for c in cs]; old=ctl.seq; await cs[winner].send({'type':'deal_next_round'}); await ctl.wait(lambda old=old:ctl.seq>old and ctl.state.get('next_round_phase') is None and ctl.state.get('finish_order')==[]); assert ctl.state.get('turn')==winner
                   for c,h in zip(cs,hs): await c.wait(lambda c=c,h=h:c.hand_seq>h and c.hand is not None and len(c.hand)==CARDS)
                   r={'game':no,'room':room,'actions':actions,'bot_actions':bot_actions,'opening_draw_winner':name(opening_winner),'winner':name(winner),'finish_order':[name(x) for x in order],'next_round_lead':name(ctl.state['turn'])}
-                  print('MIXED_6_PLAYER_GAME_OK',json.dumps(r,ensure_ascii=False)); return r
+                  print('MIXED_6_PLAYER_GAME_OK',json.dumps(r,ensure_ascii=False),flush=True); return r
               finally: await asyncio.gather(*(c.close() for c in cs),return_exceptions=True)
 
           async def main():
               rs=[]
               for n in range(1,4): rs.append(await game(n))
-              print('MIXED_6_PLAYER_THREE_GAMES_OK'); print(json.dumps(rs,ensure_ascii=False))
+              print('MIXED_6_PLAYER_THREE_GAMES_OK',flush=True); print(json.dumps(rs,ensure_ascii=False),flush=True)
           asyncio.run(main())
           PY
       - name: Show backend log on failure
