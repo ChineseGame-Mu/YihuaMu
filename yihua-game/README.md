@@ -21,6 +21,10 @@ Implementation code in this directory must be written from behavioral requiremen
 - Teams alternate by seat parity.
 - Existing successful production behavior is the compatibility target, but the implementation must be new.
 
+## Current clean-room milestone
+
+The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, and the initial table state machine.
+
 ## Migration principle
 
 1. Build independent core library.
