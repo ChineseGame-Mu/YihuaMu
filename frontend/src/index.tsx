@@ -69,6 +69,16 @@ const bootstrap = (): void => {
   const game = params.get("game");
 
   if (game === "guandan") {
+    if (params.get("test") === "1" && !params.has("players")) {
+      params.set("players", "6");
+      const search = params.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${search === "" ? "" : `?${search}`}${window.location.hash}`,
+      );
+    }
+
     root_.render(
       <React.Suspense fallback={fallback}>
         <GuandanWebsocketProvider>
