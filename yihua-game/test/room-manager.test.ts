@@ -51,7 +51,11 @@ describe("WebSocketService", () => {
     const service = new WebSocketService(manager);
 
     await service.handleText(
-      { send: (text) => sent.push(text) },
+      {
+        send: (text) => {
+          sent.push(text);
+        },
+      },
       { roomId: "socket-room" },
       JSON.stringify({ type: "ping", nonce: "abc" }),
     );
@@ -66,7 +70,11 @@ describe("WebSocketService", () => {
     const service = new WebSocketService(manager);
 
     await service.handleText(
-      { send: (text) => sent.push(text) },
+      {
+        send: (text) => {
+          sent.push(text);
+        },
+      },
       { roomId: "socket-room" },
       "not-json",
     );
