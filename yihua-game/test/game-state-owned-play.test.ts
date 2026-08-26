@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
-import {
-  playGameCards,
-  type PlayingState,
-} from "../src/core/game-state.js";
+import { playGameCards, type PlayingState } from "../src/core/game-state.js";
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
@@ -102,12 +99,7 @@ describe("game-state owned-card play integration", () => {
 
   it("marks the round complete when a seat plays its final owned card", () => {
     const ace = suited("A", "spades");
-    const state = playingState([
-      [deckCard("0:spades:A", ace)],
-      [],
-      [],
-      [],
-    ]);
+    const state = playingState([[deckCard("0:spades:A", ace)], [], [], []]);
 
     const finished = playGameCards(state, 0, [ace]);
 
