@@ -9,6 +9,11 @@ import {
   robotDelayMs,
 } from "../src/core/robot.js";
 import {
+  INITIAL_TEAM_LEVELS,
+  settleRound,
+  type TeamLevels,
+} from "../src/core/settlement.js";
+import {
   createTableConfig,
   SUPPORTED_PLAYER_COUNTS,
   type SupportedPlayerCount,
@@ -28,17 +33,25 @@ const deckCard = (card: Card): DeckCard => ({
 const playing = (
   hands: readonly (readonly DeckCard[])[],
   playerCount: SupportedPlayerCount = 4,
+  currentTurn = 0,
 ): PlayingState => ({
   phase: "playing",
   config: createTableConfig(playerCount, 1),
-  openingDraw: { attempts: [], winnerSeat: 0 },
+  openingDraw: { attempts: [], winnerSeat: currentTurn },
   hands,
-  currentTurn: 0,
+  currentTurn,
 });
 
-const runRobotGame = (playerCount: SupportedPlayerCount) => {
+const runRobotGame = (
+  playerCount: SupportedPlayerCount,
+  currentTurn = 0,
+  levelRank: Rank = "7",
+) => {
   const hands = dealHands(createDeck(playerCount), playerCount);
-  let state = createTurnState(playing(hands, playerCount), "7");
+  let state = createTurnState(
+    playing(hands, playerCount, currentTurn),
+    levelRank,
+  );
   let turns = 0;
   const turnLimit = playerCount * 600;
 
@@ -139,6 +152,35 @@ describe("robot turns", () => {
       const remainingCards = state.hands.flat().length;
       expect(remainingCards).toBeGreaterThan(0);
       expect(remainingCards).toBeLessThanOrEqual(27);
+    }
+  });
+
+  it("chains three complete robot rounds through settlement for every table size", () => {
+    for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
+      let levels: TeamLevels = INITIAL_TEAM_LEVELS;
+      let leadSeat = 0;
+
+      for (let round = 0; round < 3; round += 1) {
+        const levelRank = levels[leadSeat % 2 === 0 ? "A" : "B"];
+        const { state, turns, turnLimit } = runRobotGame(
+          playerCount,
+          leadSeat,
+          levelRank,
+        );
+        expect(turns).toBeLessThan(turnLimit);
+
+        const settlement = settleRound(
+          playerCount,
+          state.finishOrder,
+          levels,
+        );
+        expect(settlement.finishOrder).toHaveLength(playerCount);
+        expect(settlement.nextLeadSeat).toBe(settlement.winnerSeat);
+        expect(settlement.finishOrder[0]).toBe(settlement.winnerSeat);
+
+        levels = settlement.teamLevels;
+        leadSeat = settlement.nextLeadSeat;
+      }
     }
   });
 });
