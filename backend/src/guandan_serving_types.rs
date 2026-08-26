@@ -31,9 +31,15 @@ pub enum GuandanNextRoundPhase {
     AwaitingDeal,
 }
 
+fn default_card_count_alert_threshold() -> usize {
+    6
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
+    #[serde(default = "default_card_count_alert_threshold")]
+    pub card_count_alert_threshold: usize,
     pub player_names: Vec<String>,
     pub hands: Vec<Vec<CardFace>>,
     pub turn: usize,
@@ -69,6 +75,7 @@ impl Default for GuandanGameState {
     fn default() -> Self {
         Self {
             started: false,
+            card_count_alert_threshold: default_card_count_alert_threshold(),
             player_names: Vec::new(),
             hands: Vec::new(),
             turn: 0,
