@@ -100,9 +100,15 @@ export const startNextRound = (
   completed: RoundCompleteState,
   random: RandomSource = Math.random,
 ): PlayingState => {
-  const dealDeck = shuffleDeck(createDeck(completed.config.playerCount), random);
+  const dealDeck = shuffleDeck(
+    createDeck(completed.config.playerCount),
+    random,
+  );
   const hands = dealHands(dealDeck, completed.config.playerCount);
-  const trick = createTrickState(completed.config.playerCount, completed.winnerSeat);
+  const trick = createTrickState(
+    completed.config.playerCount,
+    completed.winnerSeat,
+  );
 
   return {
     phase: "playing",

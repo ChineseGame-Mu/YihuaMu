@@ -108,7 +108,9 @@ describe("table state machine", () => {
     expect(next.trick.leaderSeat).toBe(2);
     expect(next.trick.currentTurn).toBe(2);
     expect(next.openingDraw).toBe(complete.openingDraw);
-    expect(next.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(true);
+    expect(next.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(
+      true,
+    );
   });
 
   it("rejects a winner outside the table", () => {
