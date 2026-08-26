@@ -102,11 +102,19 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   readonly socket: TextSocket = this;
   private buffer = Buffer.alloc(0);
   private textHandler: ((text: string) => void | Promise<void>) | undefined;
+  private readonly closeHandlers = new Set<() => void | Promise<void>>();
 
   constructor(
     private readonly rawSocket: Duplex,
     readonly context: ConnectionContext,
-  ) {}
+  ) {
+    rawSocket.once("close", () => {
+      for (const handler of this.closeHandlers) {
+        void handler();
+      }
+      this.closeHandlers.clear();
+    });
+  }
 
   send(text: string): void {
     this.rawSocket.write(encodeServerFrame(0x1, Buffer.from(text, "utf8")));
@@ -122,6 +130,10 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
 
   onText(handler: (text: string) => void | Promise<void>): void {
     this.textHandler = handler;
+  }
+
+  onClose(handler: () => void | Promise<void>): void {
+    this.closeHandlers.add(handler);
   }
 
   feed(chunk: Buffer): void {
