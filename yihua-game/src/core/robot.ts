@@ -5,7 +5,7 @@ import {
   resolveWildcardInterpretation,
   type LevelRules,
 } from "./level-rules.js";
-import type { TurnState } from "./play-state.js";
+import { passTurn, playCards, type TurnState } from "./play-state.js";
 
 export const ROBOT_MIN_DELAY_MS = 800;
 export const ROBOT_MAX_DELAY_MS = 1800;
@@ -64,7 +64,8 @@ export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
   const hand = state.hands[seat];
   if (!hand) throw new Error("seat is outside the table");
-  if (hand.length === 0) return { type: "pass" };
+  if (state.finishedSeats.includes(seat) || hand.length === 0)
+    return { type: "pass" };
 
   const rules: LevelRules = { levelRank: state.levelRank };
   for (const size of candidateSizes(state, hand.length)) {
@@ -111,4 +112,11 @@ export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
     }
   }
   return { type: "pass" };
+};
+
+export const applyRobotTurn = (state: TurnState, seat: number): TurnState => {
+  const turn = chooseRobotTurn(state, seat);
+  return turn.type === "play"
+    ? playCards(state, seat, turn.cardIds, turn.declaredKind)
+    : passTurn(state, seat);
 };
