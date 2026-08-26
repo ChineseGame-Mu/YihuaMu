@@ -1,12 +1,12 @@
-name: Independent Guandan Clean-room CI
+name: Yihua Game Clean-room CI
 
 on:
   push:
     branches:
-      - cleanroom/independent-guandan-20260826
+      - cleanroom/yihua-game-20260826
     paths:
-      - "independent-guandan/**"
-      - ".github/workflows/cleanroom-independent-guandan.yml"
+      - "yihua-game/**"
+      - ".github/workflows/cleanroom-yihua-game.yml"
   workflow_dispatch:
 
 jobs:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: independent-guandan
+        working-directory: yihua-game
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

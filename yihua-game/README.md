@@ -1,6 +1,6 @@
-# Independent Guandan
+# Yihua Game
 
-This directory is a clean-room rewrite project for the Guandan game.
+This directory is a clean-room rewrite project for Yihua Game, starting with the Guandan game.
 
 ## Safety rule
 
