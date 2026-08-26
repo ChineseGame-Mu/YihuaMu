@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - cleanroom/yihua-game-20260826
+      - feature/yihua-game-hand-rules-20260826
     paths:
       - "yihua-game/**"
       - ".github/workflows/cleanroom-yihua-game.yml"
