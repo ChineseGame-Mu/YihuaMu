@@ -1,8 +1,5 @@
 import { RANKS, SUITS, type Card } from "./cards.js";
-import {
-  CARDS_PER_PLAYER,
-  type SupportedPlayerCount,
-} from "./table.js";
+import { CARDS_PER_PLAYER, type SupportedPlayerCount } from "./table.js";
 
 export interface DeckCard {
   readonly id: string;
@@ -74,7 +71,10 @@ export const dealHands = (
     throw new Error(`deck must contain exactly ${required} cards`);
   }
 
-  const hands = Array.from({ length: playerCount }, () => [] as DeckCard[]);
+  const hands = Array.from(
+    { length: playerCount },
+    () => [] as DeckCard[],
+  );
 
   deck.forEach((card, index) => {
     hands[index % playerCount]!.push(card);
