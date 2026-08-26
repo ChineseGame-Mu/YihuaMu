@@ -26,6 +26,26 @@ export const teamForSeat = (seat: number): Team => {
   return seat % 2 === 0 ? "A" : "B";
 };
 
+export const teammateSeatsForSeat = (
+  playerCount: SupportedPlayerCount,
+  seat: number,
+): number[] => {
+  if (!Number.isInteger(seat) || seat < 0 || seat >= playerCount) {
+    throw new Error("seat is outside the table");
+  }
+  const team = teamForSeat(seat);
+  return Array.from({ length: playerCount }, (_, currentSeat) => currentSeat).filter(
+    (currentSeat) => currentSeat !== seat && teamForSeat(currentSeat) === team,
+  );
+};
+
+export const partnerSeatForFourPlayerTable = (seat: number): number => {
+  if (!Number.isInteger(seat) || seat < 0 || seat >= 4) {
+    throw new Error("seat is outside the four-player table");
+  }
+  return (seat + 2) % 4;
+};
+
 export const createTableConfig = (
   playerCount: number,
   botCount: number,
