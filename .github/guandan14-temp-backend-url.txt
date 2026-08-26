@@ -1,1 +1,1 @@
-wss://parliament-written-sleep-grams.trycloudflare.com/api/guandan
+wss://euro-adam-lib-schemes.trycloudflare.com/api/guandan
