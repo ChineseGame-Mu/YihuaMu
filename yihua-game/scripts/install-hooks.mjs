@@ -10,10 +10,9 @@ const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
 const hookPath = resolve(projectRoot, ".githooks", "pre-commit");
 
 chmodSync(hookPath, 0o755);
-execFileSync(
-  "git",
-  ["config", "core.hooksPath", "yihua-game/.githooks"],
-  { cwd: repoRoot, stdio: "inherit" },
-);
+execFileSync("git", ["config", "core.hooksPath", "yihua-game/.githooks"], {
+  cwd: repoRoot,
+  stdio: "inherit",
+});
 
 console.log("Yihua Game pre-commit hook installed");
