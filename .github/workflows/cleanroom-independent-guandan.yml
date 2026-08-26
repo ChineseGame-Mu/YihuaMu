@@ -1,0 +1,26 @@
+name: Independent Guandan Clean-room CI
+
+on:
+  push:
+    branches:
+      - cleanroom/independent-guandan-20260826
+    paths:
+      - "independent-guandan/**"
+      - ".github/workflows/cleanroom-independent-guandan.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: independent-guandan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: independent-guandan/package-lock.json
+      - run: npm install
+      - run: npm run check
