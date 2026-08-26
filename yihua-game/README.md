@@ -23,7 +23,7 @@ Implementation code in this directory must be written from behavioral requiremen
 
 ## Current clean-room milestone
 
-The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, table state, room management, protocol handling, an HTTP router, a standalone Node server, native WebSocket transport, multi-client disconnect/reconnect synchronization, four-player network game start, public opening/current-turn state, and private 27-card hand delivery to each human player.
+The independent core now includes deck generation, shuffling, exact 27-card dealing, an explicit lobby-to-opening-draw-to-playing transition, starter selection, table state, room management, protocol handling, an HTTP router, a standalone Node server, native WebSocket transport, multi-client disconnect/reconnect synchronization, four-player network game start, public opening/current-turn state, and private 27-card hand delivery to each human player.
 
 ## Migration principle
 
