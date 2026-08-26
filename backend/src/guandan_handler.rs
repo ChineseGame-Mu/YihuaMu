@@ -280,7 +280,7 @@ fn initial_draw_value(card: CardFace) -> usize {
     }
 }
 
-fn draw_starting_seat(deck: &mut Vec<CardFace>, player_count: usize) -> (Vec<CardFace>, usize) {
+fn draw_starting_seat(deck: &mut [CardFace], player_count: usize) -> (Vec<CardFace>, usize) {
     loop {
         deck.shuffle(&mut thread_rng());
         let draw = deck
