@@ -34,4 +34,4 @@ jobs:
           git diff --cached --quiet || git commit -m "style(yihua-game): apply exact Prettier output"
           git push
 
-# Triggered again after adding legal robot turn selection.
+# Triggered again after finished-seat skipping and partner lead rules.
