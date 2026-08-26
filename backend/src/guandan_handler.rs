@@ -1,11 +1,11 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex};
+use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
@@ -478,6 +478,8 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
         {
             break;
         }
+        let delay_ms = thread_rng().gen_range(800..=1800);
+        thread::sleep(Duration::from_millis(delay_ms));
         let chosen = game.hands[seat]
             .iter()
             .enumerate()
