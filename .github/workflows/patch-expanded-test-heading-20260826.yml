@@ -1,0 +1,38 @@
+name: Patch expanded Guandan test heading
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - patch/guandan-expanded-bot-setting-20260826
+    paths:
+      - .github/workflows/patch-expanded-test-heading-20260826.yml
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Make 4-14 player range explicit
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '<h2>{requestedPlayerCount}人联机测试</h2>'
+          new = '<h2>4–14人联机测试</h2>\n          <p>可选 4 / 6 / 8 / 10 / 12 / 14 人；下方测试玩家链接会按所选人数自动增加。</p>'
+          if old not in s:
+              raise SystemExit('target heading not found')
+          s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+          npx prettier --write frontend/src/GuandanTable.tsx
+      - name: Commit to master
+        run: |
+          git config user.name 'ChineseGame-Mu'
+          git config user.email 'muyihua@gmail.com'
+          git add frontend/src/GuandanTable.tsx
+          git commit -m 'fix(guandan): make 4-14 player test range explicit'
+          git push origin HEAD:master
