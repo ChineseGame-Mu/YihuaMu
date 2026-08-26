@@ -1,0 +1,37 @@
+name: Probe Render expanded frontend
+on:
+  push:
+    branches: [probe/render-expanded-frontend-20260826]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify expanded frontend is live on Render root
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT='https://chinesegame-yihua.onrender.com'
+          for i in $(seq 1 24); do
+            echo "probe attempt $i"
+            html="$(curl -fsSL --max-time 20 "$ROOT/")" || { sleep 10; continue; }
+            css="$(curl -fsSL --max-time 20 "$ROOT/style.css" || true)"
+            js_urls="$(printf '%s' "$html" | grep -oE 'src="[^"]+\.js"' | sed -E 's/src="([^"]+)"/\1/' || true)"
+            js=''
+            for u in $js_urls; do
+              case "$u" in
+                http*) url="$u" ;;
+                /*) url="$ROOT$u" ;;
+                *) url="$ROOT/$u" ;;
+              esac
+              js="$js$(curl -fsSL --max-time 20 "$url" || true)"
+            done
+            if printf '%s' "$css" | grep -q 'guandan-public-player-backs' && \
+               printf '%s' "$js" | grep -q '测试人数' && \
+               printf '%s' "$js" | grep -q '14'; then
+              echo 'RENDER_EXPANDED_FRONTEND_LIVE_OK'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'expanded frontend marker not live yet'
+          exit 1
