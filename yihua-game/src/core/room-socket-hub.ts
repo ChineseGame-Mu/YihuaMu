@@ -45,6 +45,19 @@ export class RoomSocketHub {
     ).length;
   }
 
+  async sendToPlayer(
+    roomId: string,
+    playerId: string,
+    text: string,
+  ): Promise<void> {
+    const registrations = [...(this.registrationsByRoom.get(roomId) ?? [])];
+    await Promise.all(
+      registrations
+        .filter((registration) => registration.playerId === playerId)
+        .map(({ socket }) => Promise.resolve(socket.send(text))),
+    );
+  }
+
   async broadcast(roomId: string, text: string): Promise<void> {
     const registrations = [...(this.registrationsByRoom.get(roomId) ?? [])];
     await Promise.all(
