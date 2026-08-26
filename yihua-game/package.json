@@ -11,6 +11,8 @@
     "format:staged": "node scripts/format-staged.mjs",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
     "test": "vitest run"
   },
   "devDependencies": {
