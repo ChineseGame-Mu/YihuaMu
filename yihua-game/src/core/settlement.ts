@@ -64,8 +64,7 @@ export const settleRound = (
   const winnerSeat = completed[0]!;
   const winnerTeam = teamForSeat(winnerSeat);
   const currentLevel = levels[winnerTeam];
-  const promotionSteps =
-    playerCount === 4 ? fourPlayerPromotion(completed) : 1;
+  const promotionSteps = playerCount === 4 ? fourPlayerPromotion(completed) : 1;
   const winsAtAce =
     currentLevel === "A" && (playerCount > 4 || promotionSteps >= 2);
   const nextWinnerLevel =

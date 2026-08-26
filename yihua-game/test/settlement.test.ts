@@ -27,9 +27,9 @@ describe("round settlement", () => {
     expect(
       settleRound(4, [0, 1, 3, 2], { A: "A", B: "K" }).matchWinner,
     ).toBeNull();
-    expect(
-      settleRound(4, [0, 1, 2, 3], { A: "A", B: "K" }).matchWinner,
-    ).toBe("A");
+    expect(settleRound(4, [0, 1, 2, 3], { A: "A", B: "K" }).matchWinner).toBe(
+      "A",
+    );
   });
 
   it("uses one-step promotion for expanded tables", () => {
