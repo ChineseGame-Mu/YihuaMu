@@ -21,6 +21,25 @@ export interface TrickState {
 const nextSeat = (seat: number, playerCount: number) =>
   (seat + 1) % playerCount;
 
+const activeSeatsOrAll = (
+  state: TrickState,
+  activeSeats?: readonly number[],
+): readonly number[] =>
+  activeSeats ?? Array.from({ length: state.playerCount }, (_, seat) => seat);
+
+const nextActiveSeat = (
+  state: TrickState,
+  seat: number,
+  activeSeats?: readonly number[],
+): number => {
+  const active = new Set(activeSeatsOrAll(state, activeSeats));
+  for (let offset = 1; offset <= state.playerCount; offset += 1) {
+    const candidate = (seat + offset) % state.playerCount;
+    if (active.has(candidate)) return candidate;
+  }
+  return seat;
+};
+
 export const createTrickState = (
   playerCount: SupportedPlayerCount,
   leaderSeat: number,
@@ -47,6 +66,7 @@ export const playCards = (
   state: TrickState,
   seat: number,
   cards: readonly Card[],
+  activeSeats?: readonly number[],
 ): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
   const hand = classifyHand(cards);
@@ -62,22 +82,30 @@ export const playCards = (
   return {
     ...state,
     leaderSeat: seat,
-    currentTurn: nextSeat(seat, state.playerCount),
+    currentTurn: nextActiveSeat(state, seat, activeSeats),
     leadingPlay: play,
     plays: [...state.plays, play],
     passedSeats: [],
   };
 };
 
-export const passTurn = (state: TrickState, seat: number): TrickState => {
+export const passTurn = (
+  state: TrickState,
+  seat: number,
+  activeSeats?: readonly number[],
+): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
 
   if (state.leadingPlay === null) {
     throw new Error("leader cannot pass");
   }
 
+  const active = activeSeatsOrAll(state, activeSeats);
+  const requiredPasses = active.filter(
+    (activeSeat) => activeSeat !== state.leadingPlay?.seat,
+  ).length;
   const passedSeats = [...state.passedSeats, seat];
-  if (passedSeats.length >= state.playerCount - 1) {
+  if (passedSeats.length >= requiredPasses) {
     return {
       ...state,
       currentTurn: state.leadingPlay.seat,
@@ -90,7 +118,7 @@ export const passTurn = (state: TrickState, seat: number): TrickState => {
 
   return {
     ...state,
-    currentTurn: nextSeat(seat, state.playerCount),
+    currentTurn: nextActiveSeat(state, seat, active),
     passedSeats,
   };
 };
