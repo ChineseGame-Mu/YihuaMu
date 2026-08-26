@@ -21,4 +21,11 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run check
+      - name: Verify Prettier 3.4.1
+        run: npm run prettier:version
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test
+        run: npm test
