@@ -148,6 +148,56 @@ describe("game-state owned-card play integration", () => {
     expect(afterPlayer1Pass.trick.leaderSeat).toBe(3);
   });
 
+  it("keeps the lead with an opponent who beats a finished player's final card", () => {
+    const eight = suited("8", "clubs");
+    const nine = suited("9", "clubs");
+    const state = playingState(
+      [
+        [deckCard("0:clubs:3", suited("3", "clubs"))],
+        [deckCard("0:clubs:8", eight)],
+        [
+          deckCard("0:clubs:9", nine),
+          deckCard("0:clubs:4", suited("4", "clubs")),
+        ],
+        [deckCard("0:clubs:5", suited("5", "clubs"))],
+      ],
+      1,
+    );
+
+    const afterFinal = playGameCards(state, 1, [eight]);
+    if (afterFinal.phase !== "playing") throw new Error("round ended too early");
+    const afterBeat = playGameCards(afterFinal, 2, [nine]);
+    if (afterBeat.phase !== "playing") throw new Error("round ended too early");
+    expect(afterBeat.trick.leadingPlay?.seat).toBe(2);
+
+    const afterPlayer4Pass = passGameTurn(afterBeat, 3);
+    const afterPlayer1Pass = passGameTurn(afterPlayer4Pass, 0);
+    expect(afterPlayer1Pass.trick.leadingPlay).toBeNull();
+    expect(afterPlayer1Pass.currentTurn).toBe(2);
+    expect(afterPlayer1Pass.trick.leaderSeat).toBe(2);
+  });
+
+  it("never schedules a finished seat for a later turn", () => {
+    const eight = suited("8", "clubs");
+    const state = playingState(
+      [
+        [deckCard("0:clubs:3", suited("3", "clubs"))],
+        [deckCard("0:clubs:8", eight)],
+        [deckCard("0:clubs:4", suited("4", "clubs"))],
+        [deckCard("0:clubs:5", suited("5", "clubs"))],
+      ],
+      1,
+    );
+
+    const afterFinal = playGameCards(state, 1, [eight]);
+    if (afterFinal.phase !== "playing") throw new Error("round ended too early");
+    expect(afterFinal.finishedSeats).toEqual([1]);
+    expect(afterFinal.currentTurn).toBe(2);
+
+    const afterPlayer3Pass = passGameTurn(afterFinal, 2);
+    expect(afterPlayer3Pass.currentTurn).toBe(0);
+  });
+
   it("completes the round once the remaining last place is determined", () => {
     const six = suited("6", "clubs");
     const state = playingState(
