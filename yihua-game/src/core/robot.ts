@@ -20,7 +20,11 @@ export const robotDelayMs = (random: () => number = Math.random): number => {
 };
 
 export type RobotTurn =
-  | { readonly type: "play"; readonly cardIds: readonly string[]; readonly declaredKind: HandKind }
+  | {
+      readonly type: "play";
+      readonly cardIds: readonly string[];
+      readonly declaredKind: HandKind;
+    }
   | { readonly type: "pass" };
 
 const combinations = function* (
@@ -33,17 +37,27 @@ const combinations = function* (
     yield prefix;
     return;
   }
-  for (let index = start; index <= cards.length - (size - prefix.length); index += 1) {
+  for (
+    let index = start;
+    index <= cards.length - (size - prefix.length);
+    index += 1
+  ) {
     yield* combinations(cards, size, index + 1, [...prefix, cards[index]!]);
   }
 };
 
-const candidateSizes = (state: TurnState, handSize: number): readonly number[] => {
-  if (state.currentPlay === null) return Array.from({ length: handSize }, (_, index) => index + 1);
+const candidateSizes = (
+  state: TurnState,
+  handSize: number,
+): readonly number[] => {
+  if (state.currentPlay === null)
+    return Array.from({ length: handSize }, (_, index) => index + 1);
   const normal = state.currentPlay.hand.size;
   const sizes = new Set<number>([normal, 4, 5]);
   for (let size = 6; size <= handSize; size += 1) sizes.add(size);
-  return [...sizes].filter((size) => size > 0 && size <= handSize).sort((a, b) => a - b);
+  return [...sizes]
+    .filter((size) => size > 0 && size <= handSize)
+    .sort((a, b) => a - b);
 };
 
 export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
@@ -78,7 +92,11 @@ export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
           kinds.add(resolved.hand.kind);
           if (
             state.currentPlay === null ||
-            canClassifiedBeatWithLevelRules(resolved.hand, state.currentPlay.hand, rules)
+            canClassifiedBeatWithLevelRules(
+              resolved.hand,
+              state.currentPlay.hand,
+              rules,
+            )
           ) {
             return {
               type: "play",
