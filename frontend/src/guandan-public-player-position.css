@@ -41,6 +41,11 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
   margin: 0 !important;
 }
 
+/* Keep the first-out draw result below the upper participant row. */
+html body .guandan-table:has(.guandan-public-zone) .guandan-initial-draw-mini {
+  top: 128px !important;
+}
+
 @media (max-width: 900px) {
   html
     body
@@ -52,5 +57,9 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
   html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
     width: 30% !important;
     min-width: 220px !important;
+  }
+
+  html body .guandan-table:has(.guandan-public-zone) .guandan-initial-draw-mini {
+    top: 136px !important;
   }
 }
