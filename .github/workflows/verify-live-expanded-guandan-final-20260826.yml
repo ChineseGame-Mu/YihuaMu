@@ -1,0 +1,111 @@
+name: Final live Render Guandan 4-14 verification
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/verify-live-expanded-guandan-final-20260826.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Verify formal Render 4-14 tables
+        run: |
+          python - <<'PY'
+          import asyncio, json, time
+          import websockets
+
+          URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
+          SIZES = [4, 6, 8, 10, 12, 14]
+
+          async def recv_json(ws, timeout=20):
+              raw = await asyncio.wait_for(ws.recv(), timeout)
+              if isinstance(raw, bytes): raw = raw.decode()
+              return json.loads(raw)
+
+          async def until(ws, pred, timeout=25):
+              end = asyncio.get_running_loop().time() + timeout
+              while True:
+                  left = end - asyncio.get_running_loop().time()
+                  if left <= 0: raise TimeoutError('message timeout')
+                  m = await recv_json(ws, left)
+                  if m.get('type') == 'error': raise AssertionError(m)
+                  if pred(m): return m
+
+          async def one(size):
+              room = f'formal{size}_{int(time.time()*1000)}'
+              sockets = []
+              try:
+                  for i in range(size):
+                      ws = await websockets.connect(URI, open_timeout=20)
+                      sockets.append(ws)
+                      await until(ws, lambda m: m.get('type') == 'connected')
+                      await ws.send(json.dumps({'type':'join','room':room,'name':f'正式玩家{i+1}'}, ensure_ascii=False))
+                      j = await until(ws, lambda m: m.get('type') == 'joined')
+                      assert j.get('seat') == i, j
+
+                  w = await until(sockets[0], lambda m: m.get('type') == 'waiting' and len(m.get('players',[])) == size)
+                  assert w.get('minimum_players') == 4, w
+                  assert w.get('maximum_players') == 14, w
+                  await sockets[0].send(json.dumps({'type':'start','player_count':size}))
+
+                  winners = []
+                  for seat, ws in enumerate(sockets):
+                      got_started = got_state = got_hand = None
+                      end = asyncio.get_running_loop().time() + 30
+                      while not (got_started and got_state and got_hand):
+                          left = end - asyncio.get_running_loop().time()
+                          if left <= 0: raise TimeoutError(f'seat {seat} start-state-hand timeout')
+                          m = await recv_json(ws, left)
+                          t = m.get('type')
+                          if t == 'error': raise AssertionError(m)
+                          if t == 'started' and m.get('player_count') == size: got_started = m
+                          elif t == 'state' and len(m.get('initial_draw',[])) == size: got_state = m
+                          elif t == 'hand': got_hand = m
+                      assert got_started.get('cards_per_player') == 27, got_started
+                      assert len(got_hand.get('cards',[])) == 27, (size, seat)
+                      assert got_state.get('hand_counts') == [27] * size, got_state.get('hand_counts')
+                      assert all('Joker' not in c for c in got_state.get('initial_draw',[])), got_state.get('initial_draw')
+                      winner = got_state.get('initial_draw_winner')
+                      assert isinstance(winner, int) and 0 <= winner < size, winner
+                      assert got_state.get('turn') == winner, (got_state.get('turn'), winner)
+                      winners.append(winner)
+                  assert len(set(winners)) == 1, winners
+                  print(f'LIVE_RENDER_{size}_OK winner={winners[0]+1}', flush=True)
+              finally:
+                  await asyncio.gather(*(w.close() for w in sockets), return_exceptions=True)
+
+          async def main():
+              last = None
+              for attempt in range(16):
+                  try:
+                      # Probe advertised capacity first so old Render fails quickly.
+                      ws = await websockets.connect(URI, open_timeout=20)
+                      try:
+                          await until(ws, lambda m: m.get('type') == 'connected')
+                          room = f'probe_{int(time.time()*1000)}'
+                          await ws.send(json.dumps({'type':'join','room':room,'name':'部署探针'}, ensure_ascii=False))
+                          await until(ws, lambda m: m.get('type') == 'joined')
+                          w = await until(ws, lambda m: m.get('type') == 'waiting')
+                          if w.get('maximum_players') != 14:
+                              raise AssertionError(f"Render still advertises max={w.get('maximum_players')}")
+                      finally:
+                          await ws.close()
+                      for size in SIZES: await one(size)
+                      print('LIVE_RENDER_4_6_8_10_12_14_OK', flush=True)
+                      return
+                  except Exception as e:
+                      last = e
+                      print(f'attempt {attempt+1}: {e!r}', flush=True)
+                      await asyncio.sleep(15)
+              raise last
+
+          asyncio.run(main())
+          PY
