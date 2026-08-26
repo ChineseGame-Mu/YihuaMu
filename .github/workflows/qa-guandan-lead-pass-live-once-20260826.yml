@@ -24,7 +24,7 @@ jobs:
           URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
           ROOM = f"qa_lead_pass_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
 
-          async def recv_until(ws, predicate, timeout=20, allow_error=False):
+          async def recv_until(ws, predicate, timeout=20):
               end = asyncio.get_running_loop().time() + timeout
               while True:
                   left = end - asyncio.get_running_loop().time()
@@ -33,9 +33,47 @@ jobs:
                   raw = await asyncio.wait_for(ws.recv(), left)
                   if isinstance(raw, bytes): raw = raw.decode()
                   msg = json.loads(raw)
-                  if msg.get('type') == 'error' and not allow_error:
-                      raise AssertionError(msg)
                   if predicate(msg): return msg
+
+          class Client:
+              def __init__(self, seat, ws):
+                  self.seat = seat
+                  self.ws = ws
+                  self.state = None
+                  self.state_seq = 0
+                  self.error = None
+                  self.condition = asyncio.Condition()
+                  self.task = None
+
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          if isinstance(raw, bytes): raw = raw.decode()
+                          msg = json.loads(raw)
+                          async with self.condition:
+                              if msg.get('type') == 'state':
+                                  self.state = msg
+                                  self.state_seq += 1
+                              elif msg.get('type') == 'error':
+                                  self.error = msg
+                              self.condition.notify_all()
+                  except Exception as exc:
+                      async with self.condition:
+                          self.error = {'type':'reader_exception','message':repr(exc)}
+                          self.condition.notify_all()
+
+              async def wait_for(self, predicate, timeout=20, allow_error=False):
+                  async def _wait():
+                      async with self.condition:
+                          while not predicate():
+                              if self.error is not None and not allow_error:
+                                  raise AssertionError(self.error)
+                              await self.condition.wait()
+                  await asyncio.wait_for(_wait(), timeout)
+
+              async def wait_new_state(self, previous_seq, timeout=20):
+                  await self.wait_for(lambda: self.state_seq > previous_seq, timeout)
+                  return self.state
 
           async def main():
               clients = []
@@ -46,48 +84,66 @@ jobs:
                       await ws.send(json.dumps({'type':'join','room':ROOM,'name':f'QA首过{i+1}'}, ensure_ascii=False))
                       joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
                       assert joined.get('seat') == i, joined
-                      clients.append(ws)
+                      clients.append(Client(i, ws))
 
-                  await clients[0].send(json.dumps({'type':'start','player_count':4}))
-                  state = await recv_until(clients[0], lambda m: m.get('type') == 'state' and len(m.get('initial_draw',[])) == 4)
+                  for c in clients:
+                      c.task = asyncio.create_task(c.reader())
+
+                  monitor = clients[0]
+                  await clients[0].ws.send(json.dumps({'type':'start','player_count':4}))
+                  await monitor.wait_for(lambda: monitor.state is not None and len(monitor.state.get('initial_draw',[])) == 4, 30)
+                  state = monitor.state
                   leader = state['turn']
 
                   # Opening lead must NOT be allowed to pass.
-                  await clients[leader].send(json.dumps({'type':'pass'}))
-                  err = await recv_until(clients[leader], lambda m: m.get('type') == 'error', allow_error=True)
-                  assert err.get('message') == 'cannot pass now', err
+                  actor = clients[leader]
+                  actor.error = None
+                  await actor.ws.send(json.dumps({'type':'pass'}))
+                  await actor.wait_for(lambda: actor.error is not None, 10, allow_error=True)
+                  assert actor.error.get('message') == 'cannot pass now', actor.error
+                  actor.error = None
                   print('OPENING_LEAD_PASS_REJECTED_OK', flush=True)
 
                   # Opening leader plays one card.
-                  await clients[leader].send(json.dumps({'type':'play','card_indexes':[0]}))
-                  state = await recv_until(clients[0], lambda m: m.get('type') == 'state' and m.get('last_player') == leader)
+                  prev = monitor.state_seq
+                  await actor.ws.send(json.dumps({'type':'play','card_indexes':[0]}))
+                  state = await monitor.wait_new_state(prev, 20)
+                  while state.get('last_player') != leader:
+                      prev = monitor.state_seq
+                      state = await monitor.wait_new_state(prev, 20)
 
                   # All other active players pass to finish first trick.
                   for _ in range(3):
                       seat = state['turn']
-                      await clients[seat].send(json.dumps({'type':'pass'}))
-                      state = await recv_until(
-                          clients[0],
-                          lambda m: m.get('type') == 'state' and (
-                              m.get('turn') != seat or m.get('last_player') is None
-                          )
-                      )
+                      prev = monitor.state_seq
+                      await clients[seat].ws.send(json.dumps({'type':'pass'}))
+                      state = await monitor.wait_new_state(prev, 20)
+                      while state.get('turn') == seat and state.get('last_player') is not None:
+                          prev = monitor.state_seq
+                          state = await monitor.wait_new_state(prev, 20)
 
                   assert state.get('last_player') is None, state
                   assert state.get('last_trick_winner') is not None, state
                   later_leader = state['turn']
 
                   # From the second trick onward an empty-table leader MAY pass.
-                  await clients[later_leader].send(json.dumps({'type':'pass'}))
-                  next_state = await recv_until(
-                      clients[0],
-                      lambda m: m.get('type') == 'state' and m.get('turn') != later_leader
-                  )
+                  prev = monitor.state_seq
+                  clients[later_leader].error = None
+                  await clients[later_leader].ws.send(json.dumps({'type':'pass'}))
+                  next_state = await monitor.wait_new_state(prev, 20)
+                  while next_state.get('turn') == later_leader:
+                      prev = monitor.state_seq
+                      next_state = await monitor.wait_new_state(prev, 20)
+                  assert clients[later_leader].error is None, clients[later_leader].error
                   assert next_state.get('last_player') is None, next_state
                   print('POST_OPENING_LEAD_PASS_ALLOWED_OK', flush=True)
                   print('QA_GUANDAN_LEAD_PASS_LIVE_OK', flush=True)
               finally:
-                  await asyncio.gather(*(ws.close() for ws in clients), return_exceptions=True)
+                  for c in clients:
+                      if c.task is not None:
+                          c.task.cancel()
+                  await asyncio.gather(*(c.task for c in clients if c.task is not None), return_exceptions=True)
+                  await asyncio.gather(*(c.ws.close() for c in clients), return_exceptions=True)
 
           asyncio.run(main())
           PY
