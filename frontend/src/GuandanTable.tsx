@@ -708,7 +708,11 @@ const GuandanTable: React.FunctionComponent = () => {
 
       {testMode && !joined && (
         <section className="guandan-test-section guandan-panel">
-          <h2>{requestedPlayerCount}人联机测试</h2>
+          <h2>4–14人联机测试</h2>
+          <p>
+            可选 4 / 6 / 8 / 10 / 12 / 14
+            人；下方测试玩家链接会按所选人数自动增加。
+          </p>
           <label>
             测试人数：
             <select
