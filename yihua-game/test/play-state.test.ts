@@ -24,12 +24,13 @@ const deckCard = (card: Card): DeckCard => ({
 
 const playingState = (
   hands: readonly (readonly DeckCard[])[],
+  currentTurn = 0,
 ): PlayingState => ({
   phase: "playing",
   config: createTableConfig(4, 0),
-  openingDraw: { attempts: [], winnerSeat: 0 },
+  openingDraw: { attempts: [], winnerSeat: currentTurn },
   hands,
-  currentTurn: 0,
+  currentTurn,
 });
 
 describe("play-state", () => {
@@ -47,6 +48,7 @@ describe("play-state", () => {
     );
 
     expect(next.hands[0]).toHaveLength(0);
+    expect(next.finishedSeats).toContain(0);
     expect(next.currentTurn).toBe(1);
     expect(next.currentPlay?.hand).toEqual({
       kind: "pair",
@@ -125,11 +127,12 @@ describe("play-state", () => {
   });
 
   it("rejects passing on a lead and resets the trick after everyone else passes", () => {
-    const ace = [deckCard(suitedCard("A", "clubs"))];
-    let state = createTurnState(playingState([ace, [], [], []]), "7");
+    const ace = deckCard(suitedCard("A", "clubs"));
+    const spare = deckCard(suitedCard("3", "clubs"));
+    let state = createTurnState(playingState([[ace, spare], [], [], []]), "7");
 
     expect(() => passTurn(state, 0)).toThrow("cannot pass");
-    state = playCards(state, 0, [ace[0]!.id]);
+    state = playCards(state, 0, [ace.id]);
     state = passTurn(state, 1);
     state = passTurn(state, 2);
     state = passTurn(state, 3);
@@ -138,5 +141,30 @@ describe("play-state", () => {
     expect(state.currentTurn).toBe(0);
     expect(state.consecutivePasses).toBe(0);
     expect(state.publicActions).toHaveLength(4);
+  });
+
+  it("gives player 4 the lead after player 2 finishes and players 1 and 3 pass", () => {
+    const player1 = [deckCard(suitedCard("8", "clubs"))];
+    const player2 = [deckCard(suitedCard("9", "clubs"))];
+    const player3 = [deckCard(suitedCard("10", "clubs"))];
+    const player4 = [deckCard(suitedCard("J", "clubs"))];
+    let state = createTurnState(
+      playingState([player1, player2, player3, player4], 1),
+      "7",
+    );
+
+    state = playCards(state, 1, [player2[0]!.id]);
+    expect(state.finishedSeats).toContain(1);
+    expect(state.currentTurn).toBe(2);
+
+    state = passTurn(state, 2);
+    expect(state.currentTurn).toBe(0);
+
+    state = passTurn(state, 0);
+    expect(state.currentPlay).toBeNull();
+    expect(state.currentTurn).toBe(3);
+
+    state = playCards(state, 3, [player4[0]!.id]);
+    expect(state.publicActions.at(-1)?.type).toBe("play");
   });
 });
