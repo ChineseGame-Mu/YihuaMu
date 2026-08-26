@@ -47,3 +47,4 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m 'feat(guandan): add random robot turn delay'
           git push origin HEAD:feature/guandan-up-to-14-players-20260825
+# trigger
