@@ -17,13 +17,18 @@ export interface TrickState {
   readonly passedSeats: readonly number[];
 }
 
-const nextSeat = (seat: number, playerCount: number) => (seat + 1) % playerCount;
+const nextSeat = (seat: number, playerCount: number) =>
+  (seat + 1) % playerCount;
 
 export const createTrickState = (
   playerCount: SupportedPlayerCount,
   leaderSeat: number,
 ): TrickState => {
-  if (!Number.isInteger(leaderSeat) || leaderSeat < 0 || leaderSeat >= playerCount) {
+  if (
+    !Number.isInteger(leaderSeat) ||
+    leaderSeat < 0 ||
+    leaderSeat >= playerCount
+  ) {
     throw new Error("leader seat is outside the table");
   }
   return {

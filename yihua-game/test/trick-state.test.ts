@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Card } from "../src/core/cards.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 
-const card = (rank: "3" | "4" | "5", suit: "clubs" | "diamonds" = "clubs"): Card => ({
+const card = (
+  rank: "3" | "4" | "5",
+  suit: "clubs" | "diamonds" = "clubs",
+): Card => ({
   kind: "suited",
   rank,
   suit,
@@ -31,14 +38,23 @@ test("pass is recorded and turn wraps around table", () => {
 });
 
 test("leader cannot pass before a play", () => {
-  assert.throws(() => passTurn(createTrickState(4, 0), 0), /leader cannot pass/);
+  assert.throws(
+    () => passTurn(createTrickState(4, 0), 0),
+    /leader cannot pass/,
+  );
 });
 
 test("out-of-turn and invalid plays are rejected", () => {
   const state = createTrickState(4, 0);
   assert.throws(() => playCards(state, 1, [card("3")]), /not this seat's turn/);
   assert.throws(
-    () => playCards(state, 0, [card("3"), card("4"), card("5"), card("3", "diamonds")]),
+    () =>
+      playCards(state, 0, [
+        card("3"),
+        card("4"),
+        card("5"),
+        card("3", "diamonds"),
+      ]),
     /invalid hand/,
   );
 });
