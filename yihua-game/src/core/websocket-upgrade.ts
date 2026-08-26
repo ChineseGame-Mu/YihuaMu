@@ -10,6 +10,7 @@ export interface UpgradedConnection {
   readonly socket: TextSocket;
   readonly context: ConnectionContext;
   onText(handler: (text: string) => void | Promise<void>): void;
+  onClose(handler: () => void | Promise<void>): void;
 }
 
 export const websocketContextFromRequest = (
@@ -33,6 +34,11 @@ export const attachUpgradedConnection = async (
   runtime: ServerRuntime,
   connection: UpgradedConnection,
 ): Promise<void> => {
+  runtime.sockets.register(connection.context.roomId, connection.socket);
+  connection.onClose(() => {
+    runtime.sockets.unregister(connection.context.roomId, connection.socket);
+  });
+
   await runtime.websocket.sendSnapshot(
     connection.socket,
     connection.context.roomId,
