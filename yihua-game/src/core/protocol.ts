@@ -1,3 +1,5 @@
+import type { Card } from "./cards.js";
+
 export type ClientMessage =
   | {
       readonly type: "join_room";
@@ -23,6 +25,24 @@ export type ServerMessage =
         readonly seat: number;
         readonly kind: "human" | "robot";
         readonly connected: boolean;
+      }[];
+    }
+  | {
+      readonly type: "game_state";
+      readonly roomId: string;
+      readonly phase: "playing" | "round-complete";
+      readonly currentTurn: number;
+      readonly handCounts: readonly number[];
+      readonly openingDraw: readonly Card[];
+      readonly openingDrawWinner: number;
+    }
+  | {
+      readonly type: "private_hand";
+      readonly roomId: string;
+      readonly seat: number;
+      readonly cards: readonly {
+        readonly id: string;
+        readonly card: Card;
       }[];
     }
   | { readonly type: "error"; readonly code: string; readonly message: string }
