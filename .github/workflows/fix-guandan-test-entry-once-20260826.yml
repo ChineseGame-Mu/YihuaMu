@@ -1,0 +1,59 @@
+name: Fix Guandan test entry once
+
+on:
+  push:
+    branches:
+      - optimize/guandan-online-performance-20260826
+    paths:
+      - ".github/workflows/fix-guandan-test-entry-once-20260826.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: optimize/guandan-online-performance-20260826
+      - name: Apply minimal test-entry edits
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/GuandanTable.tsx')
+          text = path.read_text()
+
+          old = '''  const autoJoinFromLink = React.useRef(\n    query.has("room") && query.has("name") && query.get("name")!.trim() !== "",\n  );'''
+          new = '''  const autoJoinFromLink = React.useRef(\n    query.get("test") !== "1" &&\n      query.has("room") &&\n      query.has("name") &&\n      query.get("name")!.trim() !== "",\n  );'''
+          assert old in text, 'autoJoinFromLink block not found'
+          text = text.replace(old, new, 1)
+
+          old = '''          {status === "connected" && isValidRoomCode(room) && name.trim() && (\n            <p>正在自动恢复房间…</p>\n          )}'''
+          new = '''          {!testMode &&\n            status === "connected" &&\n            isValidRoomCode(room) &&\n            name.trim() && <p>正在自动恢复房间…</p>}'''
+          assert old in text, 'auto restore hint block not found'
+          text = text.replace(old, new, 1)
+
+          old = '''          <div className="guandan-actions">\n            {Array.from('''
+          new = '''          <p>测试链接会预填“玩家1、玩家2…”作为姓名；打开后可先改成真实姓名，再点“加入房间”。全部玩家加入后，会显示“抽牌决定首家并开始”按钮。</p>\n          <div className="guandan-actions">\n            {Array.from('''
+          assert old in text, 'test action block not found'
+          text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Format changed file
+        working-directory: frontend
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx
+          git diff --cached --quiet || git commit -m "fix(guandan): allow renaming before test join"
+          git push
