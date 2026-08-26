@@ -8,8 +8,8 @@ import {
 } from "../src/core/trick-state.js";
 
 const card = (
-  rank: "3" | "4" | "5",
-  suit: "clubs" | "diamonds" = "clubs",
+  rank: "3" | "4" | "5" | "6" | "7" | "8" | "9",
+  suit: "clubs" | "diamonds" | "hearts" | "spades" = "clubs",
 ): Card => ({
   kind: "suited",
   rank,
@@ -30,11 +30,38 @@ test("valid play becomes visible table leader and advances turn", () => {
   assert.equal(state.plays.length, 1);
 });
 
-test("pass is recorded and turn wraps around table", () => {
-  const played = playCards(createTrickState(4, 3), 3, [card("4")]);
-  const passed = passTurn(played, 0);
-  assert.deepEqual(passed.passedSeats, [0]);
-  assert.equal(passed.currentTurn, 1);
+test("a response must beat the current hand", () => {
+  let state = playCards(createTrickState(4, 0), 0, [card("5")]);
+  assert.throws(
+    () => playCards(state, 1, [card("4")]),
+    /does not beat the current hand/,
+  );
+  state = playCards(state, 1, [card("6")]);
+  assert.equal(state.leadingPlay?.seat, 1);
+  assert.equal(state.leadingPlay?.hand.rank, "6");
+});
+
+test("a bomb can beat an ordinary hand", () => {
+  let state = playCards(createTrickState(4, 0), 0, [card("9")]);
+  state = playCards(state, 1, [
+    card("3", "clubs"),
+    card("3", "diamonds"),
+    card("3", "hearts"),
+    card("3", "spades"),
+  ]);
+  assert.equal(state.leadingPlay?.hand.kind, "bomb");
+});
+
+test("three passes clear a four-player trick and return the lead to the winner", () => {
+  let state = playCards(createTrickState(4, 3), 3, [card("4")]);
+  state = passTurn(state, 0);
+  state = passTurn(state, 1);
+  state = passTurn(state, 2);
+
+  assert.equal(state.leadingPlay, null);
+  assert.deepEqual(state.passedSeats, []);
+  assert.equal(state.currentTurn, 3);
+  assert.equal(state.leaderSeat, 3);
 });
 
 test("leader cannot pass before a play", () => {
