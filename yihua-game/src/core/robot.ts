@@ -46,30 +46,11 @@ const combinations = function* (
   }
 };
 
-const candidateSizes = (state: TurnState): readonly number[] => {
-  if (state.currentPlay === null) return [1];
-  const normal = state.currentPlay.hand.size;
-  return [...new Set([normal, 4, 5, 6])].filter((size) => size > 0);
-};
+const targetKind = (state: TurnState): HandKind =>
+  state.currentPlay?.hand.kind ?? "single";
 
-const candidateKinds = (size: number): readonly HandKind[] => {
-  switch (size) {
-    case 1:
-      return ["single"];
-    case 2:
-      return ["pair"];
-    case 3:
-      return ["triple"];
-    case 4:
-      return ["bomb", "joker-bomb"];
-    case 5:
-      return ["triple-pair", "straight", "straight-flush", "bomb"];
-    case 6:
-      return ["wood-board", "steel-board", "bomb"];
-    default:
-      return ["bomb"];
-  }
-};
+const targetSize = (state: TurnState): number =>
+  state.currentPlay?.hand.size ?? 1;
 
 export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
@@ -78,35 +59,34 @@ export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
   if (state.finishedSeats.includes(seat) || hand.length === 0)
     return { type: "pass" };
 
+  const size = targetSize(state);
+  if (size > hand.length) return { type: "pass" };
+
+  const kind = targetKind(state);
   const rules: LevelRules = { levelRank: state.levelRank };
-  for (const size of candidateSizes(state)) {
-    if (size > hand.length) continue;
-    for (const cards of combinations(hand, size)) {
-      for (const kind of candidateKinds(size)) {
-        try {
-          const resolved = resolveWildcardInterpretation(
-            cards.map(({ card }) => card),
-            rules,
-            kind,
-          );
-          if (
-            state.currentPlay === null ||
-            canClassifiedBeatWithLevelRules(
-              resolved.hand,
-              state.currentPlay.hand,
-              rules,
-            )
-          ) {
-            return {
-              type: "play",
-              cardIds: cards.map(({ id }) => id),
-              declaredKind: resolved.hand.kind,
-            };
-          }
-        } catch {
-          // This subset does not form the attempted hand kind.
-        }
+  for (const cards of combinations(hand, size)) {
+    try {
+      const resolved = resolveWildcardInterpretation(
+        cards.map(({ card }) => card),
+        rules,
+        kind,
+      );
+      if (
+        state.currentPlay === null ||
+        canClassifiedBeatWithLevelRules(
+          resolved.hand,
+          state.currentPlay.hand,
+          rules,
+        )
+      ) {
+        return {
+          type: "play",
+          cardIds: cards.map(({ id }) => id),
+          declaredKind: resolved.hand.kind,
+        };
       }
+    } catch {
+      // This subset does not form the required hand kind.
     }
   }
   return { type: "pass" };
