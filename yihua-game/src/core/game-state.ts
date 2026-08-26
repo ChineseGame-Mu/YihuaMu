@@ -8,11 +8,7 @@ import {
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
 import { createTableConfig, type TableConfig } from "./table.js";
 
-export type GamePhase =
-  | "lobby"
-  | "opening-draw"
-  | "playing"
-  | "round-complete";
+export type GamePhase = "lobby" | "opening-draw" | "playing" | "round-complete";
 
 export interface LobbyState {
   readonly phase: "lobby";
