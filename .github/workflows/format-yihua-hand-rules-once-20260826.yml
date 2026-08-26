@@ -34,4 +34,4 @@ jobs:
           git diff --cached --quiet || git commit -m "style(yihua-game): apply exact Prettier output"
           git push
 
-# Triggered again after adding online-compatible round settlement.
+# Triggered after chained three-round robot settlement coverage.
