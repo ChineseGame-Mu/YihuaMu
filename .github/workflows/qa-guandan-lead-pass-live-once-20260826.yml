@@ -1,5 +1,5 @@
 name: QA Guandan live lead-pass rule
-# rerun after Render refresh 2026-08-26T23:08Z
+# rerun after master backend merge cc606b455e8323c62920b44d7b9333473ba96b73
 
 on:
   push:
