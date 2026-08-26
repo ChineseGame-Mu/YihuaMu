@@ -1,31 +1,54 @@
 import type { TextSocket } from "./websocket-service.js";
 
-export class RoomSocketHub {
-  private readonly socketsByRoom = new Map<string, Set<TextSocket>>();
+interface SocketRegistration {
+  readonly socket: TextSocket;
+  readonly playerId?: string;
+}
 
-  register(roomId: string, socket: TextSocket): void {
-    const sockets = this.socketsByRoom.get(roomId) ?? new Set<TextSocket>();
-    sockets.add(socket);
-    this.socketsByRoom.set(roomId, sockets);
+export class RoomSocketHub {
+  private readonly registrationsByRoom = new Map<
+    string,
+    Set<SocketRegistration>
+  >();
+
+  register(roomId: string, socket: TextSocket, playerId?: string): void {
+    const registrations =
+      this.registrationsByRoom.get(roomId) ?? new Set<SocketRegistration>();
+    registrations.add(
+      playerId === undefined ? { socket } : { socket, playerId },
+    );
+    this.registrationsByRoom.set(roomId, registrations);
   }
 
   unregister(roomId: string, socket: TextSocket): void {
-    const sockets = this.socketsByRoom.get(roomId);
-    if (!sockets) return;
-    sockets.delete(socket);
-    if (sockets.size === 0) {
-      this.socketsByRoom.delete(roomId);
+    const registrations = this.registrationsByRoom.get(roomId);
+    if (!registrations) return;
+
+    for (const registration of registrations) {
+      if (registration.socket === socket) {
+        registrations.delete(registration);
+      }
+    }
+
+    if (registrations.size === 0) {
+      this.registrationsByRoom.delete(roomId);
     }
   }
 
   count(roomId: string): number {
-    return this.socketsByRoom.get(roomId)?.size ?? 0;
+    return this.registrationsByRoom.get(roomId)?.size ?? 0;
+  }
+
+  playerConnectionCount(roomId: string, playerId: string): number {
+    return [...(this.registrationsByRoom.get(roomId) ?? [])].filter(
+      (registration) => registration.playerId === playerId,
+    ).length;
   }
 
   async broadcast(roomId: string, text: string): Promise<void> {
-    const sockets = [...(this.socketsByRoom.get(roomId) ?? [])];
+    const registrations = [...(this.registrationsByRoom.get(roomId) ?? [])];
     await Promise.all(
-      sockets.map((socket) => Promise.resolve(socket.send(text))),
+      registrations.map(({ socket }) => Promise.resolve(socket.send(text))),
     );
   }
 }
