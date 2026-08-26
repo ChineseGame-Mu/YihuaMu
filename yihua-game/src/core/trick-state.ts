@@ -73,15 +73,7 @@ export const passTurn = (state: TrickState, seat: number): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
 
   if (state.leadingPlay === null) {
-    if (state.completedTricks === 0) {
-      throw new Error("opening leader cannot pass");
-    }
-    const passedSeats = [...state.passedSeats, seat];
-    return {
-      ...state,
-      currentTurn: nextSeat(seat, state.playerCount),
-      passedSeats: passedSeats.length >= state.playerCount ? [] : passedSeats,
-    };
+    throw new Error("leader cannot pass");
   }
 
   const passedSeats = [...state.passedSeats, seat];
