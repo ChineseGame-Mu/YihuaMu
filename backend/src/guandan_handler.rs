@@ -830,7 +830,7 @@ pub async fn websocket(
                             .player_names
                             .retain(|player| !is_robot_name(player));
                         let human_count = state.game.player_names.len();
-                        if human_count + count > GUANDAN_CLASSIC_PLAYER_COUNT {
+                        if human_count + count > GUANDAN_MAX_PLAYER_COUNT {
                             return Err(());
                         }
                         for index in 1..=count {
@@ -844,7 +844,7 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "robot count must fit the four-player table before start"
+                            message: "robot count must fit the selected table before start"
                                 .to_string(),
                         },
                     );
@@ -959,6 +959,7 @@ pub async fn websocket(
                         state.game.match_winner = None;
                         state.game.next_round_phase = None;
                         state.game.next_round_finish_order.clear();
+                        run_robot_turns(&mut state.game).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })

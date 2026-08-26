@@ -649,8 +649,7 @@ const GuandanTable: React.FunctionComponent = () => {
                   disabled={
                     !joined ||
                     gameStarted ||
-                    requestedPlayerCount !== 4 ||
-                    humanCount + count > 4
+                    humanCount + count > requestedPlayerCount
                   }
                   onClick={() =>
                     send({ type: "set_bots", count: count as 1 | 2 | 3 })
@@ -662,8 +661,8 @@ const GuandanTable: React.FunctionComponent = () => {
             })}
           </div>
           <p>
-            四人局可在开局前选择 1 至 3 个机器人；6至14人大桌保持真人联机，
-            不调用原四人机器人程序。
+            开局前可选择 1 至 3
+            个机器人补足本桌人数；真人加机器人总数不能超过所选桌人数。
           </p>
         </section>
       )}
