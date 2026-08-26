@@ -24,6 +24,7 @@ export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
+  | { type: "set_card_count_alert_threshold"; threshold: number }
   | { type: "set_bots"; count: 1 | 2 | 3 }
   | { type: "start"; player_count: number }
   | {
@@ -54,6 +55,7 @@ export type GuandanServerMessage =
       online_players: boolean[];
       minimum_players: number;
       maximum_players: number;
+      card_count_alert_threshold: number;
     }
   | { type: "started"; player_count: number; cards_per_player: number }
   | { type: "hand"; cards: GuandanCard[] }
@@ -82,6 +84,7 @@ export type GuandanServerMessage =
       tribute_resisted: boolean;
       match_winner: GuandanTeam | null;
       next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
+      card_count_alert_threshold: number;
     }
   | { type: "error"; message: string };
 

@@ -16,6 +16,7 @@ interface GuandanTableState {
   onlinePlayers: boolean[];
   playerCount: number | null;
   cardsPerPlayer: number | null;
+  cardCountAlertThreshold: number;
   hand: GuandanCard[];
   turn: number | null;
   handCounts: number[];
@@ -50,6 +51,7 @@ const initialState: GuandanTableState = {
   onlinePlayers: [],
   playerCount: null,
   cardsPerPlayer: null,
+  cardCountAlertThreshold: 6,
   hand: [],
   turn: null,
   handCounts: [],
@@ -113,6 +115,7 @@ const reduceMessage = (
         onlinePlayers: message.online_players,
         minimumPlayers: message.minimum_players,
         maximumPlayers: message.maximum_players,
+        cardCountAlertThreshold: message.card_count_alert_threshold,
         error: null,
       };
     case "started":
@@ -169,6 +172,7 @@ const reduceMessage = (
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
+        cardCountAlertThreshold: message.card_count_alert_threshold,
         error: null,
       };
     }

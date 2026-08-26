@@ -59,7 +59,62 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-initial-draw-mini {
     min-width: 220px !important;
   }
 
-  html body .guandan-table:has(.guandan-public-zone) .guandan-initial-draw-mini {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    .guandan-initial-draw-mini {
     top: 136px !important;
   }
+}
+
+/* 2026-08-26: preserve the approved upper-right row; only soften and enlarge player backs. */
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-backs {
+  gap: 2px !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-back {
+  min-width: 58px !important;
+  padding: 4px 5px 5px !important;
+  border: 1px solid #cfd8df !important;
+  border-radius: 8px !important;
+  color: #24333d !important;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%) !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-team-a {
+  background: #f7e8e4 !important;
+  border-color: #e5c8c1 !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-team-b {
+  background: #e8f1f6 !important;
+  border-color: #c4d7e2 !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-card-back {
+  width: 36px !important;
+  height: 50px !important;
+  margin: 2px auto !important;
+  border: 1px solid #bcc8d0 !important;
+  border-radius: 5px !important;
+  background: #fff !important;
+  box-shadow: inset 0 0 0 2px #f1f4f6 !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-seat,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back
+  > strong {
+  color: #263640 !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-card-count {
+  min-width: 24px !important;
+  font-size: 0.9rem !important;
+  font-weight: 900 !important;
 }

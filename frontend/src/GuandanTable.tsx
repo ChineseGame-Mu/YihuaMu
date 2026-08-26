@@ -209,14 +209,6 @@ const GuandanTable: React.FunctionComponent = () => {
         ? "desc"
         : "asc",
   );
-  const [cardCountAlertThreshold, setCardCountAlertThreshold] =
-    React.useState<number>(() => {
-      const saved = Number(
-        window.localStorage.getItem("guandan_card_count_alert_threshold") ??
-          "6",
-      );
-      return saved >= 6 && saved <= 10 ? saved : 6;
-    });
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
@@ -274,13 +266,6 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
-
-  React.useEffect(() => {
-    window.localStorage.setItem(
-      "guandan_card_count_alert_threshold",
-      String(cardCountAlertThreshold),
-    );
-  }, [cardCountAlertThreshold]);
 
   React.useEffect(() => {
     if (!gameStarted) setShuffleTo(String(deckSize));
@@ -620,9 +605,13 @@ const GuandanTable: React.FunctionComponent = () => {
           </label>{" "}
           <select
             id="guandan-card-count-alert-threshold"
-            value={cardCountAlertThreshold}
+            value={state.cardCountAlertThreshold}
+            disabled={gameStarted && !nextRoundPending}
             onChange={(event) =>
-              setCardCountAlertThreshold(Number(event.target.value))
+              send({
+                type: "set_card_count_alert_threshold",
+                threshold: Number(event.target.value),
+              })
             }
           >
             {[6, 7, 8, 9, 10].map((count) => (
@@ -636,8 +625,9 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列和报牌阈值只影响您自己，并会保存在当前浏览器。
+            报牌阈值为本桌统一设置：所有真人玩家和机器人共同使用；本轮开始后锁定，下一轮开始前可重新选择。
           </p>
+          <p>牌面配色和手牌排列仍只影响您自己的浏览器。</p>
           <div className="guandan-bot-settings">
             <strong>机器人陪玩：</strong>{" "}
             {[1, 2, 3].map((count) => {
@@ -799,7 +789,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     gameStarted &&
                     !dealing &&
                     remaining >= 0 &&
-                    remaining <= cardCountAlertThreshold;
+                    remaining <= state.cardCountAlertThreshold;
                   return (
                     <div
                       className={`guandan-public-player-back guandan-public-team-${
@@ -816,9 +806,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       <span
                         className="guandan-public-card-back"
                         aria-hidden="true"
-                      >
-                        <span>掼蛋</span>
-                      </span>
+                      />
                       <strong title={player}>{player}</strong>
                       {shouldReport && (
                         <span
