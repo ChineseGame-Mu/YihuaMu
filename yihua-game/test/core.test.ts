@@ -10,8 +10,10 @@ import { robotDelayMs } from "../src/core/robot.js";
 import {
   CARDS_PER_PLAYER,
   createTableConfig,
+  partnerSeatForFourPlayerTable,
   SUPPORTED_PLAYER_COUNTS,
   teamForSeat,
+  teammateSeatsForSeat,
 } from "../src/core/table.js";
 
 describe("table configuration", () => {
@@ -41,6 +43,19 @@ describe("table configuration", () => {
     expect(teamForSeat(1)).toBe("B");
     expect(teamForSeat(12)).toBe("A");
     expect(teamForSeat(13)).toBe("B");
+  });
+
+  it("maps four-player partners to the opposite seat", () => {
+    expect(partnerSeatForFourPlayerTable(0)).toBe(2);
+    expect(partnerSeatForFourPlayerTable(1)).toBe(3);
+    expect(partnerSeatForFourPlayerTable(2)).toBe(0);
+    expect(partnerSeatForFourPlayerTable(3)).toBe(1);
+  });
+
+  it("lists every same-team seat at larger tables", () => {
+    expect(teammateSeatsForSeat(6, 0)).toEqual([2, 4]);
+    expect(teammateSeatsForSeat(6, 3)).toEqual([1, 5]);
+    expect(teammateSeatsForSeat(14, 12)).toEqual([0, 2, 4, 6, 8, 10]);
   });
 });
 
