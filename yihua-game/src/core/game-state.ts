@@ -1,4 +1,10 @@
-import { createDeck, dealHands, shuffleDeck, type DeckCard, type RandomSource } from "./deck.js";
+import {
+  createDeck,
+  dealHands,
+  shuffleDeck,
+  type DeckCard,
+  type RandomSource,
+} from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
 import { createTableConfig, type TableConfig } from "./table.js";
 
@@ -47,7 +53,11 @@ export const startGame = (
   random: RandomSource = Math.random,
 ): PlayingState => {
   const openingDeck = createDeck(lobby.config.playerCount);
-  const openingDraw = runOpeningDraw(openingDeck, lobby.config.playerCount, random);
+  const openingDraw = runOpeningDraw(
+    openingDeck,
+    lobby.config.playerCount,
+    random,
+  );
   const dealDeck = shuffleDeck(createDeck(lobby.config.playerCount), random);
   const hands = dealHands(dealDeck, lobby.config.playerCount);
 
@@ -64,7 +74,11 @@ export const completeRound = (
   state: PlayingState,
   winnerSeat: number,
 ): RoundCompleteState => {
-  if (!Number.isInteger(winnerSeat) || winnerSeat < 0 || winnerSeat >= state.config.playerCount) {
+  if (
+    !Number.isInteger(winnerSeat) ||
+    winnerSeat < 0 ||
+    winnerSeat >= state.config.playerCount
+  ) {
     throw new Error("winner seat is outside the table");
   }
 

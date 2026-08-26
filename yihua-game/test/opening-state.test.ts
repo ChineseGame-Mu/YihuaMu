@@ -1,14 +1,25 @@
 import { describe, expect, it } from "vitest";
 
 import { createDeck } from "../src/core/deck.js";
-import { completeRound, createLobbyState, startGame } from "../src/core/game-state.js";
+import {
+  completeRound,
+  createLobbyState,
+  startGame,
+} from "../src/core/game-state.js";
 import { runOpeningDraw } from "../src/core/opening-draw.js";
-import { CARDS_PER_PLAYER, SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
+import {
+  CARDS_PER_PLAYER,
+  SUPPORTED_PLAYER_COUNTS,
+} from "../src/core/table.js";
 
 describe("opening draw", () => {
   it("never uses jokers and produces a valid starter", () => {
     for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
-      const result = runOpeningDraw(createDeck(playerCount), playerCount, () => 0.37);
+      const result = runOpeningDraw(
+        createDeck(playerCount),
+        playerCount,
+        () => 0.37,
+      );
       expect(result.winnerSeat).toBeGreaterThanOrEqual(0);
       expect(result.winnerSeat).toBeLessThan(playerCount);
       expect(
@@ -28,7 +39,9 @@ describe("table state machine", () => {
 
       expect(state.phase).toBe("playing");
       expect(state.hands).toHaveLength(playerCount);
-      expect(state.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(true);
+      expect(
+        state.hands.every((hand) => hand.length === CARDS_PER_PLAYER),
+      ).toBe(true);
       expect(state.currentTurn).toBe(state.openingDraw.winnerSeat);
     }
   });
