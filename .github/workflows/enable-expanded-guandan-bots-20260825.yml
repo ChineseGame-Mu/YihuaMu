@@ -19,63 +19,43 @@ jobs:
         with:
           ref: feature/guandan-up-to-14-players-20260825
           fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Expand robot support to 14-player tables
+      - name: Add random robot turn delay
         run: |
           python3 - <<'PY'
           from pathlib import Path
 
           backend = Path('backend/src/guandan_handler.rs')
           s = backend.read_text()
-          old = '''                        if human_count + count > GUANDAN_CLASSIC_PLAYER_COUNT {\n                            return Err(());\n                        }'''
-          new = '''                        if human_count + count > GUANDAN_MAX_PLAYER_COUNT {\n                            return Err(());\n                        }'''
-          if old not in s:
-              raise SystemExit('missing backend robot limit anchor')
-          s = s.replace(old, new, 1)
-          s = s.replace(
-              'message: "robot count must fit the four-player table before start"\n                                .to_string(),',
-              'message: "robot count must fit the selected table before start".to_string(),',
-              1,
-          )
-          old_start = '''                        state.game.next_round_phase = None;\n                        state.game.next_round_finish_order.clear();\n                        state.bump_version();'''
-          new_start = '''                        state.game.next_round_phase = None;\n                        state.game.next_round_finish_order.clear();\n                        run_robot_turns(&mut state.game).map_err(|_| ())?;\n                        state.bump_version();'''
-          if old_start not in s:
-              raise SystemExit('missing start robot anchor')
-          s = s.replace(old_start, new_start, 1)
+          if 'gen_range(800..=1800)' not in s:
+              s = s.replace(
+                  'use rand::thread_rng;',
+                  'use rand::{thread_rng, Rng};',
+                  1,
+              )
+              s = s.replace(
+                  'use std::{collections::HashMap, fmt, sync::Mutex};',
+                  'use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};',
+                  1,
+              )
+              anchor = '''        if !game\n            .player_names\n            .get(seat)\n            .is_some_and(|name| is_robot_name(name))\n        {\n            break;\n        }\n'''
+              if anchor not in s:
+                  raise SystemExit('robot turn anchor not found')
+              s = s.replace(
+                  anchor,
+                  anchor + '''        let delay_ms = thread_rng().gen_range(800..=1800);\n        thread::sleep(Duration::from_millis(delay_ms));\n''',
+                  1,
+              )
           backend.write_text(s)
-
-          table = Path('frontend/src/GuandanTable.tsx')
-          t = table.read_text()
-          old_ui = '''                    requestedPlayerCount !== 4 ||\n                    humanCount + count > 4'''
-          new_ui = '''                    humanCount + count > requestedPlayerCount'''
-          if old_ui not in t:
-              raise SystemExit('missing frontend robot limit anchor')
-          t = t.replace(old_ui, new_ui, 1)
-          old_text = '''            四人局可在开局前选择 1 至 3 个机器人；6至14人大桌保持真人联机，\n            不调用原四人机器人程序。'''
-          new_text = '''            开局前可选择 1 至 3 个机器人补足本桌人数；真人加机器人总数不能超过所选桌人数。'''
-          if old_text not in t:
-              raise SystemExit('missing frontend robot help anchor')
-          t = t.replace(old_text, new_text, 1)
-          table.write_text(t)
           PY
-      - name: Format and build frontend
-        run: |
-          corepack enable
-          cd frontend
-          yarn install --frozen-lockfile
-          yarn prettier --write src/GuandanTable.tsx
-          yarn build
       - name: Format and test Rust
         run: |
           cargo fmt --all
           cargo test -p shengji guandan --quiet
-      - name: Commit expanded robot support
+      - name: Commit robot delay
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx
+          git add backend/src/guandan_handler.rs
           git diff --cached --quiet && exit 0
-          git commit -m 'feat(guandan): allow robots on expanded tables'
+          git commit -m 'feat(guandan): add random robot turn delay'
           git push origin HEAD:feature/guandan-up-to-14-players-20260825
