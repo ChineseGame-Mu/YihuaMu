@@ -38,10 +38,14 @@ const writeResponse = (
   response.end(body);
 };
 
-const headerValue = (value: string | string[] | undefined): string | undefined =>
-  Array.isArray(value) ? value[0] : value;
+const headerValue = (
+  value: string | string[] | undefined,
+): string | undefined => (Array.isArray(value) ? value[0] : value);
 
-const rejectUpgrade = (socket: NodeJS.WritableStream, message: string): void => {
+const rejectUpgrade = (
+  socket: NodeJS.WritableStream,
+  message: string,
+): void => {
   socket.write(
     "HTTP/1.1 400 Bad Request\r\n" +
       "Connection: close\r\n" +
@@ -95,7 +99,9 @@ export const createNodeHttpServer = (
     void (async () => {
       try {
         const upgrade = headerValue(request.headers.upgrade)?.toLowerCase();
-        const connection = headerValue(request.headers.connection)?.toLowerCase();
+        const connection = headerValue(
+          request.headers.connection,
+        )?.toLowerCase();
         const version = headerValue(request.headers["sec-websocket-version"]);
         const clientKey = headerValue(request.headers["sec-websocket-key"]);
 
