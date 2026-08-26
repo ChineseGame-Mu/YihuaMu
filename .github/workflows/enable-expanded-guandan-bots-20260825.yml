@@ -49,6 +49,7 @@ jobs:
           PY
       - name: Format and test Rust
         run: |
+          mkdir -p frontend/dist
           cargo fmt --all
           cargo test -p shengji guandan --quiet
       - name: Commit robot delay
