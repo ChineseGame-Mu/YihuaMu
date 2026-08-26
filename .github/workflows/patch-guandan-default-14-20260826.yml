@@ -1,0 +1,46 @@
+name: Patch Guandan default table to 14
+
+on:
+  push:
+    branches:
+      - patch/guandan-default-14-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Make 14 players the root default
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old1 = 'const queryPlayerCount = Number(query.get("players") ?? "4");'
+          new1 = 'const queryPlayerCount = Number(query.get("players") ?? "14");'
+          if old1 not in s:
+              raise SystemExit('query default pattern not found')
+          s = s.replace(old1, new1, 1)
+          old2 = '        ? queryPlayerCount\n        : 4,'
+          new2 = '        ? queryPlayerCount\n        : 14,'
+          if old2 not in s:
+              raise SystemExit('fallback pattern not found')
+          s = s.replace(old2, new2, 1)
+          p.write_text(s)
+          PY
+      - name: Verify patch
+        run: |
+          grep -F 'query.get("players") ?? "14"' frontend/src/GuandanTable.tsx
+      - name: Commit to master
+        run: |
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add frontend/src/GuandanTable.tsx
+          git commit -m "fix(guandan): default expanded test table to 14 players"
+          git push origin HEAD:master
