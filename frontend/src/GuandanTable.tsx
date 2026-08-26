@@ -188,7 +188,10 @@ const GuandanTable: React.FunctionComponent = () => {
   );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
   const autoJoinFromLink = React.useRef(
-    query.has("room") && query.has("name") && query.get("name")!.trim() !== "",
+    query.get("test") !== "1" &&
+      query.has("room") &&
+      query.has("name") &&
+      query.get("name")!.trim() !== "",
   );
   const [selected, setSelected] = React.useState<number[]>([]);
   const [dealStep, setDealStep] = React.useState<number | null>(null);
@@ -700,9 +703,10 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             加入房间
           </button>
-          {status === "connected" && isValidRoomCode(room) && name.trim() && (
-            <p>正在自动恢复房间…</p>
-          )}
+          {!testMode &&
+            status === "connected" &&
+            isValidRoomCode(room) &&
+            name.trim() && <p>正在自动恢复房间…</p>}
         </section>
       )}
 
@@ -724,6 +728,9 @@ const GuandanTable: React.FunctionComponent = () => {
               ))}
             </select>
           </label>
+          <p>
+            测试链接会预填“玩家1、玩家2…”作为姓名；打开后可先改成真实姓名，再点“加入房间”。全部玩家加入后，会显示“抽牌决定首家并开始”按钮。
+          </p>
           <div className="guandan-actions">
             {Array.from(
               { length: requestedPlayerCount },
