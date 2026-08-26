@@ -1,0 +1,83 @@
+name: Diagnose Guandan 6-player winner state
+
+on:
+  push:
+    branches:
+      - feature/guandan-up-to-14-players-20260825
+    paths:
+      - .github/workflows/diagnose-guandan-6-player-winner-20260825.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-up-to-14-players-20260825
+      - run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Start backend
+        run: |
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic >/tmp/g6.log 2>&1 &
+          for i in $(seq 1 120); do curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1 && exit 0; sleep 1; done
+          cat /tmp/g6.log; exit 1
+      - name: Diagnose one six-player game
+        run: |
+          python - <<'PY'
+          import asyncio,json,time,websockets
+          URI='ws://127.0.0.1:3030/api/guandan'; N=6
+          class C:
+            def __init__(self,i): self.i=i; self.ws=None; self.task=None; self.state=None; self.seq=0; self.hand=None; self.joined=None; self.waiting=None; self.started=None; self.err=None; self.cv=asyncio.Condition()
+            async def connect(self): self.ws=await websockets.connect(URI); self.task=asyncio.create_task(self.read()); await self.wait(lambda:self.joined is not None or self.state is not None,1,allow_empty=True)
+            async def read(self):
+              try:
+                async for raw in self.ws:
+                  m=json.loads(raw)
+                  async with self.cv:
+                    t=m.get('type')
+                    if t=='joined': self.joined=m
+                    elif t=='waiting': self.waiting=m
+                    elif t=='started': self.started=m
+                    elif t=='state': self.state=m; self.seq+=1
+                    elif t=='hand': self.hand=m.get('cards',[])
+                    elif t=='error': self.err=m.get('message')
+                    self.cv.notify_all()
+              except Exception as e:
+                async with self.cv: self.err=str(e); self.cv.notify_all()
+            async def wait(self,p,timeout=30,allow_empty=False):
+              async def x():
+                async with self.cv:
+                  await self.cv.wait_for(lambda:self.err is not None or p())
+                  if self.err and not allow_empty: raise RuntimeError(self.err)
+              try: await asyncio.wait_for(x(),timeout)
+              except asyncio.TimeoutError:
+                if not allow_empty: raise
+            async def send(self,m): await self.ws.send(json.dumps(m,ensure_ascii=False))
+            async def close(self):
+              if self.ws: await self.ws.close()
+          def sig(s): return (s.get('turn'),tuple(s.get('hand_counts',[])),s.get('last_player'),s.get('passes'),tuple(s.get('finish_order',[])),s.get('next_round_phase'),s.get('last_game_winner'))
+          async def main():
+            room=f'diag6_{int(time.time()*1000)}'; cs=[C(i) for i in range(N)]
+            try:
+              for c in cs:
+                await c.connect(); await c.send({'type':'join','room':room,'name':'机器人' if c.i==5 else f'玩家{c.i+1}'}); await c.wait(lambda c=c:c.joined is not None)
+              ctl=cs[0]; await ctl.wait(lambda:ctl.waiting is not None and len(ctl.waiting.get('players',[]))==N); await ctl.send({'type':'start','player_count':N})
+              for c in cs: await c.wait(lambda c=c:c.hand is not None and len(c.hand)==27 and c.started is not None)
+              first=None; actions=0
+              while ctl.state.get('next_round_phase')!='awaiting_shuffle':
+                s=ctl.state; seat=s['turn']; old=ctl.seq; oldsig=sig(s)
+                if s.get('last_player') is None:
+                  before=s['hand_counts'][seat]; await cs[seat].send({'type':'play','card_indexes':[0]})
+                  if before==1 and first is None: first=seat
+                else: await cs[seat].send({'type':'pass'})
+                await ctl.wait(lambda old=old,oldsig=oldsig:ctl.seq>old and sig(ctl.state)!=oldsig)
+                actions+=1; assert actions<4000
+              e=ctl.state
+              print('SIX_PLAYER_END_STATE',json.dumps({'room':room,'actions':actions,'first_finisher':first+1 if first is not None else None,'last_game_winner':e.get('last_game_winner')+1 if e.get('last_game_winner') is not None else None,'finish_order':[x+1 for x in e.get('finish_order',[])],'hand_counts':e.get('hand_counts'),'winner_team':e.get('last_game_winner_team'),'promotion':e.get('last_promotion_steps'),'phase':e.get('next_round_phase')},ensure_ascii=False))
+            finally:
+              await asyncio.gather(*(c.close() for c in cs),return_exceptions=True)
+          asyncio.run(main())
+          PY
