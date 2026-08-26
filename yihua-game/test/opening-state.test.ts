@@ -7,6 +7,7 @@ import {
   passGameTurn,
   playGameCards,
   startGame,
+  startNextRound,
   startOpeningDraw,
 } from "../src/core/game-state.js";
 import { runOpeningDraw } from "../src/core/opening-draw.js";
@@ -95,6 +96,19 @@ describe("table state machine", () => {
 
     expect(complete.phase).toBe("round-complete");
     expect(complete.winnerSeat).toBe(2);
+  });
+
+  it("starts the next round from the prior winner without another opening draw", () => {
+    const playing = startGame(createLobbyState(4, 1), () => 0.61);
+    const complete = completeRound(playing, 2);
+    const next = startNextRound(complete, () => 0.24);
+
+    expect(next.phase).toBe("playing");
+    expect(next.currentTurn).toBe(2);
+    expect(next.trick.leaderSeat).toBe(2);
+    expect(next.trick.currentTurn).toBe(2);
+    expect(next.openingDraw).toBe(complete.openingDraw);
+    expect(next.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(true);
   });
 
   it("rejects a winner outside the table", () => {
