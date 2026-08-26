@@ -24,6 +24,8 @@ export class RoomSocketHub {
 
   async broadcast(roomId: string, text: string): Promise<void> {
     const sockets = [...(this.socketsByRoom.get(roomId) ?? [])];
-    await Promise.all(sockets.map((socket) => Promise.resolve(socket.send(text))));
+    await Promise.all(
+      sockets.map((socket) => Promise.resolve(socket.send(text))),
+    );
   }
 }
