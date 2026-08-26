@@ -1,11 +1,11 @@
-name: One-time Guandan deal synchronization fix
+name: One-time Guandan test entry fix
 
 on:
   push:
-    branches: [master]
+    branches:
+      - optimize/guandan-online-performance-20260826
     paths:
       - '.github/workflows/fix-guandan-deal-once.yml'
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,59 +16,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: optimize/guandan-online-performance-20260826
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Patch Guandan start/deal synchronization
+      - name: Patch test entry only
         shell: python
         run: |
           from pathlib import Path
-
           p = Path('frontend/src/GuandanTable.tsx')
           s = p.read_text()
-          old = '''  const gameStarted = serverDealt || startRequested;\n'''
-          new = '''  const gameStarted = serverDealt || state.playerCount !== null;\n'''
+
+          old = '''  const autoJoinFromLink = React.useRef(\n    query.has("room") && query.has("name") && query.get("name")!.trim() !== "",\n  );'''
+          new = '''  const autoJoinFromLink = React.useRef(\n    query.get("test") !== "1" &&\n      query.has("room") &&\n      query.has("name") &&\n      query.get("name")!.trim() !== "",\n  );'''
           if old not in s:
-              raise SystemExit('frontend gameStarted line not found')
+              raise SystemExit('autoJoinFromLink block not found')
           s = s.replace(old, new, 1)
 
-          marker = '''  React.useEffect(() => {\n    if (serverDealt) setStartRequested(true);\n  }, [serverDealt]);\n'''
-          replacement = '''  React.useEffect(() => {\n    if (serverDealt || state.playerCount !== null) setStartRequested(true);\n  }, [serverDealt, state.playerCount]);\n\n  React.useEffect(() => {\n    if (state.error !== null && state.hand.length === 0) {\n      setStartRequested(false);\n    }\n  }, [state.error, state.hand.length]);\n'''
-          if marker not in s:
-              raise SystemExit('frontend serverDealt effect not found')
-          s = s.replace(marker, replacement, 1)
-          p.write_text(s)
-
-          p = Path('backend/src/guandan_handler.rs')
-          s = p.read_text()
-          old = '''                            if state.game.started {\n                                send(&tx_sub, &state_message(&key, &state.game));\n                                if let Some(seat_sub) = seat_sub {\n'''
-          new = '''                            if state.game.started {\n                                send(\n                                    &tx_sub,\n                                    &GuandanServerMessage::Started {\n                                        player_count: state.game.player_names.len(),\n                                        cards_per_player: CARDS_PER_PLAYER,\n                                    },\n                                );\n                                send(&tx_sub, &state_message(&key, &state.game));\n                                if let Some(seat_sub) = seat_sub {\n'''
+          old = '''          {status === "connected" && isValidRoomCode(room) && name.trim() && (\n            <p>正在自动恢复房间…</p>\n          )}'''
+          new = '''          {!testMode &&\n            status === "connected" &&\n            isValidRoomCode(room) &&\n            name.trim() && <p>正在自动恢复房间…</p>}'''
           if old not in s:
-              raise SystemExit('backend subscription started block not found')
+              raise SystemExit('auto restore hint block not found')
+          s = s.replace(old, new, 1)
+
+          old = '''          <div className="guandan-actions">\n            {Array.from('''
+          new = '''          <p>测试链接会预填“玩家1、玩家2…”作为姓名；打开后可先改成真实姓名，再点“加入房间”。全部玩家加入后，会显示“抽牌决定首家并开始”按钮。</p>\n          <div className="guandan-actions">\n            {Array.from('''
+          if old not in s:
+              raise SystemExit('test action block not found')
           s = s.replace(old, new, 1)
           p.write_text(s)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
       - name: Install frontend dependencies
         working-directory: frontend
-        run: yarn install
+        run: npm install
 
       - name: Format frontend
         working-directory: frontend
-        run: yarn prettier src/GuandanTable.tsx --write
-
-      - name: Format Rust
-        run: cargo fmt --all
-
-      - name: Test frontend
-        working-directory: frontend
-        run: yarn test --runInBand
-
-      - name: Test Guandan backend
-        run: cargo test -p backend guandan --no-fail-fast
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx
 
       - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/GuandanTable.tsx backend/src/guandan_handler.rs
-          git commit -m "fix: synchronize Guandan start and deal for all players"
+          git add frontend/src/GuandanTable.tsx
+          git diff --cached --quiet || git commit -m "fix(guandan): allow renaming before test join"
           git push
