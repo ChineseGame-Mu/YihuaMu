@@ -46,9 +46,9 @@ describe("opening draw", () => {
     expect(playing.phase).toBe("playing");
     expect(playing.openingDraw).toBe(opening.openingDraw);
     expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
-    expect(playing.hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(
-      true,
-    );
+    expect(
+      playing.hands.every((hand) => hand.length === CARDS_PER_PLAYER),
+    ).toBe(true);
   });
 });
 

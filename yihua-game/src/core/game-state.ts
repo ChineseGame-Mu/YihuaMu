@@ -93,7 +93,8 @@ export const dealAfterOpeningDraw = (
 export const startGame = (
   lobby: LobbyState,
   random: RandomSource = Math.random,
-): PlayingState => dealAfterOpeningDraw(startOpeningDraw(lobby, random), random);
+): PlayingState =>
+  dealAfterOpeningDraw(startOpeningDraw(lobby, random), random);
 
 const sameCard = (left: Card, right: Card): boolean => {
   if (left.kind !== right.kind) return false;
