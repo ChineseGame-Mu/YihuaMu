@@ -1,0 +1,93 @@
+name: QA Guandan live lead-pass rule
+
+on:
+  push:
+    branches: [optimize/guandan-online-performance-20260826]
+    paths:
+      - .github/workflows/qa-guandan-lead-pass-live-once-20260826.yml
+
+permissions:
+  contents: read
+
+jobs:
+  lead-pass-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Verify opening lead is forced and later lead may pass
+        run: |
+          python - <<'PY'
+          import asyncio, json, time, uuid
+          import websockets
+
+          URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
+          ROOM = f"qa_lead_pass_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+
+          async def recv_until(ws, predicate, timeout=20, allow_error=False):
+              end = asyncio.get_running_loop().time() + timeout
+              while True:
+                  left = end - asyncio.get_running_loop().time()
+                  if left <= 0:
+                      raise TimeoutError('message timeout')
+                  raw = await asyncio.wait_for(ws.recv(), left)
+                  if isinstance(raw, bytes): raw = raw.decode()
+                  msg = json.loads(raw)
+                  if msg.get('type') == 'error' and not allow_error:
+                      raise AssertionError(msg)
+                  if predicate(msg): return msg
+
+          async def main():
+              clients = []
+              try:
+                  for i in range(4):
+                      ws = await websockets.connect(URI, open_timeout=20, close_timeout=5)
+                      await recv_until(ws, lambda m: m.get('type') == 'connected')
+                      await ws.send(json.dumps({'type':'join','room':ROOM,'name':f'QA首过{i+1}'}, ensure_ascii=False))
+                      joined = await recv_until(ws, lambda m: m.get('type') == 'joined')
+                      assert joined.get('seat') == i, joined
+                      clients.append(ws)
+
+                  await clients[0].send(json.dumps({'type':'start','player_count':4}))
+                  state = await recv_until(clients[0], lambda m: m.get('type') == 'state' and len(m.get('initial_draw',[])) == 4)
+                  leader = state['turn']
+
+                  # Opening lead must NOT be allowed to pass.
+                  await clients[leader].send(json.dumps({'type':'pass'}))
+                  err = await recv_until(clients[leader], lambda m: m.get('type') == 'error', allow_error=True)
+                  assert err.get('message') == 'cannot pass now', err
+                  print('OPENING_LEAD_PASS_REJECTED_OK', flush=True)
+
+                  # Opening leader plays one card.
+                  await clients[leader].send(json.dumps({'type':'play','card_indexes':[0]}))
+                  state = await recv_until(clients[0], lambda m: m.get('type') == 'state' and m.get('last_player') == leader)
+
+                  # All other active players pass to finish first trick.
+                  for _ in range(3):
+                      seat = state['turn']
+                      await clients[seat].send(json.dumps({'type':'pass'}))
+                      state = await recv_until(
+                          clients[0],
+                          lambda m: m.get('type') == 'state' and (
+                              m.get('turn') != seat or m.get('last_player') is None
+                          )
+                      )
+
+                  assert state.get('last_player') is None, state
+                  assert state.get('last_trick_winner') is not None, state
+                  later_leader = state['turn']
+
+                  # From the second trick onward an empty-table leader MAY pass.
+                  await clients[later_leader].send(json.dumps({'type':'pass'}))
+                  next_state = await recv_until(
+                      clients[0],
+                      lambda m: m.get('type') == 'state' and m.get('turn') != later_leader
+                  )
+                  assert next_state.get('last_player') is None, next_state
+                  print('POST_OPENING_LEAD_PASS_ALLOWED_OK', flush=True)
+                  print('QA_GUANDAN_LEAD_PASS_LIVE_OK', flush=True)
+              finally:
+                  await asyncio.gather(*(ws.close() for ws in clients), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
