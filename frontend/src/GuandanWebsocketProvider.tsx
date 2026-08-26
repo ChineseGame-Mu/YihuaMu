@@ -27,15 +27,15 @@ interface GuandanWebsocketProviderProps {
   children: JSX.Element[] | JSX.Element;
 }
 
-const EXPANDED_TEST_WEBSOCKET =
-  "wss://euro-adam-lib-schemes.trycloudflare.com/api/guandan";
+const STABLE_GUANDAN_WEBSOCKET =
+  "wss://chinesegame-yihua.onrender.com/api/guandan";
 
 const testWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("test") !== "1") return null;
 
   const raw = query.get("ws");
-  if (raw === null || raw.trim() === "") return EXPANDED_TEST_WEBSOCKET;
+  if (raw === null || raw.trim() === "") return null;
 
   try {
     const url = new URL(raw);
@@ -56,8 +56,11 @@ const websocketUri = (): string => {
     return base.endsWith("/api") ? `${base}/guandan` : `${base}/api/guandan`;
   }
 
-  if (location.hostname.endsWith(".vercel.app")) {
-    return "wss://chinesegame-yihua.onrender.com/api/guandan";
+  if (
+    location.hostname.endsWith(".vercel.app") ||
+    new URLSearchParams(window.location.search).get("test") === "1"
+  ) {
+    return STABLE_GUANDAN_WEBSOCKET;
   }
 
   const protocol = location.protocol === "https:" ? "wss://" : "ws://";
