@@ -25,10 +25,8 @@ export const websocketContextFromRequest = (
     throw new Error("room id is required");
   }
 
-  return {
-    roomId,
-    playerId: request.query.playerId,
-  };
+  const playerId = request.query.playerId;
+  return playerId === undefined ? { roomId } : { roomId, playerId };
 };
 
 export const attachUpgradedConnection = async (
