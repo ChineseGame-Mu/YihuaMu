@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addHuman } from "../src/core/room.js";
 import { RoomManager } from "../src/core/room-manager.js";
+import { RoomSocketHub } from "../src/core/room-socket-hub.js";
 import { WebSocketService } from "../src/core/websocket-service.js";
 
 const fillFourPlayerRoom = (manager: RoomManager, roomId: string): void => {
@@ -48,7 +49,7 @@ describe("WebSocketService", () => {
     const manager = new RoomManager();
     manager.create("socket-room", 4);
     const sent: string[] = [];
-    const service = new WebSocketService(manager);
+    const service = new WebSocketService(manager, new RoomSocketHub());
 
     await service.handleText(
       {
@@ -67,7 +68,7 @@ describe("WebSocketService", () => {
     const manager = new RoomManager();
     manager.create("socket-room", 4);
     const sent: string[] = [];
-    const service = new WebSocketService(manager);
+    const service = new WebSocketService(manager, new RoomSocketHub());
 
     await service.handleText(
       {
