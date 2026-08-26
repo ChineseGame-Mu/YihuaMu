@@ -1,4 +1,5 @@
 name: QA Guandan live lead-pass rule
+# rerun after Render refresh 2026-08-26T23:08Z
 
 on:
   push:
@@ -95,7 +96,6 @@ jobs:
                   state = monitor.state
                   leader = state['turn']
 
-                  # Opening lead must NOT be allowed to pass.
                   actor = clients[leader]
                   actor.error = None
                   await actor.ws.send(json.dumps({'type':'pass'}))
@@ -104,7 +104,6 @@ jobs:
                   actor.error = None
                   print('OPENING_LEAD_PASS_REJECTED_OK', flush=True)
 
-                  # Opening leader plays one card.
                   prev = monitor.state_seq
                   await actor.ws.send(json.dumps({'type':'play','card_indexes':[0]}))
                   state = await monitor.wait_new_state(prev, 20)
@@ -112,7 +111,6 @@ jobs:
                       prev = monitor.state_seq
                       state = await monitor.wait_new_state(prev, 20)
 
-                  # All other active players pass to finish first trick.
                   for _ in range(3):
                       seat = state['turn']
                       prev = monitor.state_seq
@@ -126,7 +124,6 @@ jobs:
                   assert state.get('last_trick_winner') is not None, state
                   later_leader = state['turn']
 
-                  # From the second trick onward an empty-table leader MAY pass.
                   prev = monitor.state_seq
                   clients[later_leader].error = None
                   await clients[later_leader].ws.send(json.dumps({'type':'pass'}))
