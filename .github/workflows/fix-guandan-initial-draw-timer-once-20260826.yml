@@ -1,0 +1,49 @@
+name: Fix Guandan initial draw timer once
+
+on:
+  push:
+    branches:
+      - optimize/guandan-online-performance-20260826
+    paths:
+      - ".github/workflows/fix-guandan-initial-draw-timer-once-20260826.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: optimize/guandan-online-performance-20260826
+      - name: Patch five-minute initial draw timer
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('frontend/src/GuandanTable.tsx')
+          s = p.read_text()
+          old = '''  }, [\n    state.initialDraw,\n    state.initialDrawWinner,\n    state.lastGameWinner,\n    playerCount,\n  ]);'''
+          new = '''  }, [\n    state.initialDraw.length,\n    state.initialDrawWinner,\n    state.lastGameWinner,\n    playerCount,\n  ]);'''
+          if old not in s:
+              raise SystemExit('initial draw effect dependency block not found')
+          p.write_text(s.replace(old, new, 1))
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Format changed file
+        working-directory: frontend
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test -- --runInBand
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/GuandanTable.tsx
+          git diff --cached --quiet || git commit -m "fix(guandan): keep initial draw visible for exactly five minutes"
+          git push
