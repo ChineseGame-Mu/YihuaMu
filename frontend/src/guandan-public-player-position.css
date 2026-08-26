@@ -1,0 +1,50 @@
+/* 2026-08-25: keep the public participant backs on one independent row at the far right of the public table. */
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-backs {
+  position: absolute !important;
+  z-index: 34 !important;
+  top: 34px !important;
+  right: 10px !important;
+  left: auto !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-start !important;
+  justify-content: flex-end !important;
+  gap: 4px !important;
+  box-sizing: border-box !important;
+  width: auto !important;
+  max-width: 72% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  white-space: nowrap !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-back {
+  flex: 0 0 auto !important;
+}
+
+/* Keep the first-game draw/start controls on the left so the participant row never covers them. */
+html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
+  position: absolute !important;
+  z-index: 33 !important;
+  top: 86px !important;
+  left: 18px !important;
+  right: auto !important;
+  box-sizing: border-box !important;
+  width: min(26%, 330px) !important;
+  min-width: 250px !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 900px) {
+  html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-backs {
+    max-width: 68% !important;
+  }
+
+  html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
+    width: 30% !important;
+    min-width: 220px !important;
+  }
+}
