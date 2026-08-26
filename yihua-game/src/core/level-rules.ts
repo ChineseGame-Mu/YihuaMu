@@ -135,9 +135,7 @@ export const enumerateWildcardInterpretations = (
       : [{ hand, substitutedCards: [...cards], wildcardCount: 0 }];
   }
 
-  const fixedCards = cards.filter(
-    (card) => !isHeartLevelWildcard(card, rules),
-  );
+  const fixedCards = cards.filter((card) => !isHeartLevelWildcard(card, rules));
   if (fixedCards.some((card) => card.kind === "joker")) return [];
 
   const fixed = fixedCards as readonly Extract<Card, { kind: "suited" }>[];
@@ -297,10 +295,12 @@ export const canClassifiedBeatWithLevelRules = (
     if (challengerTier !== currentTier) return challengerTier > currentTier;
 
     if (challenger.kind === "bomb" && current.kind === "bomb") {
-      if (challenger.size !== current.size) return challenger.size > current.size;
+      if (challenger.size !== current.size)
+        return challenger.size > current.size;
     }
 
-    if (challenger.rank === undefined || current.rank === undefined) return false;
+    if (challenger.rank === undefined || current.rank === undefined)
+      return false;
     return compareOrdinaryRanks(challenger.rank, current.rank, rules) > 0;
   }
 
