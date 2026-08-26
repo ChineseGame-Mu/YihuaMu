@@ -37,5 +37,5 @@ jobs:
           git config user.name "ChineseGame-Mu"
           git config user.email "muyihua@gmail.com"
           git add yihua-game
-          git commit -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
+          git commit --no-verify -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
           git push origin HEAD:cleanroom/yihua-game-20260826
