@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Socket } from "node:net";
+import type { Duplex } from "node:stream";
 import type {
   ConnectionContext,
   TextSocket,
@@ -103,7 +103,7 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   private textHandler: ((text: string) => void | Promise<void>) | undefined;
 
   constructor(
-    private readonly rawSocket: Socket,
+    private readonly rawSocket: Duplex,
     readonly context: ConnectionContext,
   ) {}
 
