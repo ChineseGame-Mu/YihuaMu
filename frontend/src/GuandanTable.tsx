@@ -344,7 +344,7 @@ const GuandanTable: React.FunctionComponent = () => {
     );
     return () => window.clearTimeout(timer);
   }, [
-    state.initialDraw,
+    state.initialDraw.length,
     state.initialDrawWinner,
     state.lastGameWinner,
     playerCount,
