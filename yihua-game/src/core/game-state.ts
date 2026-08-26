@@ -1,3 +1,4 @@
+import type { Card } from "./cards.js";
 import {
   createDeck,
   dealHands,
@@ -7,6 +8,12 @@ import {
 } from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
 import { createTableConfig, type TableConfig } from "./table.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+  type TrickState,
+} from "./trick-state.js";
 
 export type GamePhase = "lobby" | "opening-draw" | "playing" | "round-complete";
 
@@ -27,6 +34,7 @@ export interface PlayingState {
   readonly openingDraw: OpeningDrawResult;
   readonly hands: readonly (readonly DeckCard[])[];
   readonly currentTurn: number;
+  readonly trick: TrickState;
 }
 
 export interface RoundCompleteState extends Omit<PlayingState, "phase"> {
@@ -60,14 +68,36 @@ export const startGame = (
   );
   const dealDeck = shuffleDeck(createDeck(lobby.config.playerCount), random);
   const hands = dealHands(dealDeck, lobby.config.playerCount);
+  const trick = createTrickState(
+    lobby.config.playerCount,
+    openingDraw.winnerSeat,
+  );
 
   return {
     phase: "playing",
     config: lobby.config,
     openingDraw,
     hands,
-    currentTurn: openingDraw.winnerSeat,
+    currentTurn: trick.currentTurn,
+    trick,
   };
+};
+
+export const playGameCards = (
+  state: PlayingState,
+  seat: number,
+  cards: readonly Card[],
+): PlayingState => {
+  const trick = playCards(state.trick, seat, cards);
+  return { ...state, currentTurn: trick.currentTurn, trick };
+};
+
+export const passGameTurn = (
+  state: PlayingState,
+  seat: number,
+): PlayingState => {
+  const trick = passTurn(state.trick, seat);
+  return { ...state, currentTurn: trick.currentTurn, trick };
 };
 
 export const completeRound = (
