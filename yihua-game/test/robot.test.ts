@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
-import type { DeckCard } from "../src/core/deck.js";
+import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import type { PlayingState } from "../src/core/game-state.js";
 import { createTurnState, playCards } from "../src/core/play-state.js";
 import {
@@ -102,5 +102,22 @@ describe("robot turns", () => {
     expect(next.finishedSeats).toContain(0);
     expect(next.finishOrder).toEqual([0]);
     expect(next.publicActions.at(-1)?.type).toBe("play");
+  });
+
+  it("runs a complete four-robot 27-card game through the real turn state", () => {
+    const hands = dealHands(createDeck(4), 4);
+    let state = createTurnState(playing(hands), "7");
+    let turns = 0;
+
+    while (state.finishedSeats.length < 3 && turns < 2000) {
+      state = applyRobotTurn(state, state.currentTurn);
+      turns += 1;
+    }
+
+    expect(turns).toBeLessThan(2000);
+    expect(state.finishedSeats.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(state.finishOrder).size).toBe(state.finishOrder.length);
+    expect(state.finishOrder.length).toBeGreaterThanOrEqual(3);
+    expect(state.hands.flat().length).toBeLessThanOrEqual(27);
   });
 });
