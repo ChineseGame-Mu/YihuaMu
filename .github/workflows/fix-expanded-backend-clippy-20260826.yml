@@ -1,0 +1,36 @@
+name: Repair expanded Guandan backend lint
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/fix-expanded-backend-clippy-20260826.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+      - name: Apply Rust 1.98 slice lint fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('backend/src/guandan_handler.rs')
+          text = path.read_text()
+          old = 'fn draw_starting_seat(deck: &mut Vec<CardFace>, player_count: usize) -> (Vec<CardFace>, usize) {'
+          new = 'fn draw_starting_seat(deck: &mut [CardFace], player_count: usize) -> (Vec<CardFace>, usize) {'
+          if old not in text:
+              raise SystemExit('expected signature not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/src/guandan_handler.rs
+          git commit -m 'fix(guandan): satisfy Rust 1.98 slice lint'
+          git push origin HEAD:master
