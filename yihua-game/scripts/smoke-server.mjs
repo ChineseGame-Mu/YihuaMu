@@ -69,17 +69,20 @@ const createMessageQueue = (socket) => {
 const participant = (message, playerId) =>
   message.participants?.find(({ id }) => id === playerId);
 
-try {
-  await waitForHealth();
-
+const createRoom = async (roomId, playerCount) => {
   const created = await fetch(`${baseUrl}/api/rooms`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ roomId: "smoke", playerCount: 4 }),
+    body: JSON.stringify({ roomId, playerCount }),
   });
   if (created.status !== 201) {
-    throw new Error(`room creation failed: ${created.status}`);
+    throw new Error(`room creation failed: ${roomId} ${created.status}`);
   }
+};
+
+try {
+  await waitForHealth();
+  await createRoom("smoke", 4);
 
   const socket1 = new WebSocket(
     `ws://127.0.0.1:${port}/ws/rooms/smoke?playerId=p1`,
@@ -152,7 +155,90 @@ try {
 
   socket1Reconnect.close();
   socket2.close();
-  console.log("YIHUA_GAME_MULTI_CLIENT_RECONNECT_SMOKE_OK");
+
+  await createRoom("game", 4);
+  const clients = Array.from({ length: 4 }, (_, index) => {
+    const playerId = `g${index + 1}`;
+    const socket = new WebSocket(
+      `ws://127.0.0.1:${port}/ws/rooms/game?playerId=${playerId}`,
+    );
+    return {
+      playerId,
+      seat: index,
+      socket,
+      next: createMessageQueue(socket),
+    };
+  });
+
+  const initialSnapshots = await Promise.all(clients.map(({ next }) => next()));
+  if (initialSnapshots.some(({ type }) => type !== "room_state")) {
+    throw new Error("four-player initial snapshots failed");
+  }
+
+  for (const client of clients) {
+    client.socket.send(
+      JSON.stringify({
+        type: "join_room",
+        roomId: "game",
+        playerId: client.playerId,
+        name: `玩家${client.seat + 1}`,
+        seat: client.seat,
+      }),
+    );
+    const updates = await Promise.all(clients.map(({ next }) => next()));
+    if (
+      updates.some(
+        (message) => !participant(message, client.playerId)?.connected,
+      )
+    ) {
+      throw new Error(`join broadcast failed for ${client.playerId}`);
+    }
+  }
+
+  clients[0].socket.send(JSON.stringify({ type: "start_game" }));
+  const roomStates = await Promise.all(clients.map(({ next }) => next()));
+  if (roomStates.some(({ type }) => type !== "room_state")) {
+    throw new Error("start_game room state broadcast failed");
+  }
+
+  const gameStates = await Promise.all(clients.map(({ next }) => next()));
+  const firstGameState = gameStates[0];
+  if (
+    gameStates.some(({ type }) => type !== "game_state") ||
+    firstGameState.openingDraw.length !== 4 ||
+    firstGameState.openingDrawWinner < 0 ||
+    firstGameState.openingDrawWinner >= 4 ||
+    firstGameState.currentTurn !== firstGameState.openingDrawWinner ||
+    firstGameState.handCounts.some((count) => count !== 27)
+  ) {
+    throw new Error(`invalid public game state: ${JSON.stringify(firstGameState)}`);
+  }
+
+  for (const gameState of gameStates.slice(1)) {
+    if (
+      JSON.stringify(gameState.openingDraw) !==
+        JSON.stringify(firstGameState.openingDraw) ||
+      gameState.openingDrawWinner !== firstGameState.openingDrawWinner ||
+      gameState.currentTurn !== firstGameState.currentTurn
+    ) {
+      throw new Error("public game state differed between clients");
+    }
+  }
+
+  const privateHands = await Promise.all(clients.map(({ next }) => next()));
+  privateHands.forEach((message, index) => {
+    if (
+      message.type !== "private_hand" ||
+      message.seat !== index ||
+      message.cards.length !== 27 ||
+      new Set(message.cards.map(({ id }) => id)).size !== 27
+    ) {
+      throw new Error(`invalid private hand for seat ${index}`);
+    }
+  });
+
+  clients.forEach(({ socket }) => socket.close());
+  console.log("YIHUA_GAME_FOUR_PLAYER_NETWORK_START_SMOKE_OK");
 } finally {
   child.kill("SIGTERM");
 }
