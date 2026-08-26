@@ -1,0 +1,41 @@
+name: Yihua Game Prettier 3.4.1 Autoformat
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  autoformat:
+    if: ${{ !contains(github.event.head_commit.message, '[prettier-autoformat]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: yihua-game
+        run: npm install
+      - name: Verify exact Prettier version
+        working-directory: yihua-game
+        run: npm run prettier:version
+      - name: Format with Prettier 3.4.1
+        working-directory: yihua-game
+        run: npx prettier --write .
+      - name: Commit exact formatter output
+        run: |
+          if git diff --quiet; then
+            echo "Already formatted by Prettier 3.4.1"
+            exit 0
+          fi
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add yihua-game
+          git commit -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
+          git push origin HEAD:cleanroom/yihua-game-20260826
