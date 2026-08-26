@@ -23,7 +23,7 @@ Implementation code in this directory must be written from behavioral requiremen
 
 ## Current clean-room milestone
 
-The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, and the initial table state machine.
+The independent core now includes deck generation, shuffling, exact 27-card dealing, opening draw, starter selection, table state, room management, protocol handling, an HTTP router, a standalone Node server, and a native WebSocket transport with its own RFC 6455 handshake and text-frame handling.
 
 ## Migration principle
 
