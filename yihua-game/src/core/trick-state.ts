@@ -1,5 +1,9 @@
-import { classifyHand, type ClassifiedHand } from "./hand.js";
 import type { Card } from "./cards.js";
+import {
+  canHandBeat,
+  classifyHand,
+  type ClassifiedHand,
+} from "./hand.js";
 import type { SupportedPlayerCount } from "./table.js";
 
 export interface TablePlay {
@@ -49,9 +53,14 @@ export const playCards = (
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
   const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
+  if (state.leadingPlay !== null && !canHandBeat(hand, state.leadingPlay.hand)) {
+    throw new Error("played hand does not beat the current hand");
+  }
+
   const play: TablePlay = { seat, cards: [...cards], hand };
   return {
     ...state,
+    leaderSeat: seat,
     currentTurn: nextSeat(seat, state.playerCount),
     leadingPlay: play,
     plays: [...state.plays, play],
@@ -62,9 +71,21 @@ export const playCards = (
 export const passTurn = (state: TrickState, seat: number): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
   if (state.leadingPlay === null) throw new Error("leader cannot pass");
+
+  const passedSeats = [...state.passedSeats, seat];
+  if (passedSeats.length >= state.playerCount - 1) {
+    return {
+      ...state,
+      currentTurn: state.leadingPlay.seat,
+      leaderSeat: state.leadingPlay.seat,
+      leadingPlay: null,
+      passedSeats: [],
+    };
+  }
+
   return {
     ...state,
     currentTurn: nextSeat(seat, state.playerCount),
-    passedSeats: [...state.passedSeats, seat],
+    passedSeats,
   };
 };
