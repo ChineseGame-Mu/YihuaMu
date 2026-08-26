@@ -1,0 +1,44 @@
+name: Apply Guandan global count threshold
+
+on:
+  push:
+    branches:
+      - optimize/guandan-online-performance-20260826
+    paths:
+      - ".github/workflows/apply-guandan-global-count-threshold-20260826.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: optimize/guandan-online-performance-20260826
+      - name: Apply exact patch
+        run: python .github/scripts/patch_guandan_global_count_threshold_20260826.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Format frontend
+        working-directory: frontend
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx src/GuandanStateProvider.tsx src/guandanProtocol.ts src/guandan-public-player-position.css
+      - name: Format Rust
+        run: cargo fmt --all
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test -- --runInBand
+      - name: Guandan backend tests
+        run: cargo test -p backend guandan --no-fail-fast
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_serving_types.rs backend/src/guandan_handler.rs frontend/src/guandanProtocol.ts frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandan-public-player-position.css
+          git diff --cached --quiet || git commit -m "feat(guandan): sync room-wide count threshold and soften player backs"
+          git push
