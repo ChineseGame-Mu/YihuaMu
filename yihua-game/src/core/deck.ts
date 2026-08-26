@@ -13,9 +13,7 @@ export const deckCopiesForTable = (
   playerCount: SupportedPlayerCount,
 ): number => playerCount / 2;
 
-export const createDeck = (
-  playerCount: SupportedPlayerCount,
-): DeckCard[] => {
+export const createDeck = (playerCount: SupportedPlayerCount): DeckCard[] => {
   const deck: DeckCard[] = [];
   const copies = deckCopiesForTable(playerCount);
 
@@ -71,10 +69,7 @@ export const dealHands = (
     throw new Error(`deck must contain exactly ${required} cards`);
   }
 
-  const hands = Array.from(
-    { length: playerCount },
-    () => [] as DeckCard[],
-  );
+  const hands = Array.from({ length: playerCount }, () => [] as DeckCard[]);
 
   deck.forEach((card, index) => {
     hands[index % playerCount]!.push(card);
