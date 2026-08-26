@@ -33,6 +33,9 @@ jobs:
       - name: Frontend tests
         working-directory: frontend
         run: npm test -- --runInBand
+      - name: Build frontend assets for backend tests
+        working-directory: frontend
+        run: npm run build
       - name: Guandan backend tests
         run: cargo test -p shengji guandan --no-fail-fast
       - name: Commit update
