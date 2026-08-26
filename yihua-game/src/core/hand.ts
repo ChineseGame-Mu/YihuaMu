@@ -1,6 +1,12 @@
 import type { Card, Rank } from "./cards.js";
 
-export type HandKind = "single" | "pair" | "triple" | "bomb" | "joker-bomb" | "invalid";
+export type HandKind =
+  | "single"
+  | "pair"
+  | "triple"
+  | "bomb"
+  | "joker-bomb"
+  | "invalid";
 
 export interface ClassifiedHand {
   readonly kind: HandKind;
@@ -19,10 +25,7 @@ const sameSuitedRank = (cards: readonly Card[]): Rank | null => {
 export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   if (cards.length === 1) return { kind: "single", size: 1 };
 
-  if (
-    cards.length === 4 &&
-    cards.every((card) => card.kind === "joker")
-  ) {
+  if (cards.length === 4 && cards.every((card) => card.kind === "joker")) {
     return { kind: "joker-bomb", size: 4 };
   }
 
