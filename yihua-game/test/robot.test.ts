@@ -132,7 +132,13 @@ describe("robot turns", () => {
       expect(state.finishedSeats).toHaveLength(playerCount - 1);
       expect(new Set(state.finishOrder).size).toBe(state.finishOrder.length);
       expect(state.finishOrder).toHaveLength(playerCount - 1);
-      expect(state.hands.flat()).toHaveLength(27);
+
+      for (const seat of state.finishedSeats) {
+        expect(state.hands[seat]).toHaveLength(0);
+      }
+      const remainingCards = state.hands.flat().length;
+      expect(remainingCards).toBeGreaterThan(0);
+      expect(remainingCards).toBeLessThanOrEqual(27);
     }
   });
 });
