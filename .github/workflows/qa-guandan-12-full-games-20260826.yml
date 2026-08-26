@@ -1,0 +1,325 @@
+name: QA Guandan 12 full robot games
+
+on:
+  push:
+    branches: [optimize/guandan-online-performance-20260826]
+    paths:
+      - .github/workflows/qa-guandan-12-full-games-20260826.yml
+
+permissions:
+  contents: read
+
+jobs:
+  robot-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Play 12 complete online games across 4-14 player tables
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import time
+          import uuid
+
+          import websockets
+
+          URI = "wss://chinesegame-yihua.onrender.com/api/guandan"
+          TABLE_SIZES = [4, 6, 8, 10, 12, 14]
+          REPEATS = 2
+          RANK_POWER = {
+              "Two": 2,
+              "Three": 3,
+              "Four": 4,
+              "Five": 5,
+              "Six": 6,
+              "Seven": 7,
+              "Eight": 8,
+              "Nine": 9,
+              "Ten": 10,
+              "Jack": 11,
+              "Queen": 12,
+              "King": 13,
+              "Ace": 14,
+          }
+
+          def card_power(card, level):
+              if "Joker" in card:
+                  return 16 if card["Joker"] == "Small" else 17
+              rank = card["Suited"]["rank"]
+              return 15 if rank == level else RANK_POWER[rank]
+
+          def state_signature(state):
+              return (
+                  tuple(state.get("hand_counts", [])),
+                  state.get("turn"),
+                  state.get("last_player"),
+                  state.get("passes"),
+                  tuple(state.get("finish_order", [])),
+                  state.get("last_game_winner"),
+                  state.get("next_round_phase"),
+                  len(state.get("table_plays", [])),
+                  json.dumps(state.get("last_play", []), sort_keys=True),
+              )
+
+          def validate_state(state, size, previous_total=None):
+              counts = state.get("hand_counts", [])
+              assert len(counts) == size, (size, counts)
+              assert all(isinstance(c, int) and 0 <= c <= 27 for c in counts), counts
+              turn = state.get("turn")
+              assert isinstance(turn, int) and 0 <= turn < size, turn
+              last_player = state.get("last_player")
+              assert last_player is None or 0 <= last_player < size, last_player
+              finish = state.get("finish_order", [])
+              assert len(finish) == len(set(finish)), finish
+              assert all(isinstance(seat, int) and 0 <= seat < size for seat in finish), finish
+              for play in state.get("table_plays", []):
+                  assert 0 <= play["player"] < size, play
+              total = sum(counts)
+              if previous_total is not None:
+                  assert total <= previous_total, (previous_total, total, counts)
+              return total
+
+          async def recv_json(ws, timeout=20):
+              raw = await asyncio.wait_for(ws.recv(), timeout)
+              if isinstance(raw, bytes):
+                  raw = raw.decode()
+              return json.loads(raw)
+
+          async def until_direct(ws, predicate, timeout=25):
+              end = asyncio.get_running_loop().time() + timeout
+              while True:
+                  left = end - asyncio.get_running_loop().time()
+                  if left <= 0:
+                      raise TimeoutError("direct message timeout")
+                  msg = await recv_json(ws, left)
+                  if msg.get("type") == "error":
+                      raise AssertionError(msg)
+                  if predicate(msg):
+                      return msg
+
+          class Client:
+              def __init__(self, seat, ws):
+                  self.seat = seat
+                  self.ws = ws
+                  self.hand = []
+                  self.state = None
+                  self.started = None
+                  self.state_seq = 0
+                  self.error = None
+                  self.condition = asyncio.Condition()
+                  self.task = None
+
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          if isinstance(raw, bytes):
+                              raw = raw.decode()
+                          msg = json.loads(raw)
+                          kind = msg.get("type")
+                          async with self.condition:
+                              if kind == "error":
+                                  self.error = msg
+                              elif kind == "hand":
+                                  self.hand = msg.get("cards", [])
+                              elif kind == "started":
+                                  self.started = msg
+                              elif kind == "state":
+                                  self.state = msg
+                                  self.state_seq += 1
+                              self.condition.notify_all()
+                  except Exception as exc:
+                      async with self.condition:
+                          self.error = {"type": "reader_exception", "message": repr(exc)}
+                          self.condition.notify_all()
+
+              async def wait_for(self, predicate, timeout=20):
+                  async def _wait():
+                      async with self.condition:
+                          while not predicate():
+                              if self.error is not None:
+                                  raise AssertionError(self.error)
+                              await self.condition.wait()
+                          return True
+                  return await asyncio.wait_for(_wait(), timeout)
+
+              async def wait_new_state(self, previous_seq, timeout=20):
+                  await self.wait_for(lambda: self.state_seq > previous_seq, timeout)
+                  if self.error is not None:
+                      raise AssertionError(self.error)
+                  return self.state
+
+          async def one_game(size, repeat_index, game_number):
+              room = f"qa12_{size}_{repeat_index}_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}"
+              clients = []
+              started_at = time.monotonic()
+              try:
+                  for seat in range(size):
+                      ws = await websockets.connect(
+                          URI,
+                          open_timeout=20,
+                          close_timeout=5,
+                          ping_interval=20,
+                          ping_timeout=20,
+                          max_queue=4096,
+                      )
+                      await until_direct(ws, lambda m: m.get("type") == "connected")
+                      await ws.send(json.dumps({
+                          "type": "join",
+                          "room": room,
+                          "name": f"QA机器人{game_number}-{seat+1}",
+                      }, ensure_ascii=False))
+                      joined = await until_direct(ws, lambda m: m.get("type") == "joined")
+                      assert joined.get("seat") == seat, joined
+                      clients.append(Client(seat, ws))
+
+                  for client in clients:
+                      client.task = asyncio.create_task(client.reader())
+
+                  await clients[0].ws.send(json.dumps({"type": "start", "player_count": size}))
+
+                  monitor = clients[0]
+                  await monitor.wait_for(
+                      lambda: monitor.state is not None
+                      and len(monitor.state.get("initial_draw", [])) == size
+                      and monitor.started is not None,
+                      30,
+                  )
+                  for client in clients:
+                      await client.wait_for(
+                          lambda c=client: c.started is not None
+                          and c.started.get("player_count") == size
+                          and len(c.hand) == 27,
+                          30,
+                      )
+                      assert client.started.get("cards_per_player") == 27, client.started
+
+                  state = monitor.state
+                  assert state.get("hand_counts") == [27] * size, state.get("hand_counts")
+                  draw = state.get("initial_draw", [])
+                  assert len(draw) == size, draw
+                  assert all("Joker" not in card for card in draw), draw
+                  draw_winner = state.get("initial_draw_winner")
+                  assert isinstance(draw_winner, int) and 0 <= draw_winner < size, draw_winner
+                  assert state.get("turn") == draw_winner, (state.get("turn"), draw_winner)
+
+                  previous_total = validate_state(state, size)
+                  actions = 0
+                  plays = 0
+                  passes = 0
+                  max_actions = size * 27 * (size + 3)
+
+                  while state.get("last_game_winner") is None:
+                      if actions >= max_actions:
+                          raise AssertionError(
+                              f"game exceeded action guard: size={size}, actions={actions}, state={state}"
+                          )
+                      seat = state["turn"]
+                      actor = clients[seat]
+                      expected_count = state["hand_counts"][seat]
+                      await actor.wait_for(lambda: len(actor.hand) == expected_count, 20)
+                      assert expected_count > 0, (seat, state)
+
+                      last_play = state.get("last_play", [])
+                      assert len(last_play) <= 1, last_play
+                      level = state["level"]
+
+                      if not last_play:
+                          index = min(
+                              range(len(actor.hand)),
+                              key=lambda i: (card_power(actor.hand[i], level), i),
+                          )
+                          command = {"type": "play", "card_indexes": [index]}
+                          is_play = True
+                      else:
+                          table_power = card_power(last_play[0], level)
+                          options = [
+                              (card_power(card, level), index)
+                              for index, card in enumerate(actor.hand)
+                              if card_power(card, level) > table_power
+                          ]
+                          if options:
+                              _, index = min(options)
+                              command = {"type": "play", "card_indexes": [index]}
+                              is_play = True
+                          else:
+                              command = {"type": "pass"}
+                              is_play = False
+
+                      previous_seq = monitor.state_seq
+                      previous_sig = state_signature(state)
+                      await actor.ws.send(json.dumps(command))
+                      state = await monitor.wait_new_state(previous_seq, 20)
+                      while state_signature(state) == previous_sig:
+                          previous_seq = monitor.state_seq
+                          state = await monitor.wait_new_state(previous_seq, 20)
+
+                      actions += 1
+                      if is_play:
+                          plays += 1
+                      else:
+                          passes += 1
+                      previous_total = validate_state(state, size, previous_total)
+
+                      if actions % 100 == 0:
+                          print(
+                              f"GAME_{game_number}_SIZE_{size}_PROGRESS actions={actions} "
+                              f"plays={plays} passes={passes} remaining={sum(state['hand_counts'])}",
+                              flush=True,
+                          )
+
+                  finish = state.get("finish_order", [])
+                  winner = state.get("last_game_winner")
+                  assert len(finish) == size, finish
+                  assert finish[0] == winner, (finish, winner)
+                  assert state.get("last_game_winner_team") in ("A", "B"), state.get("last_game_winner_team")
+                  assert state.get("last_promotion_steps") in (1, 2, 3), state.get("last_promotion_steps")
+                  assert state.get("next_round_phase") == "awaiting_shuffle", state.get("next_round_phase")
+                  assert sum(state.get("hand_counts", [])) == 0, state.get("hand_counts")
+                  elapsed = time.monotonic() - started_at
+                  print(
+                      f"FULL_GAME_{game_number}_OK size={size} winner={winner+1} "
+                      f"actions={actions} plays={plays} passes={passes} seconds={elapsed:.1f}",
+                      flush=True,
+                  )
+                  return {
+                      "game": game_number,
+                      "size": size,
+                      "winner": winner + 1,
+                      "actions": actions,
+                      "plays": plays,
+                      "passes": passes,
+                      "seconds": round(elapsed, 1),
+                  }
+              finally:
+                  for client in clients:
+                      if client.task is not None:
+                          client.task.cancel()
+                  await asyncio.gather(
+                      *(client.task for client in clients if client.task is not None),
+                      return_exceptions=True,
+                  )
+                  await asyncio.gather(
+                      *(client.ws.close() for client in clients),
+                      return_exceptions=True,
+                  )
+
+          async def main():
+              results = []
+              game_number = 0
+              for repeat_index in range(1, REPEATS + 1):
+                  for size in TABLE_SIZES:
+                      game_number += 1
+                      result = await one_game(size, repeat_index, game_number)
+                      results.append(result)
+                      await asyncio.sleep(0.5)
+              assert len(results) == 12, results
+              assert {r["size"] for r in results} == set(TABLE_SIZES), results
+              print("QA_12_FULL_GAMES_ALL_OK", flush=True)
+              print(json.dumps(results, ensure_ascii=False), flush=True)
+
+          asyncio.run(main())
+          PY
