@@ -1,7 +1,9 @@
 name: CI
 on:
-  - push
-  - pull_request
+  push:
+    branches-ignore:
+      - cleanroom/yihua-game-20260826
+  pull_request:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
