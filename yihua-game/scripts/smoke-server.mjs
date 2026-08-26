@@ -60,7 +60,9 @@ try {
   const socket = new WebSocket(`ws://127.0.0.1:${port}/ws/rooms/smoke`);
   const snapshot = await waitForMessage(socket);
   if (snapshot.type !== "room_state" || snapshot.roomId !== "smoke") {
-    throw new Error(`unexpected websocket snapshot: ${JSON.stringify(snapshot)}`);
+    throw new Error(
+      `unexpected websocket snapshot: ${JSON.stringify(snapshot)}`,
+    );
   }
 
   socket.send(JSON.stringify({ type: "ping", nonce: "smoke-1" }));
