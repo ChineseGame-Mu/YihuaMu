@@ -34,7 +34,9 @@ describe("independent deck core", () => {
     for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
       const hands = dealHands(createDeck(playerCount), playerCount);
       expect(hands).toHaveLength(playerCount);
-      expect(hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(true);
+      expect(hands.every((hand) => hand.length === CARDS_PER_PLAYER)).toBe(
+        true,
+      );
     }
   });
 

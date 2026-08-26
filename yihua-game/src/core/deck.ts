@@ -9,9 +9,8 @@ export interface DeckCard {
 
 export type RandomSource = () => number;
 
-export const deckCopiesForTable = (
-  playerCount: SupportedPlayerCount,
-): number => playerCount / 2;
+export const deckCopiesForTable = (playerCount: SupportedPlayerCount): number =>
+  playerCount / 2;
 
 export const createDeck = (playerCount: SupportedPlayerCount): DeckCard[] => {
   const deck: DeckCard[] = [];
