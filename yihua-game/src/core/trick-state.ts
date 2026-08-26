@@ -1,9 +1,5 @@
 import type { Card } from "./cards.js";
-import {
-  canHandBeat,
-  classifyHand,
-  type ClassifiedHand,
-} from "./hand.js";
+import { canHandBeat, classifyHand, type ClassifiedHand } from "./hand.js";
 import type { SupportedPlayerCount } from "./table.js";
 
 export interface TablePlay {
@@ -53,7 +49,10 @@ export const playCards = (
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
   const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
-  if (state.leadingPlay !== null && !canHandBeat(hand, state.leadingPlay.hand)) {
+  if (
+    state.leadingPlay !== null &&
+    !canHandBeat(hand, state.leadingPlay.hand)
+  ) {
     throw new Error("played hand does not beat the current hand");
   }
 
