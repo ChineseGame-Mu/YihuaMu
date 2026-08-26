@@ -28,5 +28,8 @@ execFileSync("npx", ["prettier", "--write", ...staged], {
 execFileSync(
   "git",
   ["add", ...staged.map((path) => `yihua-game/${path}`)],
-  { cwd: repoRoot, stdio: "inherit" },
+  {
+    cwd: repoRoot,
+    stdio: "inherit",
+  },
 );
