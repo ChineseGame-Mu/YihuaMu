@@ -1,11 +1,26 @@
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const repoRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
   cwd: projectRoot,
   encoding: "utf8",
 }).trim();
+
+const supportedExtensions = new Set([
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".ts",
+  ".tsx",
+  ".json",
+  ".css",
+  ".scss",
+  ".md",
+  ".yaml",
+  ".yml",
+]);
 
 const staged = execFileSync(
   "git",
@@ -14,7 +29,10 @@ const staged = execFileSync(
 )
   .split("\n")
   .filter((path) => path.startsWith("yihua-game/") && path.length > 11)
-  .map((path) => path.slice("yihua-game/".length));
+  .map((path) => path.slice("yihua-game/".length))
+  .filter((path) => !path.startsWith("node_modules/"))
+  .filter((path) => !path.startsWith(".githooks/"))
+  .filter((path) => supportedExtensions.has(extname(path)));
 
 if (staged.length === 0) {
   process.exit(0);
