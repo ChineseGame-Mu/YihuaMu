@@ -33,12 +33,14 @@ const EXPANDED_TEST_WEBSOCKET =
 const testWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("test") !== "1") return null;
+
   const raw = query.get("ws");
   if (raw === null || raw.trim() === "") return EXPANDED_TEST_WEBSOCKET;
+
   try {
     const url = new URL(raw);
-    if (url.protocol !== "ws:" && url.protocol !== "wss:") return null;
-    return url.toString();
+    const validProtocol = url.protocol === "ws:" || url.protocol === "wss:";
+    return validProtocol ? url.toString() : null;
   } catch {
     return null;
   }
@@ -78,6 +80,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const reconnectAttemptRef = React.useRef(0);
   const mountedRef = React.useRef(true);
   const messageQueueRef = React.useRef<GuandanServerMessage[]>([]);
+  const messageQueueIndexRef = React.useRef(0);
   const messageDrainTimerRef = React.useRef<number | null>(null);
   const sequenceRef = React.useRef(0);
 
@@ -88,15 +91,22 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       messageDrainTimerRef.current = null;
       if (!mountedRef.current) return;
 
-      const next = messageQueueRef.current.shift();
+      const queue = messageQueueRef.current;
+      const queueIndex = messageQueueIndexRef.current;
+      const next = queue[queueIndex];
       if (next === undefined) return;
 
+      messageQueueIndexRef.current = queueIndex + 1;
       sequenceRef.current += 1;
       setDelivery({ message: next, sequence: sequenceRef.current });
 
-      if (messageQueueRef.current.length > 0) {
+      if (messageQueueIndexRef.current < queue.length) {
         messageDrainTimerRef.current = window.setTimeout(drainMessages, 8);
+        return;
       }
+
+      messageQueueRef.current = [];
+      messageQueueIndexRef.current = 0;
     };
 
     const enqueueMessage = (message: GuandanServerMessage): void => {
@@ -165,6 +175,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         window.clearTimeout(messageDrainTimerRef.current);
       }
       messageQueueRef.current = [];
+      messageQueueIndexRef.current = 0;
       websocketRef.current?.close();
       websocketRef.current = null;
     };
@@ -173,6 +184,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const send = React.useCallback((message: GuandanClientMessage): boolean => {
     const ws = websocketRef.current;
     if (ws === null || ws.readyState !== WebSocket.OPEN) return false;
+
     ws.send(JSON.stringify(message));
     return true;
   }, []);
