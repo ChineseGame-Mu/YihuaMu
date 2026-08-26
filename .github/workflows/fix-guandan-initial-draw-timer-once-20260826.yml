@@ -47,3 +47,5 @@ jobs:
           git add frontend/src/GuandanTable.tsx
           git diff --cached --quiet || git commit -m "fix(guandan): keep initial draw visible for exactly five minutes"
           git push
+
+# retrigger: 2026-08-26T13:32-04:00
