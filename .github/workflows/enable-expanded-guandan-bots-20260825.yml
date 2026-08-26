@@ -62,10 +62,11 @@ jobs:
           PY
       - name: Format and build frontend
         run: |
+          corepack enable
           cd frontend
-          npm ci
-          npx prettier --write src/GuandanTable.tsx
-          npm run build
+          yarn install --frozen-lockfile
+          yarn prettier --write src/GuandanTable.tsx
+          yarn build
       - name: Format and test Rust
         run: |
           cargo fmt --all
