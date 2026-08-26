@@ -57,8 +57,10 @@ const findSeatAfter = (
   return null;
 };
 
-const activeSeat = (finishedSeats: ReadonlySet<number>, seat: number): boolean =>
-  !finishedSeats.has(seat);
+const activeSeat = (
+  finishedSeats: ReadonlySet<number>,
+  seat: number,
+): boolean => !finishedSeats.has(seat);
 
 const responseSeats = (
   state: TurnState,
@@ -67,7 +69,10 @@ const responseSeats = (
 ): readonly number[] => {
   const leaderFinished = finishedSeats.has(leaderSeat);
   const leaderTeam = teamForSeat(leaderSeat);
-  return Array.from({ length: state.game.config.playerCount }, (_, seat) => seat).filter(
+  return Array.from(
+    { length: state.game.config.playerCount },
+    (_, seat) => seat,
+  ).filter(
     (seat) =>
       seat !== leaderSeat &&
       activeSeat(finishedSeats, seat) &&
@@ -87,7 +92,9 @@ const partnerLeadSeat = (
       leaderSeat,
       (seat) => activeSeat(finishedSeats, seat) && teamForSeat(seat) === team,
     ) ??
-    findSeatAfter(state, leaderSeat, (seat) => activeSeat(finishedSeats, seat)) ??
+    findSeatAfter(state, leaderSeat, (seat) =>
+      activeSeat(finishedSeats, seat),
+    ) ??
     leaderSeat
   );
 };
@@ -116,7 +123,8 @@ export const playCards = (
   declaredKind?: HandKind,
 ): TurnState => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
-  if (state.finishedSeats.includes(seat)) throw new Error("this seat has finished");
+  if (state.finishedSeats.includes(seat))
+    throw new Error("this seat has finished");
 
   const hand = state.hands[seat];
   if (!hand) throw new Error("seat is outside the table");
@@ -130,7 +138,11 @@ export const playCards = (
 
   if (
     state.currentPlay !== null &&
-    !canClassifiedBeatWithLevelRules(resolved.hand, state.currentPlay.hand, rules)
+    !canClassifiedBeatWithLevelRules(
+      resolved.hand,
+      state.currentPlay.hand,
+      rules,
+    )
   ) {
     throw new Error("played hand does not beat the current hand");
   }
@@ -145,7 +157,10 @@ export const playCards = (
 
   const play: ResolvedPlay = { seat, cards: selected, hand: resolved.hand };
   const responders = responseSeats(state, seat, finishedSeats);
-  const publicActions = [...state.publicActions, { type: "play", play } as const];
+  const publicActions = [
+    ...state.publicActions,
+    { type: "play", play } as const,
+  ];
 
   if (responders.length === 0) {
     return {
@@ -163,7 +178,9 @@ export const playCards = (
   return {
     ...state,
     hands,
-    currentTurn: findSeatAfter(state, seat, (candidate) => responderSet.has(candidate))!,
+    currentTurn: findSeatAfter(state, seat, (candidate) =>
+      responderSet.has(candidate),
+    )!,
     currentPlay: play,
     consecutivePasses: 0,
     finishedSeats: [...finishedSeats],
@@ -173,11 +190,17 @@ export const playCards = (
 
 export const passTurn = (state: TurnState, seat: number): TurnState => {
   if (seat !== state.currentTurn) throw new Error("it is not this seat's turn");
-  if (state.currentPlay === null) throw new Error("the leading seat cannot pass");
+  if (state.currentPlay === null)
+    throw new Error("the leading seat cannot pass");
 
   const finishedSeats = new Set(state.finishedSeats);
-  const responders = responseSeats(state, state.currentPlay.seat, finishedSeats);
-  if (!responders.includes(seat)) throw new Error("this seat is not a responder");
+  const responders = responseSeats(
+    state,
+    state.currentPlay.seat,
+    finishedSeats,
+  );
+  if (!responders.includes(seat))
+    throw new Error("this seat is not a responder");
 
   const passes = state.consecutivePasses + 1;
   const action: PublicAction = { type: "pass", seat };
@@ -200,7 +223,9 @@ export const passTurn = (state: TurnState, seat: number): TurnState => {
   const responderSet = new Set(responders);
   return {
     ...state,
-    currentTurn: findSeatAfter(state, seat, (candidate) => responderSet.has(candidate))!,
+    currentTurn: findSeatAfter(state, seat, (candidate) =>
+      responderSet.has(candidate),
+    )!,
     consecutivePasses: passes,
     publicActions,
   };
