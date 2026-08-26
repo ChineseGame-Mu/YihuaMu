@@ -1,0 +1,44 @@
+name: Add direct Guandan short link
+
+on:
+  push:
+    branches:
+      - patch/guandan-short-link-20260826
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - name: Add /guandan redirect
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('backend/src/main.rs')
+          s = p.read_text()
+          old = '''        .route("/api/guandan", get(handle_guandan_websocket))\n'''
+          new = '''        .route("/api/guandan", get(handle_guandan_websocket))\n        .route(\n            "/guandan",\n            get(|| async {\n                Redirect::temporary(\n                    "https://yihua-4rj7yygqo-chinese-game.vercel.app/?test=1&game=guandan&players=14&room=0001&ws=wss%3A%2F%2Fchinesegame-yihua.onrender.com%2Fapi%2Fguandan",\n                )\n            }),\n        )\n'''
+          if new in s:
+              print('short link already present')
+          else:
+              if old not in s:
+                  raise SystemExit('target route not found')
+              s = s.replace(old, new, 1)
+              p.write_text(s)
+          PY
+          cargo fmt -- backend/src/main.rs
+          git config user.name "ChineseGame-Mu"
+          git config user.email "muyihua@gmail.com"
+          git add backend/src/main.rs
+          if git diff --cached --quiet; then
+            echo "No changes needed"
+            exit 0
+          fi
+          git commit -m "feat(guandan): add direct short link"
+          git push origin HEAD:master
