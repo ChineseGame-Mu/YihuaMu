@@ -1250,7 +1250,11 @@ const GuandanTable: React.FunctionComponent = () => {
                   出牌
                 </button>
                 <button
-                  disabled={!gameStarted || state.lastPlayer === null}
+                  disabled={
+                    !gameStarted ||
+                    (state.lastPlayer === null &&
+                      state.lastTrickWinner === null)
+                  }
                   onClick={() => send({ type: "pass" })}
                 >
                   过牌

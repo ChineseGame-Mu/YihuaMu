@@ -1311,13 +1311,20 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
+                        let empty_table = state.game.last_player.is_none();
                         if state.game.normal_play_blocked()
                             || !state.game.started
                             || state.game.trick_complete
                             || state.game.turn != seat
-                            || state.game.last_player.is_none()
+                            || (empty_table && state.game.last_trick_winner.is_none())
                         {
                             return Err(());
+                        }
+                        if empty_table {
+                            advance_turn(&mut state.game);
+                            run_robot_turns(&mut state.game).map_err(|_| ())?;
+                            state.bump_version();
+                            return Ok((state, vec![GuandanStorageMessage::StateChanged]));
                         }
                         state.game.passes += 1;
                         let winner = state.game.last_player.unwrap_or(state.game.turn);
