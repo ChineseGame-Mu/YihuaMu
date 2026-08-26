@@ -7,7 +7,11 @@ import {
   isHeartLevelWildcard,
 } from "../src/core/level-rules.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 const rules = { levelRank: "7" as const };
 
 describe("level-card rules", () => {
@@ -131,10 +135,7 @@ describe("level-card rules", () => {
   });
 
   it("allows wildcard interpretations to beat the matching current hand", () => {
-    const challenger = [
-      suited("A", "clubs"),
-      suited("7", "hearts"),
-    ];
+    const challenger = [suited("A", "clubs"), suited("7", "hearts")];
     const current = [suited("K", "clubs"), suited("K", "spades")];
     expect(canBeatWithLevelRules(challenger, current, rules)).toBe(true);
   });

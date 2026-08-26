@@ -90,13 +90,7 @@ export const enumerateWildcardInterpretations = (
   }
 
   const interpretations: WildcardInterpretation[] = [];
-  enumerateAssignments(
-    cards,
-    wildcardIndexes,
-    0,
-    [...cards],
-    interpretations,
-  );
+  enumerateAssignments(cards, wildcardIndexes, 0, [...cards], interpretations);
 
   const unique = new Map<string, WildcardInterpretation>();
   for (const interpretation of interpretations) {
@@ -139,10 +133,12 @@ const canClassifiedBeat = (
     if (challengerTier !== currentTier) return challengerTier > currentTier;
 
     if (challenger.kind === "bomb" && current.kind === "bomb") {
-      if (challenger.size !== current.size) return challenger.size > current.size;
+      if (challenger.size !== current.size)
+        return challenger.size > current.size;
     }
 
-    if (challenger.rank === undefined || current.rank === undefined) return false;
+    if (challenger.rank === undefined || current.rank === undefined)
+      return false;
     return compareOrdinaryRanks(challenger.rank, current.rank, rules) > 0;
   }
 
