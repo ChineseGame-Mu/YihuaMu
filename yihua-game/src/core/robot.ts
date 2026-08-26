@@ -46,18 +46,29 @@ const combinations = function* (
   }
 };
 
-const candidateSizes = (
-  state: TurnState,
-  handSize: number,
-): readonly number[] => {
-  if (state.currentPlay === null)
-    return Array.from({ length: handSize }, (_, index) => index + 1);
+const candidateSizes = (state: TurnState): readonly number[] => {
+  if (state.currentPlay === null) return [1];
   const normal = state.currentPlay.hand.size;
-  const sizes = new Set<number>([normal, 4, 5]);
-  for (let size = 6; size <= handSize; size += 1) sizes.add(size);
-  return [...sizes]
-    .filter((size) => size > 0 && size <= handSize)
-    .sort((a, b) => a - b);
+  return [...new Set([normal, 4, 5, 6])].filter((size) => size > 0);
+};
+
+const candidateKinds = (size: number): readonly HandKind[] => {
+  switch (size) {
+    case 1:
+      return ["single"];
+    case 2:
+      return ["pair"];
+    case 3:
+      return ["triple"];
+    case 4:
+      return ["bomb", "joker-bomb"];
+    case 5:
+      return ["triple-pair", "straight", "straight-flush", "bomb"];
+    case 6:
+      return ["wood-board", "steel-board", "bomb"];
+    default:
+      return ["bomb"];
+  }
 };
 
 export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
@@ -68,29 +79,16 @@ export const chooseRobotTurn = (state: TurnState, seat: number): RobotTurn => {
     return { type: "pass" };
 
   const rules: LevelRules = { levelRank: state.levelRank };
-  for (const size of candidateSizes(state, hand.length)) {
+  for (const size of candidateSizes(state)) {
+    if (size > hand.length) continue;
     for (const cards of combinations(hand, size)) {
-      const kinds = new Set<HandKind>();
-      for (const kind of [
-        "single",
-        "pair",
-        "triple",
-        "triple-pair",
-        "straight",
-        "wood-board",
-        "steel-board",
-        "straight-flush",
-        "bomb",
-        "joker-bomb",
-      ] as const) {
+      for (const kind of candidateKinds(size)) {
         try {
           const resolved = resolveWildcardInterpretation(
             cards.map(({ card }) => card),
             rules,
             kind,
           );
-          if (kinds.has(resolved.hand.kind)) continue;
-          kinds.add(resolved.hand.kind);
           if (
             state.currentPlay === null ||
             canClassifiedBeatWithLevelRules(
