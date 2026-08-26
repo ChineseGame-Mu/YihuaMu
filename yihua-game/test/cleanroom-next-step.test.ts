@@ -54,6 +54,11 @@ describe("clean-room next-step integration", () => {
     expect(canHandBeat(straightFlush, fiveBomb)).toBe(true);
   });
 
+  it("requires the opening leader to play", () => {
+    const state = createTrickState(4, 2);
+    expect(() => passTurn(state, 2)).toThrow("opening leader cannot pass");
+  });
+
   it("table state returns the lead after all opponents pass", () => {
     let state = createTrickState(4, 2);
     state = playCards(state, 2, [suited("8", "clubs")]);
@@ -63,6 +68,25 @@ describe("clean-room next-step integration", () => {
     expect(state.currentTurn).toBe(2);
     expect(state.leaderSeat).toBe(2);
     expect(state.leadingPlay).toBeNull();
+    expect(state.passedSeats).toEqual([]);
+    expect(state.completedTricks).toBe(1);
+  });
+
+  it("allows the lead seat to pass from the second trick onward", () => {
+    let state = createTrickState(4, 2);
+    state = playCards(state, 2, [suited("8", "clubs")]);
+    state = passTurn(state, 3);
+    state = passTurn(state, 0);
+    state = passTurn(state, 1);
+
+    state = passTurn(state, 2);
+    expect(state.currentTurn).toBe(3);
+    expect(state.leadingPlay).toBeNull();
+    expect(state.passedSeats).toEqual([2]);
+
+    state = playCards(state, 3, [suited("9", "clubs")]);
+    expect(state.leadingPlay?.seat).toBe(3);
+    expect(state.leaderSeat).toBe(3);
     expect(state.passedSeats).toEqual([]);
   });
 });
