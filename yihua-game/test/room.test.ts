@@ -21,10 +21,14 @@ describe("independent room state", () => {
     expect(room.participants[0]?.seat).toBe(0);
 
     room = disconnectHuman(room, "p1");
-    expect(room.participants.find(({ id }) => id === "p1")?.connected).toBe(false);
+    expect(room.participants.find(({ id }) => id === "p1")?.connected).toBe(
+      false,
+    );
 
     room = reconnectHuman(room, "p1");
-    expect(room.participants.find(({ id }) => id === "p1")?.connected).toBe(true);
+    expect(room.participants.find(({ id }) => id === "p1")?.connected).toBe(
+      true,
+    );
 
     room = removeParticipant(room, "p2");
     expect(room.participants.map(({ id }) => id)).toEqual(["p1"]);
@@ -37,9 +41,9 @@ describe("independent room state", () => {
       seat: 0,
     });
 
-    expect(() =>
-      addHuman(room, { id: "p2", name: "玩家2", seat: 0 }),
-    ).toThrow(/occupied/);
+    expect(() => addHuman(room, { id: "p2", name: "玩家2", seat: 0 })).toThrow(
+      /occupied/,
+    );
     expect(() =>
       addHuman(room, { id: "p1", name: "玩家1-重复", seat: 1 }),
     ).toThrow(/already exists/);
@@ -52,7 +56,9 @@ describe("independent room state", () => {
     room = setRobotCount(room, 3);
 
     expect(room.config.botCount).toBe(3);
-    expect(room.participants.filter(({ kind }) => kind === "robot")).toHaveLength(3);
+    expect(
+      room.participants.filter(({ kind }) => kind === "robot"),
+    ).toHaveLength(3);
     expect(room.participants.find(({ id }) => id === "p1")?.seat).toBe(0);
     expect(room.participants.find(({ id }) => id === "p2")?.seat).toBe(3);
     expect(new Set(room.participants.map(({ seat }) => seat)).size).toBe(
@@ -99,7 +105,9 @@ describe("independent room protocol", () => {
   });
 
   it("rejects unknown or malformed messages", () => {
-    expect(() => parseClientMessage('{"type":"unknown"}')).toThrow(/unsupported/);
+    expect(() => parseClientMessage('{"type":"unknown"}')).toThrow(
+      /unsupported/,
+    );
     expect(() => parseClientMessage('{"type":"join_room"}')).toThrow(/invalid/);
   });
 });

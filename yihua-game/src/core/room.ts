@@ -20,9 +20,14 @@ export interface RoomState {
   readonly participants: readonly Participant[];
 }
 
-const validateSeat = (seat: number, playerCount: SupportedPlayerCount): void => {
+const validateSeat = (
+  seat: number,
+  playerCount: SupportedPlayerCount,
+): void => {
   if (!Number.isInteger(seat) || seat < 0 || seat >= playerCount) {
-    throw new Error(`seat must be an integer from 0 through ${playerCount - 1}`);
+    throw new Error(
+      `seat must be an integer from 0 through ${playerCount - 1}`,
+    );
   }
 };
 
@@ -103,7 +108,9 @@ export const reconnectHuman = (room: RoomState, id: string): RoomState => ({
 
 export const removeParticipant = (room: RoomState, id: string): RoomState => ({
   ...room,
-  participants: room.participants.filter((participant) => participant.id !== id),
+  participants: room.participants.filter(
+    (participant) => participant.id !== id,
+  ),
 });
 
 export const setRobotCount = (room: RoomState, count: number): RoomState => {
@@ -117,17 +124,20 @@ export const setRobotCount = (room: RoomState, count: number): RoomState => {
   }
 
   const occupiedSeats = new Set(humanParticipants.map(({ seat }) => seat));
-  const freeSeats = Array.from({ length: room.config.playerCount }, (_, seat) => seat).filter(
-    (seat) => !occupiedSeats.has(seat),
-  );
+  const freeSeats = Array.from(
+    { length: room.config.playerCount },
+    (_, seat) => seat,
+  ).filter((seat) => !occupiedSeats.has(seat));
 
-  const robots: Participant[] = freeSeats.slice(0, count).map((seat, index) => ({
-    id: `robot-${index + 1}`,
-    name: `机器人${index + 1}`,
-    kind: "robot",
-    seat,
-    connected: true,
-  }));
+  const robots: Participant[] = freeSeats
+    .slice(0, count)
+    .map((seat, index) => ({
+      id: `robot-${index + 1}`,
+      name: `机器人${index + 1}`,
+      kind: "robot",
+      seat,
+      connected: true,
+    }));
 
   return {
     ...room,
