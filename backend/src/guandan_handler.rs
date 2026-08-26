@@ -47,6 +47,9 @@ pub enum GuandanClientMessage {
     SetParticipation {
         active: bool,
     },
+    SetCardCountAlertThreshold {
+        threshold: usize,
+    },
     SetBots {
         count: usize,
     },
@@ -87,6 +90,7 @@ pub enum GuandanServerMessage {
         online_players: Vec<bool>,
         minimum_players: usize,
         maximum_players: usize,
+        card_count_alert_threshold: usize,
     },
     Started {
         player_count: usize,
@@ -119,6 +123,7 @@ pub enum GuandanServerMessage {
         tribute_resisted: bool,
         match_winner: Option<Team>,
         next_round_phase: Option<GuandanNextRoundPhase>,
+        card_count_alert_threshold: usize,
     },
     Error {
         message: String,
@@ -220,6 +225,7 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
         online_players: online_players(key, game),
         minimum_players: GUANDAN_MIN_PLAYER_COUNT,
         maximum_players: GUANDAN_MAX_PLAYER_COUNT,
+        card_count_alert_threshold: game.card_count_alert_threshold,
     }
 }
 fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
@@ -247,6 +253,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         tribute_resisted: game.tribute_resisted,
         match_winner: game.match_winner,
         next_round_phase: game.next_round_phase,
+        card_count_alert_threshold: game.card_count_alert_threshold,
     }
 }
 fn advance_turn(game: &mut GuandanGameState) {
@@ -813,6 +820,38 @@ pub async fn websocket(
                     );
                 }
             }
+            GuandanClientMessage::SetCardCountAlertThreshold { threshold } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                if current_seat(&storage, &key, &name).await.is_none() {
+                    continue;
+                }
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        let can_change = !state.game.started
+                            || state.game.next_round_phase
+                                == Some(GuandanNextRoundPhase::AwaitingShuffle);
+                        if !can_change || !(6..=10).contains(&threshold) {
+                            return Err(());
+                        }
+                        state.game.card_count_alert_threshold = threshold;
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "card count alert threshold must be 6 through 10 and can only change before a round is locked"
+                                .to_string(),
+                        },
+                    );
+                }
+            }
             GuandanClientMessage::SetBots { count } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
                     (Some(key), Some(name)) => (key, name),
@@ -1272,13 +1311,20 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
+                        let empty_table = state.game.last_player.is_none();
                         if state.game.normal_play_blocked()
                             || !state.game.started
                             || state.game.trick_complete
                             || state.game.turn != seat
-                            || state.game.last_player.is_none()
+                            || (empty_table && state.game.last_trick_winner.is_none())
                         {
                             return Err(());
+                        }
+                        if empty_table {
+                            advance_turn(&mut state.game);
+                            run_robot_turns(&mut state.game).map_err(|_| ())?;
+                            state.bump_version();
+                            return Ok((state, vec![GuandanStorageMessage::StateChanged]));
                         }
                         state.game.passes += 1;
                         let winner = state.game.last_player.unwrap_or(state.game.turn);
