@@ -1,0 +1,47 @@
+name: Apply Guandan lead-pass rule
+
+on:
+  push:
+    branches:
+      - optimize/guandan-online-performance-20260826
+    paths:
+      - ".github/workflows/apply-guandan-lead-pass-20260826.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: optimize/guandan-online-performance-20260826
+      - name: Apply exact patch
+        run: python .github/scripts/patch_guandan_lead_pass_20260826.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm install
+      - name: Format frontend
+        working-directory: frontend
+        run: npx prettier@3.4.1 --write src/GuandanTable.tsx
+      - name: Format Rust
+        run: cargo fmt --all
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test -- --runInBand
+      - name: Build frontend assets for backend tests
+        working-directory: frontend
+        run: npm run build
+      - name: Guandan backend tests
+        run: cargo test -p shengji guandan --no-fail-fast
+      - name: Commit update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_handler.rs frontend/src/GuandanTable.tsx
+          git diff --cached --quiet || git commit -m "fix(guandan): allow lead pass after opening trick"
+          git push
