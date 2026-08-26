@@ -27,7 +27,7 @@ The independent core now includes deck generation, shuffling, exact 27-card deal
 
 Recognized hands include singles, pairs, triples, three-with-pair, straights, three consecutive pairs, two consecutive triples, straight flushes, ordinary bombs, and the four-joker bomb. The current bomb order is four-joker bomb, six-card-or-larger bombs, straight flush, five-card bomb, then four-card bomb.
 
-A separate level-card rule layer treats the current level rank as stronger than ordinary suited ranks and treats the heart card of the current level rank as a wildcard when it is played with other cards. Wildcard interpretations cover pairs, triples, three-with-pair, straights, wood boards, steel boards, straight flushes, and bombs while leaving the already-verified base classifier unchanged.
+A separate level-card rule layer treats the current level rank as stronger than ordinary suited ranks and treats the heart card of the current level rank as a wildcard when it is played with other cards. Wildcard interpretations cover pairs, triples, three-with-pair, straights, wood boards, steel boards, straight flushes, and bombs while leaving the already-verified base classifier unchanged. Wildcard matching is pattern-based rather than exponential substitution, so multi-deck tables can handle many heart-level wildcards safely.
 
 The play-state layer validates turn ownership, verifies that selected card IDs are actually in the player's hand, resolves the declared wildcard hand, rejects plays that cannot beat the current resolved hand, removes played cards, records public play/pass actions, and resets a trick to the last successful player after all other seats pass.
 
