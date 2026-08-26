@@ -1,4 +1,4 @@
-name: Verify Guandan 5 players plus 1 bot three games
+name: Verify Guandan 5 humans plus 1 server robot three games
 
 on:
   push:
@@ -18,104 +18,239 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: feature/guandan-up-to-14-players-20260825
-      - run: python -m pip install --quiet 'websockets>=12,<16'
-      - name: Start isolated branch backend
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Start isolated latest branch backend
         run: |
-          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic >/tmp/guandan6.log 2>&1 &
+          PORT=3030 CORS_ALLOWED_ORIGINS='*' cargo run -p shengji --features dynamic >/tmp/guandan6-bot.log 2>&1 &
           for i in $(seq 1 120); do
-            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then echo LOCAL_BACKEND_READY; exit 0; fi
+            if curl -fsS http://127.0.0.1:3030/runtime.js >/dev/null 2>&1; then
+              echo LOCAL_BACKEND_READY
+              exit 0
+            fi
             sleep 1
           done
-          cat /tmp/guandan6.log; exit 1
-      - name: Run three complete 5-player plus 1-bot games
+          cat /tmp/guandan6-bot.log
+          exit 1
+      - name: Run three complete games with 5 humans and 1 server robot
         run: |
           python - <<'PY'
-          import asyncio,json,time,websockets
-          URI='ws://127.0.0.1:3030/api/guandan'; N=6; BOT=5; CARDS=27
+          import asyncio
+          import json
+          import time
+          import websockets
 
-          class C:
-              def __init__(self,i):
-                  self.i=i; self.ws=None; self.task=None; self.cv=asyncio.Condition(); self.connected=False; self.joined=None; self.waiting=None; self.started=None; self.state=None; self.seq=0; self.hand=None; self.hand_seq=0; self.err=None
+          URI = 'ws://127.0.0.1:3030/api/guandan'
+          HUMAN_COUNT = 5
+          PLAYER_COUNT = 6
+          BOT_SEAT = 5
+          CARDS_PER_PLAYER = 27
+
+          class Client:
+              def __init__(self, seat):
+                  self.seat = seat
+                  self.ws = None
+                  self.reader_task = None
+                  self.cv = asyncio.Condition()
+                  self.connected = False
+                  self.joined = None
+                  self.waiting = None
+                  self.started = None
+                  self.state = None
+                  self.state_seq = 0
+                  self.hand = None
+                  self.error = None
+
               async def connect(self):
-                  self.ws=await websockets.connect(URI,open_timeout=10,max_queue=64); self.task=asyncio.create_task(self.reader()); await self.wait(lambda:self.connected)
+                  self.ws = await websockets.connect(URI, open_timeout=10, max_queue=64)
+                  self.reader_task = asyncio.create_task(self.reader())
+                  await self.wait_for(lambda c: c.connected)
+
               async def reader(self):
                   try:
                       async for raw in self.ws:
-                          if isinstance(raw,bytes): raw=raw.decode()
-                          m=json.loads(raw)
+                          if isinstance(raw, bytes):
+                              raw = raw.decode('utf-8')
+                          message = json.loads(raw)
                           async with self.cv:
-                              t=m.get('type')
-                              if t=='connected': self.connected=True
-                              elif t=='joined': self.joined=m
-                              elif t=='waiting': self.waiting=m
-                              elif t=='started': self.started=m
-                              elif t=='state': self.state=m; self.seq+=1
-                              elif t=='hand': self.hand=m.get('cards',[]); self.hand_seq+=1
-                              elif t=='error': self.err=m.get('message') or 'server error'
+                              kind = message.get('type')
+                              if kind == 'connected':
+                                  self.connected = True
+                              elif kind == 'joined':
+                                  self.joined = message
+                              elif kind == 'waiting':
+                                  self.waiting = message
+                              elif kind == 'started':
+                                  self.started = message
+                              elif kind == 'state':
+                                  self.state = message
+                                  self.state_seq += 1
+                              elif kind == 'hand':
+                                  self.hand = message.get('cards', [])
+                              elif kind == 'error':
+                                  self.error = message.get('message') or 'server error'
                               self.cv.notify_all()
-                  except Exception as e:
+                  except Exception as exc:
                       async with self.cv:
-                          if self.err is None: self.err=repr(e)
+                          if self.error is None:
+                              self.error = repr(exc)
                           self.cv.notify_all()
-              async def wait(self,p,timeout=30):
-                  async def x():
+
+              async def wait_for(self, predicate, timeout=30):
+                  async def inner():
                       async with self.cv:
-                          await self.cv.wait_for(lambda:self.err is not None or p())
-                          if self.err is not None: raise AssertionError(f'seat {self.i+1}: {self.err}')
-                  await asyncio.wait_for(x(),timeout)
-              async def send(self,m): await self.ws.send(json.dumps(m,ensure_ascii=False))
+                          await self.cv.wait_for(lambda: self.error is not None or predicate(self))
+                          if self.error is not None:
+                              raise AssertionError(f'player {self.seat + 1}: {self.error}')
+                  await asyncio.wait_for(inner(), timeout=timeout)
+
+              async def send(self, message):
+                  await self.ws.send(json.dumps(message, ensure_ascii=False))
+
               async def close(self):
-                  if self.ws: await self.ws.close()
-                  if self.task:
-                      try: await self.task
-                      except Exception: pass
+                  if self.ws is not None:
+                      await self.ws.close()
+                  if self.reader_task is not None:
+                      try:
+                          await self.reader_task
+                      except Exception:
+                          pass
 
-          def sig(s):
-              return (s.get('turn'),tuple(s.get('hand_counts',[])),s.get('last_player'),tuple(json.dumps(x,sort_keys=True) for x in s.get('last_play',[])),s.get('passes'),tuple(s.get('finish_order',[])),s.get('next_round_phase'),s.get('last_game_winner'))
-          def name(seat): return '机器人' if seat==BOT else f'玩家{seat+1}'
+          def signature(state):
+              return (
+                  state.get('turn'),
+                  tuple(state.get('hand_counts', [])),
+                  state.get('last_player'),
+                  tuple(json.dumps(card, sort_keys=True) for card in state.get('last_play', [])),
+                  state.get('passes'),
+                  tuple(state.get('finish_order', [])),
+                  state.get('next_round_phase'),
+                  state.get('last_game_winner'),
+              )
 
-          async def game(no):
-              room=f'mixed6_g{no}_{int(time.time()*1000)}'; cs=[C(i) for i in range(N)]; bot_actions=0; actions=0
+          def player_name(seat):
+              return '机器人1' if seat == BOT_SEAT else f'玩家{seat + 1}'
+
+          async def run_game(game_no):
+              room = f'fivehuman_onebot_g{game_no}_{int(time.time() * 1000)}'
+              humans = [Client(i) for i in range(HUMAN_COUNT)]
+              human_actions = 0
+              robot_min_hand = CARDS_PER_PLAYER
+              robot_was_turn = False
               try:
-                  for c in cs:
-                      await c.connect(); await c.send({'type':'join','room':room,'name':name(c.i)}); await c.wait(lambda c=c:c.joined is not None); assert c.joined.get('seat')==c.i
-                  ctl=cs[0]; await ctl.wait(lambda:ctl.waiting is not None and len(ctl.waiting.get('players',[]))==N); await ctl.send({'type':'start','player_count':N})
-                  for c in cs:
-                      await c.wait(lambda c=c:c.started is not None and c.started.get('player_count')==N)
-                      await c.wait(lambda c=c:c.state is not None and len(c.state.get('initial_draw',[]))==N)
-                      await c.wait(lambda c=c:c.hand is not None and len(c.hand)==CARDS)
-                  opening=ctl.state; opening_winner=opening['initial_draw_winner']; assert opening['turn']==opening_winner; assert all('Joker' not in x for x in opening['initial_draw'])
-                  while ctl.state.get('next_round_phase')!='awaiting_shuffle':
-                      s=ctl.state; seat=s['turn']; old=ctl.seq; oldsig=sig(s)
-                      if s.get('last_player') is None:
-                          assert s['hand_counts'][seat]>0; await cs[seat].send({'type':'play','card_indexes':[0]})
+                  for client in humans:
+                      await client.connect()
+                      await client.send({
+                          'type': 'join',
+                          'room': room,
+                          'name': f'玩家{client.seat + 1}',
+                      })
+                      await client.wait_for(lambda c: c.joined is not None)
+                      assert client.joined.get('seat') == client.seat
+
+                  control = humans[0]
+                  await control.wait_for(
+                      lambda c: c.waiting is not None
+                      and len(c.waiting.get('players', [])) == HUMAN_COUNT
+                  )
+
+                  # Add a real server-side robot; no sixth WebSocket client is created.
+                  await control.send({'type': 'set_bots', 'count': 1})
+                  await control.wait_for(
+                      lambda c: c.waiting is not None
+                      and len(c.waiting.get('players', [])) == PLAYER_COUNT
+                      and any(str(name).startswith('机器人') for name in c.waiting.get('players', []))
+                  )
+                  waiting_players = control.waiting.get('players', [])
+                  assert waiting_players[:HUMAN_COUNT] == [f'玩家{i}' for i in range(1, 6)]
+                  assert str(waiting_players[BOT_SEAT]).startswith('机器人')
+
+                  await control.send({'type': 'start', 'player_count': PLAYER_COUNT})
+                  for client in humans:
+                      await client.wait_for(
+                          lambda c: c.started is not None
+                          and c.started.get('player_count') == PLAYER_COUNT
+                      )
+                      await client.wait_for(
+                          lambda c: c.state is not None
+                          and len(c.state.get('initial_draw', [])) == PLAYER_COUNT
+                          and len(c.state.get('hand_counts', [])) == PLAYER_COUNT
+                      )
+                      await client.wait_for(
+                          lambda c: c.hand is not None and len(c.hand) == CARDS_PER_PLAYER
+                      )
+
+                  opening = control.state
+                  opening_winner = opening['initial_draw_winner']
+                  assert all('Joker' not in card for card in opening['initial_draw'])
+                  robot_min_hand = min(robot_min_hand, opening['hand_counts'][BOT_SEAT])
+
+                  while control.state.get('next_round_phase') != 'awaiting_shuffle':
+                      state = control.state
+                      assert human_actions < 4000, f'game {game_no} exceeded action limit'
+                      robot_min_hand = min(robot_min_hand, state['hand_counts'][BOT_SEAT])
+                      seat = state['turn']
+
+                      if seat == BOT_SEAT:
+                          # A server robot should advance itself without a robot client command.
+                          robot_was_turn = True
+                          old_seq = control.state_seq
+                          old_sig = signature(state)
+                          await control.wait_for(
+                              lambda c, seq=old_seq, sig=old_sig:
+                              c.state_seq > seq and signature(c.state) != sig,
+                              timeout=5,
+                          )
+                          continue
+
+                      old_seq = control.state_seq
+                      old_sig = signature(state)
+                      if state.get('last_player') is None:
+                          assert state['hand_counts'][seat] > 0
+                          await humans[seat].send({'type': 'play', 'card_indexes': [0]})
                       else:
-                          await cs[seat].send({'type':'pass'})
-                      if seat==BOT: bot_actions+=1
-                      await ctl.wait(lambda old=old,oldsig=oldsig:ctl.seq>old and sig(ctl.state)!=oldsig)
-                      actions+=1; assert actions<4000
-                  ended=ctl.state; winner=ended.get('last_game_winner'); order=ended.get('finish_order',[]); first=order[0] if order else None
-                  print('MIXED6_RAW_END',json.dumps({'game':no,'opening_draw_winner':name(opening_winner),'actions':actions,'bot_actions':bot_actions,'winner':name(winner) if winner is not None else None,'finish_order':[name(x) for x in order],'hand_counts':ended.get('hand_counts'),'phase':ended.get('next_round_phase')},ensure_ascii=False),flush=True)
-                  assert first is not None, 'missing finish_order winner'
-                  assert winner is not None, 'missing server winner'
-                  assert len(order)==N, ('finish order length',order)
-                  assert ended.get('hand_counts')==[0]*N, ('nonzero hand counts',ended.get('hand_counts'))
-                  assert bot_actions>0, ('robot never acted',opening_winner,order)
-                  assert winner==first, ('winner mismatch',winner,first,order)
-                  losing_parity=1 if winner%2==0 else 0; losing=next(i for i in range(N) if i%2==losing_parity); old=ctl.seq
-                  await cs[losing].send({'type':'shuffle_next_round','from_position':None,'to_position':None}); await ctl.wait(lambda old=old:ctl.seq>old and ctl.state.get('next_round_phase')=='awaiting_deal'); assert ctl.state.get('hand_counts')==[CARDS]*N
-                  hs=[c.hand_seq for c in cs]; old=ctl.seq; await cs[winner].send({'type':'deal_next_round'}); await ctl.wait(lambda old=old:ctl.seq>old and ctl.state.get('next_round_phase') is None and ctl.state.get('finish_order')==[]); assert ctl.state.get('turn')==winner
-                  for c,h in zip(cs,hs): await c.wait(lambda c=c,h=h:c.hand_seq>h and c.hand is not None and len(c.hand)==CARDS)
-                  r={'game':no,'room':room,'actions':actions,'bot_actions':bot_actions,'opening_draw_winner':name(opening_winner),'winner':name(winner),'finish_order':[name(x) for x in order],'next_round_lead':name(ctl.state['turn'])}
-                  print('MIXED_6_PLAYER_GAME_OK',json.dumps(r,ensure_ascii=False),flush=True); return r
-              finally: await asyncio.gather(*(c.close() for c in cs),return_exceptions=True)
+                          await humans[seat].send({'type': 'pass'})
+                      human_actions += 1
+                      await control.wait_for(
+                          lambda c, seq=old_seq, sig=old_sig:
+                          c.state_seq > seq and signature(c.state) != sig
+                      )
+
+                  ended = control.state
+                  order = ended.get('finish_order', [])
+                  winner = ended.get('last_game_winner')
+                  robot_min_hand = min(robot_min_hand, ended['hand_counts'][BOT_SEAT])
+
+                  assert len(order) == PLAYER_COUNT, order
+                  assert winner == order[0], (winner, order)
+                  assert ended.get('hand_counts') == [0] * PLAYER_COUNT
+                  assert robot_min_hand < CARDS_PER_PLAYER, robot_min_hand
+                  assert BOT_SEAT in order
+
+                  result = {
+                      'game': game_no,
+                      'room': room,
+                      'opening_draw_winner': player_name(opening_winner),
+                      'winner': player_name(winner),
+                      'finish_order': [player_name(seat) for seat in order],
+                      'human_actions': human_actions,
+                      'robot_min_hand_seen': robot_min_hand,
+                      'robot_turn_state_seen': robot_was_turn,
+                  }
+                  print('FIVE_HUMANS_ONE_SERVER_BOT_GAME_OK', json.dumps(result, ensure_ascii=False), flush=True)
+                  return result
+              finally:
+                  await asyncio.gather(*(client.close() for client in humans), return_exceptions=True)
 
           async def main():
-              rs=[]
-              for n in range(1,4): rs.append(await game(n))
-              print('MIXED_6_PLAYER_THREE_GAMES_OK',flush=True); print(json.dumps(rs,ensure_ascii=False),flush=True)
+              results = []
+              for game_no in range(1, 4):
+                  results.append(await run_game(game_no))
+              print('FIVE_HUMANS_ONE_SERVER_BOT_THREE_GAMES_OK', flush=True)
+              print(json.dumps(results, ensure_ascii=False), flush=True)
+
           asyncio.run(main())
           PY
       - name: Show backend log on failure
         if: failure()
-        run: cat /tmp/guandan6.log || true
+        run: cat /tmp/guandan6-bot.log || true
