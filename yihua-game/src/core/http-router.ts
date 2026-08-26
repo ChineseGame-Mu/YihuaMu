@@ -21,7 +21,9 @@ const json = (status: number, value: unknown): HttpResponse => ({
 
 const supportedPlayerCounts = new Set([4, 6, 8, 10, 12, 14]);
 
-const isSupportedPlayerCount = (value: unknown): value is SupportedPlayerCount =>
+const isSupportedPlayerCount = (
+  value: unknown,
+): value is SupportedPlayerCount =>
   typeof value === "number" && supportedPlayerCounts.has(value);
 
 export const routeHttp = (
