@@ -11,11 +11,26 @@ const cards = (ranks: readonly Rank[]): Card[] =>
 
 describe("hand comparison edges", () => {
   it("does not allow equal-strength ordinary hands to beat each other", () => {
-    expect(canBeat(cards(["8", "9", "10", "J", "Q"]), cards(["8", "9", "10", "J", "Q"]))).toBe(false);
+    expect(
+      canBeat(
+        cards(["8", "9", "10", "J", "Q"]),
+        cards(["8", "9", "10", "J", "Q"]),
+      ),
+    ).toBe(false);
   });
 
   it("treats A2345 as the lowest straight", () => {
-    expect(canBeat(cards(["2", "3", "4", "5", "6"]), cards(["A", "2", "3", "4", "5"]))).toBe(true);
-    expect(canBeat(cards(["A", "2", "3", "4", "5"]), cards(["2", "3", "4", "5", "6"]))).toBe(false);
+    expect(
+      canBeat(
+        cards(["2", "3", "4", "5", "6"]),
+        cards(["A", "2", "3", "4", "5"]),
+      ),
+    ).toBe(true);
+    expect(
+      canBeat(
+        cards(["A", "2", "3", "4", "5"]),
+        cards(["2", "3", "4", "5", "6"]),
+      ),
+    ).toBe(false);
   });
 });
