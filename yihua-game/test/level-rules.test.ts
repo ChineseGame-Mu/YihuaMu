@@ -134,6 +134,18 @@ describe("level-card rules", () => {
     });
   });
 
+  it("handles seven heart level wildcards without exponential substitution", () => {
+    const cards = [
+      suited("K", "clubs"),
+      ...Array.from({ length: 7 }, () => suited("7", "hearts")),
+    ];
+    expect(classifyWithLevelRules(cards, rules)).toContainEqual({
+      kind: "bomb",
+      size: 8,
+      rank: "K",
+    });
+  });
+
   it("allows wildcard interpretations to beat the matching current hand", () => {
     const challenger = [suited("A", "clubs"), suited("7", "hearts")];
     const current = [suited("K", "clubs"), suited("K", "spades")];
