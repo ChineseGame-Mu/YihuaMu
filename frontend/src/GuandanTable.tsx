@@ -229,14 +229,14 @@ const GuandanTable: React.FunctionComponent = () => {
   const nextRoundPending = state.nextRoundPhase !== null;
   const testMode = query.get("test") === "1";
   const supportedPlayerCounts = [4, 6, 8, 10, 12, 14] as const;
-  const queryPlayerCount = Number(query.get("players") ?? "4");
+  const queryPlayerCount = Number(query.get("players") ?? "14");
   const [requestedPlayerCount, setRequestedPlayerCount] =
     React.useState<number>(
       supportedPlayerCounts.includes(
         queryPlayerCount as (typeof supportedPlayerCounts)[number],
       )
         ? queryPlayerCount
-        : 4,
+        : 14,
     );
   const playerCount = state.playerCount ?? state.players.length;
   const cardsPerPlayer =
