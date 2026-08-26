@@ -6,7 +6,10 @@ import {
   deckCopiesForTable,
   shuffleDeck,
 } from "../src/core/deck.js";
-import { CARDS_PER_PLAYER, SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
+import {
+  CARDS_PER_PLAYER,
+  SUPPORTED_PLAYER_COUNTS,
+} from "../src/core/table.js";
 
 describe("independent deck core", () => {
   it("builds the exact number of cards for every supported table size", () => {
