@@ -99,6 +99,7 @@ export const decodeClientFrame = (
 };
 
 export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
+  readonly socket: TextSocket = this;
   private buffer = Buffer.alloc(0);
   private textHandler: ((text: string) => void | Promise<void>) | undefined;
 
