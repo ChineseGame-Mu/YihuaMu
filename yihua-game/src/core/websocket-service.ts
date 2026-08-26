@@ -1,4 +1,8 @@
-import { encodeServerMessage, parseClientMessage, type ServerMessage } from "./protocol.js";
+import {
+  encodeServerMessage,
+  parseClientMessage,
+  type ServerMessage,
+} from "./protocol.js";
 import { roomStateMessage, applyClientMessage } from "./session.js";
 import { RoomManager, type ManagedRoom } from "./room-manager.js";
 
