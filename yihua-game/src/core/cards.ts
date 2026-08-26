@@ -36,10 +36,21 @@ export const determineUniqueOpeningWinner = (
   draw: readonly Card[],
 ): number | null => {
   if (draw.length === 0) return null;
-  const strengths = draw.map(openingDrawStrength);
-  const maximum = Math.max(...strengths);
-  const winners = strengths
-    .map((strength, seat) => ({ strength, seat }))
-    .filter(({ strength }) => strength === maximum);
-  return winners.length === 1 ? winners[0]!.seat : null;
+
+  let winnerSeat = 0;
+  let maximum = openingDrawStrength(draw[0]!);
+  let tied = false;
+
+  for (let seat = 1; seat < draw.length; seat += 1) {
+    const strength = openingDrawStrength(draw[seat]!);
+    if (strength > maximum) {
+      maximum = strength;
+      winnerSeat = seat;
+      tied = false;
+    } else if (strength === maximum) {
+      tied = true;
+    }
+  }
+
+  return tied ? null : winnerSeat;
 };
