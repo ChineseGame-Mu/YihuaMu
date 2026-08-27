@@ -1,0 +1,146 @@
+name: QA Guandan 12 full games rerun once
+
+on:
+  push:
+    branches: [optimize/guandan-online-performance-20260826]
+    paths:
+      - .github/workflows/qa-guandan-12-full-games-rerun-once-20260826.yml
+
+permissions:
+  contents: read
+
+jobs:
+  full-games:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Play 12 complete live games
+        run: |
+          python - <<'PY'
+          import asyncio, json, time, uuid
+          import websockets
+
+          URI='wss://chinesegame-yihua.onrender.com/api/guandan'
+          SIZES=[4,6,8,10,12,14]
+          POWER={'Two':2,'Three':3,'Four':4,'Five':5,'Six':6,'Seven':7,'Eight':8,'Nine':9,'Ten':10,'Jack':11,'Queen':12,'King':13,'Ace':14}
+
+          def power(card, level):
+              if 'Joker' in card:
+                  return 16 if card['Joker']=='Small' else 17
+              rank=card['Suited']['rank']
+              return 15 if rank==level else POWER[rank]
+
+          def sig(s):
+              return (tuple(s.get('hand_counts',[])),s.get('turn'),s.get('last_player'),s.get('passes'),tuple(s.get('finish_order',[])),s.get('last_game_winner'),len(s.get('table_plays',[])),json.dumps(s.get('last_play',[]),sort_keys=True))
+
+          async def direct(ws, wanted, timeout=25):
+              end=asyncio.get_running_loop().time()+timeout
+              while True:
+                  raw=await asyncio.wait_for(ws.recv(), end-asyncio.get_running_loop().time())
+                  if isinstance(raw,bytes): raw=raw.decode()
+                  m=json.loads(raw)
+                  if m.get('type')=='error': raise AssertionError(m)
+                  if wanted(m): return m
+
+          class C:
+              def __init__(self, seat, ws):
+                  self.seat=seat; self.ws=ws; self.hand=[]; self.state=None; self.started=None; self.seq=0; self.err=None; self.cond=asyncio.Condition(); self.task=None
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          if isinstance(raw,bytes): raw=raw.decode()
+                          m=json.loads(raw); k=m.get('type')
+                          async with self.cond:
+                              if k=='error': self.err=m
+                              elif k=='hand': self.hand=m.get('cards',[])
+                              elif k=='started': self.started=m
+                              elif k=='state': self.state=m; self.seq+=1
+                              self.cond.notify_all()
+                  except Exception as e:
+                      async with self.cond:
+                          self.err={'type':'reader_exception','message':repr(e)}; self.cond.notify_all()
+              async def wait(self, pred, timeout=25):
+                  async def inner():
+                      async with self.cond:
+                          while not pred():
+                              if self.err: raise AssertionError(self.err)
+                              await self.cond.wait()
+                  await asyncio.wait_for(inner(),timeout)
+              async def new_state(self, old, timeout=25):
+                  await self.wait(lambda:self.seq>old,timeout); return self.state
+
+          def validate(s,size,old_total=None):
+              counts=s.get('hand_counts',[])
+              assert len(counts)==size and all(isinstance(x,int) and 0<=x<=27 for x in counts), counts
+              assert 0<=s['turn']<size
+              finish=s.get('finish_order',[])
+              assert len(finish)==len(set(finish)) and all(0<=x<size for x in finish), finish
+              total=sum(counts)
+              if old_total is not None: assert total<=old_total,(old_total,total)
+              return total
+
+          async def game(size,n):
+              room=f'qa12rerun_{size}_{n}_{int(time.time()*1000)}_{uuid.uuid4().hex[:5]}'
+              cs=[]; start=time.monotonic()
+              try:
+                  for seat in range(size):
+                      ws=await websockets.connect(URI,open_timeout=20,close_timeout=5,ping_interval=20,ping_timeout=20,max_queue=4096)
+                      await direct(ws,lambda m:m.get('type')=='connected')
+                      await ws.send(json.dumps({'type':'join','room':room,'name':f'QA回归{n}-{seat+1}'},ensure_ascii=False))
+                      j=await direct(ws,lambda m:m.get('type')=='joined'); assert j.get('seat')==seat,j
+                      cs.append(C(seat,ws))
+                  for c in cs: c.task=asyncio.create_task(c.reader())
+                  mon=cs[0]
+                  await mon.ws.send(json.dumps({'type':'start','player_count':size}))
+                  await mon.wait(lambda:mon.state is not None and len(mon.state.get('initial_draw',[]))==size and mon.started is not None,30)
+                  for c in cs:
+                      await c.wait(lambda c=c:c.started is not None and len(c.hand)==27,30)
+                      assert c.started.get('cards_per_player')==27
+                  s=mon.state
+                  assert s.get('hand_counts')==[27]*size
+                  draw=s.get('initial_draw',[]); assert len(draw)==size and all('Joker' not in x for x in draw)
+                  winner=s.get('initial_draw_winner'); assert isinstance(winner,int) and s.get('turn')==winner
+                  total=validate(s,size); actions=plays=passes=0; guard=size*27*(size+3)
+                  while s.get('last_game_winner') is None:
+                      assert actions<guard,(size,actions,s)
+                      seat=s['turn']; a=cs[seat]; expected=s['hand_counts'][seat]
+                      await a.wait(lambda:len(a.hand)==expected,25)
+                      assert expected>0,(seat,s)
+                      lp=s.get('last_play',[]); assert len(lp)<=1,lp
+                      if not lp:
+                          idx=min(range(len(a.hand)),key=lambda i:(power(a.hand[i],s['level']),i)); cmd={'type':'play','card_indexes':[idx]}; isplay=True
+                      else:
+                          p=power(lp[0],s['level']); opts=[(power(card,s['level']),i) for i,card in enumerate(a.hand) if power(card,s['level'])>p]
+                          if opts:
+                              _,idx=min(opts); cmd={'type':'play','card_indexes':[idx]}; isplay=True
+                          else:
+                              cmd={'type':'pass'}; isplay=False
+                      oldseq=mon.seq; oldsig=sig(s); await a.ws.send(json.dumps(cmd)); s=await mon.new_state(oldseq,25)
+                      while sig(s)==oldsig:
+                          oldseq=mon.seq; s=await mon.new_state(oldseq,25)
+                      actions+=1; plays+=int(isplay); passes+=int(not isplay); total=validate(s,size,total)
+                      if actions%150==0: print(f'GAME_{n}_SIZE_{size}_PROGRESS actions={actions} remaining={sum(s["hand_counts"])}',flush=True)
+                  finish=s.get('finish_order',[]); w=s.get('last_game_winner')
+                  assert len(finish)==size and finish[0]==w,(finish,w)
+                  assert s.get('last_game_winner_team') in ('A','B')
+                  assert s.get('last_promotion_steps') in (1,2,3)
+                  assert s.get('next_round_phase')=='awaiting_shuffle'
+                  assert sum(s.get('hand_counts',[]))==0
+                  print(f'FULL_GAME_{n}_OK size={size} winner={w+1} actions={actions} plays={plays} passes={passes} seconds={time.monotonic()-start:.1f}',flush=True)
+              finally:
+                  for c in cs:
+                      if c.task: c.task.cancel()
+                  await asyncio.gather(*(c.task for c in cs if c.task),return_exceptions=True)
+                  await asyncio.gather(*(c.ws.close() for c in cs),return_exceptions=True)
+
+          async def main():
+              n=0
+              for repeat in range(2):
+                  for size in SIZES:
+                      n+=1; await game(size,n); await asyncio.sleep(.4)
+              assert n==12
+              print('QA_12_FULL_GAMES_ALL_OK',flush=True)
+
+          asyncio.run(main())
+          PY
