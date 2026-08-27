@@ -19,6 +19,7 @@ export type ClientMessage =
     } & CommandMetadata)
   | ({ readonly type: "set_robots"; readonly count: number } & CommandMetadata)
   | ({ readonly type: "start_game" } & CommandMetadata)
+  | ({ readonly type: "next_round" } & CommandMetadata)
   | ({
       readonly type: "play_cards";
       readonly cardIds: readonly string[];
@@ -101,18 +102,13 @@ const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
   return metadata;
 };
 
-const stringArray = (value: unknown, name: string): readonly string[] => {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
-    throw new Error(`${name} must be an array of strings`);
-  }
-  return value;
-};
-
 export const parseClientMessage = (raw: string): ClientMessage => {
   const parsed: unknown = JSON.parse(raw);
   if (!isObject(parsed) || typeof parsed.type !== "string") {
     throw new Error("message must be an object with a type");
   }
+
+  const metadata = commandMetadata(parsed);
 
   switch (parsed.type) {
     case "join_room":
@@ -130,36 +126,39 @@ export const parseClientMessage = (raw: string): ClientMessage => {
         playerId: parsed.playerId,
         name: parsed.name,
         seat: parsed.seat,
-        ...commandMetadata(parsed),
+        ...metadata,
       };
     case "leave_room":
       if (typeof parsed.playerId !== "string") {
         throw new Error("invalid leave_room message");
       }
-      return {
-        type: "leave_room",
-        playerId: parsed.playerId,
-        ...commandMetadata(parsed),
-      };
+      return { type: "leave_room", playerId: parsed.playerId, ...metadata };
     case "set_robots":
       if (typeof parsed.count !== "number") {
         throw new Error("invalid set_robots message");
       }
-      return {
-        type: "set_robots",
-        count: parsed.count,
-        ...commandMetadata(parsed),
-      };
+      return { type: "set_robots", count: parsed.count, ...metadata };
     case "start_game":
-      return { type: "start_game", ...commandMetadata(parsed) };
+      return { type: "start_game", ...metadata };
+    case "next_round":
+      return { type: "next_round", ...metadata };
     case "play_cards":
+      if (
+        !Array.isArray(parsed.cardIds) ||
+        parsed.cardIds.length === 0 ||
+        parsed.cardIds.some(
+          (cardId) => typeof cardId !== "string" || cardId.length === 0,
+        )
+      ) {
+        throw new Error("play_cards requires non-empty cardIds");
+      }
       return {
         type: "play_cards",
-        cardIds: stringArray(parsed.cardIds, "cardIds"),
-        ...commandMetadata(parsed),
+        cardIds: parsed.cardIds as string[],
+        ...metadata,
       };
     case "pass_turn":
-      return { type: "pass_turn", ...commandMetadata(parsed) };
+      return { type: "pass_turn", ...metadata };
     case "ping":
       if (typeof parsed.nonce !== "string") {
         throw new Error("invalid ping message");
