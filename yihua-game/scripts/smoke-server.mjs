@@ -54,8 +54,8 @@ const createMessageQueue = (socket) => {
       const timeout = setTimeout(() => {
         const index = waiters.findIndex((waiter) => waiter.resolve === resolve);
         if (index >= 0) waiters.splice(index, 1);
-        reject(new Error("websocket message timeout"));
-      }, 3000);
+        reject(new Error(`websocket message timeout: ${stderr}`));
+      }, 10000);
 
       waiters.push({
         resolve: (value) => {
