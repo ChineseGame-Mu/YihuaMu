@@ -241,6 +241,32 @@ const reconnectOnePlayer = async (table) => {
   if (afterReconnect.revision !== afterClose.revision + 1)
     throw new Error(`${table.roomId}: reconnect did not advance revision once`);
   auditReconnectSnapshot(table, seat, replacement, afterReconnect);
+
+  if (afterReconnect.game.phase === "playing") {
+    const activeSeat = afterReconnect.game.currentTurn;
+    const activeConnection = table.connections.get(activeSeat);
+    if (!activeConnection)
+      throw new Error(`${table.roomId}: active connection missing after reconnect`);
+    const messagesBefore = activeConnection.socket.messages.length;
+    table.commandSequence += 1;
+    await activeConnection.receive(
+      JSON.stringify({
+        type: "pass_turn",
+        expectedRevision: afterClose.revision,
+        commandId: `stale-after-reconnect-${table.commandSequence}`,
+      }),
+    );
+    const afterStale = table.runtime.rooms.get(table.roomId);
+    if (afterStale.revision !== afterReconnect.revision)
+      throw new Error(`${table.roomId}: stale command mutated room revision`);
+    const newMessages = activeConnection.socket.messages
+      .slice(messagesBefore)
+      .map((text) => JSON.parse(text));
+    if (!newMessages.some(({ type, code }) => type === "error" && code === "stale_revision"))
+      throw new Error(`${table.roomId}: stale command was not rejected`);
+    table.metrics.staleErrors += 1;
+  }
+
   table.metrics.reconnects += 1;
 };
 
