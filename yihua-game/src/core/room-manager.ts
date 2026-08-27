@@ -50,12 +50,28 @@ export class RoomManager {
     return next;
   }
 
+  restore(managed: ManagedRoom): ManagedRoom {
+    const roomId = managed.room.roomId;
+    if (this.rooms.has(roomId)) {
+      throw new Error(`room ${roomId} already exists`);
+    }
+    if (!Number.isInteger(managed.revision) || managed.revision < 0) {
+      throw new Error("room revision must be a non-negative integer");
+    }
+    this.rooms.set(roomId, managed);
+    return managed;
+  }
+
   delete(roomId: string): boolean {
     return this.rooms.delete(roomId);
   }
 
   listRoomIds(): readonly string[] {
     return [...this.rooms.keys()].sort();
+  }
+
+  list(): readonly ManagedRoom[] {
+    return this.listRoomIds().map((roomId) => this.get(roomId));
   }
 
   start(roomId: string, random: () => number = Math.random): ManagedRoom {
