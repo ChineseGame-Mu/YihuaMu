@@ -43,7 +43,7 @@ export const renderJoinPage = (roomId: string): string => {
     <p class="room-label">房间：<span class="room-code">${safeRoomId}</span></p>
     <form id="join-form">
       <div class="field">
-        <label for="player-count">当晚参加人数</label>
+        <label for="player-count">选择人数：4–14 人</label>
         <select id="player-count" name="playerCount">
           <option value="4">4 人</option>
           <option value="6">6 人</option>
