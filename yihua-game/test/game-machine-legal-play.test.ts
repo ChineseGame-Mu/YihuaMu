@@ -62,6 +62,7 @@ describe("table machine legal-play enforcement", () => {
         cards: pair8,
       }),
     );
+    expect(afterLead.trick.leadingPlay?.seat).toBe(0);
 
     expect(() =>
       transitionGame(afterLead, { type: "play-cards", seat: 1, cards: pair7 }),
