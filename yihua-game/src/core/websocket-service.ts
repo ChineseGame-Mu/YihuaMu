@@ -106,10 +106,7 @@ const commandFingerprint = (message: MutatingMessage): string => {
 };
 
 export class WebSocketService {
-  private readonly processedCommands = new Map<
-    string,
-    Map<string, string>
-  >();
+  private readonly processedCommands = new Map<string, Map<string, string>>();
 
   constructor(
     private readonly rooms: RoomManager,
