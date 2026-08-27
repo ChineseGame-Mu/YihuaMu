@@ -6,6 +6,13 @@ export interface RoundPlacement {
   readonly team: Team;
 }
 
+export interface RoundOutcome {
+  readonly winningTeam: Team;
+  readonly losingTeam: Team;
+  readonly firstPlaceSeat: number;
+  readonly lastPlaceSeat: number;
+}
+
 export const buildRoundPlacements = (
   playerCount: SupportedPlayerCount,
   finishOrder: readonly number[],
@@ -29,4 +36,21 @@ export const buildRoundPlacements = (
     seat,
     team: teamForSeat(seat),
   }));
+};
+
+export const buildRoundOutcome = (
+  placements: readonly RoundPlacement[],
+): RoundOutcome => {
+  const first = placements[0];
+  const last = placements[placements.length - 1];
+  if (first === undefined || last === undefined) {
+    throw new Error("round outcome requires at least one placement");
+  }
+
+  return {
+    winningTeam: first.team,
+    losingTeam: first.team === "A" ? "B" : "A",
+    firstPlaceSeat: first.seat,
+    lastPlaceSeat: last.seat,
+  };
 };
