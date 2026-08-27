@@ -1,0 +1,148 @@
+name: QA Guandan between-round local E2E once
+
+on:
+  push:
+    branches: [feature/guandan-between-round-join-reorder-20260827]
+    paths:
+      - .github/workflows/qa-guandan-between-round-e2e-local-once-20260827.yml
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        run: yarn --cwd frontend install --frozen-lockfile
+      - name: Build frontend assets
+        run: yarn --cwd frontend build
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Start branch backend
+        run: |
+          PORT=3031 cargo run -p shengji >/tmp/guandan-local.log 2>&1 &
+          echo $! >/tmp/guandan-local.pid
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3031/runtime.js >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat /tmp/guandan-local.log
+          exit 1
+      - name: Verify queue promotion and same-team seat sync over WebSocket
+        run: |
+          python - <<'PY'
+          import asyncio, json, time, uuid
+          import websockets
+
+          URI = 'ws://127.0.0.1:3031/api/guandan'
+          RANK_POWER = {'Two':2,'Three':3,'Four':4,'Five':5,'Six':6,'Seven':7,'Eight':8,'Nine':9,'Ten':10,'Jack':11,'Queen':12,'King':13,'Ace':14}
+
+          def power(card, level):
+              if 'Joker' in card:
+                  return 16 if card['Joker'] == 'Small' else 17
+              rank = card['Suited']['rank']
+              return 15 if rank == level else RANK_POWER[rank]
+
+          class Client:
+              def __init__(self, name):
+                  self.name=name; self.ws=None; self.seat=None; self.hand=[]; self.state=None; self.seq=0; self.error=None; self.cond=asyncio.Condition(); self.task=None
+              async def connect(self, room):
+                  self.ws=await websockets.connect(URI, max_queue=4096)
+                  while True:
+                      m=json.loads(await self.ws.recv())
+                      if m.get('type')=='connected': break
+                  await self.ws.send(json.dumps({'type':'join','room':room,'name':self.name}, ensure_ascii=False))
+                  while True:
+                      m=json.loads(await self.ws.recv())
+                      if m.get('type')=='joined': self.seat=m.get('seat'); break
+                  self.task=asyncio.create_task(self.reader())
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          m=json.loads(raw); t=m.get('type')
+                          async with self.cond:
+                              if t=='joined': self.seat=m.get('seat')
+                              elif t=='hand': self.hand=m.get('cards',[])
+                              elif t=='state': self.state=m; self.seq+=1
+                              elif t=='error': self.error=m
+                              self.cond.notify_all()
+                  except Exception as exc:
+                      async with self.cond:
+                          self.error={'type':'reader_exception','message':repr(exc)}; self.cond.notify_all()
+              async def wait(self, pred, timeout=30):
+                  async def inner():
+                      async with self.cond:
+                          while not pred():
+                              if self.error: raise AssertionError((self.name,self.error))
+                              await self.cond.wait()
+                  await asyncio.wait_for(inner(), timeout)
+              async def send(self, msg):
+                  await self.ws.send(json.dumps(msg))
+
+          async def main():
+              room=f'qa_join_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}'
+              players=[Client(f'P{i+1}') for i in range(4)]
+              waiters=[Client(f'W{i+1}') for i in range(3)]
+              allc=players+waiters
+              try:
+                  for c in players: await c.connect(room)
+                  assert [c.seat for c in players]==[0,1,2,3], [c.seat for c in players]
+                  await players[0].send({'type':'start','player_count':4})
+                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('started') is True and len(players[0].hand)==27)
+                  for c in players: await c.wait(lambda c=c: len(c.hand)==27)
+
+                  for c in waiters:
+                      await c.connect(room)
+                      assert c.seat is None, (c.name,c.seat)
+                      await c.send({'type':'set_participation','active':True})
+                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('pending_players')==['W1','W2','W3'])
+                  print('QUEUE_DURING_ACTIVE_GAME_OK', flush=True)
+
+                  monitor=players[0]
+                  actions=0
+                  while monitor.state.get('last_game_winner') is None:
+                      state=monitor.state; seat=state['turn']; actor=players[seat]
+                      expected=state['hand_counts'][seat]
+                      await actor.wait(lambda a=actor,e=expected: len(a.hand)==e)
+                      last=state.get('last_play',[]); level=state['level']
+                      if not last:
+                          idx=min(range(len(actor.hand)), key=lambda i:(power(actor.hand[i],level),i)); cmd={'type':'play','card_indexes':[idx]}
+                      else:
+                          tp=power(last[0],level)
+                          opts=[(power(card,level),i) for i,card in enumerate(actor.hand) if power(card,level)>tp]
+                          cmd={'type':'play','card_indexes':[min(opts)[1]]} if opts else {'type':'pass'}
+                      old=monitor.seq
+                      await actor.send(cmd)
+                      await monitor.wait(lambda o=old: monitor.seq>o)
+                      actions+=1
+                      if actions>900: raise AssertionError('action guard exceeded')
+
+                  await monitor.wait(lambda: monitor.state.get('next_round_phase')=='awaiting_shuffle')
+                  await monitor.wait(lambda: monitor.state.get('players')==['P1','P2','P3','P4','W1','W2'] and monitor.state.get('pending_players')==['W3'])
+                  await waiters[0].wait(lambda: waiters[0].seat==4)
+                  await waiters[1].wait(lambda: waiters[1].seat==5)
+                  assert waiters[2].seat is None
+                  print('PAIR_PROMOTION_AND_SINGLE_WAIT_OK', flush=True)
+
+                  await players[0].send({'type':'reorder_players','order':[0,4]})
+                  await players[0].wait(lambda: players[0].seat==4)
+                  await waiters[0].wait(lambda: waiters[0].seat==0)
+                  await monitor.wait(lambda: monitor.state.get('players')[0]=='W1' and monitor.state.get('players')[4]=='P1')
+                  print('SAME_TEAM_SWAP_AND_DYNAMIC_SEAT_SYNC_OK', flush=True)
+                  print('QA_GUANDAN_BETWEEN_ROUND_LOCAL_E2E_OK', flush=True)
+              finally:
+                  for c in allc:
+                      if c.task: c.task.cancel()
+                  await asyncio.gather(*(c.task for c in allc if c.task), return_exceptions=True)
+                  await asyncio.gather(*(c.ws.close() for c in allc if c.ws), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
+      - name: Show backend log on failure
+        if: failure()
+        run: tail -300 /tmp/guandan-local.log || true
