@@ -31,5 +31,11 @@ jobs:
         run: npm run build
       - name: Live HTTP and WebSocket smoke
         run: npm run smoke
+      - name: WebSocket lifecycle soak smoke
+        env:
+          SOAK_DURATION_MS: "1000"
+          SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
+          SOAK_RECONNECT_EVERY: "10"
+        run: node scripts/soak-websocket.mjs
       - name: Test
         run: npm test
