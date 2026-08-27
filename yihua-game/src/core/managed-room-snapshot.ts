@@ -10,7 +10,9 @@ export interface ManagedRoomSnapshot {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const assertManagedRoomShape = (managed: unknown): asserts managed is ManagedRoom => {
+const assertManagedRoomShape = (
+  managed: unknown,
+): asserts managed is ManagedRoom => {
   if (!isRecord(managed)) throw new Error("snapshot managed room is missing");
   if (!Number.isInteger(managed.revision) || Number(managed.revision) < 0) {
     throw new Error("snapshot revision is invalid");
