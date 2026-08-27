@@ -33,6 +33,39 @@ describe("explicit table game state machine", () => {
     expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
   });
 
+  it("consumes randomness separately for the opening draw and first deal", () => {
+    const samples = [0, 0.2, 0.4, 0.6, 0.8];
+    let calls = 0;
+    const countedRandom = () => samples[calls++ % samples.length] ?? 0;
+    const lobby = createLobbyState(4, 0);
+
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      countedRandom,
+    );
+    const callsAfterDraw = calls;
+    expect(callsAfterDraw).toBeGreaterThan(0);
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+    const drawSnapshot = JSON.stringify(opening.openingDraw);
+
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      countedRandom,
+    );
+    expect(calls).toBeGreaterThan(callsAfterDraw);
+    expect(playing.phase).toBe("playing");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(JSON.stringify(playing.openingDraw)).toBe(drawSnapshot);
+    expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
+    expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
+  });
+
   it("rejects actions that do not belong to the current phase", () => {
     const lobby = createLobbyState(4, 0);
     expect(() =>
