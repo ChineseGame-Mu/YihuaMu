@@ -14,6 +14,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "smoke": "node scripts/smoke-server.mjs",
+    "soak:core": "npm run build && node scripts/soak-core.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
