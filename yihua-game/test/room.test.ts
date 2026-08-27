@@ -106,6 +106,63 @@ describe("independent room state", () => {
     ).toThrow(/three-hour join window/);
   });
 
+  it("lets a six-player room grow to eight and then twelve as humans arrive", () => {
+    const startedAt = 2_000_000;
+    let room = openLateJoinWindow(createRoom("growing-room", 6), startedAt);
+
+    for (let seat = 0; seat < 6; seat += 1) {
+      room = addHuman(
+        room,
+        { id: `p${seat + 1}`, name: `玩家${seat + 1}`, seat },
+        startedAt,
+      );
+    }
+    expect(room.config.playerCount).toBe(6);
+    expect(room.participants).toHaveLength(6);
+
+    room = addHuman(
+      room,
+      { id: "p7", name: "玩家7", seat: 6 },
+      startedAt + 30 * 60 * 1000,
+    );
+    expect(room.config.playerCount).toBe(8);
+    expect(room.participants).toHaveLength(7);
+
+    room = addHuman(
+      room,
+      { id: "p8", name: "玩家8", seat: 7 },
+      startedAt + 30 * 60 * 1000,
+    );
+    expect(room.config.playerCount).toBe(8);
+    expect(room.participants).toHaveLength(8);
+
+    for (let seat = 8; seat < 12; seat += 1) {
+      room = addHuman(
+        room,
+        { id: `p${seat + 1}`, name: `玩家${seat + 1}`, seat },
+        startedAt + 60 * 60 * 1000,
+      );
+    }
+    expect(room.config.playerCount).toBe(12);
+    expect(room.participants).toHaveLength(12);
+    expect(room.participants.every(({ kind }) => kind === "human")).toBe(true);
+  });
+
+  it("stops progressive expansion at fourteen players", () => {
+    let room = createRoom("max-room", 14);
+    for (let seat = 0; seat < 14; seat += 1) {
+      room = addHuman(room, {
+        id: `p${seat + 1}`,
+        name: `玩家${seat + 1}`,
+        seat,
+      });
+    }
+
+    expect(() =>
+      addHuman(room, { id: "p15", name: "玩家15", seat: 14 }),
+    ).toThrow(/14-player maximum/);
+  });
+
   it("lets a late human take over a robot seat without changing the seat", () => {
     const startedAt = 2_000_000;
     let room = createRoom("late-robot", 4);
