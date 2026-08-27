@@ -225,15 +225,15 @@ describe("4–14 player reconnect stress", () => {
 
     await first.triggerClose();
     expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(1);
-    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
-      true,
-    );
+    expect(
+      runtime.rooms.get("multi-socket").room.participants[0]?.connected,
+    ).toBe(true);
 
     await second.triggerClose();
     expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(0);
-    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
-      false,
-    );
+    expect(
+      runtime.rooms.get("multi-socket").room.participants[0]?.connected,
+    ).toBe(false);
 
     const reconnected = new FakeUpgradedConnection({
       roomId: "multi-socket",
@@ -241,8 +241,8 @@ describe("4–14 player reconnect stress", () => {
     });
     await attachUpgradedConnection(runtime, reconnected);
     expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(1);
-    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
-      true,
-    );
+    expect(
+      runtime.rooms.get("multi-socket").room.participants[0]?.connected,
+    ).toBe(true);
   });
 });
