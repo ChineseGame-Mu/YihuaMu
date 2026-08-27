@@ -38,6 +38,7 @@ jobs:
         run: npm run typecheck
       - name: Build standalone server
         run: npm run build
+      # Keep long runs segmented so each child process releases transient heap.
       - name: Long WebSocket lifecycle soak
         env:
           SOAK_DURATION_MS: ${{ inputs.duration_ms || '10800000' }}
