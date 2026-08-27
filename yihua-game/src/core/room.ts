@@ -4,6 +4,8 @@ import {
   type TableConfig,
 } from "./table.js";
 
+export const LATE_JOIN_WINDOW_MS = 3 * 60 * 60 * 1000;
+
 export type ParticipantKind = "human" | "robot";
 
 export interface Participant {
@@ -18,6 +20,7 @@ export interface RoomState {
   readonly roomId: string;
   readonly config: TableConfig;
   readonly participants: readonly Participant[];
+  readonly joinClosesAt?: number;
 }
 
 const validateSeat = (
@@ -43,9 +46,34 @@ const ensureParticipantIdAvailable = (room: RoomState, id: string): void => {
   }
 };
 
+const normalizeHuman = (input: {
+  readonly id: string;
+  readonly name: string;
+  readonly seat: number;
+}): { readonly id: string; readonly name: string; readonly seat: number } => {
+  const id = input.id.trim();
+  const name = input.name.trim();
+  if (id.length === 0 || name.length === 0) {
+    throw new Error("human id and name are required");
+  }
+  return { id, name, seat: input.seat };
+};
+
+export const roomAcceptsLateJoin = (
+  room: RoomState,
+  now: number = Date.now(),
+): boolean => room.joinClosesAt === undefined || now <= room.joinClosesAt;
+
+const ensureJoinWindowOpen = (room: RoomState, now: number): void => {
+  if (!roomAcceptsLateJoin(room, now)) {
+    throw new Error("three-hour join window has closed");
+  }
+};
+
 export const createRoom = (
   roomId: string,
   playerCount: SupportedPlayerCount,
+  now: number = Date.now(),
 ): RoomState => {
   const normalizedRoomId = roomId.trim();
   if (normalizedRoomId.length === 0) {
@@ -56,35 +84,62 @@ export const createRoom = (
     roomId: normalizedRoomId,
     config: createTableConfig(playerCount, 0),
     participants: [],
+    joinClosesAt: now + LATE_JOIN_WINDOW_MS,
   };
 };
 
 export const addHuman = (
   room: RoomState,
   input: { readonly id: string; readonly name: string; readonly seat: number },
+  now: number = Date.now(),
 ): RoomState => {
-  const id = input.id.trim();
-  const name = input.name.trim();
-  if (id.length === 0 || name.length === 0) {
-    throw new Error("human id and name are required");
-  }
-
-  validateSeat(input.seat, room.config.playerCount);
-  ensureSeatAvailable(room, input.seat);
-  ensureParticipantIdAvailable(room, id);
+  ensureJoinWindowOpen(room, now);
+  const human = normalizeHuman(input);
+  validateSeat(human.seat, room.config.playerCount);
+  ensureSeatAvailable(room, human.seat);
+  ensureParticipantIdAvailable(room, human.id);
 
   return {
     ...room,
     participants: [
       ...room.participants,
       {
-        id,
-        name,
+        ...human,
         kind: "human",
-        seat: input.seat,
         connected: true,
       },
     ],
+  };
+};
+
+export const replaceRobotWithHuman = (
+  room: RoomState,
+  input: { readonly id: string; readonly name: string; readonly seat: number },
+  now: number = Date.now(),
+): RoomState => {
+  ensureJoinWindowOpen(room, now);
+  const human = normalizeHuman(input);
+  validateSeat(human.seat, room.config.playerCount);
+  ensureParticipantIdAvailable(room, human.id);
+  const robot = room.participants.find(
+    (participant) =>
+      participant.seat === human.seat && participant.kind === "robot",
+  );
+  if (!robot) {
+    throw new Error(`seat ${human.seat} is not available for a late join`);
+  }
+
+  return {
+    ...room,
+    config: createTableConfig(
+      room.config.playerCount,
+      Math.max(0, room.config.botCount - 1),
+    ),
+    participants: room.participants.map((participant) =>
+      participant.id === robot.id
+        ? { ...human, kind: "human", connected: true }
+        : participant,
+    ),
   };
 };
 
