@@ -3,10 +3,12 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { renderJoinPage } from "./core/join-page.js";
 import {
   createServerRuntime,
   type ServerRuntime,
 } from "./core/server-runtime.js";
+import { renderTablePage } from "./core/table-page.js";
 import { routeHttp, type HttpRequest } from "./core/http-router.js";
 import {
   attachUpgradedConnection,
@@ -75,6 +77,35 @@ export const createNodeHttpServer = (
       }
 
       const url = new URL(request.url ?? "/", "http://localhost");
+      if (method === "GET") {
+        const tablePage = url.pathname.match(/^\/room\/([^/]+)\/table$/);
+        if (tablePage) {
+          const roomId = decodeURIComponent(tablePage[1]!);
+          writeResponse(
+            response,
+            200,
+            { "content-type": "text/html; charset=utf-8" },
+            renderTablePage(roomId),
+          );
+          return;
+        }
+
+        const joinPage = url.pathname.match(/^\/room\/([^/]+)$/);
+        if (joinPage) {
+          const roomId = decodeURIComponent(joinPage[1]!);
+          if (roomId.trim().length === 0) {
+            throw new Error("room id is required");
+          }
+          writeResponse(
+            response,
+            200,
+            { "content-type": "text/html; charset=utf-8" },
+            renderJoinPage(roomId),
+          );
+          return;
+        }
+      }
+
       const body = method === "POST" ? await readJsonBody(request) : undefined;
       const routedRequest: HttpRequest =
         body === undefined
