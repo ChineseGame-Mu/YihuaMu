@@ -1,29 +1,31 @@
 import { describe, expect, it } from "vitest";
-import type { Card } from "../src/core/cards.js";
+import { RANKS, SUITS, type Card } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
 import { runOpeningDraw } from "../src/core/opening-draw.js";
-import type { SupportedPlayerCount } from "../src/core/table.js";
+import {
+  SUPPORTED_PLAYER_COUNTS,
+  type SupportedPlayerCount,
+} from "../src/core/table.js";
 
-const ranks: Extract<Card, { kind: "suited" }>["rank"][] = [
-  "A",
-  "K",
-  "Q",
-  "J",
-  "10",
-  "9",
-];
+const suitedCardsDescending: Extract<Card, { kind: "suited" }>[] = [...RANKS]
+  .reverse()
+  .flatMap((rank) =>
+    [...SUITS]
+      .reverse()
+      .map((suit) => ({ kind: "suited" as const, rank, suit })),
+  );
 
 const deckFor = (playerCount: SupportedPlayerCount): DeckCard[] =>
-  ranks.slice(0, playerCount).map((rank, seat) => ({
+  suitedCardsDescending.slice(0, playerCount).map((card, seat) => ({
     id: `opening-${playerCount}-${seat}`,
     copy: 0,
-    card: { kind: "suited", rank, suit: "clubs" },
+    card,
   }));
 
 const keepOrder = () => 0.999999;
 
 describe("opening draw supported player counts", () => {
-  for (const playerCount of [2, 3, 4, 5, 6] as const) {
+  for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
     it(`selects the unique highest card at a ${playerCount}-player table`, () => {
       const result = runOpeningDraw(
         deckFor(playerCount),
