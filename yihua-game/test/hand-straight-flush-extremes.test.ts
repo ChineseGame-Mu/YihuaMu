@@ -31,14 +31,14 @@ describe("straight-flush extreme boundaries", () => {
     const wheel = classifyHand(
       straightFlush(["A", "2", "3", "4", "5"], "hearts"),
     );
-    const sixHigh = classifyHand(
-      straightFlush(["2", "3", "4", "5", "6"], "spades"),
+    const sevenHigh = classifyHand(
+      straightFlush(["3", "4", "5", "6", "7"], "spades"),
     );
 
     expect(wheel).toMatchObject({ kind: "straight-flush", highRank: "5" });
-    expect(sixHigh).toMatchObject({ kind: "straight-flush", highRank: "6" });
-    expect(canHandBeat(sixHigh, wheel)).toBe(true);
-    expect(canHandBeat(wheel, sixHigh)).toBe(false);
+    expect(sevenHigh).toMatchObject({ kind: "straight-flush", highRank: "7" });
+    expect(canHandBeat(sevenHigh, wheel)).toBe(true);
+    expect(canHandBeat(wheel, sevenHigh)).toBe(false);
   });
 
   it("treats 10-J-Q-K-A as the highest straight flush", () => {
