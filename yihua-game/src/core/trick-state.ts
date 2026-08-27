@@ -106,10 +106,14 @@ export const passTurn = (
   ).length;
   const passedSeats = [...state.passedSeats, seat];
   if (passedSeats.length >= requiredPasses) {
+    const completedLeader = state.leadingPlay.seat;
+    const nextLeader = active.includes(completedLeader)
+      ? completedLeader
+      : nextActiveSeat(state, completedLeader, active);
     return {
       ...state,
-      currentTurn: state.leadingPlay.seat,
-      leaderSeat: state.leadingPlay.seat,
+      currentTurn: nextLeader,
+      leaderSeat: nextLeader,
       leadingPlay: null,
       passedSeats: [],
       completedTricks: state.completedTricks + 1,
