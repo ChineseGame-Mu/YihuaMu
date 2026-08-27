@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, dealHands } from "../src/core/deck.js";
+import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import {
   passGameTurn,
   playGameCards,
   type PlayingState,
   type RoundCompleteState,
 } from "../src/core/game-state.js";
-import { canHandBeat, classifyHand } from "../src/core/hand.js";
+import {
+  canHandBeat,
+  classifyHand,
+  type ClassifiedHand,
+} from "../src/core/hand.js";
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
@@ -31,14 +35,15 @@ describe("four-seat full-round automation", () => {
         throw new Error("automated round exceeded the action limit");
       }
 
-      const seat = state.currentTurn;
+      const seat: number = state.currentTurn;
       const hand = state.hands[seat];
       if (hand === undefined || hand.length === 0) {
         throw new Error("current turn points to an empty or missing hand");
       }
 
-      const leadingHand = state.trick.leadingPlay?.hand ?? null;
-      const playable =
+      const leadingHand: ClassifiedHand | null =
+        state.trick.leadingPlay?.hand ?? null;
+      const playable: DeckCard | undefined =
         leadingHand === null
           ? hand[0]
           : hand.find((deckCard) =>
