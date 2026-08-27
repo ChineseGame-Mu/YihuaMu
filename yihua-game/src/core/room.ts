@@ -64,6 +64,14 @@ export const roomAcceptsLateJoin = (
   now: number = Date.now(),
 ): boolean => room.joinClosesAt === undefined || now <= room.joinClosesAt;
 
+export const openLateJoinWindow = (
+  room: RoomState,
+  startedAt: number = Date.now(),
+): RoomState => ({
+  ...room,
+  joinClosesAt: startedAt + LATE_JOIN_WINDOW_MS,
+});
+
 const ensureJoinWindowOpen = (room: RoomState, now: number): void => {
   if (!roomAcceptsLateJoin(room, now)) {
     throw new Error("three-hour join window has closed");
@@ -73,7 +81,6 @@ const ensureJoinWindowOpen = (room: RoomState, now: number): void => {
 export const createRoom = (
   roomId: string,
   playerCount: SupportedPlayerCount,
-  now: number = Date.now(),
 ): RoomState => {
   const normalizedRoomId = roomId.trim();
   if (normalizedRoomId.length === 0) {
@@ -84,7 +91,6 @@ export const createRoom = (
     roomId: normalizedRoomId,
     config: createTableConfig(playerCount, 0),
     participants: [],
-    joinClosesAt: now + LATE_JOIN_WINDOW_MS,
   };
 };
 
