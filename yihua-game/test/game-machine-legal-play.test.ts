@@ -26,6 +26,12 @@ const stateWithHands = (
   finishedSeats: [],
 });
 
+const expectPlaying = (state: ReturnType<typeof transitionGame>): PlayingState => {
+  expect(state.phase).toBe("playing");
+  if (state.phase !== "playing") throw new Error("expected playing state");
+  return state;
+};
+
 describe("table machine legal-play enforcement", () => {
   it("rejects a lower response and accepts a higher same-type response", () => {
     const pair8 = [suited("8", "clubs"), suited("8", "hearts")];
@@ -47,23 +53,25 @@ describe("table machine legal-play enforcement", () => {
       [deckCard("seat3", suited("5", "clubs"))],
     ]);
 
-    const afterLead = transitionGame(state, {
-      type: "play-cards",
-      seat: 0,
-      cards: pair8,
-    });
-    expect(afterLead.phase).toBe("playing");
+    const afterLead = expectPlaying(
+      transitionGame(state, {
+        type: "play-cards",
+        seat: 0,
+        cards: pair8,
+      }),
+    );
 
     expect(() =>
       transitionGame(afterLead, { type: "play-cards", seat: 1, cards: pair7 }),
     ).toThrow("played hand does not beat the current hand");
 
-    const afterBeat = transitionGame(afterLead, {
-      type: "play-cards",
-      seat: 1,
-      cards: pair9,
-    });
-    expect(afterBeat.phase).toBe("playing");
+    const afterBeat = expectPlaying(
+      transitionGame(afterLead, {
+        type: "play-cards",
+        seat: 1,
+        cards: pair9,
+      }),
+    );
     expect(afterBeat.trick.leadingPlay?.seat).toBe(1);
   });
 
@@ -94,16 +102,20 @@ describe("table machine legal-play enforcement", () => {
       [deckCard("seat3", suited("7", "clubs"))],
     ]);
 
-    const afterLead = transitionGame(state, {
-      type: "play-cards",
-      seat: 0,
-      cards: pairA,
-    });
-    const afterBomb = transitionGame(afterLead, {
-      type: "play-cards",
-      seat: 1,
-      cards: bomb3,
-    });
+    const afterLead = expectPlaying(
+      transitionGame(state, {
+        type: "play-cards",
+        seat: 0,
+        cards: pairA,
+      }),
+    );
+    const afterBomb = expectPlaying(
+      transitionGame(afterLead, {
+        type: "play-cards",
+        seat: 1,
+        cards: bomb3,
+      }),
+    );
     expect(afterBomb.trick.leadingPlay?.hand.kind).toBe("bomb");
 
     expect(() =>
