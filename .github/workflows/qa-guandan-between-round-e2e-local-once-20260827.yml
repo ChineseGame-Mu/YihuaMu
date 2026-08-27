@@ -93,7 +93,7 @@ jobs:
                   for c in players: await c.connect(room)
                   assert [c.seat for c in players]==[0,1,2,3], [c.seat for c in players]
                   await players[0].send({'type':'start','player_count':4})
-                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('started') is True and len(players[0].hand)==27)
+                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('hand_counts')==[27,27,27,27] and len(players[0].hand)==27)
                   for c in players: await c.wait(lambda c=c: len(c.hand)==27)
 
                   for c in waiters:
