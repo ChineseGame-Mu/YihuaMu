@@ -7,14 +7,11 @@ const fixedRandom = () => 0.25;
 describe("explicit table game state machine", () => {
   it("keeps opening draw independent from dealing and starts with its winner", () => {
     const lobby = createLobbyState(4, 0);
-    const opening = transitionGame(
-      lobby,
-      { type: "begin-opening-draw" },
-      fixedRandom,
-    );
+    const opening = transitionGame(lobby, { type: "begin-opening-draw" }, fixedRandom);
     expect(opening.phase).toBe("opening-draw");
-    if (opening.phase !== "opening-draw")
+    if (opening.phase !== "opening-draw") {
       throw new Error("opening phase expected");
+    }
 
     const drawSnapshot = JSON.stringify(opening.openingDraw);
     const playing = transitionGame(
@@ -23,7 +20,9 @@ describe("explicit table game state machine", () => {
       fixedRandom,
     );
     expect(playing.phase).toBe("playing");
-    if (playing.phase !== "playing") throw new Error("playing phase expected");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
     expect(JSON.stringify(playing.openingDraw)).toBe(drawSnapshot);
     expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
     expect(playing.trick.leaderSeat).toBe(opening.openingDraw.winnerSeat);
@@ -42,22 +41,22 @@ describe("explicit table game state machine", () => {
 
   it("moves round-complete back to playing with a fresh 27-card deal", () => {
     const lobby = createLobbyState(4, 0);
-    const opening = transitionGame(
-      lobby,
-      { type: "begin-opening-draw" },
-      fixedRandom,
-    );
+    const opening = transitionGame(lobby, { type: "begin-opening-draw" }, fixedRandom);
     const playing = transitionGame(
       opening,
       { type: "deal-after-opening-draw" },
       fixedRandom,
     );
-    if (playing.phase !== "playing") throw new Error("playing phase expected");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
 
     const completed = completeRound(playing, playing.currentTurn);
     const next = transitionGame(completed, { type: "next-round" }, fixedRandom);
     expect(next.phase).toBe("playing");
-    if (next.phase !== "playing") throw new Error("playing phase expected");
+    if (next.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
     expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
     expect(next.openingDraw).toEqual(completed.openingDraw);
     expect(next.currentTurn).toBe(completed.winnerSeat);
