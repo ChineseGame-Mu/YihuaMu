@@ -16,7 +16,7 @@ class RecordingSocket implements TextSocket {
 
 describe("websocket reconnect snapshot recovery", () => {
   for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
-    it(`restores public state and the reconnecting player's private hand for ${playerCount} players`, async () => {
+    it(`restores every player's private hand after reconnect for ${playerCount} players`, async () => {
       const rooms = new RoomManager();
       const sockets = new RoomSocketHub();
       const service = new WebSocketService(rooms, sockets);
@@ -46,26 +46,23 @@ describe("websocket reconnect snapshot recovery", () => {
         JSON.stringify({ type: "start_game" }),
       );
 
-      const reconnectSeat = Math.floor(playerCount / 2);
-      const reconnecting = new RecordingSocket();
-      await service.sendSnapshot(
-        reconnecting,
-        roomId,
-        playerIds[reconnectSeat]!,
-      );
-      const messages = reconnecting.messages.map(
-        (message) => JSON.parse(message) as Record<string, unknown>,
-      );
+      for (const [reconnectSeat, playerId] of playerIds.entries()) {
+        const reconnecting = new RecordingSocket();
+        await service.sendSnapshot(reconnecting, roomId, playerId);
+        const messages = reconnecting.messages.map(
+          (message) => JSON.parse(message) as Record<string, unknown>,
+        );
 
-      expect(messages.map(({ type }) => type)).toEqual([
-        "room_state",
-        "game_state",
-        "private_hand",
-      ]);
-      const privateHand = messages[2]!;
-      expect(privateHand.seat).toBe(reconnectSeat);
-      expect(Array.isArray(privateHand.cards)).toBe(true);
-      expect(privateHand.cards).toHaveLength(27);
+        expect(messages.map(({ type }) => type)).toEqual([
+          "room_state",
+          "game_state",
+          "private_hand",
+        ]);
+        const privateHand = messages[2]!;
+        expect(privateHand.seat).toBe(reconnectSeat);
+        expect(Array.isArray(privateHand.cards)).toBe(true);
+        expect(privateHand.cards).toHaveLength(27);
+      }
 
       const spectator = new RecordingSocket();
       await service.sendSnapshot(spectator, roomId);
