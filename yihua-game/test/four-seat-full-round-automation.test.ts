@@ -36,7 +36,7 @@ describe("four-seat full-round automation", () => {
       }
 
       const seat: number = state.currentTurn;
-      const hand = state.hands[seat];
+      const hand: readonly DeckCard[] | undefined = state.hands[seat];
       if (hand === undefined || hand.length === 0) {
         throw new Error("current turn points to an empty or missing hand");
       }
@@ -46,7 +46,7 @@ describe("four-seat full-round automation", () => {
       const playable: DeckCard | undefined =
         leadingHand === null
           ? hand[0]
-          : hand.find((deckCard) =>
+          : hand.find((deckCard: DeckCard) =>
               canHandBeat(classifyHand([deckCard.card]), leadingHand),
             );
 
