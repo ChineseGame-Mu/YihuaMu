@@ -9,17 +9,47 @@ import {
 } from "../src/core/room.js";
 import { RoomManager } from "../src/core/room-manager.js";
 import { RoomSocketHub } from "../src/core/room-socket-hub.js";
+import { createServerRuntime } from "../src/core/server-runtime.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
 import {
+  type ConnectionContext,
   WebSocketService,
   type TextSocket,
 } from "../src/core/websocket-service.js";
+import {
+  attachUpgradedConnection,
+  type UpgradedConnection,
+} from "../src/core/websocket-upgrade.js";
 
 class RecordingSocket implements TextSocket {
   readonly sent: string[] = [];
 
   send(text: string): void {
     this.sent.push(text);
+  }
+}
+
+class FakeUpgradedConnection implements UpgradedConnection {
+  readonly socket = new RecordingSocket();
+  private textHandler: ((text: string) => void | Promise<void>) | undefined;
+  private closeHandler: (() => void | Promise<void>) | undefined;
+
+  constructor(readonly context: ConnectionContext) {}
+
+  onText(handler: (text: string) => void | Promise<void>): void {
+    this.textHandler = handler;
+  }
+
+  onClose(handler: () => void | Promise<void>): void {
+    this.closeHandler = handler;
+  }
+
+  async receive(text: string): Promise<void> {
+    await this.textHandler?.(text);
+  }
+
+  async triggerClose(): Promise<void> {
+    await this.closeHandler?.();
   }
 }
 
@@ -166,5 +196,53 @@ describe("4–14 player reconnect stress", () => {
         Array.from({ length: playerCount }, (_, seat) => seat),
       );
     }
+  });
+
+  it("keeps a player online until their final socket closes", async () => {
+    const runtime = createServerRuntime();
+    const managed = runtime.rooms.create("multi-socket", 4);
+    runtime.rooms.set("multi-socket", {
+      ...managed,
+      room: addHuman(managed.room, {
+        id: "p1",
+        name: "玩家1",
+        seat: 0,
+      }),
+    });
+
+    const first = new FakeUpgradedConnection({
+      roomId: "multi-socket",
+      playerId: "p1",
+    });
+    const second = new FakeUpgradedConnection({
+      roomId: "multi-socket",
+      playerId: "p1",
+    });
+
+    await attachUpgradedConnection(runtime, first);
+    await attachUpgradedConnection(runtime, second);
+    expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(2);
+
+    await first.triggerClose();
+    expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(1);
+    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
+      true,
+    );
+
+    await second.triggerClose();
+    expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(0);
+    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
+      false,
+    );
+
+    const reconnected = new FakeUpgradedConnection({
+      roomId: "multi-socket",
+      playerId: "p1",
+    });
+    await attachUpgradedConnection(runtime, reconnected);
+    expect(runtime.sockets.playerConnectionCount("multi-socket", "p1")).toBe(1);
+    expect(runtime.rooms.get("multi-socket").room.participants[0]?.connected).toBe(
+      true,
+    );
   });
 });
