@@ -2,6 +2,7 @@ import {
   addHuman,
   removeParticipant,
   replaceRobotWithHuman,
+  setReadyForNextRound,
   setRobotCount,
   type RoomState,
 } from "./room.js";
@@ -35,12 +36,14 @@ export const roomStateMessage = (room: RoomState): RoomStateServerMessage => ({
     seat: participant.seat,
     kind: participant.kind,
     connected: participant.connected,
+    readyForNextRound: participant.readyForNextRound,
   })),
 });
 
 export const applyClientMessage = (
   room: RoomState,
   message: SessionClientMessage,
+  actingPlayerId?: string,
 ): SessionResult => {
   switch (message.type) {
     case "join_room": {
@@ -67,6 +70,17 @@ export const applyClientMessage = (
     }
     case "set_robots": {
       const nextRoom = setRobotCount(room, message.count);
+      return { room: nextRoom, response: roomStateMessage(nextRoom) };
+    }
+    case "set_next_round_ready": {
+      if (actingPlayerId === undefined) {
+        throw new Error("player identity is required to choose next-round entry");
+      }
+      const nextRoom = setReadyForNextRound(
+        room,
+        actingPlayerId,
+        message.ready,
+      );
       return { room: nextRoom, response: roomStateMessage(nextRoom) };
     }
     case "ping":
