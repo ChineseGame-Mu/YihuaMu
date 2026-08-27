@@ -105,6 +105,13 @@ const commandFingerprint = (message: MutatingMessage): string => {
   }
 };
 
+const messagePlayerId = (message: MutatingMessage): string | undefined => {
+  if (message.type === "join_room" || message.type === "leave_room") {
+    return message.playerId;
+  }
+  return undefined;
+};
+
 export class WebSocketService {
   private readonly processedCommands = new Map<string, Map<string, string>>();
 
@@ -131,6 +138,19 @@ export class WebSocketService {
       commands.delete(oldest);
     }
     this.processedCommands.set(roomId, commands);
+  }
+
+  private async rejectPlayerIdentityMismatch(
+    socket: TextSocket,
+    connectionPlayerId: string,
+    messagePlayerId: string,
+  ): Promise<void> {
+    const response: ServerMessage = {
+      type: "error",
+      code: "player_identity_mismatch",
+      message: `connection player ${connectionPlayerId} cannot act as ${messagePlayerId}`,
+    };
+    await socket.send(encodeServerMessage(response));
   }
 
   private async rejectCommandIdConflict(
@@ -164,6 +184,20 @@ export class WebSocketService {
     managed: ManagedRoom,
     message: MutatingMessage,
   ): Promise<boolean> {
+    const targetPlayerId = messagePlayerId(message);
+    if (
+      context.playerId !== undefined &&
+      targetPlayerId !== undefined &&
+      targetPlayerId !== context.playerId
+    ) {
+      await this.rejectPlayerIdentityMismatch(
+        socket,
+        context.playerId,
+        targetPlayerId,
+      );
+      return false;
+    }
+
     if (message.commandId !== undefined) {
       const processed = this.processedFingerprint(
         context.roomId,
