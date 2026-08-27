@@ -60,7 +60,10 @@ describe("live websocket trick completion", () => {
       });
     }
 
-    const started = runtime.rooms.start("trick-complete", deterministicRandom());
+    const started = runtime.rooms.start(
+      "trick-complete",
+      deterministicRandom(),
+    );
     expect(started.game.phase).toBe("playing");
     if (started.game.phase !== "playing") return;
 
