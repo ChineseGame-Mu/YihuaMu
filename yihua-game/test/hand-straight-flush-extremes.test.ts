@@ -28,8 +28,12 @@ const jokerBomb: Card[] = [
 
 describe("straight-flush extreme boundaries", () => {
   it("treats A-2-3-4-5 as the lowest straight flush", () => {
-    const wheel = classifyHand(straightFlush(["A", "2", "3", "4", "5"], "hearts"));
-    const sixHigh = classifyHand(straightFlush(["2", "3", "4", "5", "6"], "spades"));
+    const wheel = classifyHand(
+      straightFlush(["A", "2", "3", "4", "5"], "hearts"),
+    );
+    const sixHigh = classifyHand(
+      straightFlush(["2", "3", "4", "5", "6"], "spades"),
+    );
 
     expect(wheel).toMatchObject({ kind: "straight-flush", highRank: "5" });
     expect(sixHigh).toMatchObject({ kind: "straight-flush", highRank: "6" });
@@ -38,16 +42,24 @@ describe("straight-flush extreme boundaries", () => {
   });
 
   it("treats 10-J-Q-K-A as the highest straight flush", () => {
-    const kingHigh = classifyHand(straightFlush(["9", "10", "J", "Q", "K"], "clubs"));
-    const aceHigh = classifyHand(straightFlush(["10", "J", "Q", "K", "A"], "diamonds"));
+    const kingHigh = classifyHand(
+      straightFlush(["9", "10", "J", "Q", "K"], "clubs"),
+    );
+    const aceHigh = classifyHand(
+      straightFlush(["10", "J", "Q", "K", "A"], "diamonds"),
+    );
 
     expect(canHandBeat(aceHigh, kingHigh)).toBe(true);
     expect(canHandBeat(kingHigh, aceHigh)).toBe(false);
   });
 
   it("does not let equal-rank straight flushes beat each other", () => {
-    const hearts = classifyHand(straightFlush(["6", "7", "8", "9", "10"], "hearts"));
-    const spades = classifyHand(straightFlush(["6", "7", "8", "9", "10"], "spades"));
+    const hearts = classifyHand(
+      straightFlush(["6", "7", "8", "9", "10"], "hearts"),
+    );
+    const spades = classifyHand(
+      straightFlush(["6", "7", "8", "9", "10"], "spades"),
+    );
 
     expect(canHandBeat(hearts, spades)).toBe(false);
     expect(canHandBeat(spades, hearts)).toBe(false);
@@ -55,7 +67,9 @@ describe("straight-flush extreme boundaries", () => {
 
   it("keeps every five-card bomb below every straight flush", () => {
     const fiveA = classifyHand(bomb("A", 5));
-    const wheel = classifyHand(straightFlush(["A", "2", "3", "4", "5"], "clubs"));
+    const wheel = classifyHand(
+      straightFlush(["A", "2", "3", "4", "5"], "clubs"),
+    );
 
     expect(canHandBeat(wheel, fiveA)).toBe(true);
     expect(canHandBeat(fiveA, wheel)).toBe(false);
@@ -63,7 +77,9 @@ describe("straight-flush extreme boundaries", () => {
 
   it("keeps every six-card bomb above every straight flush", () => {
     const six3 = classifyHand(bomb("3", 6));
-    const aceHigh = classifyHand(straightFlush(["10", "J", "Q", "K", "A"], "hearts"));
+    const aceHigh = classifyHand(
+      straightFlush(["10", "J", "Q", "K", "A"], "hearts"),
+    );
 
     expect(canHandBeat(six3, aceHigh)).toBe(true);
     expect(canHandBeat(aceHigh, six3)).toBe(false);
@@ -71,7 +87,9 @@ describe("straight-flush extreme boundaries", () => {
 
   it("keeps joker bomb above the highest straight flush", () => {
     const jokers = classifyHand(jokerBomb);
-    const aceHigh = classifyHand(straightFlush(["10", "J", "Q", "K", "A"], "spades"));
+    const aceHigh = classifyHand(
+      straightFlush(["10", "J", "Q", "K", "A"], "spades"),
+    );
 
     expect(canHandBeat(jokers, aceHigh)).toBe(true);
     expect(canHandBeat(aceHigh, jokers)).toBe(false);
