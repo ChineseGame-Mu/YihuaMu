@@ -6,7 +6,6 @@ import {
   createRoom,
   disconnectHuman,
   reconnectHuman,
-  setRobotCount,
 } from "../src/core/room.js";
 import { RoomManager } from "../src/core/room-manager.js";
 import { RoomSocketHub } from "../src/core/room-socket-hub.js";
@@ -258,18 +257,17 @@ describe("4–14 player reconnect stress", () => {
   it("preserves active game state and sends one revision on reconnect", async () => {
     const runtime = createServerRuntime();
     const created = runtime.rooms.create("playing-reconnect", 4);
-    const withHuman = runtime.rooms.set("playing-reconnect", {
-      ...created,
-      room: addHuman(created.room, {
-        id: "p1",
-        name: "玩家1",
-        seat: 0,
-      }),
-    });
-    runtime.rooms.set("playing-reconnect", {
-      ...withHuman,
-      room: setRobotCount(withHuman.room, 3),
-    });
+    let managed = created;
+    for (let seat = 0; seat < 4; seat += 1) {
+      managed = runtime.rooms.set("playing-reconnect", {
+        ...managed,
+        room: addHuman(managed.room, {
+          id: `p${seat + 1}`,
+          name: `玩家${seat + 1}`,
+          seat,
+        }),
+      });
+    }
     const started = runtime.rooms.start(
       "playing-reconnect",
       deterministicRandom(),
