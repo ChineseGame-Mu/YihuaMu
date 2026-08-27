@@ -16,9 +16,7 @@ export interface SessionResult {
   readonly response: ServerMessage;
 }
 
-export const roomStateMessage = (
-  room: RoomState,
-): RoomStateServerMessage => ({
+export const roomStateMessage = (room: RoomState): RoomStateServerMessage => ({
   type: "room_state",
   roomId: room.roomId,
   playerCount: room.config.playerCount,
