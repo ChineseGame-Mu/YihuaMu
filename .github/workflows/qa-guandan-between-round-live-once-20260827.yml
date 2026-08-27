@@ -1,0 +1,178 @@
+name: QA Guandan between-round LIVE once
+
+on:
+  push:
+    branches: [qa/guandan-live-after-between-round-20260827]
+    paths:
+      - .github/workflows/qa-guandan-between-round-live-once-20260827.yml
+
+permissions:
+  contents: read
+
+jobs:
+  live-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Wait for live backend rollout
+        run: |
+          for attempt in $(seq 1 12); do
+            if python - <<'PY'
+          import asyncio, json, time, uuid
+          import websockets
+          URI='wss://chinesegame-yihua.onrender.com/api/guandan'
+          async def recv_until(ws, wanted, timeout=10):
+              end=asyncio.get_running_loop().time()+timeout
+              while True:
+                  left=end-asyncio.get_running_loop().time()
+                  if left<=0: raise TimeoutError(wanted)
+                  m=json.loads(await asyncio.wait_for(ws.recv(), left))
+                  if m.get('type')=='error': raise AssertionError(m)
+                  if wanted(m): return m
+          async def main():
+              room=f'qa_probe_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}'
+              clients=[]
+              try:
+                  for i in range(4):
+                      ws=await websockets.connect(URI,open_timeout=20,close_timeout=5,max_queue=4096)
+                      await recv_until(ws,lambda m:m.get('type')=='connected')
+                      await ws.send(json.dumps({'type':'join','room':room,'name':f'ProbeP{i+1}'}))
+                      j=await recv_until(ws,lambda m:m.get('type')=='joined')
+                      assert j.get('seat')==i,j
+                      clients.append(ws)
+                  await clients[0].send(json.dumps({'type':'start','player_count':4}))
+                  await recv_until(clients[0],lambda m:m.get('type')=='state' and m.get('hand_counts')==[27,27,27,27],20)
+                  w=await websockets.connect(URI,open_timeout=20,close_timeout=5,max_queue=4096)
+                  clients.append(w)
+                  await recv_until(w,lambda m:m.get('type')=='connected')
+                  await w.send(json.dumps({'type':'join','room':room,'name':'ProbeW1'}))
+                  j=await recv_until(w,lambda m:m.get('type')=='joined')
+                  assert j.get('seat') is None,j
+                  await w.send(json.dumps({'type':'set_participation','active':True}))
+                  s=await recv_until(clients[0],lambda m:m.get('type')=='state' and 'pending_players' in m,10)
+                  assert s.get('pending_players')==['ProbeW1'],s.get('pending_players')
+                  print('LIVE_PENDING_PLAYERS_ROLLOUT_READY',flush=True)
+              finally:
+                  await asyncio.gather(*(ws.close() for ws in clients),return_exceptions=True)
+          asyncio.run(main())
+          PY
+            then
+              exit 0
+            fi
+            echo "live rollout not ready yet: attempt $attempt/12"
+            sleep 50
+          done
+          echo "live backend did not expose between-round queue within wait window"
+          exit 1
+      - name: Verify queue promotion and same-team seat sync on LIVE WebSocket
+        run: |
+          python - <<'PY'
+          import asyncio, json, time, uuid
+          import websockets
+
+          URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
+          RANK_POWER = {'Two':2,'Three':3,'Four':4,'Five':5,'Six':6,'Seven':7,'Eight':8,'Nine':9,'Ten':10,'Jack':11,'Queen':12,'King':13,'Ace':14}
+
+          def power(card, level):
+              if 'Joker' in card:
+                  return 16 if card['Joker'] == 'Small' else 17
+              rank = card['Suited']['rank']
+              return 15 if rank == level else RANK_POWER[rank]
+
+          class Client:
+              def __init__(self, name):
+                  self.name=name; self.ws=None; self.seat=None; self.hand=[]; self.state=None; self.seq=0; self.error=None; self.cond=asyncio.Condition(); self.task=None
+              async def connect(self, room):
+                  self.ws=await websockets.connect(URI,open_timeout=20,close_timeout=5,ping_interval=20,ping_timeout=20,max_queue=4096)
+                  while True:
+                      m=json.loads(await self.ws.recv())
+                      if m.get('type')=='connected': break
+                  await self.ws.send(json.dumps({'type':'join','room':room,'name':self.name}, ensure_ascii=False))
+                  while True:
+                      m=json.loads(await self.ws.recv())
+                      if m.get('type')=='joined': self.seat=m.get('seat'); break
+                  self.task=asyncio.create_task(self.reader())
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          m=json.loads(raw); t=m.get('type')
+                          async with self.cond:
+                              if t=='joined': self.seat=m.get('seat')
+                              elif t=='hand': self.hand=m.get('cards',[])
+                              elif t=='state': self.state=m; self.seq+=1
+                              elif t=='error': self.error=m
+                              self.cond.notify_all()
+                  except Exception as exc:
+                      async with self.cond:
+                          self.error={'type':'reader_exception','message':repr(exc)}; self.cond.notify_all()
+              async def wait(self, pred, timeout=30):
+                  async def inner():
+                      async with self.cond:
+                          while not pred():
+                              if self.error: raise AssertionError((self.name,self.error))
+                              await self.cond.wait()
+                  await asyncio.wait_for(inner(), timeout)
+              async def send(self, msg):
+                  await self.ws.send(json.dumps(msg))
+
+          async def main():
+              room=f'qa_live_join_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}'
+              players=[Client(f'P{i+1}') for i in range(4)]
+              waiters=[Client(f'W{i+1}') for i in range(3)]
+              allc=players+waiters
+              try:
+                  for c in players: await c.connect(room)
+                  assert [c.seat for c in players]==[0,1,2,3], [c.seat for c in players]
+                  await players[0].send({'type':'start','player_count':4})
+                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('hand_counts')==[27,27,27,27] and len(players[0].hand)==27)
+                  for c in players: await c.wait(lambda c=c: len(c.hand)==27)
+
+                  for c in waiters:
+                      await c.connect(room)
+                      assert c.seat is None, (c.name,c.seat)
+                      await c.send({'type':'set_participation','active':True})
+                  await players[0].wait(lambda: players[0].state is not None and players[0].state.get('pending_players')==['W1','W2','W3'])
+                  print('QUEUE_DURING_ACTIVE_GAME_OK', flush=True)
+
+                  monitor=players[0]
+                  actions=0
+                  while monitor.state.get('last_game_winner') is None:
+                      state=monitor.state; seat=state['turn']; actor=players[seat]
+                      expected=state['hand_counts'][seat]
+                      await actor.wait(lambda a=actor,e=expected: len(a.hand)==e)
+                      last=state.get('last_play',[]); level=state['level']
+                      if not last:
+                          idx=min(range(len(actor.hand)), key=lambda i:(power(actor.hand[i],level),i)); cmd={'type':'play','card_indexes':[idx]}
+                      else:
+                          tp=power(last[0],level)
+                          opts=[(power(card,level),i) for i,card in enumerate(actor.hand) if power(card,level)>tp]
+                          cmd={'type':'play','card_indexes':[min(opts)[1]]} if opts else {'type':'pass'}
+                      old=monitor.seq
+                      await actor.send(cmd)
+                      await monitor.wait(lambda o=old: monitor.seq>o)
+                      actions+=1
+                      if actions>900: raise AssertionError('action guard exceeded')
+
+                  await monitor.wait(lambda: monitor.state.get('next_round_phase')=='awaiting_shuffle')
+                  await monitor.wait(lambda: monitor.state.get('players')==['P1','P2','P3','P4','W1','W2'] and monitor.state.get('pending_players')==['W3'])
+                  await waiters[0].wait(lambda: waiters[0].seat==4)
+                  await waiters[1].wait(lambda: waiters[1].seat==5)
+                  assert waiters[2].seat is None
+                  print('PAIR_PROMOTION_AND_SINGLE_WAIT_OK', flush=True)
+
+                  await players[0].send({'type':'reorder_players','order':[0,4]})
+                  await players[0].wait(lambda: players[0].seat==4)
+                  await waiters[0].wait(lambda: waiters[0].seat==0)
+                  await monitor.wait(lambda: monitor.state.get('players')[0]=='W1' and monitor.state.get('players')[4]=='P1')
+                  print('SAME_TEAM_SWAP_AND_DYNAMIC_SEAT_SYNC_OK', flush=True)
+                  print('QA_GUANDAN_BETWEEN_ROUND_LIVE_OK', flush=True)
+              finally:
+                  for c in allc:
+                      if c.task: c.task.cancel()
+                  await asyncio.gather(*(c.task for c in allc if c.task), return_exceptions=True)
+                  await asyncio.gather(*(c.ws.close() for c in allc if c.ws), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
