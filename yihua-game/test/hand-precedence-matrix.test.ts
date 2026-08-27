@@ -95,12 +95,12 @@ describe("complete hand precedence matrix", () => {
     expect(canHandBeat(classify([suited("A")]), classify([suited("K")]))).toBe(
       true,
     );
-    expect(canHandBeat(classify([joker("small")]), classify([suited("A")]))).toBe(
-      true,
-    );
-    expect(canHandBeat(classify([joker("big")]), classify([joker("small")]))).toBe(
-      true,
-    );
+    expect(
+      canHandBeat(classify([joker("small")]), classify([suited("A")])),
+    ).toBe(true);
+    expect(
+      canHandBeat(classify([joker("big")]), classify([joker("small")])),
+    ).toBe(true);
   });
 
   it("requires matching normal hand kind and size", () => {
