@@ -1,5 +1,6 @@
 import {
   createTableConfig,
+  SUPPORTED_PLAYER_COUNTS,
   type SupportedPlayerCount,
   type TableConfig,
 } from "./table.js";
@@ -78,6 +79,24 @@ const ensureJoinWindowOpen = (room: RoomState, now: number): void => {
   }
 };
 
+const expandRoomForSeat = (room: RoomState, seat: number): RoomState => {
+  if (seat < room.config.playerCount) return room;
+  if (seat !== room.config.playerCount) {
+    throw new Error("late join must take the next available seat");
+  }
+
+  const currentIndex = SUPPORTED_PLAYER_COUNTS.indexOf(room.config.playerCount);
+  const nextCount = SUPPORTED_PLAYER_COUNTS[currentIndex + 1];
+  if (nextCount === undefined) {
+    throw new Error("room has reached the 14-player maximum");
+  }
+
+  return {
+    ...room,
+    config: createTableConfig(nextCount, room.config.botCount),
+  };
+};
+
 export const createRoom = (
   roomId: string,
   playerCount: SupportedPlayerCount,
@@ -101,14 +120,15 @@ export const addHuman = (
 ): RoomState => {
   ensureJoinWindowOpen(room, now);
   const human = normalizeHuman(input);
-  validateSeat(human.seat, room.config.playerCount);
-  ensureSeatAvailable(room, human.seat);
   ensureParticipantIdAvailable(room, human.id);
+  const expandedRoom = expandRoomForSeat(room, human.seat);
+  validateSeat(human.seat, expandedRoom.config.playerCount);
+  ensureSeatAvailable(expandedRoom, human.seat);
 
   return {
-    ...room,
+    ...expandedRoom,
     participants: [
-      ...room.participants,
+      ...expandedRoom.participants,
       {
         ...human,
         kind: "human",
