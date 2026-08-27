@@ -115,7 +115,9 @@ try {
   });
   if (created.status !== 201) throw new Error("room creation failed");
 
-  clients = await Promise.all(Array.from({ length: 4 }, (_, seat) => connect(seat)));
+  clients = await Promise.all(
+    Array.from({ length: 4 }, (_, seat) => connect(seat)),
+  );
   let revision = clients[0].roomState.revision;
   for (const client of clients) {
     await join(client, revision);
@@ -164,7 +166,9 @@ try {
 
   second = spawnServer();
   await waitForHealth(second);
-  clients = await Promise.all(Array.from({ length: 4 }, (_, seat) => connect(seat)));
+  clients = await Promise.all(
+    Array.from({ length: 4 }, (_, seat) => connect(seat)),
+  );
   const reconnectSnapshots = await Promise.all(
     clients.map(async (client) => {
       const gameState = await client.next();
@@ -176,10 +180,13 @@ try {
   if (
     restoredGame.type !== "game_state" ||
     restoredGame.currentTurn !== expectedTurn ||
-    JSON.stringify(restoredGame.handCounts) !== JSON.stringify(expectedCounts) ||
+    JSON.stringify(restoredGame.handCounts) !==
+      JSON.stringify(expectedCounts) ||
     restoredGame.leadingPlay?.cards?.[0]?.id !== card.id
   ) {
-    throw new Error(`active game was not restored: ${JSON.stringify(restoredGame)}`);
+    throw new Error(
+      `active game was not restored: ${JSON.stringify(restoredGame)}`,
+    );
   }
   if (
     reconnectSnapshots.some(
