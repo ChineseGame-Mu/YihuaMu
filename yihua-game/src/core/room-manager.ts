@@ -5,7 +5,13 @@ import {
   startNextRound,
   type GameState,
 } from "./game-state.js";
-import { createRoom, roomIsReady, type RoomState } from "./room.js";
+import {
+  createRoom,
+  openLateJoinWindow,
+  roomIsReady,
+  setRobotCount,
+  type RoomState,
+} from "./room.js";
 import { type SupportedPlayerCount } from "./table.js";
 
 export interface ManagedRoom {
@@ -74,21 +80,39 @@ export class RoomManager {
     return this.listRoomIds().map((roomId) => this.get(roomId));
   }
 
-  start(roomId: string, random: () => number = Math.random): ManagedRoom {
+  start(
+    roomId: string,
+    random: () => number = Math.random,
+    now: () => number = Date.now,
+  ): ManagedRoom {
     const managed = this.get(roomId);
-    if (!roomIsReady(managed.room)) {
-      throw new Error("room is not ready to start");
-    }
     if (managed.game.phase !== "lobby") {
       throw new Error("game has already started");
     }
 
+    const humans = managed.room.participants.filter(
+      ({ kind }) => kind === "human",
+    );
+    if (humans.length === 0) {
+      throw new Error("at least one human is required to start");
+    }
+    if (humans.some(({ connected }) => !connected)) {
+      throw new Error("all seated humans must be connected to start");
+    }
+
+    const robotCount = managed.room.config.playerCount - humans.length;
+    const filledRoom = setRobotCount(managed.room, robotCount);
+    if (!roomIsReady(filledRoom)) {
+      throw new Error("room is not ready to start");
+    }
+    const startedRoom = openLateJoinWindow(filledRoom, now());
+
     const next = {
-      room: managed.room,
+      room: startedRoom,
       game: startGame(
         createLobbyState(
-          managed.room.config.playerCount,
-          managed.room.config.botCount,
+          startedRoom.config.playerCount,
+          startedRoom.config.botCount,
         ),
         random,
       ),
