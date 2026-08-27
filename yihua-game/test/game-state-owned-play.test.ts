@@ -200,7 +200,7 @@ describe("game-state owned-card play integration", () => {
     expect(afterPlayer3Pass.currentTurn).toBe(0);
   });
 
-  it("completes the round once the remaining last place is determined", () => {
+  it("completes the round with placements, teams, and the first-place winner", () => {
     const six = suited("6", "clubs");
     const state = playingState(
       [
@@ -220,5 +220,17 @@ describe("game-state owned-card play integration", () => {
     }
     expect(completed.winnerSeat).toBe(0);
     expect(completed.finishedSeats).toEqual([0, 1, 2, 3]);
+    expect(completed.placements).toEqual([
+      { place: 1, seat: 0, team: "A" },
+      { place: 2, seat: 1, team: "B" },
+      { place: 3, seat: 2, team: "A" },
+      { place: 4, seat: 3, team: "B" },
+    ]);
+    expect(completed.outcome).toEqual({
+      winningTeam: "A",
+      losingTeam: "B",
+      firstPlaceSeat: 0,
+      lastPlaceSeat: 3,
+    });
   });
 });
