@@ -20,7 +20,7 @@ describe("websocket reconnect snapshot recovery", () => {
     const service = new WebSocketService(rooms, sockets);
     const roomId = "reconnect-room";
 
-    rooms.create({ roomId, playerCount: 4, botCount: 0 });
+    rooms.create(roomId, 4);
     const playerIds = ["p0", "p1", "p2", "p3"];
     for (const playerId of playerIds) {
       await service.handleText(
