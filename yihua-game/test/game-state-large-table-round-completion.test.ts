@@ -48,6 +48,9 @@ describe.each(largeCounts)("%i-player round completion", (playerCount) => {
     if (completed.phase !== "round-complete") {
       throw new Error("expected round completion");
     }
+    if (completed.outcome === null) {
+      throw new Error("expected round outcome");
+    }
 
     expect(completed.finishedSeats).toEqual([
       ...finishedSeats,
