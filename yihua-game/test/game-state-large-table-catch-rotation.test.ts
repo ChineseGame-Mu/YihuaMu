@@ -47,7 +47,8 @@ describe.each(largeCounts)("%i-player catch rotation", (playerCount) => {
     };
 
     const afterFinish = playGameCards(state, 0, [leadCard]);
-    if (afterFinish.phase !== "playing") throw new Error("round ended too early");
+    if (afterFinish.phase !== "playing")
+      throw new Error("round ended too early");
     const afterPasses = passAllOpponents(afterFinish);
 
     expect(afterPasses.trick.leadingPlay).toBeNull();
@@ -77,7 +78,8 @@ describe.each(largeCounts)("%i-player catch rotation", (playerCount) => {
     };
 
     const afterFinish = playGameCards(state, 0, [leadCard]);
-    if (afterFinish.phase !== "playing") throw new Error("round ended too early");
+    if (afterFinish.phase !== "playing")
+      throw new Error("round ended too early");
     const afterPasses = passAllOpponents(afterFinish);
 
     expect(afterPasses.trick.leadingPlay).toBeNull();
