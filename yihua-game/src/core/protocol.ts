@@ -19,6 +19,11 @@ export type ClientMessage =
     } & CommandMetadata)
   | ({ readonly type: "set_robots"; readonly count: number } & CommandMetadata)
   | ({ readonly type: "start_game" } & CommandMetadata)
+  | ({
+      readonly type: "play_cards";
+      readonly cardIds: readonly string[];
+    } & CommandMetadata)
+  | ({ readonly type: "pass_turn" } & CommandMetadata)
   | { readonly type: "ping"; readonly nonce: string };
 
 export type ServerMessage =
@@ -96,6 +101,13 @@ const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
   return metadata;
 };
 
+const stringArray = (value: unknown, name: string): readonly string[] => {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+    throw new Error(`${name} must be an array of strings`);
+  }
+  return value;
+};
+
 export const parseClientMessage = (raw: string): ClientMessage => {
   const parsed: unknown = JSON.parse(raw);
   if (!isObject(parsed) || typeof parsed.type !== "string") {
@@ -140,6 +152,14 @@ export const parseClientMessage = (raw: string): ClientMessage => {
       };
     case "start_game":
       return { type: "start_game", ...commandMetadata(parsed) };
+    case "play_cards":
+      return {
+        type: "play_cards",
+        cardIds: stringArray(parsed.cardIds, "cardIds"),
+        ...commandMetadata(parsed),
+      };
+    case "pass_turn":
+      return { type: "pass_turn", ...commandMetadata(parsed) };
     case "ping":
       if (typeof parsed.nonce !== "string") {
         throw new Error("invalid ping message");
