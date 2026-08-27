@@ -19,6 +19,45 @@ jobs:
           ref: feature/guandan-between-round-join-reorder-20260827
           fetch-depth: 0
 
+      - name: Normalize guarded script expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/patch_guandan_between_round_queue_20260827.py')
+          text = path.read_text()
+          text = text.replace(
+              '''handler = replace_once(
+              handler,
+              "        players: Vec<String>,\\n        observers: Vec<String>,",
+              "        players: Vec<String>,\\n        pending_players: Vec<String>,\\n        observers: Vec<String>,",
+              "state message pending field",
+          )'''.replace('          handler', '    handler').replace('          "', '    "').replace('          )', ')'),
+              '''handler = replace_n(
+              handler,
+              "        players: Vec<String>,\\n        observers: Vec<String>,",
+              "        players: Vec<String>,\\n        pending_players: Vec<String>,\\n        observers: Vec<String>,",
+              2,
+              "waiting/state message pending field",
+          )'''.replace('          handler', '    handler').replace('          "', '    "').replace('          2', '    2').replace('          )', ')'),
+          )
+          text = text.replace(
+              '''handler = replace_once(
+              handler,
+              "        players: game.player_names.clone(),\\n        observers: observers_for(key),",
+              "        players: game.player_names.clone(),\\n        pending_players: game.pending_players.clone(),\\n        observers: observers_for(key),",
+              "state message pending value",
+          )'''.replace('          handler', '    handler').replace('          "', '    "').replace('          )', ')'),
+              '''handler = replace_n(
+              handler,
+              "        players: game.player_names.clone(),\\n        observers: observers_for(key),",
+              "        players: game.player_names.clone(),\\n        pending_players: game.pending_players.clone(),\\n        observers: observers_for(key),",
+              2,
+              "waiting/state message pending value",
+          )'''.replace('          handler', '    handler').replace('          "', '    "').replace('          2', '    2').replace('          )', ')'),
+          )
+          path.write_text(text)
+          PY
+
       - name: Apply guarded backend patch
         run: python .github/scripts/patch_guandan_between_round_queue_20260827.py
 
