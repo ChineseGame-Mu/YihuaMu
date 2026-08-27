@@ -1,0 +1,332 @@
+name: QA Guandan 4-14 player 3-hour live endurance
+
+on:
+  push:
+    branches: [qa/guandan-10p-3h-endurance-20260827]
+    paths:
+      - .github/workflows/qa-guandan-4-to-14-3h-endurance-20260827.yml
+
+permissions:
+  contents: read
+
+jobs:
+  endurance:
+    name: endurance-${{ matrix.player_count }}p
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    strategy:
+      fail-fast: false
+      matrix:
+        player_count: [4, 6, 8, 10, 12, 14]
+    env:
+      PLAYER_COUNT: ${{ matrix.player_count }}
+    steps:
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+
+      - name: Run 3-hour live endurance with reconnects
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          import os
+          import time
+          import uuid
+
+          import websockets
+
+          URI = 'wss://chinesegame-yihua.onrender.com/api/guandan'
+          PLAYER_COUNT = int(os.environ['PLAYER_COUNT'])
+          DURATION_SECONDS = 3 * 60 * 60
+          DEADLOCK_SECONDS = 25
+          RECONNECT_EVERY_ACTIONS = 50
+          CONVERGENCE_EVERY_ACTIONS = 20
+          RANK_POWER = {
+              'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5, 'Six': 6,
+              'Seven': 7, 'Eight': 8, 'Nine': 9, 'Ten': 10,
+              'Jack': 11, 'Queen': 12, 'King': 13, 'Ace': 14,
+          }
+
+          def card_power(card, level):
+              if 'Joker' in card:
+                  return 16 if card['Joker'] == 'Small' else 17
+              rank = card['Suited']['rank']
+              return 15 if rank == level else RANK_POWER[rank]
+
+          def public_signature(state):
+              return json.dumps({
+                  'players': state.get('players'),
+                  'pending_players': state.get('pending_players'),
+                  'turn': state.get('turn'),
+                  'hand_counts': state.get('hand_counts'),
+                  'last_play': state.get('last_play'),
+                  'last_player': state.get('last_player'),
+                  'table_plays': state.get('table_plays'),
+                  'passes': state.get('passes'),
+                  'trick_complete': state.get('trick_complete'),
+                  'last_trick_winner': state.get('last_trick_winner'),
+                  'level': state.get('level'),
+                  'team_levels': state.get('team_levels'),
+                  'finish_order': state.get('finish_order'),
+                  'last_game_winner': state.get('last_game_winner'),
+                  'last_game_winner_team': state.get('last_game_winner_team'),
+                  'match_winner': state.get('match_winner'),
+                  'next_round_phase': state.get('next_round_phase'),
+              }, sort_keys=True, ensure_ascii=False)
+
+          def validate_state(state, expected_names, previous_total=None):
+              assert state.get('players') == expected_names, state.get('players')
+              counts = state.get('hand_counts', [])
+              assert len(counts) == PLAYER_COUNT, counts
+              assert all(isinstance(c, int) and 0 <= c <= 27 for c in counts), counts
+              turn = state.get('turn')
+              assert isinstance(turn, int) and 0 <= turn < PLAYER_COUNT, turn
+              finish = state.get('finish_order', [])
+              assert len(finish) == len(set(finish)), finish
+              assert all(isinstance(s, int) and 0 <= s < PLAYER_COUNT for s in finish), finish
+              last_player = state.get('last_player')
+              assert last_player is None or 0 <= last_player < PLAYER_COUNT, last_player
+              last_trick = state.get('last_trick_winner')
+              assert last_trick is None or 0 <= last_trick < PLAYER_COUNT, last_trick
+              for play in state.get('table_plays', []):
+                  assert 0 <= play['player'] < PLAYER_COUNT, play
+              total = sum(counts)
+              if previous_total is not None and state.get('next_round_phase') is None:
+                  assert total <= previous_total, (previous_total, total, counts)
+              return total
+
+          async def recv_json(ws, timeout=20):
+              raw = await asyncio.wait_for(ws.recv(), timeout)
+              if isinstance(raw, bytes):
+                  raw = raw.decode()
+              return json.loads(raw)
+
+          class Client:
+              def __init__(self, name, expected_seat):
+                  self.name = name
+                  self.expected_seat = expected_seat
+                  self.seat = None
+                  self.ws = None
+                  self.task = None
+                  self.hand = []
+                  self.state = None
+                  self.state_seq = 0
+                  self.error = None
+                  self.condition = asyncio.Condition()
+
+              async def open_and_join(self, room, reconnect=False):
+                  self.error = None
+                  self.hand = []
+                  self.state = None
+                  self.ws = await websockets.connect(
+                      URI,
+                      open_timeout=20,
+                      close_timeout=5,
+                      ping_interval=15,
+                      ping_timeout=15,
+                      max_queue=4096,
+                  )
+                  connected = await recv_json(self.ws, 20)
+                  assert connected.get('type') == 'connected', connected
+                  assert connected.get('protocol') == 'guandan-v21-reconnect', connected
+                  await self.ws.send(json.dumps({
+                      'type': 'join', 'room': room, 'name': self.name
+                  }, ensure_ascii=False))
+                  joined = None
+                  while joined is None:
+                      msg = await recv_json(self.ws, 20)
+                      if msg.get('type') == 'error':
+                          raise AssertionError((self.name, msg))
+                      if msg.get('type') == 'joined':
+                          joined = msg
+                  self.seat = joined.get('seat')
+                  assert self.seat == self.expected_seat, (
+                      'seat recovery failed', self.name, self.seat, self.expected_seat, reconnect
+                  )
+                  self.task = asyncio.create_task(self.reader())
+
+              async def reader(self):
+                  try:
+                      async for raw in self.ws:
+                          if isinstance(raw, bytes):
+                              raw = raw.decode()
+                          msg = json.loads(raw)
+                          kind = msg.get('type')
+                          async with self.condition:
+                              if kind == 'error':
+                                  self.error = msg
+                              elif kind == 'joined':
+                                  self.seat = msg.get('seat')
+                              elif kind == 'hand':
+                                  self.hand = msg.get('cards', [])
+                              elif kind == 'state':
+                                  self.state = msg
+                                  self.state_seq += 1
+                              self.condition.notify_all()
+                  except asyncio.CancelledError:
+                      raise
+                  except Exception as exc:
+                      async with self.condition:
+                          self.error = {'type': 'reader_exception', 'message': repr(exc)}
+                          self.condition.notify_all()
+
+              async def wait(self, predicate, timeout=DEADLOCK_SECONDS):
+                  async def inner():
+                      async with self.condition:
+                          while not predicate():
+                              if self.error is not None:
+                                  raise AssertionError((self.name, self.error))
+                              await self.condition.wait()
+                  await asyncio.wait_for(inner(), timeout)
+
+              async def send(self, payload):
+                  await self.ws.send(json.dumps(payload))
+
+              async def reconnect(self, room, expected_count=None):
+                  if self.task is not None:
+                      self.task.cancel()
+                      await asyncio.gather(self.task, return_exceptions=True)
+                  if self.ws is not None:
+                      await self.ws.close()
+                  await asyncio.sleep(0.15)
+                  await self.open_and_join(room, reconnect=True)
+                  await self.wait(lambda: self.state is not None)
+                  assert self.seat == self.expected_seat
+                  if expected_count is not None and self.state.get('next_round_phase') is None:
+                      await self.wait(lambda: len(self.hand) == expected_count)
+                  print(f'RECONNECT_OK size={PLAYER_COUNT} name={self.name} seat={self.seat} hand={len(self.hand)}', flush=True)
+
+              async def close(self):
+                  if self.task is not None:
+                      self.task.cancel()
+                  if self.ws is not None:
+                      await self.ws.close()
+
+          async def wait_convergence(clients, reference_state):
+              sig = public_signature(reference_state)
+              for client in clients:
+                  await client.wait(lambda c=client, s=sig: c.state is not None and public_signature(c.state) == s)
+
+          async def start_session(session_number, names):
+              room = f'qa{PLAYER_COUNT}_3h_{session_number}_{int(time.time()*1000)}_{uuid.uuid4().hex[:6]}'
+              clients = [Client(name, i) for i, name in enumerate(names)]
+              for client in clients:
+                  await client.open_and_join(room)
+              assert [c.seat for c in clients] == list(range(PLAYER_COUNT))
+              await clients[0].send({'type': 'start', 'player_count': PLAYER_COUNT})
+              for client in clients:
+                  await client.wait(lambda c=client: c.state is not None and c.state.get('hand_counts') == [27] * PLAYER_COUNT)
+                  await client.wait(lambda c=client: len(c.hand) == 27)
+              await wait_convergence(clients, clients[0].state)
+              print(f'SESSION_STARTED room={room} players={PLAYER_COUNT}', flush=True)
+              return room, clients
+
+          async def main():
+              started_at = time.monotonic()
+              deadline = started_at + DURATION_SECONDS
+              names = [f'耐久机器人{PLAYER_COUNT}-{i+1}' for i in range(PLAYER_COUNT)]
+              total_actions = 0
+              total_rounds = 0
+              reconnects = 0
+              sessions = 0
+              room = None
+              clients = []
+              previous_total = None
+
+              try:
+                  while time.monotonic() < deadline:
+                      if not clients:
+                          sessions += 1
+                          room, clients = await start_session(sessions, names)
+                          previous_total = PLAYER_COUNT * 27
+
+                      monitor = clients[0]
+                      state = monitor.state
+                      validate_state(state, names)
+
+                      if state.get('match_winner') is not None:
+                          print(f'MATCH_COMPLETE size={PLAYER_COUNT} session={sessions} winner={state.get("match_winner")}', flush=True)
+                          for c in clients:
+                              await c.close()
+                          await asyncio.gather(*(c.task for c in clients if c.task), return_exceptions=True)
+                          clients = []
+                          await asyncio.sleep(0.5)
+                          continue
+
+                      phase = state.get('next_round_phase')
+                      if phase == 'awaiting_shuffle':
+                          total_rounds += 1
+                          winner = state.get('last_game_winner')
+                          winner_team = state.get('last_game_winner_team')
+                          assert isinstance(winner, int) and 0 <= winner < PLAYER_COUNT, winner
+                          assert winner_team in ('A', 'B'), winner_team
+                          losing_parity = 1 if winner_team == 'A' else 0
+                          shuffler = next(i for i in range(PLAYER_COUNT) if i % 2 == losing_parity)
+                          old = monitor.state_seq
+                          await clients[shuffler].send({
+                              'type': 'shuffle_next_round',
+                              'from_position': None,
+                              'to_position': None,
+                          })
+                          await monitor.wait(lambda o=old: monitor.state_seq > o and monitor.state.get('next_round_phase') == 'awaiting_deal')
+                          old = monitor.state_seq
+                          await clients[winner].send({'type': 'deal_next_round'})
+                          await monitor.wait(lambda o=old: monitor.state_seq > o and monitor.state.get('next_round_phase') is None)
+                          await monitor.wait(lambda: monitor.state.get('hand_counts') == [27] * PLAYER_COUNT)
+                          for client in clients:
+                              await client.wait(lambda c=client: len(c.hand) == 27)
+                          await wait_convergence(clients, monitor.state)
+                          previous_total = PLAYER_COUNT * 27
+                          elapsed = time.monotonic() - started_at
+                          print(f'ROUND_{total_rounds}_READY size={PLAYER_COUNT} elapsed={elapsed:.1f}s actions={total_actions} reconnects={reconnects}', flush=True)
+                          continue
+
+                      seat = state['turn']
+                      actor = clients[seat]
+                      expected_count = state['hand_counts'][seat]
+                      assert expected_count > 0, (seat, state['hand_counts'])
+                      await actor.wait(lambda a=actor, e=expected_count: len(a.hand) == e)
+                      last_play = state.get('last_play', [])
+                      assert len(last_play) <= 1, last_play
+                      level = state['level']
+                      if not last_play:
+                          index = min(range(len(actor.hand)), key=lambda i: (card_power(actor.hand[i], level), i))
+                          command = {'type': 'play', 'card_indexes': [index]}
+                      else:
+                          table_power = card_power(last_play[0], level)
+                          options = [(card_power(card, level), i) for i, card in enumerate(actor.hand) if card_power(card, level) > table_power]
+                          command = {'type': 'play', 'card_indexes': [min(options)[1]]} if options else {'type': 'pass'}
+
+                      old_seq = monitor.state_seq
+                      old_sig = public_signature(state)
+                      await actor.send(command)
+                      await monitor.wait(lambda o=old_seq, s=old_sig: monitor.state_seq > o and public_signature(monitor.state) != s)
+                      state = monitor.state
+                      total_actions += 1
+                      previous_total = validate_state(state, names, previous_total)
+
+                      if total_actions % CONVERGENCE_EVERY_ACTIONS == 0:
+                          await wait_convergence(clients, state)
+                          print(f'CONSISTENCY_OK size={PLAYER_COUNT} actions={total_actions} rounds={total_rounds} remaining={sum(state.get("hand_counts", []))}', flush=True)
+
+                      if total_actions % RECONNECT_EVERY_ACTIONS == 0:
+                          target = reconnects % PLAYER_COUNT
+                          current_count = state['hand_counts'][target]
+                          await clients[target].reconnect(room, current_count)
+                          reconnects += 1
+                          monitor = clients[0]
+                          await monitor.wait(lambda: monitor.state is not None)
+                          validate_state(monitor.state, names)
+
+                  elapsed = time.monotonic() - started_at
+                  assert elapsed >= DURATION_SECONDS - 5, elapsed
+                  assert total_rounds >= 1, total_rounds
+                  assert reconnects >= PLAYER_COUNT, reconnects
+                  print(f'QA_{PLAYER_COUNT}P_3H_ENDURANCE_ALL_OK elapsed={elapsed:.1f}s rounds={total_rounds} actions={total_actions} reconnects={reconnects} sessions={sessions}', flush=True)
+              finally:
+                  for c in clients:
+                      await c.close()
+                  await asyncio.gather(*(c.task for c in clients if c.task), return_exceptions=True)
+
+          asyncio.run(main())
+          PY
