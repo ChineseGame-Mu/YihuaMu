@@ -41,6 +41,7 @@ jobs:
       - name: Long WebSocket lifecycle soak
         env:
           SOAK_DURATION_MS: ${{ inputs.duration_ms || '10800000' }}
+          SOAK_SEGMENT_MS: "60000"
           SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
           SOAK_RECONNECT_EVERY: ${{ inputs.reconnect_every || '10' }}
-        run: node scripts/soak-websocket.mjs
+        run: node scripts/soak-websocket-bounded.mjs
