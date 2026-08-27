@@ -17,6 +17,7 @@ export type ServerMessage =
   | {
       readonly type: "room_state";
       readonly roomId: string;
+      readonly revision?: number;
       readonly playerCount: number;
       readonly robotCount: number;
       readonly participants: readonly {
@@ -30,6 +31,7 @@ export type ServerMessage =
   | {
       readonly type: "game_state";
       readonly roomId: string;
+      readonly revision: number;
       readonly phase: "playing" | "round-complete";
       readonly currentTurn: number;
       readonly handCounts: readonly number[];
@@ -46,6 +48,7 @@ export type ServerMessage =
   | {
       readonly type: "private_hand";
       readonly roomId: string;
+      readonly revision: number;
       readonly seat: number;
       readonly cards: readonly {
         readonly id: string;
