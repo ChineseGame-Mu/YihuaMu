@@ -75,7 +75,10 @@ const playToCompletion = (
 };
 
 describe.each(counts)("%i-player full-round automation", (playerCount) => {
-  const openingWinners = [0, Math.floor(playerCount / 2), playerCount - 1];
+  const openingWinners = Array.from(
+    { length: playerCount },
+    (_, seat) => seat,
+  );
 
   it.each(openingWinners)(
     "plays two complete rounds from opening winner seat %i without deadlock or rerunning the opening draw",
