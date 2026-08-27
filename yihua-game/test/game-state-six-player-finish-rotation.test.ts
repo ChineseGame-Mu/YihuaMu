@@ -40,9 +40,11 @@ const stateWithOneFinishedTeammate = (): PlayingState => ({
 
 describe("six-player finished-seat rotation", () => {
   it("catches to the remaining teammate, then falls back to an active opponent when the team is empty", () => {
-    const afterSeat0Finishes = playGameCards(stateWithOneFinishedTeammate(), 0, [
-      suited("7"),
-    ]);
+    const afterSeat0Finishes = playGameCards(
+      stateWithOneFinishedTeammate(),
+      0,
+      [suited("7")],
+    );
     expect(afterSeat0Finishes.phase).toBe("playing");
     if (afterSeat0Finishes.phase !== "playing") {
       throw new Error("round ended too early");
