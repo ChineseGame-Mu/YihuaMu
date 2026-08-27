@@ -1,6 +1,7 @@
 import {
   addHuman,
   removeParticipant,
+  replaceRobotWithHuman,
   setRobotCount,
   type RoomState,
 } from "./room.js";
@@ -46,11 +47,18 @@ export const applyClientMessage = (
       if (message.roomId !== room.roomId) {
         throw new Error("message room id does not match active room");
       }
-      const nextRoom = addHuman(room, {
+      const occupied = room.participants.find(
+        (participant) => participant.seat === message.seat,
+      );
+      const joinInput = {
         id: message.playerId,
         name: message.name,
         seat: message.seat,
-      });
+      };
+      const nextRoom =
+        occupied?.kind === "robot"
+          ? replaceRobotWithHuman(room, joinInput)
+          : addHuman(room, joinInput);
       return { room: nextRoom, response: roomStateMessage(nextRoom) };
     }
     case "leave_room": {
