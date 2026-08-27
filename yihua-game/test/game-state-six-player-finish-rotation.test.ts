@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Card } from "../src/core/cards.js";
+import type { Card, Suit } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
 import {
   passGameTurn,
@@ -9,7 +9,10 @@ import {
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
-const suited = (rank: "3" | "4" | "5" | "6" | "7", suit = "clubs"): Card => ({
+const suited = (
+  rank: "3" | "4" | "5" | "6" | "7",
+  suit: Suit = "clubs",
+): Card => ({
   kind: "suited",
   rank,
   suit,
