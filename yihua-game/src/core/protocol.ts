@@ -18,6 +18,10 @@ export type ClientMessage =
       readonly playerId: string;
     } & CommandMetadata)
   | ({ readonly type: "set_robots"; readonly count: number } & CommandMetadata)
+  | ({
+      readonly type: "set_next_round_ready";
+      readonly ready: boolean;
+    } & CommandMetadata)
   | ({ readonly type: "start_game" } & CommandMetadata)
   | ({ readonly type: "next_round" } & CommandMetadata)
   | ({
@@ -40,6 +44,7 @@ export type ServerMessage =
         readonly seat: number;
         readonly kind: "human" | "robot";
         readonly connected: boolean;
+        readonly readyForNextRound?: boolean;
       }[];
     }
   | {
@@ -138,6 +143,11 @@ export const parseClientMessage = (raw: string): ClientMessage => {
         throw new Error("invalid set_robots message");
       }
       return { type: "set_robots", count: parsed.count, ...metadata };
+    case "set_next_round_ready":
+      if (typeof parsed.ready !== "boolean") {
+        throw new Error("set_next_round_ready requires a boolean ready value");
+      }
+      return { type: "set_next_round_ready", ready: parsed.ready, ...metadata };
     case "start_game":
       return { type: "start_game", ...metadata };
     case "next_round":
