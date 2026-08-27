@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  completeRound,
-  type PlayingState,
-} from "../src/core/game-state.js";
+import { completeRound, type PlayingState } from "../src/core/game-state.js";
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
