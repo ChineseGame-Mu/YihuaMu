@@ -1,5 +1,10 @@
 import { passGameSeat, playGameCardIds } from "./game-actions.js";
-import { createLobbyState, startGame, type GameState } from "./game-state.js";
+import {
+  createLobbyState,
+  startGame,
+  startNextRound,
+  type GameState,
+} from "./game-state.js";
 import { createRoom, roomIsReady, type RoomState } from "./room.js";
 import { type SupportedPlayerCount } from "./table.js";
 
@@ -71,6 +76,21 @@ export class RoomManager {
         ),
         random,
       ),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  nextRound(roomId: string, random: () => number = Math.random): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "round-complete") {
+      throw new Error("round is not complete");
+    }
+
+    const next = {
+      ...managed,
+      game: startNextRound(managed.game, random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
