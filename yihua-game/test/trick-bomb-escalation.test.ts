@@ -2,10 +2,17 @@ import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { createTrickState, playCards } from "../src/core/trick-state.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 const bomb = (rank: Rank, count: number): Card[] =>
   Array.from({ length: count }, (_, index) =>
-    suited(rank, (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!),
+    suited(
+      rank,
+      (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!,
+    ),
   );
 const straightFlush = (ranks: readonly Rank[]): Card[] =>
   ranks.map((rank) => suited(rank, "spades"));
@@ -46,9 +53,9 @@ describe("bomb escalation in a live trick", () => {
     let trick = createTrickState(4, 0);
     trick = playCards(trick, 0, bomb("9", 6));
 
-    expect(() => playCards(trick, 1, straightFlush(["10", "J", "Q", "K", "A"]))).toThrow(
-      "play does not beat the current leading play",
-    );
+    expect(() =>
+      playCards(trick, 1, straightFlush(["10", "J", "Q", "K", "A"])),
+    ).toThrow("play does not beat the current leading play");
     expect(() => playCards(trick, 1, bomb("A", 5))).toThrow(
       "play does not beat the current leading play",
     );
