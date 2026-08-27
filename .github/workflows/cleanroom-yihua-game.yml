@@ -38,6 +38,7 @@ jobs:
       - name: Hard-crash checkpoint recovery smoke
         run: node scripts/smoke-crash-recovery.mjs
       - name: WebSocket lifecycle soak smoke
+        # Keep every supported even table size in the fast reconnect gate.
         env:
           SOAK_DURATION_MS: "1000"
           SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
