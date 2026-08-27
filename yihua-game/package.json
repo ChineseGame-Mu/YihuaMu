@@ -15,6 +15,7 @@
     "start": "node dist/main.js",
     "smoke": "node scripts/smoke-server.mjs",
     "soak:core": "npm run build && node scripts/soak-core.mjs",
+    "soak:websocket": "npm run build && node scripts/soak-websocket.mjs",
     "test": "vitest run"
   },
   "devDependencies": {
