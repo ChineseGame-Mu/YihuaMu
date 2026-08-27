@@ -60,7 +60,12 @@ const cases: readonly [HandKind, Card[]][] = [
   ],
   [
     "bomb",
-    [suited("4"), suited("4", "diamonds"), suited("4", "spades"), suited("4", "hearts")],
+    [
+      suited("4"),
+      suited("4", "diamonds"),
+      suited("4", "spades"),
+      suited("4", "hearts"),
+    ],
   ],
   [
     "joker-bomb",
