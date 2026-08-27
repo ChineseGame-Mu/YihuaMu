@@ -86,6 +86,7 @@ pub enum GuandanServerMessage {
     },
     Waiting {
         players: Vec<String>,
+        pending_players: Vec<String>,
         observers: Vec<String>,
         online_players: Vec<bool>,
         minimum_players: usize,
@@ -101,6 +102,7 @@ pub enum GuandanServerMessage {
     },
     State {
         players: Vec<String>,
+        pending_players: Vec<String>,
         observers: Vec<String>,
         online_players: Vec<bool>,
         turn: usize,
@@ -221,6 +223,7 @@ async fn current_seat(
 fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::Waiting {
         players: game.player_names.clone(),
+        pending_players: game.pending_players.clone(),
         observers: observers_for(key),
         online_players: online_players(key, game),
         minimum_players: GUANDAN_MIN_PLAYER_COUNT,
@@ -231,6 +234,7 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
 fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
         players: game.player_names.clone(),
+        pending_players: game.pending_players.clone(),
         observers: observers_for(key),
         online_players: online_players(key, game),
         turn: game.turn,
@@ -348,6 +352,7 @@ fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &
     game.turn = winner;
     game.next_round_finish_order = game.finish_order[..player_count - 1].to_vec();
     game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
+    game.promote_pending_players(GUANDAN_MAX_PLAYER_COUNT);
     game.last_play.clear();
     game.last_player = None;
     game.table_plays.clear();
@@ -432,6 +437,7 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
     game.level = next_level;
     game.next_round_finish_order = completed_finish_order[..player_count - 1].to_vec();
     game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
+    game.promote_pending_players(GUANDAN_MAX_PLAYER_COUNT);
     game.last_play.clear();
     game.last_player = None;
     game.table_plays.clear();
@@ -629,9 +635,33 @@ pub async fn websocket(
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
-                            if state.game.started
-                                || state.game.player_names.len() >= GUANDAN_MAX_PLAYER_COUNT
-                            {
+                            if state.game.started {
+                                if room_has_connected_players {
+                                    let reserved = state.game.player_names.len()
+                                        + state.game.pending_players.len();
+                                    if reserved >= GUANDAN_MAX_PLAYER_COUNT {
+                                        return Err(());
+                                    }
+                                    if !state
+                                        .game
+                                        .pending_players
+                                        .iter()
+                                        .any(|pending| pending == &name_for_state)
+                                    {
+                                        state.game.pending_players.push(name_for_state);
+                                    }
+                                    if state.game.next_round_phase
+                                        == Some(GuandanNextRoundPhase::AwaitingShuffle)
+                                    {
+                                        state
+                                            .game
+                                            .promote_pending_players(GUANDAN_MAX_PLAYER_COUNT);
+                                    }
+                                    state.bump_version();
+                                    return Ok((state, vec![GuandanStorageMessage::StateChanged]));
+                                }
+                                state.game = GuandanGameState::default();
+                            } else if state.game.player_names.len() >= GUANDAN_MAX_PLAYER_COUNT {
                                 if room_has_connected_players {
                                     return Err(());
                                 }
@@ -644,27 +674,44 @@ pub async fn websocket(
                         .await;
                     match current_seat(&storage, &key, &name).await {
                         Some(seat) => Some(seat),
-                        None if seat_result.is_err() => {
-                            let room_exists = storage.clone().get(key.clone()).await.is_ok();
-                            if !room_exists {
-                                send(
-                                    &tx,
-                                    &GuandanServerMessage::Error {
-                                        message: "unable to join this room".to_string(),
-                                    },
-                                );
+                        None => {
+                            let is_pending = storage
+                                .clone()
+                                .get(key.clone())
+                                .await
+                                .ok()
+                                .is_some_and(|state| {
+                                    state
+                                        .game
+                                        .pending_players
+                                        .iter()
+                                        .any(|pending| pending == &name)
+                                });
+                            if is_pending {
+                                None
+                            } else if seat_result.is_err() {
+                                let room_exists = storage.clone().get(key.clone()).await.is_ok();
+                                if !room_exists {
+                                    send(
+                                        &tx,
+                                        &GuandanServerMessage::Error {
+                                            message: "unable to join this room".to_string(),
+                                        },
+                                    );
+                                    continue;
+                                }
+                                if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
+                                    let room_observers = observers.entry(key.clone()).or_default();
+                                    if !room_observers.iter().any(|observer| observer == &name) {
+                                        room_observers.push(name.clone());
+                                    }
+                                }
+                                joined_as_observer = true;
+                                None
+                            } else {
                                 continue;
                             }
-                            if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
-                                let room_observers = observers.entry(key.clone()).or_default();
-                                if !room_observers.iter().any(|observer| observer == &name) {
-                                    room_observers.push(name.clone());
-                                }
-                            }
-                            joined_as_observer = true;
-                            None
                         }
-                        None => continue,
                     }
                 };
                 joined_room = Some(key.clone());
@@ -682,7 +729,7 @@ pub async fn websocket(
                         send(
                             &tx,
                             &GuandanServerMessage::Started {
-                                player_count: state.game.hands.len(),
+                                player_count: state.game.player_names.len(),
                                 cards_per_player: CARDS_PER_PLAYER,
                             },
                         );
@@ -729,7 +776,7 @@ pub async fn websocket(
                                 send(
                                     &tx_sub,
                                     &GuandanServerMessage::Started {
-                                        player_count: state.game.hands.len(),
+                                        player_count: state.game.player_names.len(),
                                         cards_per_player: CARDS_PER_PLAYER,
                                     },
                                 );
@@ -776,12 +823,51 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.started {
-                            return Err(());
-                        }
                         let mut observers = GUANDAN_OBSERVERS.lock().map_err(|_| ())?;
                         let room_observers = observers.entry(key_for_state.clone()).or_default();
-                        if active {
+                        if state.game.started {
+                            if active {
+                                if state.game.player_names.iter().any(|n| n == &name_for_state)
+                                    || state
+                                        .game
+                                        .pending_players
+                                        .iter()
+                                        .any(|n| n == &name_for_state)
+                                {
+                                    return Ok((state, vec![]));
+                                }
+                                let observer_index = room_observers
+                                    .iter()
+                                    .position(|n| n == &name_for_state)
+                                    .ok_or(())?;
+                                let reserved = state.game.player_names.len()
+                                    + state.game.pending_players.len();
+                                if reserved >= GUANDAN_MAX_PLAYER_COUNT {
+                                    return Err(());
+                                }
+                                room_observers.remove(observer_index);
+                                state.game.pending_players.push(name_for_state);
+                                if state.game.next_round_phase
+                                    == Some(GuandanNextRoundPhase::AwaitingShuffle)
+                                {
+                                    state.game.promote_pending_players(GUANDAN_MAX_PLAYER_COUNT);
+                                }
+                            } else {
+                                if state.game.player_names.iter().any(|n| n == &name_for_state) {
+                                    return Err(());
+                                }
+                                let pending_index = state
+                                    .game
+                                    .pending_players
+                                    .iter()
+                                    .position(|n| n == &name_for_state)
+                                    .ok_or(())?;
+                                let removed = state.game.pending_players.remove(pending_index);
+                                if !room_observers.iter().any(|n| n == &removed) {
+                                    room_observers.push(removed);
+                                }
+                            }
+                        } else if active {
                             if state.game.player_names.iter().any(|n| n == &name_for_state) {
                                 return Ok((state, vec![]));
                             }
@@ -814,10 +900,12 @@ pub async fn websocket(
                     send(
                         &tx,
                         &GuandanServerMessage::Error {
-                            message: "participation can only be changed before the game starts"
+                            message: "participation cannot be changed in the requested state"
                                 .to_string(),
                         },
                     );
+                } else {
+                    joined_as_observer = !active;
                 }
             }
             GuandanClientMessage::SetCardCountAlertThreshold { threshold } => {
@@ -900,10 +988,14 @@ pub async fn websocket(
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
                         let len = state.game.player_names.len();
-                        if state.game.started
+                        let can_reorder = !state.game.started
+                            || state.game.next_round_phase
+                                == Some(GuandanNextRoundPhase::AwaitingShuffle);
+                        if !can_reorder
                             || order[0] >= len
                             || order[1] >= len
-                            || order[0].abs_diff(order[1]) != 1
+                            || order[0] == order[1]
+                            || order[0] % 2 != order[1] % 2
                         {
                             return Err(());
                         }
@@ -916,7 +1008,10 @@ pub async fn websocket(
                         if current != order[0] && current != order[1] {
                             return Err(());
                         }
-                        state.game.player_names.swap(order[0], order[1]);
+                        state
+                            .game
+                            .swap_same_team_seats(order[0], order[1])
+                            .map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -926,7 +1021,7 @@ pub async fn websocket(
                         &tx,
                         &GuandanServerMessage::Error {
                             message:
-                                "players can only swap with an adjacent seat before the game starts"
+                                "players may only swap within the same team before start or while awaiting the next shuffle"
                                     .to_string(),
                         },
                     );
@@ -1423,6 +1518,10 @@ pub async fn websocket(
             let _: Result<u64, ()> = storage
                 .clone()
                 .execute_operation_with_messages(key, move |mut state| {
+                    state
+                        .game
+                        .pending_players
+                        .retain(|pending| pending != &name);
                     state.bump_version();
                     Ok((state, vec![GuandanStorageMessage::StateChanged]))
                 })
