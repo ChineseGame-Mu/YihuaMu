@@ -1,5 +1,5 @@
 name: QA Guandan live lead-pass rule
-# rerun after master backend merge cc606b455e8323c62920b44d7b9333473ba96b73
+# diagnose second-trick pass response after backend merge cc606b455e8323c62920b44d7b9333473ba96b73
 
 on:
   push:
@@ -123,15 +123,46 @@ jobs:
                   assert state.get('last_player') is None, state
                   assert state.get('last_trick_winner') is not None, state
                   later_leader = state['turn']
+                  print('SECOND_TRICK_READY', json.dumps({
+                      'turn': state.get('turn'),
+                      'last_player': state.get('last_player'),
+                      'last_trick_winner': state.get('last_trick_winner'),
+                      'state_seq': monitor.state_seq,
+                  }, ensure_ascii=False), flush=True)
 
                   prev = monitor.state_seq
-                  clients[later_leader].error = None
-                  await clients[later_leader].ws.send(json.dumps({'type':'pass'}))
-                  next_state = await monitor.wait_new_state(prev, 20)
-                  while next_state.get('turn') == later_leader:
-                      prev = monitor.state_seq
-                      next_state = await monitor.wait_new_state(prev, 20)
-                  assert clients[later_leader].error is None, clients[later_leader].error
+                  later_actor = clients[later_leader]
+                  later_actor.error = None
+                  await later_actor.ws.send(json.dumps({'type':'pass'}))
+
+                  try:
+                      await later_actor.wait_for(
+                          lambda: later_actor.error is not None or monitor.state_seq > prev,
+                          10,
+                          allow_error=True,
+                      )
+                  except TimeoutError:
+                      print('SECOND_TRICK_PASS_NO_RESPONSE', json.dumps({
+                          'leader': later_leader,
+                          'monitor_state_seq': monitor.state_seq,
+                          'monitor_turn': monitor.state.get('turn') if monitor.state else None,
+                          'actor_error': later_actor.error,
+                      }, ensure_ascii=False), flush=True)
+                      raise
+
+                  print('SECOND_TRICK_PASS_RESPONSE', json.dumps({
+                      'leader': later_leader,
+                      'actor_error': later_actor.error,
+                      'monitor_state_seq': monitor.state_seq,
+                      'monitor_turn': monitor.state.get('turn') if monitor.state else None,
+                      'last_player': monitor.state.get('last_player') if monitor.state else None,
+                      'last_trick_winner': monitor.state.get('last_trick_winner') if monitor.state else None,
+                  }, ensure_ascii=False), flush=True)
+
+                  assert later_actor.error is None, later_actor.error
+                  assert monitor.state_seq > prev, 'pass accepted but no state broadcast'
+                  next_state = monitor.state
+                  assert next_state.get('turn') != later_leader, next_state
                   assert next_state.get('last_player') is None, next_state
                   print('POST_OPENING_LEAD_PASS_ALLOWED_OK', flush=True)
                   print('QA_GUANDAN_LEAD_PASS_LIVE_OK', flush=True)
