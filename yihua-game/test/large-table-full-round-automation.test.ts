@@ -65,6 +65,7 @@ describe.each(counts)("%i-player full-round automation", (playerCount) => {
       actions += 1;
     }
 
+    expect(state.phase).toBe("round-complete");
     expect(actions).toBeLessThan(maximumActions);
     expect(state.finishedSeats).toHaveLength(playerCount);
     expect(new Set(state.finishedSeats).size).toBe(playerCount);
