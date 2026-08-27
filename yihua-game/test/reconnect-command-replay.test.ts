@@ -128,4 +128,50 @@ describe("command replay across reconnect", () => {
       code: "command_id_conflict",
     });
   });
+
+  it("rejects a bound socket acting as another player", async () => {
+    const runtime = createServerRuntime();
+    runtime.rooms.create("identity-room", 4);
+    const connection = new FakeConnection({
+      roomId: "identity-room",
+      playerId: "p1",
+    });
+    await attachUpgradedConnection(runtime, connection);
+
+    await connection.receive(
+      JSON.stringify({
+        type: "join_room",
+        roomId: "identity-room",
+        playerId: "p2",
+        name: "玩家2",
+        seat: 1,
+        expectedRevision: 0,
+        commandId: "wrong-player",
+      }),
+    );
+
+    expect(runtime.rooms.get("identity-room").revision).toBe(0);
+    expect(runtime.rooms.get("identity-room").room.participants).toHaveLength(0);
+    expect(JSON.parse(connection.socket.sent.at(-1) ?? "{}")).toMatchObject({
+      type: "error",
+      code: "player_identity_mismatch",
+    });
+
+    await connection.receive(
+      JSON.stringify({
+        type: "join_room",
+        roomId: "identity-room",
+        playerId: "p1",
+        name: "玩家1",
+        seat: 0,
+        expectedRevision: 0,
+        commandId: "right-player",
+      }),
+    );
+
+    const current = runtime.rooms.get("identity-room");
+    expect(current.revision).toBe(1);
+    expect(current.room.participants).toHaveLength(1);
+    expect(current.room.participants[0]?.id).toBe("p1");
+  });
 });
