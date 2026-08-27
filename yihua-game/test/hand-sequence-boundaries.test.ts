@@ -92,10 +92,7 @@ describe("sequence hand boundaries", () => {
 
   it("rejects ordinary combinations that mix suited cards and jokers", () => {
     expect(
-      classifyHand([
-        suited("8"),
-        { kind: "joker", size: "small" },
-      ]).kind,
+      classifyHand([suited("8"), { kind: "joker", size: "small" }]).kind,
     ).toBe("invalid");
   });
 });
