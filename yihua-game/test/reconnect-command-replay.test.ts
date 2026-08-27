@@ -93,4 +93,39 @@ describe("command replay across reconnect", () => {
     expect(current.room.config.botCount).toBe(3);
     expect(current.room.participants).toHaveLength(4);
   });
+
+  it("rejects reuse of a command id for different business content", async () => {
+    const runtime = createServerRuntime();
+    runtime.rooms.create("conflict-room", 4);
+    const connection = new FakeConnection({ roomId: "conflict-room" });
+    await attachUpgradedConnection(runtime, connection);
+
+    await connection.receive(
+      JSON.stringify({
+        type: "set_robots",
+        count: 1,
+        expectedRevision: 0,
+        commandId: "robots-command",
+      }),
+    );
+    expect(runtime.rooms.get("conflict-room").revision).toBe(1);
+    expect(runtime.rooms.get("conflict-room").room.config.botCount).toBe(1);
+
+    await connection.receive(
+      JSON.stringify({
+        type: "set_robots",
+        count: 2,
+        expectedRevision: 1,
+        commandId: "robots-command",
+      }),
+    );
+
+    const current = runtime.rooms.get("conflict-room");
+    expect(current.revision).toBe(1);
+    expect(current.room.config.botCount).toBe(1);
+    expect(JSON.parse(connection.socket.sent.at(-1) ?? "{}")).toMatchObject({
+      type: "error",
+      code: "command_id_conflict",
+    });
+  });
 });
