@@ -37,25 +37,74 @@ const waitForHealth = async (server) => {
   throw new Error(`server did not become healthy: ${server.stderr()}`);
 };
 
-const waitForCheckpoint = async () => {
+const waitForCheckpoint = async (predicate) => {
   for (let i = 0; i < 80; i += 1) {
     try {
       const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
       const room = snapshot.rooms?.find(
         ({ roomId: savedRoomId }) => savedRoomId === roomId,
       );
-      if (room) return;
+      if (room && predicate(room)) return room;
     } catch {}
     await sleep(50);
   }
-  throw new Error("checkpoint was not written before crash");
+  throw new Error("expected checkpoint was not written before crash");
 };
 
 const waitForExit = (child) =>
   new Promise((resolve) => child.once("exit", () => resolve()));
 
+const createQueue = (socket) => {
+  const messages = [];
+  const waiters = [];
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(String(event.data));
+    const waiter = waiters.shift();
+    if (waiter) waiter(message);
+    else messages.push(message);
+  });
+  return () =>
+    new Promise((resolve, reject) => {
+      const message = messages.shift();
+      if (message) return resolve(message);
+      const timeout = setTimeout(
+        () => reject(new Error("websocket message timeout")),
+        10000,
+      );
+      waiters.push((value) => {
+        clearTimeout(timeout);
+        resolve(value);
+      });
+    });
+};
+
+const connect = async (seat) => {
+  const playerId = `p${seat}`;
+  const socket = new WebSocket(
+    `ws://127.0.0.1:${port}/ws/rooms/${roomId}?playerId=${playerId}`,
+  );
+  const next = createQueue(socket);
+  const roomState = await next();
+  return { seat, playerId, socket, next, roomState };
+};
+
+const join = async (client, revision) => {
+  client.socket.send(
+    JSON.stringify({
+      type: "join_room",
+      roomId,
+      playerId: client.playerId,
+      name: `玩家${client.seat + 1}`,
+      seat: client.seat,
+      expectedRevision: revision,
+      commandId: `join-${client.seat}`,
+    }),
+  );
+};
+
 let first;
 let second;
+let clients = [];
 try {
   first = spawnServer();
   await waitForHealth(first);
@@ -66,29 +115,110 @@ try {
   });
   if (created.status !== 201) throw new Error("room creation failed");
 
-  await waitForCheckpoint();
+  clients = await Promise.all(Array.from({ length: 4 }, (_, seat) => connect(seat)));
+  let revision = clients[0].roomState.revision;
+  for (const client of clients) {
+    await join(client, revision);
+    const updates = await Promise.all(clients.map(({ next }) => next()));
+    revision = updates[0].revision;
+  }
+  clients[0].socket.send(
+    JSON.stringify({
+      type: "start_game",
+      expectedRevision: revision,
+      commandId: "start-before-crash",
+    }),
+  );
+  await Promise.all(clients.map(({ next }) => next()));
+  const gameStates = await Promise.all(clients.map(({ next }) => next()));
+  const hands = await Promise.all(clients.map(({ next }) => next()));
+  const game = gameStates[0];
+  const leader = game.currentTurn;
+  const card = hands[leader].cards[0];
+  clients[leader].socket.send(
+    JSON.stringify({
+      type: "play_cards",
+      cardIds: [card.id],
+      expectedRevision: game.revision,
+      commandId: "play-before-crash",
+    }),
+  );
+  const afterPlayStates = await Promise.all(clients.map(({ next }) => next()));
+  const afterPlay = afterPlayStates[0];
+  await Promise.all(clients.map(({ next }) => next()));
+
+  const checkpoint = await waitForCheckpoint(
+    (room) =>
+      room.game?.phase === "playing" &&
+      room.revision === afterPlay.revision &&
+      room.game?.trick?.leadingPlay?.cards?.[0]?.id === card.id,
+  );
+  const expectedTurn = checkpoint.game.currentTurn;
+  const expectedCounts = checkpoint.game.hands.map((hand) => hand.length);
+
   first.child.kill("SIGKILL");
   await waitForExit(first.child);
   first = undefined;
+  clients.forEach(({ socket }) => socket.close());
+  clients = [];
 
   second = spawnServer();
   await waitForHealth(second);
-  const restored = await fetch(`${baseUrl}/api/rooms/${roomId}`);
-  if (!restored.ok) throw new Error("room was not restored after SIGKILL");
-  const body = await restored.json();
+  clients = await Promise.all(Array.from({ length: 4 }, (_, seat) => connect(seat)));
+  const reconnectSnapshots = await Promise.all(
+    clients.map(async (client) => {
+      const gameState = await client.next();
+      const privateHand = await client.next();
+      return { roomState: client.roomState, gameState, privateHand };
+    }),
+  );
+  const restoredGame = reconnectSnapshots[0].gameState;
   if (
-    body.room?.roomId !== roomId ||
-    body.room?.config?.playerCount !== 4 ||
-    body.phase !== "lobby"
+    restoredGame.type !== "game_state" ||
+    restoredGame.currentTurn !== expectedTurn ||
+    JSON.stringify(restoredGame.handCounts) !== JSON.stringify(expectedCounts) ||
+    restoredGame.leadingPlay?.cards?.[0]?.id !== card.id
   ) {
-    throw new Error(`restored checkpoint mismatch: ${JSON.stringify(body)}`);
+    throw new Error(`active game was not restored: ${JSON.stringify(restoredGame)}`);
+  }
+  if (
+    reconnectSnapshots.some(
+      ({ roomState, gameState, privateHand }) =>
+        roomState.revision !== gameState.revision ||
+        gameState.revision !== privateHand.revision,
+    )
+  ) {
+    throw new Error("reconnect snapshot revisions disagree after hard crash");
   }
 
+  const active = clients[expectedTurn];
+  active.socket.send(
+    JSON.stringify({
+      type: "pass_turn",
+      expectedRevision: restoredGame.revision,
+      commandId: "continue-after-crash",
+    }),
+  );
+  const continued = await Promise.all(clients.map(({ next }) => next()));
+  if (
+    continued.some(
+      (state) =>
+        state.type !== "game_state" ||
+        state.revision !== restoredGame.revision + 1 ||
+        !state.passedSeats.includes(expectedTurn),
+    )
+  ) {
+    throw new Error("game did not continue after hard-crash reconnect");
+  }
+
+  clients.forEach(({ socket }) => socket.close());
+  clients = [];
   second.child.kill("SIGTERM");
   await waitForExit(second.child);
   second = undefined;
-  console.log("YIHUA_GAME_CRASH_RECOVERY_SMOKE_OK");
+  console.log("YIHUA_GAME_ACTIVE_CRASH_RECOVERY_SMOKE_OK");
 } finally {
+  clients.forEach(({ socket }) => socket.close());
   if (first?.child) first.child.kill("SIGKILL");
   if (second?.child) second.child.kill("SIGKILL");
   await rm(directory, { recursive: true, force: true });
