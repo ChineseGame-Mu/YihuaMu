@@ -46,6 +46,9 @@ describe("websocket reconnect snapshot recovery", () => {
         JSON.stringify({ type: "start_game" }),
       );
 
+      const expectedRevision = rooms.get(roomId).revision;
+      expect(expectedRevision).toBe(playerCount + 1);
+
       for (const [reconnectSeat, playerId] of playerIds.entries()) {
         const reconnecting = new RecordingSocket();
         await service.sendSnapshot(reconnecting, roomId, playerId);
@@ -58,6 +61,11 @@ describe("websocket reconnect snapshot recovery", () => {
           "game_state",
           "private_hand",
         ]);
+        expect(messages.map(({ revision }) => revision)).toEqual([
+          expectedRevision,
+          expectedRevision,
+          expectedRevision,
+        ]);
         const privateHand = messages[2]!;
         expect(privateHand.seat).toBe(reconnectSeat);
         expect(Array.isArray(privateHand.cards)).toBe(true);
@@ -66,10 +74,38 @@ describe("websocket reconnect snapshot recovery", () => {
 
       const spectator = new RecordingSocket();
       await service.sendSnapshot(spectator, roomId);
-      const spectatorTypes = spectator.messages.map(
-        (message) => (JSON.parse(message) as { type: string }).type,
+      const spectatorMessages = spectator.messages.map(
+        (message) => JSON.parse(message) as Record<string, unknown>,
       );
-      expect(spectatorTypes).toEqual(["room_state", "game_state"]);
+      expect(spectatorMessages.map(({ type }) => type)).toEqual([
+        "room_state",
+        "game_state",
+      ]);
+      expect(spectatorMessages.map(({ revision }) => revision)).toEqual([
+        expectedRevision,
+        expectedRevision,
+      ]);
     });
   }
+
+  it("does not advance the state revision for ping traffic", async () => {
+    const rooms = new RoomManager();
+    const service = new WebSocketService(rooms, new RoomSocketHub());
+    const roomId = "revision-ping-room";
+    rooms.create(roomId, 4);
+
+    const socket = new RecordingSocket();
+    const before = rooms.get(roomId).revision;
+    await service.handleText(
+      socket,
+      { roomId },
+      JSON.stringify({ type: "ping", nonce: "heartbeat-1" }),
+    );
+
+    expect(rooms.get(roomId).revision).toBe(before);
+    expect(JSON.parse(socket.messages[0]!) as Record<string, unknown>).toEqual({
+      type: "pong",
+      nonce: "heartbeat-1",
+    });
+  });
 });
