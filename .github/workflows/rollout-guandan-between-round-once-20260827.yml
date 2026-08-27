@@ -1,0 +1,83 @@
+name: Rollout Guandan between-round verified patch once
+
+on:
+  push:
+    branches: [rollout/guandan-between-round-join-reorder-20260827]
+    paths:
+      - .github/workflows/rollout-guandan-between-round-once-20260827.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Build verified five-file patch
+        run: |
+          git fetch origin feature/guandan-between-round-join-reorder-20260827
+          paths=(
+            backend/src/guandan_handler.rs
+            backend/src/guandan_serving_types.rs
+            frontend/src/GuandanStateProvider.tsx
+            frontend/src/GuandanTable.tsx
+            frontend/src/guandanProtocol.ts
+          )
+          git diff 413d83ea73ab64bcdbc6ea12617ea8b4457a82dd 8debdb9bc638ec6bcc7ba8bbdedf9bff365fee84 -- "${paths[@]}" > /tmp/between-round.patch
+          test -s /tmp/between-round.patch
+          actual="$(git diff --name-only 413d83ea73ab64bcdbc6ea12617ea8b4457a82dd 8debdb9bc638ec6bcc7ba8bbdedf9bff365fee84 -- "${paths[@]}" | sort)"
+          expected="$(printf '%s\n' "${paths[@]}" | sort)"
+          test "$actual" = "$expected"
+          git apply --check /tmp/between-round.patch
+          git apply /tmp/between-round.patch
+          changed="$(git diff --name-only | sort)"
+          test "$changed" = "$expected"
+          git diff --check
+      - name: Install frontend dependencies
+        run: yarn install
+        working-directory: ./frontend
+      - name: Install wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: latest
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - name: Build frontend
+        run: yarn build
+        working-directory: ./frontend
+      - name: Test frontend
+        run: yarn test
+        working-directory: ./frontend
+      - name: Lint frontend
+        run: yarn lint
+        working-directory: ./frontend
+      - name: Check frontend formatting
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier --check
+        working-directory: ./frontend
+      - name: Lint Rust code
+        run: cargo clippy
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Test Rust code
+        run: cargo test --all
+      - name: Commit only verified formal files
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs backend/src/guandan_serving_types.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts
+          test -z "$(git diff --name-only --cached | grep -v -E '^(backend/src/guandan_handler\.rs|backend/src/guandan_serving_types\.rs|frontend/src/GuandanStateProvider\.tsx|frontend/src/GuandanTable\.tsx|frontend/src/guandanProtocol\.ts)$' || true)"
+          git commit -m "feat(guandan): add verified between-round join and reorder"
+          git push origin HEAD:rollout/guandan-between-round-join-reorder-20260827
