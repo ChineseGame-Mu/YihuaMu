@@ -10,8 +10,6 @@ import {
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
-const card = (rank: Card extends infer _ ? never : never): never => rank;
-
 const suited = (
   rank: "3" | "4" | "8" | "9",
   suit: "clubs" | "hearts" = "clubs",
