@@ -1,0 +1,41 @@
+name: Yihua Game Long Soak
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_ms:
+        description: "Duration per concurrent soak run in milliseconds"
+        required: true
+        default: "10800000"
+      reconnect_every:
+        description: "Reconnect one player after this many game actions"
+        required: true
+        default: "10"
+
+jobs:
+  websocket-soak:
+    runs-on: ubuntu-latest
+    timeout-minutes: 210
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Verify Prettier 3.4.1
+        run: npm run prettier:version
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build standalone server
+        run: npm run build
+      - name: Long WebSocket lifecycle soak
+        env:
+          SOAK_DURATION_MS: ${{ inputs.duration_ms }}
+          SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
+          SOAK_RECONNECT_EVERY: ${{ inputs.reconnect_every }}
+        run: node scripts/soak-websocket.mjs
