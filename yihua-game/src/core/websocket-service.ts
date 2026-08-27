@@ -35,6 +35,16 @@ const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
     handCounts: managed.game.hands.map((hand) => hand.length),
     openingDraw: finalDraw.cards.map(({ card }) => card),
     openingDrawWinner: managed.game.openingDraw.winnerSeat,
+    leadingPlay:
+      managed.game.trick.leadingPlay === null
+        ? null
+        : {
+            seat: managed.game.trick.leadingPlay.seat,
+            cards: managed.game.trick.leadingPlay.cards,
+          },
+    passedSeats: managed.game.trick.passedSeats,
+    finishedSeats: managed.game.finishedSeats ?? [],
+    completedTricks: managed.game.trick.completedTricks,
   };
 };
 
