@@ -1,0 +1,37 @@
+name: Fix master Guandan CSS Prettier once
+
+on:
+  push:
+    branches: [fix/master-guandan-css-prettier-20260827]
+    paths:
+      - .github/workflows/fix-master-guandan-css-prettier-once-20260827.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format-css:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        run: yarn install --frozen-lockfile
+        working-directory: ./frontend
+      - name: Format only Guandan public player CSS
+        run: |
+          test "$(yarn --silent prettier --version)" = "3.4.1"
+          yarn prettier src/guandan-public-player-position.css --write
+        working-directory: ./frontend
+      - name: Verify only CSS changed
+        run: |
+          changed="$(git diff --name-only)"
+          test "$changed" = "frontend/src/guandan-public-player-position.css"
+          git diff --check
+      - name: Commit CSS formatting only
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/guandan-public-player-position.css
+          test "$(git diff --name-only --cached)" = "frontend/src/guandan-public-player-position.css"
+          git commit -m "style(guandan): format public player position css"
+          git push origin HEAD:fix/master-guandan-css-prettier-20260827
