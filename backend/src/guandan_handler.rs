@@ -764,6 +764,8 @@ pub async fn websocket(
                 let storage_sub = storage.clone();
                 let name_sub = name;
                 let key_sub = key.clone();
+                let room_sub = room.clone();
+                let mut announced_seat = seat;
                 subscription_task = Some(tokio::spawn(async move {
                     while sub.recv().await.is_some() {
                         if let Ok(state) = storage_sub.clone().get(key_sub.clone()).await {
@@ -772,6 +774,16 @@ pub async fn websocket(
                                 .player_names
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
+                            if seat_sub != announced_seat {
+                                send(
+                                    &tx_sub,
+                                    &GuandanServerMessage::Joined {
+                                        room: room_sub.clone(),
+                                        seat: seat_sub,
+                                    },
+                                );
+                                announced_seat = seat_sub;
+                            }
                             if state.game.started {
                                 send(
                                     &tx_sub,
