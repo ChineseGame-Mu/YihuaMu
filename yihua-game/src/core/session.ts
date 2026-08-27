@@ -12,7 +12,10 @@ type RoomStateServerMessage = Extract<
 >;
 type SessionClientMessage = Exclude<
   ClientMessage,
-  { readonly type: "play_cards" } | { readonly type: "pass_turn" }
+  | { readonly type: "start_game" }
+  | { readonly type: "next_round" }
+  | { readonly type: "play_cards" }
+  | { readonly type: "pass_turn" }
 >;
 
 export interface SessionResult {
@@ -63,7 +66,5 @@ export const applyClientMessage = (
         room,
         response: { type: "pong", nonce: message.nonce },
       };
-    case "start_game":
-      throw new Error("start_game is handled by the game state machine");
   }
 };
