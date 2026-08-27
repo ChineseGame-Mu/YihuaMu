@@ -7,10 +7,7 @@ import {
   type RandomSource,
 } from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
-import {
-  buildRoundPlacements,
-  type RoundPlacement,
-} from "./round-result.js";
+import { buildRoundPlacements, type RoundPlacement } from "./round-result.js";
 import {
   createTableConfig,
   teamForSeat,
