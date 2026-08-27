@@ -10,6 +10,10 @@ type RoomStateServerMessage = Extract<
   ServerMessage,
   { readonly type: "room_state" }
 >;
+type SessionClientMessage = Exclude<
+  ClientMessage,
+  { readonly type: "play_cards" } | { readonly type: "pass_turn" }
+>;
 
 export interface SessionResult {
   readonly room: RoomState;
@@ -32,7 +36,7 @@ export const roomStateMessage = (room: RoomState): RoomStateServerMessage => ({
 
 export const applyClientMessage = (
   room: RoomState,
-  message: ClientMessage,
+  message: SessionClientMessage,
 ): SessionResult => {
   switch (message.type) {
     case "join_room": {
