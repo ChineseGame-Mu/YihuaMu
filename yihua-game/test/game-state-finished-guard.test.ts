@@ -27,8 +27,6 @@ describe("finished-seat guards", () => {
     expect(() => playGameCards(state, 0, [card])).toThrow(
       "finished seat cannot play",
     );
-    expect(() => passGameTurn(state, 0)).toThrow(
-      "finished seat cannot pass",
-    );
+    expect(() => passGameTurn(state, 0)).toThrow("finished seat cannot pass");
   });
 });
