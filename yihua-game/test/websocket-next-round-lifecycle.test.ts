@@ -95,5 +95,23 @@ describe("websocket next-round lifecycle", () => {
       handIdsAfterFirstCommand,
     );
     expect(JSON.stringify(retried.game.openingDraw)).toBe(openingDrawBefore);
+
+    await runtime.websocket.handleText(
+      socket,
+      { roomId: "next-round-room" },
+      JSON.stringify({
+        type: "next_round",
+        expectedRevision: before.revision,
+        commandId: "stale-next-round",
+      }),
+    );
+
+    const afterStale = runtime.rooms.get("next-round-room");
+    expect(afterStale.revision).toBe(next.revision);
+    expect(afterStale.game.phase).toBe("playing");
+    expect(JSON.parse(socket.sent.at(-1) ?? "{}")).toMatchObject({
+      type: "error",
+      code: "stale_revision",
+    });
   });
 });
