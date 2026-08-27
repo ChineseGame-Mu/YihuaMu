@@ -8,17 +8,34 @@ import {
 import {
   createRoom,
   openLateJoinWindow,
-  roomIsReady,
-  setRobotCount,
   type RoomState,
 } from "./room.js";
-import { type SupportedPlayerCount } from "./table.js";
+import {
+  isSupportedPlayerCount,
+  SUPPORTED_PLAYER_COUNTS,
+  type SupportedPlayerCount,
+} from "./table.js";
 
 export interface ManagedRoom {
   readonly room: RoomState;
   readonly game: GameState;
   readonly revision: number;
 }
+
+const connectedHumans = (room: RoomState) =>
+  room.participants.filter(
+    ({ kind, connected }) => kind === "human" && connected,
+  );
+
+const activeCountForNextRound = (managed: ManagedRoom): SupportedPlayerCount => {
+  const currentCount = managed.game.config.playerCount;
+  const available = connectedHumans(managed.room).length;
+  const target = managed.room.config.playerCount;
+  const eligible = SUPPORTED_PLAYER_COUNTS.filter(
+    (count) => count >= currentCount && count <= available && count <= target,
+  );
+  return eligible.at(-1) ?? currentCount;
+};
 
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
@@ -89,33 +106,25 @@ export class RoomManager {
     if (managed.game.phase !== "lobby") {
       throw new Error("game has already started");
     }
-
-    const humans = managed.room.participants.filter(
-      ({ kind }) => kind === "human",
-    );
-    if (humans.length === 0) {
-      throw new Error("at least one human is required to start");
+    if (managed.room.participants.some(({ kind }) => kind !== "human")) {
+      throw new Error("this table requires human players only");
     }
-    if (humans.some(({ connected }) => !connected)) {
+    if (managed.room.participants.some(({ connected }) => !connected)) {
       throw new Error("all seated humans must be connected to start");
     }
 
-    const robotCount = managed.room.config.playerCount - humans.length;
-    const filledRoom = setRobotCount(managed.room, robotCount);
-    if (!roomIsReady(filledRoom)) {
-      throw new Error("room is not ready to start");
+    const humanCount = managed.room.participants.length;
+    if (!isSupportedPlayerCount(humanCount)) {
+      throw new Error("start requires 4, 6, 8, 10, 12, or 14 connected humans");
     }
-    const startedRoom = openLateJoinWindow(filledRoom, now());
+    if (humanCount > managed.room.config.playerCount) {
+      throw new Error("human count exceeds tonight's selected player count");
+    }
 
+    const startedRoom = openLateJoinWindow(managed.room, now());
     const next = {
       room: startedRoom,
-      game: startGame(
-        createLobbyState(
-          startedRoom.config.playerCount,
-          startedRoom.config.botCount,
-        ),
-        random,
-      ),
+      game: startGame(createLobbyState(humanCount, 0), random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
@@ -128,9 +137,17 @@ export class RoomManager {
       throw new Error("round is not complete");
     }
 
+    const activeCount = activeCountForNextRound(managed);
+    const completed =
+      activeCount === managed.game.config.playerCount
+        ? managed.game
+        : {
+            ...managed.game,
+            config: { ...managed.game.config, playerCount: activeCount },
+          };
     const next = {
       ...managed,
-      game: startNextRound(managed.game, random),
+      game: startNextRound(completed, random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
