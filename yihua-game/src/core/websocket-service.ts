@@ -17,6 +17,11 @@ export interface ConnectionContext {
   readonly playerId?: string;
 }
 
+const versionedRoomStateMessage = (managed: ManagedRoom): ServerMessage => ({
+  ...roomStateMessage(managed.room),
+  revision: managed.revision,
+});
+
 const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
   if (managed.game.phase === "lobby" || managed.game.phase === "opening-draw") {
     return null;
@@ -30,6 +35,7 @@ const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
   return {
     type: "game_state",
     roomId: managed.room.roomId,
+    revision: managed.revision,
     phase: managed.game.phase,
     currentTurn: managed.game.currentTurn,
     handCounts: managed.game.hands.map((hand) => hand.length),
@@ -67,6 +73,7 @@ const privateHandMessage = (
   return {
     type: "private_hand",
     roomId: managed.room.roomId,
+    revision: managed.revision,
     seat: participant.seat,
     cards: hand.map(({ id, card }) => ({ id, card })),
   };
@@ -96,6 +103,11 @@ export class WebSocketService {
       }
 
       const result = applyClientMessage(managed.room, message);
+      if (result.response.type === "pong") {
+        await socket.send(encodeServerMessage(result.response));
+        return managed;
+      }
+
       const next = this.rooms.set(context.roomId, {
         ...managed,
         room: result.room,
@@ -104,7 +116,7 @@ export class WebSocketService {
       if (result.response.type === "room_state") {
         await this.sockets.broadcast(
           context.roomId,
-          encodeServerMessage(result.response),
+          encodeServerMessage(versionedRoomStateMessage(next)),
         );
       } else {
         await socket.send(encodeServerMessage(result.response));
@@ -127,7 +139,7 @@ export class WebSocketService {
     playerId?: string,
   ): Promise<void> {
     const managed = this.rooms.get(roomId);
-    await socket.send(encodeServerMessage(roomStateMessage(managed.room)));
+    await socket.send(encodeServerMessage(versionedRoomStateMessage(managed)));
 
     const publicGame = gameStateMessage(managed);
     if (publicGame) {
@@ -145,7 +157,7 @@ export class WebSocketService {
   async broadcastRoomState(managed: ManagedRoom): Promise<void> {
     await this.sockets.broadcast(
       managed.room.roomId,
-      encodeServerMessage(roomStateMessage(managed.room)),
+      encodeServerMessage(versionedRoomStateMessage(managed)),
     );
   }
 
