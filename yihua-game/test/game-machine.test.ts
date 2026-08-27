@@ -7,7 +7,11 @@ const fixedRandom = () => 0.25;
 describe("explicit table game state machine", () => {
   it("keeps opening draw independent from dealing and starts with its winner", () => {
     const lobby = createLobbyState(4, 0);
-    const opening = transitionGame(lobby, { type: "begin-opening-draw" }, fixedRandom);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
     expect(opening.phase).toBe("opening-draw");
     if (opening.phase !== "opening-draw") {
       throw new Error("opening phase expected");
@@ -41,7 +45,11 @@ describe("explicit table game state machine", () => {
 
   it("moves round-complete back to playing with a fresh 27-card deal", () => {
     const lobby = createLobbyState(4, 0);
-    const opening = transitionGame(lobby, { type: "begin-opening-draw" }, fixedRandom);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
     const playing = transitionGame(
       opening,
       { type: "deal-after-opening-draw" },
