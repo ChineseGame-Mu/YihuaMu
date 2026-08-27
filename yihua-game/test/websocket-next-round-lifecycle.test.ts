@@ -37,7 +37,10 @@ describe("websocket next-round lifecycle", () => {
       });
     }
 
-    const started = runtime.rooms.start("next-round-room", deterministicRandom());
+    const started = runtime.rooms.start(
+      "next-round-room",
+      deterministicRandom(),
+    );
     expect(started.game.phase).toBe("playing");
     if (started.game.phase !== "playing") return;
 
@@ -70,7 +73,9 @@ describe("websocket next-round lifecycle", () => {
     expect(next.game.phase).toBe("playing");
     if (next.game.phase !== "playing") return;
     expect(next.game.currentTurn).toBe(finishOrder[0]);
-    expect(next.game.hands.map((hand) => hand.length)).toEqual([27, 27, 27, 27]);
+    expect(next.game.hands.map((hand) => hand.length)).toEqual([
+      27, 27, 27, 27,
+    ]);
     expect(JSON.stringify(next.game.openingDraw)).toBe(openingDrawBefore);
 
     const handIdsAfterFirstCommand = next.game.hands.map((hand) =>
