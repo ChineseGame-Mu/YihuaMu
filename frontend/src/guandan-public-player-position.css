@@ -24,18 +24,12 @@ html
   white-space: nowrap !important;
 }
 
-html
-  body
-  .guandan-table:has(.guandan-public-zone)
-  .guandan-public-player-back {
+html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-back {
   flex: 0 0 auto !important;
 }
 
 /* Keep the first-game draw/start controls on the left so the participant row never covers them. */
-html
-  body
-  .guandan-table:has(.guandan-public-zone)
-  > .guandan-start-panel {
+html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
   position: absolute !important;
   z-index: 33 !important;
   top: 86px !important;
@@ -55,10 +49,7 @@ html
     max-width: 68% !important;
   }
 
-  html
-    body
-    .guandan-table:has(.guandan-public-zone)
-    > .guandan-start-panel {
+  html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
     width: 30% !important;
     min-width: 220px !important;
   }
