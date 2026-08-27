@@ -116,7 +116,11 @@ describe("combination-hand automation", () => {
         finishedSeats: [],
       };
 
-      const next = transitionGame(state, { type: "play-cards", seat: 0, cards });
+      const next = transitionGame(state, {
+        type: "play-cards",
+        seat: 0,
+        cards,
+      });
       expect(next.phase).toBe("playing");
       if (next.phase !== "playing")
         throw new Error("combination play unexpectedly completed the round");
