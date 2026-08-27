@@ -32,9 +32,7 @@ const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
   }
 
   const finalDraw = managed.game.openingDraw.attempts.at(-1);
-  if (!finalDraw) {
-    throw new Error("opening draw is missing");
-  }
+  if (!finalDraw) throw new Error("opening draw is missing");
 
   return {
     type: "game_state",
@@ -94,21 +92,18 @@ const commandFingerprint = (message: MutatingMessage): string => {
         seat: message.seat,
       });
     case "leave_room":
-      return JSON.stringify({
-        type: message.type,
-        playerId: message.playerId,
-      });
+      return JSON.stringify({ type: message.type, playerId: message.playerId });
     case "set_robots":
       return JSON.stringify({ type: message.type, count: message.count });
     case "start_game":
+    case "next_round":
+    case "pass_turn":
       return JSON.stringify({ type: message.type });
     case "play_cards":
       return JSON.stringify({
         type: message.type,
         cardIds: [...message.cardIds].sort(),
       });
-    case "pass_turn":
-      return JSON.stringify({ type: message.type });
   }
 };
 
@@ -136,8 +131,7 @@ export class WebSocketService {
 
   private rememberCommand(roomId: string, message: MutatingMessage): void {
     if (message.commandId === undefined) return;
-    const commands =
-      this.processedCommands.get(roomId) ?? new Map<string, string>();
+    const commands = this.processedCommands.get(roomId) ?? new Map<string, string>();
     commands.set(message.commandId, commandFingerprint(message));
     while (commands.size > 512) {
       const oldest = commands.keys().next().value as string | undefined;
@@ -154,9 +148,7 @@ export class WebSocketService {
     const participant = managed.room.participants.find(
       ({ id, kind }) => id === context.playerId && kind === "human",
     );
-    if (!participant) {
-      throw new Error("connection player is not seated in the room");
-    }
+    if (!participant) throw new Error("connection player is not seated in the room");
     return participant.seat;
   }
 
@@ -165,24 +157,23 @@ export class WebSocketService {
     connectionPlayerId: string,
     messagePlayerId: string,
   ): Promise<void> {
-    const response: ServerMessage = {
-      type: "error",
-      code: "player_identity_mismatch",
-      message: `connection player ${connectionPlayerId} cannot act as ${messagePlayerId}`,
-    };
-    await socket.send(encodeServerMessage(response));
+    await socket.send(
+      encodeServerMessage({
+        type: "error",
+        code: "player_identity_mismatch",
+        message: `connection player ${connectionPlayerId} cannot act as ${messagePlayerId}`,
+      }),
+    );
   }
 
-  private async rejectCommandIdConflict(
-    socket: TextSocket,
-    commandId: string,
-  ): Promise<void> {
-    const response: ServerMessage = {
-      type: "error",
-      code: "command_id_conflict",
-      message: `command id ${commandId} was already used for a different command`,
-    };
-    await socket.send(encodeServerMessage(response));
+  private async rejectCommandIdConflict(socket: TextSocket, commandId: string): Promise<void> {
+    await socket.send(
+      encodeServerMessage({
+        type: "error",
+        code: "command_id_conflict",
+        message: `command id ${commandId} was already used for a different command`,
+      }),
+    );
   }
 
   private async rejectStaleRevision(
@@ -190,12 +181,13 @@ export class WebSocketService {
     expectedRevision: number,
     actualRevision: number,
   ): Promise<void> {
-    const response: ServerMessage = {
-      type: "error",
-      code: "stale_revision",
-      message: `expected revision ${expectedRevision}, current revision is ${actualRevision}`,
-    };
-    await socket.send(encodeServerMessage(response));
+    await socket.send(
+      encodeServerMessage({
+        type: "error",
+        code: "stale_revision",
+        message: `expected revision ${expectedRevision}, current revision is ${actualRevision}`,
+      }),
+    );
   }
 
   private async guardMutation(
@@ -210,19 +202,12 @@ export class WebSocketService {
       targetPlayerId !== undefined &&
       targetPlayerId !== context.playerId
     ) {
-      await this.rejectPlayerIdentityMismatch(
-        socket,
-        context.playerId,
-        targetPlayerId,
-      );
+      await this.rejectPlayerIdentityMismatch(socket, context.playerId, targetPlayerId);
       return false;
     }
 
     if (message.commandId !== undefined) {
-      const processed = this.processedFingerprint(
-        context.roomId,
-        message.commandId,
-      );
+      const processed = this.processedFingerprint(context.roomId, message.commandId);
       if (processed !== undefined) {
         if (processed !== commandFingerprint(message)) {
           await this.rejectCommandIdConflict(socket, message.commandId);
@@ -237,11 +222,7 @@ export class WebSocketService {
       message.expectedRevision !== undefined &&
       message.expectedRevision !== managed.revision
     ) {
-      await this.rejectStaleRevision(
-        socket,
-        message.expectedRevision,
-        managed.revision,
-      );
+      await this.rejectStaleRevision(socket, message.expectedRevision, managed.revision);
       return false;
     }
 
@@ -263,14 +244,20 @@ export class WebSocketService {
         return managed;
       }
 
-      if (!(await this.guardMutation(socket, context, managed, message))) {
-        return managed;
-      }
+      if (!(await this.guardMutation(socket, context, managed, message))) return managed;
 
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
         this.rememberCommand(context.roomId, message);
         await this.broadcastRoomState(next);
+        await this.broadcastGameState(next);
+        await this.sendPrivateHands(next);
+        return next;
+      }
+
+      if (message.type === "next_round") {
+        const next = this.rooms.nextRound(context.roomId);
+        this.rememberCommand(context.roomId, message);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
         return next;
@@ -294,10 +281,7 @@ export class WebSocketService {
       }
 
       const result = applyClientMessage(managed.room, message);
-      const next = this.rooms.set(context.roomId, {
-        ...managed,
-        room: result.room,
-      });
+      const next = this.rooms.set(context.roomId, { ...managed, room: result.room });
       this.rememberCommand(context.roomId, message);
 
       if (result.response.type === "room_state") {
@@ -310,34 +294,25 @@ export class WebSocketService {
       }
       return next;
     } catch (error) {
-      const response: ServerMessage = {
-        type: "error",
-        code: "invalid_message",
-        message: error instanceof Error ? error.message : "unknown error",
-      };
-      await socket.send(encodeServerMessage(response));
+      await socket.send(
+        encodeServerMessage({
+          type: "error",
+          code: "invalid_message",
+          message: error instanceof Error ? error.message : "unknown error",
+        }),
+      );
       return this.rooms.get(context.roomId);
     }
   }
 
-  async sendSnapshot(
-    socket: TextSocket,
-    roomId: string,
-    playerId?: string,
-  ): Promise<void> {
+  async sendSnapshot(socket: TextSocket, roomId: string, playerId?: string): Promise<void> {
     const managed = this.rooms.get(roomId);
     await socket.send(encodeServerMessage(versionedRoomStateMessage(managed)));
-
     const publicGame = gameStateMessage(managed);
-    if (publicGame) {
-      await socket.send(encodeServerMessage(publicGame));
-    }
-
+    if (publicGame) await socket.send(encodeServerMessage(publicGame));
     if (playerId !== undefined) {
       const privateHand = privateHandMessage(managed, playerId);
-      if (privateHand) {
-        await socket.send(encodeServerMessage(privateHand));
-      }
+      if (privateHand) await socket.send(encodeServerMessage(privateHand));
     }
   }
 
@@ -351,10 +326,7 @@ export class WebSocketService {
   async broadcastGameState(managed: ManagedRoom): Promise<void> {
     const message = gameStateMessage(managed);
     if (!message) return;
-    await this.sockets.broadcast(
-      managed.room.roomId,
-      encodeServerMessage(message),
-    );
+    await this.sockets.broadcast(managed.room.roomId, encodeServerMessage(message));
   }
 
   async sendPrivateHands(managed: ManagedRoom): Promise<void> {
