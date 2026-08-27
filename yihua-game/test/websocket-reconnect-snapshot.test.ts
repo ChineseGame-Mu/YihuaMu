@@ -22,16 +22,22 @@ describe("websocket reconnect snapshot recovery", () => {
 
     rooms.create(roomId, 4);
     const playerIds = ["p0", "p1", "p2", "p3"];
-    for (const playerId of playerIds) {
+    for (const [seat, playerId] of playerIds.entries()) {
       await service.handleText(
         new RecordingSocket(),
-        { roomId },
-        JSON.stringify({ type: "join", playerId }),
+        { roomId, playerId },
+        JSON.stringify({
+          type: "join_room",
+          roomId,
+          playerId,
+          name: `Player ${seat + 1}`,
+          seat,
+        }),
       );
     }
     await service.handleText(
       new RecordingSocket(),
-      { roomId },
+      { roomId, playerId: "p0" },
       JSON.stringify({ type: "start_game" }),
     );
 
