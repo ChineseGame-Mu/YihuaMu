@@ -1,0 +1,40 @@
+name: QA Guandan between-round frontend once
+
+on:
+  push:
+    branches: [feature/guandan-between-round-join-reorder-20260827]
+    paths:
+      - .github/workflows/qa-guandan-between-round-frontend-once-20260827.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply guarded frontend and seat-sync patch
+        run: python .github/scripts/patch_guandan_between_round_frontend_20260827.py
+      - name: Install frontend dependencies
+        run: yarn --cwd frontend install --frozen-lockfile
+      - name: Format touched frontend files
+        run: yarn --cwd frontend prettier --write src/guandanProtocol.ts src/GuandanStateProvider.tsx src/GuandanTable.tsx
+      - name: Build frontend
+        run: yarn --cwd frontend build
+      - name: Test frontend
+        run: yarn --cwd frontend test --runInBand
+      - name: Lint frontend
+        run: yarn --cwd frontend lint
+      - name: Check touched frontend formatting
+        run: yarn --cwd frontend prettier --check src/guandanProtocol.ts src/GuandanStateProvider.tsx src/GuandanTable.tsx
+      - name: Format Rust
+        run: cargo fmt --all -- --check
+      - name: Test Guandan backend
+        run: cargo test -p shengji guandan -- --nocapture
+      - name: Verify diff scope
+        run: |
+          git diff --check
+          git diff --name-only
+          test "$(git diff --name-only | sort | tr '\n' ' ')" = "backend/src/guandan_handler.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts "
