@@ -49,12 +49,6 @@ const consecutiveHighRank = (ranks: readonly Rank[]): Rank | null => {
   );
   if (unique.length !== ranks.length) return null;
 
-  const indexes = unique.map(rankIndex);
-  const consecutive = indexes.every(
-    (value, index) => index === 0 || value === indexes[index - 1]! + 1,
-  );
-  if (consecutive) return unique.at(-1)!;
-
   if (
     unique.length === 5 &&
     unique.includes("A") &&
@@ -66,7 +60,13 @@ const consecutiveHighRank = (ranks: readonly Rank[]): Rank | null => {
     return "5";
   }
 
-  return null;
+  if (unique.includes("2")) return null;
+
+  const indexes = unique.map(rankIndex);
+  const consecutive = indexes.every(
+    (value, index) => index === 0 || value === indexes[index - 1]! + 1,
+  );
+  return consecutive ? unique.at(-1)! : null;
 };
 
 const repeatedSequenceHighRank = (
