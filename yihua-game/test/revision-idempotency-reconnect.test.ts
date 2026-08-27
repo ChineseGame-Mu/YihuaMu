@@ -6,6 +6,7 @@ import {
   createRoom,
   disconnectHuman,
   reconnectHuman,
+  setRobotCount,
 } from "../src/core/room.js";
 import { RoomManager } from "../src/core/room-manager.js";
 import { RoomSocketHub } from "../src/core/room-socket-hub.js";
@@ -52,6 +53,14 @@ class FakeUpgradedConnection implements UpgradedConnection {
     await this.closeHandler?.();
   }
 }
+
+const deterministicRandom = (): (() => number) => {
+  let state = 0x12345678;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+};
 
 describe("command concurrency guards", () => {
   it("parses revision and command id metadata", () => {
@@ -244,5 +253,70 @@ describe("4–14 player reconnect stress", () => {
     expect(
       runtime.rooms.get("multi-socket").room.participants[0]?.connected,
     ).toBe(true);
+  });
+
+  it("preserves active game state and sends one revision on reconnect", async () => {
+    const runtime = createServerRuntime();
+    const created = runtime.rooms.create("playing-reconnect", 4);
+    const withHuman = runtime.rooms.set("playing-reconnect", {
+      ...created,
+      room: addHuman(created.room, {
+        id: "p1",
+        name: "玩家1",
+        seat: 0,
+      }),
+    });
+    runtime.rooms.set("playing-reconnect", {
+      ...withHuman,
+      room: setRobotCount(withHuman.room, 3),
+    });
+    const started = runtime.rooms.start(
+      "playing-reconnect",
+      deterministicRandom(),
+    );
+    expect(started.game.phase).toBe("playing");
+    if (started.game.phase !== "playing") return;
+
+    const baseline = {
+      currentTurn: started.game.currentTurn,
+      handCounts: started.game.hands.map((hand) => hand.length),
+      completedTricks: started.game.trick.completedTricks,
+    };
+
+    const first = new FakeUpgradedConnection({
+      roomId: "playing-reconnect",
+      playerId: "p1",
+    });
+    await attachUpgradedConnection(runtime, first);
+    await first.triggerClose();
+
+    const disconnected = runtime.rooms.get("playing-reconnect");
+    expect(disconnected.game.phase).toBe("playing");
+    if (disconnected.game.phase !== "playing") return;
+    expect(disconnected.game.currentTurn).toBe(baseline.currentTurn);
+    expect(disconnected.game.hands.map((hand) => hand.length)).toEqual(
+      baseline.handCounts,
+    );
+    expect(disconnected.game.trick.completedTricks).toBe(
+      baseline.completedTricks,
+    );
+
+    const reconnected = new FakeUpgradedConnection({
+      roomId: "playing-reconnect",
+      playerId: "p1",
+    });
+    await attachUpgradedConnection(runtime, reconnected);
+
+    const current = runtime.rooms.get("playing-reconnect");
+    const snapshots = reconnected.socket.sent.map((text) => JSON.parse(text));
+    const roomState = snapshots.find(({ type }) => type === "room_state");
+    const gameState = snapshots.find(({ type }) => type === "game_state");
+    const privateHand = snapshots.find(({ type }) => type === "private_hand");
+
+    expect(roomState?.revision).toBe(current.revision);
+    expect(gameState?.revision).toBe(current.revision);
+    expect(privateHand?.revision).toBe(current.revision);
+    expect(gameState).toMatchObject(baseline);
+    expect(privateHand?.cards).toHaveLength(baseline.handCounts[0]);
   });
 });
