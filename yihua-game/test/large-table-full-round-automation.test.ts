@@ -37,7 +37,8 @@ const playToCompletion = (
 ): { completed: RoundCompleteState; actions: number } => {
   let state: PlayingState | RoundCompleteState = initial;
   let actions = 0;
-  const maximumActions = initial.config.playerCount * 27 * initial.config.playerCount * 2;
+  const maximumActions =
+    initial.config.playerCount * 27 * initial.config.playerCount * 2;
 
   while (state.phase === "playing") {
     if (actions >= maximumActions) {
@@ -53,7 +54,8 @@ const playToCompletion = (
       throw new Error("current turn points to a finished seat");
     }
 
-    const leadingHand: ClassifiedHand | null = state.trick.leadingPlay?.hand ?? null;
+    const leadingHand: ClassifiedHand | null =
+      state.trick.leadingPlay?.hand ?? null;
     const playable: DeckCard | undefined =
       leadingHand === null
         ? hand[0]
@@ -80,7 +82,9 @@ describe.each(counts)("%i-player full-round automation", (playerCount) => {
     expect(new Set(first.completed.finishedSeats).size).toBe(playerCount);
     expect(first.completed.placements).toHaveLength(playerCount);
     expect(first.completed.winnerSeat).toBe(first.completed.finishedSeats[0]);
-    expect(first.completed.outcome?.firstPlaceSeat).toBe(first.completed.winnerSeat);
+    expect(first.completed.outcome?.firstPlaceSeat).toBe(
+      first.completed.winnerSeat,
+    );
     expect(first.completed.outcome?.lastPlaceSeat).toBe(
       first.completed.finishedSeats[playerCount - 1],
     );
