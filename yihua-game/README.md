@@ -25,6 +25,8 @@ Implementation code in this directory must be written from behavioral requiremen
 
 The independent core now includes deck generation, shuffling, exact 27-card dealing, an explicit lobby-to-opening-draw-to-playing transition, starter selection, table state, room management, protocol handling, an HTTP router, a standalone Node server, native WebSocket transport, multi-client disconnect/reconnect synchronization, four-player network game start, public opening/current-turn state, and private 27-card hand delivery to each human player.
 
+Reconnect validation now includes versioned room/game/private snapshots, mid-trick recovery checks, stale-revision rejection, restart recovery, hard-crash checkpoint recovery, and a WebSocket soak harness that repeatedly disconnects and reconnects players while auditing public and private state consistency.
+
 ## Migration principle
 
 1. Build independent core library.
