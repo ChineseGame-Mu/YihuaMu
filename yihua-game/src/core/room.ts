@@ -15,6 +15,7 @@ export interface Participant {
   readonly kind: ParticipantKind;
   readonly seat: number;
   readonly connected: boolean;
+  readonly readyForNextRound?: boolean;
 }
 
 export interface RoomState {
@@ -133,8 +134,28 @@ export const addHuman = (
         ...human,
         kind: "human",
         connected: true,
+        readyForNextRound: false,
       },
     ],
+  };
+};
+
+export const setReadyForNextRound = (
+  room: RoomState,
+  id: string,
+  ready: boolean,
+): RoomState => {
+  const participant = room.participants.find(
+    ({ id: participantId, kind }) => participantId === id && kind === "human",
+  );
+  if (!participant) {
+    throw new Error(`human participant ${id} does not exist`);
+  }
+  return {
+    ...room,
+    participants: room.participants.map((current) =>
+      current.id === id ? { ...current, readyForNextRound: ready } : current,
+    ),
   };
 };
 
@@ -163,7 +184,12 @@ export const replaceRobotWithHuman = (
     ),
     participants: room.participants.map((participant) =>
       participant.id === robot.id
-        ? { ...human, kind: "human", connected: true }
+        ? {
+            ...human,
+            kind: "human",
+            connected: true,
+            readyForNextRound: false,
+          }
         : participant,
     ),
   };
