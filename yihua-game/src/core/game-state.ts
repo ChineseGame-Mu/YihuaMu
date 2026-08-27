@@ -233,7 +233,8 @@ export const playGameCards = (
     rotationSeats.length === 0 &&
     activeSeats.length > 0
   ) {
-    const catchSeat = catchLeadSeat(state, seat, activeSeats) ?? activeSeats[0]!;
+    const catchSeat =
+      catchLeadSeat(state, seat, activeSeats) ?? activeSeats[0]!;
     trick = {
       ...trick,
       leaderSeat: catchSeat,
