@@ -116,11 +116,17 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
     });
   }
 
+  private canWrite(): boolean {
+    return !this.rawSocket.destroyed && !this.rawSocket.writableEnded;
+  }
+
   send(text: string): void {
+    if (!this.canWrite()) return;
     this.rawSocket.write(encodeServerFrame(0x1, Buffer.from(text, "utf8")));
   }
 
   close(code = 1000, reason = ""): void {
+    if (!this.canWrite()) return;
     const reasonBytes = Buffer.from(reason, "utf8");
     const payload = Buffer.alloc(2 + reasonBytes.length);
     payload.writeUInt16BE(code, 0);
@@ -161,11 +167,15 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
       return;
     }
     if (opcode === 0x8) {
-      this.rawSocket.end(encodeServerFrame(0x8, payload));
+      if (this.canWrite()) {
+        this.rawSocket.end(encodeServerFrame(0x8, payload));
+      }
       return;
     }
     if (opcode === 0x9) {
-      this.rawSocket.write(encodeServerFrame(0x0a, payload));
+      if (this.canWrite()) {
+        this.rawSocket.write(encodeServerFrame(0x0a, payload));
+      }
       return;
     }
     if (opcode === 0x0a) return;
