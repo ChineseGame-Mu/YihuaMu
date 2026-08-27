@@ -43,6 +43,27 @@ describe("explicit table game state machine", () => {
     ).toThrow("cannot pass-turn while game is lobby");
   });
 
+  it("rejects repeated opening draw and premature next-round transitions", () => {
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
+    expect(() =>
+      transitionGame(opening, { type: "begin-opening-draw" }, fixedRandom),
+    ).toThrow("cannot begin-opening-draw while game is opening-draw");
+
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      fixedRandom,
+    );
+    expect(() =>
+      transitionGame(playing, { type: "next-round" }, fixedRandom),
+    ).toThrow("cannot next-round while game is playing");
+  });
+
   it("moves round-complete back to playing with a fresh 27-card deal", () => {
     const lobby = createLobbyState(4, 0);
     const opening = transitionGame(
