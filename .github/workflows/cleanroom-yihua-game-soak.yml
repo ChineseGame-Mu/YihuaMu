@@ -1,6 +1,11 @@
 name: Yihua Game Long Soak
 
 on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - ".github/workflows/cleanroom-yihua-game-soak.yml"
   workflow_dispatch:
     inputs:
       duration_ms:
@@ -35,7 +40,7 @@ jobs:
         run: npm run build
       - name: Long WebSocket lifecycle soak
         env:
-          SOAK_DURATION_MS: ${{ inputs.duration_ms }}
+          SOAK_DURATION_MS: ${{ inputs.duration_ms || '10800000' }}
           SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
-          SOAK_RECONNECT_EVERY: ${{ inputs.reconnect_every }}
+          SOAK_RECONNECT_EVERY: ${{ inputs.reconnect_every || '10' }}
         run: node scripts/soak-websocket.mjs
