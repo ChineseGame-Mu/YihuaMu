@@ -12,7 +12,10 @@ import { createTrickState } from "../src/core/trick-state.js";
 
 const card = (rank: Card extends infer _ ? never : never): never => rank;
 
-const suited = (rank: "3" | "4" | "8" | "9", suit: "clubs" | "hearts" = "clubs"): Card => ({
+const suited = (
+  rank: "3" | "4" | "8" | "9",
+  suit: "clubs" | "hearts" = "clubs",
+): Card => ({
   kind: "suited",
   rank,
   suit,
@@ -39,10 +42,7 @@ describe("four-player catch through next round", () => {
         [deckCard("s0-8", seat0Card)],
         [deckCard("s1-3", seat1Card)],
         [deckCard("s2-9", seat2Card)],
-        [
-          deckCard("s3-4c", seat3Pair[0]),
-          deckCard("s3-4h", seat3Pair[1]),
-        ],
+        [deckCard("s3-4c", seat3Pair[0]), deckCard("s3-4h", seat3Pair[1])],
       ],
       currentTurn: 1,
       trick: createTrickState(4, 1),
