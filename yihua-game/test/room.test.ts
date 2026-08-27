@@ -85,9 +85,9 @@ describe("independent room state", () => {
     const startedAt = 1_000_000;
     const lobbyRoom = createRoom("late-room", 4);
     expect(lobbyRoom.joinClosesAt).toBeUndefined();
-    expect(roomAcceptsLateJoin(lobbyRoom, startedAt + 10 * LATE_JOIN_WINDOW_MS)).toBe(
-      true,
-    );
+    expect(
+      roomAcceptsLateJoin(lobbyRoom, startedAt + 10 * LATE_JOIN_WINDOW_MS),
+    ).toBe(true);
 
     const room = openLateJoinWindow(lobbyRoom, startedAt);
     expect(room.joinClosesAt).toBe(startedAt + LATE_JOIN_WINDOW_MS);
