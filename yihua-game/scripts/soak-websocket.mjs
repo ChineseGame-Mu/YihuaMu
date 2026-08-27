@@ -4,6 +4,7 @@ import { SUPPORTED_PLAYER_COUNTS } from "../dist/core/table.js";
 import { attachUpgradedConnection } from "../dist/core/websocket-upgrade.js";
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+const SOCKET_HISTORY_LIMIT = 128;
 const durationMs = Number(process.env.SOAK_DURATION_MS ?? THREE_HOURS_MS);
 const actionLimit = Number(process.env.SOAK_ACTION_LIMIT ?? 10000);
 const reconnectEvery = Number(process.env.SOAK_RECONNECT_EVERY ?? 75);
@@ -19,7 +20,10 @@ class CountingSocket {
 
   send(text) {
     this.sentCount += 1;
-    this.messages.push(text);
+    this.messages.push({ sequence: this.sentCount, text });
+    if (this.messages.length > SOCKET_HISTORY_LIMIT) {
+      this.messages.splice(0, this.messages.length - SOCKET_HISTORY_LIMIT);
+    }
   }
 }
 
@@ -122,8 +126,11 @@ const attachPlayer = async (table, seat) => {
   return connection;
 };
 
+const parsedMessages = (connection) =>
+  connection.socket.messages.map(({ text }) => JSON.parse(text));
+
 const auditReconnectSnapshot = (table, seat, connection, managed) => {
-  const messages = connection.socket.messages.map((text) => JSON.parse(text));
+  const messages = parsedMessages(connection);
   const roomState = messages.find(({ type }) => type === "room_state");
   const gameState = messages.find(({ type }) => type === "game_state");
   const privateHand = messages.find(({ type }) => type === "private_hand");
@@ -249,7 +256,7 @@ const reconnectOnePlayer = async (table) => {
       throw new Error(
         `${table.roomId}: active connection missing after reconnect`,
       );
-    const messagesBefore = activeConnection.socket.messages.length;
+    const messagesBefore = activeConnection.socket.sentCount;
     table.commandSequence += 1;
     await activeConnection.receive(
       JSON.stringify({
@@ -262,8 +269,8 @@ const reconnectOnePlayer = async (table) => {
     if (afterStale.revision !== afterReconnect.revision)
       throw new Error(`${table.roomId}: stale command mutated room revision`);
     const newMessages = activeConnection.socket.messages
-      .slice(messagesBefore)
-      .map((text) => JSON.parse(text));
+      .filter(({ sequence }) => sequence > messagesBefore)
+      .map(({ text }) => JSON.parse(text));
     if (
       !newMessages.some(
         ({ type, code }) => type === "error" && code === "stale_revision",
