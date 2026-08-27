@@ -180,7 +180,8 @@ try {
   if (
     restoredGame.type !== "game_state" ||
     restoredGame.currentTurn !== expectedTurn ||
-    JSON.stringify(restoredGame.handCounts) !== JSON.stringify(expectedCounts) ||
+    JSON.stringify(restoredGame.handCounts) !==
+      JSON.stringify(expectedCounts) ||
     restoredGame.leadingPlay?.cards?.[0]?.id !== card.id
   ) {
     throw new Error(
