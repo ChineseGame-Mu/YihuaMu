@@ -19,7 +19,9 @@ import { createTrickState } from "../src/core/trick-state.js";
 
 const counts: readonly SupportedPlayerCount[] = [6, 8, 10, 12, 14];
 
-const createInitialState = (playerCount: SupportedPlayerCount): PlayingState => ({
+const createInitialState = (
+  playerCount: SupportedPlayerCount,
+): PlayingState => ({
   phase: "playing",
   config: createTableConfig(playerCount, 0),
   openingDraw: { attempts: [], winnerSeat: 0 },
@@ -31,7 +33,8 @@ const createInitialState = (playerCount: SupportedPlayerCount): PlayingState => 
 
 describe.each(counts)("%i-player full-round automation", (playerCount) => {
   it("plays the whole table to complete placements without deadlock", () => {
-    let state: PlayingState | RoundCompleteState = createInitialState(playerCount);
+    let state: PlayingState | RoundCompleteState =
+      createInitialState(playerCount);
     let actions = 0;
     const maximumActions = playerCount * 27 * playerCount * 2;
 
