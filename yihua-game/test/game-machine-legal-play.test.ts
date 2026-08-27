@@ -26,7 +26,9 @@ const stateWithHands = (
   finishedSeats: [],
 });
 
-const expectPlaying = (state: ReturnType<typeof transitionGame>): PlayingState => {
+const expectPlaying = (
+  state: ReturnType<typeof transitionGame>,
+): PlayingState => {
   expect(state.phase).toBe("playing");
   if (state.phase !== "playing") throw new Error("expected playing state");
   return state;
