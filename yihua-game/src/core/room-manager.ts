@@ -5,11 +5,7 @@ import {
   startNextRound,
   type GameState,
 } from "./game-state.js";
-import {
-  createRoom,
-  openLateJoinWindow,
-  type RoomState,
-} from "./room.js";
+import { createRoom, openLateJoinWindow, type RoomState } from "./room.js";
 import {
   isSupportedPlayerCount,
   SUPPORTED_PLAYER_COUNTS,
@@ -27,7 +23,9 @@ const connectedHumans = (room: RoomState) =>
     ({ kind, connected }) => kind === "human" && connected,
   );
 
-const activeCountForNextRound = (managed: ManagedRoom): SupportedPlayerCount => {
+const activeCountForNextRound = (
+  managed: ManagedRoom,
+): SupportedPlayerCount => {
   const currentCount = managed.game.config.playerCount;
   const available = connectedHumans(managed.room).length;
   const target = managed.room.config.playerCount;
