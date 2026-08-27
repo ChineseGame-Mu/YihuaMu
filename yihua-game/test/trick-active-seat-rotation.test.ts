@@ -6,7 +6,11 @@ import {
   playCards,
 } from "../src/core/trick-state.js";
 
-const suited = (rank: number): Card => ({ kind: "suited", suit: "clubs", rank });
+const suited = (rank: number): Card => ({
+  kind: "suited",
+  suit: "clubs",
+  rank,
+});
 
 describe("active-seat trick rotation", () => {
   it("skips seats that are no longer active", () => {
