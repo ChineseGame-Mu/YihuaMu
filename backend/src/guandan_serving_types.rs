@@ -41,6 +41,8 @@ pub struct GuandanGameState {
     #[serde(default = "default_card_count_alert_threshold")]
     pub card_count_alert_threshold: usize,
     pub player_names: Vec<String>,
+    #[serde(default)]
+    pub pending_players: Vec<String>,
     pub hands: Vec<Vec<CardFace>>,
     pub turn: usize,
     pub last_play: Vec<CardFace>,
@@ -77,6 +79,7 @@ impl Default for GuandanGameState {
             started: false,
             card_count_alert_threshold: default_card_count_alert_threshold(),
             player_names: Vec::new(),
+            pending_players: Vec::new(),
             hands: Vec::new(),
             turn: 0,
             last_play: Vec::new(),
@@ -111,7 +114,72 @@ pub enum GuandanStorageMessage {
 
 impl GuandanGameState {
     pub fn hand_counts(&self) -> Vec<usize> {
-        self.hands.iter().map(Vec::len).collect()
+        let mut counts = self.hands.iter().map(Vec::len).collect::<Vec<_>>();
+        counts.resize(self.player_names.len(), 0);
+        counts
+    }
+
+    pub fn promote_pending_players(&mut self, maximum_players: usize) -> usize {
+        let available = maximum_players.saturating_sub(self.player_names.len());
+        let promotable = self.pending_players.len().min(available);
+        let even_count = promotable - promotable % 2;
+        if even_count == 0 {
+            return 0;
+        }
+        let promoted = self.pending_players.drain(..even_count).collect::<Vec<_>>();
+        self.player_names.extend(promoted);
+        even_count
+    }
+
+    fn remap_seat(value: usize, first: usize, second: usize) -> usize {
+        if value == first {
+            second
+        } else if value == second {
+            first
+        } else {
+            value
+        }
+    }
+
+    fn remap_optional_seat(value: &mut Option<usize>, first: usize, second: usize) {
+        if let Some(seat) = value.as_mut() {
+            *seat = Self::remap_seat(*seat, first, second);
+        }
+    }
+
+    fn remap_seats(values: &mut [usize], first: usize, second: usize) {
+        for seat in values {
+            *seat = Self::remap_seat(*seat, first, second);
+        }
+    }
+
+    pub fn swap_same_team_seats(
+        &mut self,
+        first: usize,
+        second: usize,
+    ) -> Result<(), &'static str> {
+        let len = self.player_names.len();
+        if first >= len || second >= len || first == second {
+            return Err("seat swap is outside the current table");
+        }
+        if first % 2 != second % 2 {
+            return Err("players may only swap within the same team");
+        }
+        self.player_names.swap(first, second);
+        if first < self.hands.len() && second < self.hands.len() {
+            self.hands.swap(first, second);
+        }
+        if first < self.initial_draw.len() && second < self.initial_draw.len() {
+            self.initial_draw.swap(first, second);
+        }
+        self.turn = Self::remap_seat(self.turn, first, second);
+        Self::remap_optional_seat(&mut self.last_player, first, second);
+        Self::remap_optional_seat(&mut self.last_trick_winner, first, second);
+        Self::remap_optional_seat(&mut self.initial_draw_winner, first, second);
+        Self::remap_seats(&mut self.finish_order, first, second);
+        Self::remap_optional_seat(&mut self.last_game_winner, first, second);
+        Self::remap_seats(&mut self.next_round_finish_order, first, second);
+        Ok(())
     }
 
     pub fn private_hand(&self, seat: usize) -> Option<&[CardFace]> {
@@ -401,6 +469,45 @@ mod tests {
         let room = new_guandan_room(b"test-room".to_vec());
         assert_eq!(room.game.level, Rank::Two);
         assert!(!room.game.normal_play_blocked());
+    }
+
+    #[test]
+    fn pending_players_promote_in_pairs_and_leave_one_waiting() {
+        let mut state = GuandanGameState::default();
+        state.player_names = (1..=4).map(|seat| format!("P{seat}")).collect();
+        state.pending_players = vec!["P5".into(), "P6".into(), "P7".into()];
+        assert_eq!(state.promote_pending_players(14), 2);
+        assert_eq!(state.player_names.len(), 6);
+        assert_eq!(state.pending_players, vec!["P7"]);
+        assert_eq!(state.hand_counts(), vec![0; 6]);
+    }
+
+    #[test]
+    fn pending_player_promotion_respects_table_capacity() {
+        let mut state = GuandanGameState::default();
+        state.player_names = (1..=12).map(|seat| format!("P{seat}")).collect();
+        state.pending_players = vec!["P13".into(), "P14".into(), "P15".into()];
+        assert_eq!(state.promote_pending_players(14), 2);
+        assert_eq!(state.player_names.len(), 14);
+        assert_eq!(state.pending_players, vec!["P15"]);
+    }
+
+    #[test]
+    fn same_team_swap_remaps_previous_round_seat_references() {
+        let mut state = GuandanGameState::default();
+        state.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        state.hands = vec![vec![], vec![], vec![], vec![]];
+        state.turn = 0;
+        state.last_game_winner = Some(0);
+        state.finish_order = vec![0, 1, 2, 3];
+        state.next_round_finish_order = vec![0, 1, 2];
+        state.swap_same_team_seats(0, 2).unwrap();
+        assert_eq!(state.player_names, vec!["A2", "B1", "A1", "B2"]);
+        assert_eq!(state.turn, 2);
+        assert_eq!(state.last_game_winner, Some(2));
+        assert_eq!(state.finish_order, vec![2, 1, 0, 3]);
+        assert_eq!(state.next_round_finish_order, vec![2, 1, 0]);
+        assert!(state.swap_same_team_seats(0, 1).is_err());
     }
 
     #[test]

@@ -12,6 +12,7 @@ interface GuandanTableState {
   room: string | null;
   seat: number | null;
   players: string[];
+  pendingPlayers: string[];
   observers: string[];
   onlinePlayers: boolean[];
   playerCount: number | null;
@@ -46,6 +47,7 @@ const initialState: GuandanTableState = {
   room: null,
   seat: null,
   players: [],
+  pendingPlayers: [],
   observers: [],
   onlinePlayers: [],
   playerCount: null,
@@ -99,16 +101,19 @@ const reduceMessage = (
     case "connected":
       return { ...state, error: null };
     case "joined":
-      return {
-        ...initialState,
-        room: message.room,
-        seat: message.seat,
-        error: null,
-      };
+      return state.room === message.room
+        ? { ...state, seat: message.seat, error: null }
+        : {
+            ...initialState,
+            room: message.room,
+            seat: message.seat,
+            error: null,
+          };
     case "waiting":
       return {
         ...state,
         players: message.players,
+        pendingPlayers: message.pending_players,
         observers: message.observers,
         onlinePlayers: message.online_players,
         minimumPlayers: message.minimum_players,
@@ -146,6 +151,7 @@ const reduceMessage = (
       return {
         ...state,
         players: message.players,
+        pendingPlayers: message.pending_players,
         observers: message.observers,
         onlinePlayers: message.online_players,
         hand: ownHandFinished ? [] : state.hand,
