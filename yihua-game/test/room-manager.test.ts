@@ -59,7 +59,11 @@ describe("RoomManager", () => {
     const startedAt = 1_000_000;
     fillHumanRoom(manager, roomId, 6);
 
-    let managed = manager.start(roomId, () => 0.25, () => startedAt);
+    let managed = manager.start(
+      roomId,
+      () => 0.25,
+      () => startedAt,
+    );
     expect(managed.game.config.playerCount).toBe(6);
     expect(managed.game.config.botCount).toBe(0);
 
