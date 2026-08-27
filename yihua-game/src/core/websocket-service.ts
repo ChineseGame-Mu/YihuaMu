@@ -83,28 +83,69 @@ const privateHandMessage = (
   };
 };
 
+const commandFingerprint = (message: MutatingMessage): string => {
+  switch (message.type) {
+    case "join_room":
+      return JSON.stringify({
+        type: message.type,
+        roomId: message.roomId,
+        playerId: message.playerId,
+        name: message.name,
+        seat: message.seat,
+      });
+    case "leave_room":
+      return JSON.stringify({
+        type: message.type,
+        playerId: message.playerId,
+      });
+    case "set_robots":
+      return JSON.stringify({ type: message.type, count: message.count });
+    case "start_game":
+      return JSON.stringify({ type: message.type });
+  }
+};
+
 export class WebSocketService {
-  private readonly processedCommands = new Map<string, Set<string>>();
+  private readonly processedCommands = new Map<
+    string,
+    Map<string, string>
+  >();
 
   constructor(
     private readonly rooms: RoomManager,
     private readonly sockets: RoomSocketHub,
   ) {}
 
-  private hasProcessed(roomId: string, commandId: string): boolean {
-    return this.processedCommands.get(roomId)?.has(commandId) ?? false;
+  private processedFingerprint(
+    roomId: string,
+    commandId: string,
+  ): string | undefined {
+    return this.processedCommands.get(roomId)?.get(commandId);
   }
 
-  private rememberCommand(roomId: string, commandId?: string): void {
-    if (commandId === undefined) return;
-    const commands = this.processedCommands.get(roomId) ?? new Set<string>();
-    commands.add(commandId);
+  private rememberCommand(roomId: string, message: MutatingMessage): void {
+    if (message.commandId === undefined) return;
+    const commands =
+      this.processedCommands.get(roomId) ?? new Map<string, string>();
+    commands.set(message.commandId, commandFingerprint(message));
     while (commands.size > 512) {
-      const oldest = commands.values().next().value as string | undefined;
+      const oldest = commands.keys().next().value as string | undefined;
       if (oldest === undefined) break;
       commands.delete(oldest);
     }
     this.processedCommands.set(roomId, commands);
+  }
+
+  private async rejectCommandIdConflict(
+    socket: TextSocket,
+    commandId: string,
+  ): Promise<void> {
+    const response: ServerMessage = {
+      type: "error",
+      code: "command_id_conflict",
+      message: `command id ${commandId} was already used for a different command`,
+    };
+    await socket.send(encodeServerMessage(response));
   }
 
   private async rejectStaleRevision(
@@ -126,12 +167,19 @@ export class WebSocketService {
     managed: ManagedRoom,
     message: MutatingMessage,
   ): Promise<boolean> {
-    if (
-      message.commandId !== undefined &&
-      this.hasProcessed(context.roomId, message.commandId)
-    ) {
-      await this.sendSnapshot(socket, context.roomId, context.playerId);
-      return false;
+    if (message.commandId !== undefined) {
+      const processed = this.processedFingerprint(
+        context.roomId,
+        message.commandId,
+      );
+      if (processed !== undefined) {
+        if (processed !== commandFingerprint(message)) {
+          await this.rejectCommandIdConflict(socket, message.commandId);
+          return false;
+        }
+        await this.sendSnapshot(socket, context.roomId, context.playerId);
+        return false;
+      }
     }
 
     if (
@@ -170,7 +218,7 @@ export class WebSocketService {
 
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
-        this.rememberCommand(context.roomId, message.commandId);
+        this.rememberCommand(context.roomId, message);
         await this.broadcastRoomState(next);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
@@ -182,7 +230,7 @@ export class WebSocketService {
         ...managed,
         room: result.room,
       });
-      this.rememberCommand(context.roomId, message.commandId);
+      this.rememberCommand(context.roomId, message);
 
       if (result.response.type === "room_state") {
         await this.sockets.broadcast(
