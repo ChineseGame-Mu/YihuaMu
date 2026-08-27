@@ -66,5 +66,9 @@ export const applyClientMessage = (
         room,
         response: { type: "pong", nonce: message.nonce },
       };
+    default: {
+      const exhaustive: never = message;
+      throw new Error(`unsupported session message: ${String(exhaustive)}`);
+    }
   }
 };
