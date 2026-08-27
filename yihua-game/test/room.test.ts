@@ -85,7 +85,9 @@ describe("independent room state", () => {
     const room = createRoom("late-room", 4, openedAt);
 
     expect(room.joinClosesAt).toBe(openedAt + LATE_JOIN_WINDOW_MS);
-    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS)).toBe(true);
+    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS)).toBe(
+      true,
+    );
     expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS + 1)).toBe(
       false,
     );
@@ -101,11 +103,7 @@ describe("independent room state", () => {
   it("lets a late human take over a robot seat without changing the seat", () => {
     const openedAt = 2_000_000;
     let room = createRoom("late-robot", 4, openedAt);
-    room = addHuman(
-      room,
-      { id: "p1", name: "玩家1", seat: 0 },
-      openedAt,
-    );
+    room = addHuman(room, { id: "p1", name: "玩家1", seat: 0 }, openedAt);
     room = setRobotCount(room, 3);
     const robotSeat = room.participants.find(
       ({ kind }) => kind === "robot",
