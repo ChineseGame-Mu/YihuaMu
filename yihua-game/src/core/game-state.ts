@@ -226,7 +226,24 @@ export const playGameCards = (
       : [...priorFinishedSeats];
   const activeSeats = activeSeatsFor(state, finishedSeats);
   const rotationSeats = respondingSeatsFor(seat, activeSeats, finishedSeats);
-  const trick = playCards(state.trick, seat, cards, rotationSeats);
+  let trick = playCards(state.trick, seat, cards, rotationSeats);
+
+  if (
+    remainingHand.length === 0 &&
+    rotationSeats.length === 0 &&
+    activeSeats.length > 0
+  ) {
+    const catchSeat = catchLeadSeat(state, seat, activeSeats) ?? activeSeats[0]!;
+    trick = {
+      ...trick,
+      leaderSeat: catchSeat,
+      currentTurn: catchSeat,
+      leadingPlay: null,
+      passedSeats: [],
+      completedTricks: trick.completedTricks + 1,
+    };
+  }
+
   const hands = state.hands.map((currentHand, currentSeat) =>
     currentSeat === seat ? remainingHand : currentHand,
   );
