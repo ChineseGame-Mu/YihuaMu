@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import type { Card } from "../src/core/cards.js";
+import type { Card, Rank } from "../src/core/cards.js";
 import {
   createTrickState,
   passTurn,
   playCards,
 } from "../src/core/trick-state.js";
 
-const suited = (rank: number): Card => ({
+const suited = (rank: Rank): Card => ({
   kind: "suited",
   suit: "clubs",
   rank,
@@ -17,7 +17,7 @@ describe("active-seat trick rotation", () => {
     const activeSeats = [0, 2, 3] as const;
     let trick = createTrickState(4, 0);
 
-    trick = playCards(trick, 0, [suited(6)], activeSeats);
+    trick = playCards(trick, 0, [suited("6")], activeSeats);
     expect(trick.currentTurn).toBe(2);
 
     trick = passTurn(trick, 2, activeSeats);
@@ -33,7 +33,7 @@ describe("active-seat trick rotation", () => {
     const activeSeats = [1, 3] as const;
     let trick = createTrickState(4, 0);
 
-    trick = playCards(trick, 0, [suited(9)], activeSeats);
+    trick = playCards(trick, 0, [suited("9")], activeSeats);
     expect(trick.currentTurn).toBe(1);
 
     trick = passTurn(trick, 1, activeSeats);
