@@ -153,7 +153,7 @@ try {
     (room) =>
       room.game?.phase === "playing" &&
       room.revision === afterPlay.revision &&
-      room.game?.trick?.leadingPlay?.cards?.[0]?.id === card.id,
+      room.game?.trick?.leadingPlay?.play?.cards?.[0]?.id === card.id,
   );
   const expectedTurn = checkpoint.game.currentTurn;
   const expectedCounts = checkpoint.game.hands.map((hand) => hand.length);
