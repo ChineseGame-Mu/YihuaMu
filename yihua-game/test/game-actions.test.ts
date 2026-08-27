@@ -13,9 +13,7 @@ const seededRandom = (seed: number): (() => number) => {
 };
 
 const cardKey = (card: Card): string =>
-  card.kind === "joker"
-    ? `joker:${card.size}`
-    : `${card.suit}:${card.rank}`;
+  card.kind === "joker" ? `joker:${card.size}` : `${card.suit}:${card.rank}`;
 
 describe("exact card id game actions", () => {
   it("removes only the selected copy when equal card faces share a hand", () => {
