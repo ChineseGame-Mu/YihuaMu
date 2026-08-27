@@ -4,6 +4,7 @@ import type { DeckCard } from "../src/core/deck.js";
 import {
   passGameTurn,
   playGameCards,
+  startNextRound,
   type PlayingState,
 } from "../src/core/game-state.js";
 import { createTableConfig } from "../src/core/table.js";
@@ -79,5 +80,50 @@ describe("six-player finished-seat rotation", () => {
     expect(afterSeat3SecondPass.currentTurn).toBe(5);
     expect(afterSeat3SecondPass.trick.leaderSeat).toBe(5);
     expect(afterSeat3SecondPass.finishedSeats).toEqual([2, 0, 4]);
+  });
+
+  it("auto-fills last place and starts the next six-player round from first place", () => {
+    const state: PlayingState = {
+      phase: "playing",
+      config: createTableConfig(6, 0),
+      openingDraw: { attempts: [], winnerSeat: 0 },
+      hands: [
+        [],
+        [],
+        [],
+        [deckCard("seat-3-last", suited("4"))],
+        [],
+        [deckCard("seat-5-last", suited("3"))],
+      ],
+      currentTurn: 3,
+      trick: createTrickState(6, 3),
+      finishedSeats: [2, 0, 4, 1],
+    };
+
+    const completed = playGameCards(state, 3, [suited("4")]);
+    expect(completed.phase).toBe("round-complete");
+    if (completed.phase !== "round-complete") {
+      throw new Error("expected round completion");
+    }
+
+    expect(completed.finishedSeats).toEqual([2, 0, 4, 1, 3, 5]);
+    expect(completed.winnerSeat).toBe(2);
+    expect(completed.placements.map(({ seat }) => seat)).toEqual([
+      2, 0, 4, 1, 3, 5,
+    ]);
+    expect(completed.outcome).toEqual({
+      winningTeam: "A",
+      losingTeam: "B",
+      firstPlaceSeat: 2,
+      lastPlaceSeat: 5,
+    });
+
+    const next = startNextRound(completed, () => 0);
+    expect(next.currentTurn).toBe(2);
+    expect(next.trick.leaderSeat).toBe(2);
+    expect(next.finishedSeats).toEqual([]);
+    expect(next.hands).toHaveLength(6);
+    expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
+    expect(next.openingDraw).toBe(completed.openingDraw);
   });
 });
