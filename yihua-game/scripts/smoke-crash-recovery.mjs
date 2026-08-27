@@ -153,7 +153,8 @@ try {
     (room) =>
       room.game?.phase === "playing" &&
       room.revision === afterPlay.revision &&
-      room.game?.trick?.leadingPlay?.play?.cards?.[0]?.id === card.id,
+      JSON.stringify(room.game?.trick?.leadingPlay?.cards?.[0]) ===
+        JSON.stringify(card.card),
   );
   const expectedTurn = checkpoint.game.currentTurn;
   const expectedCounts = checkpoint.game.hands.map((hand) => hand.length);
@@ -182,7 +183,8 @@ try {
     restoredGame.currentTurn !== expectedTurn ||
     JSON.stringify(restoredGame.handCounts) !==
       JSON.stringify(expectedCounts) ||
-    restoredGame.leadingPlay?.cards?.[0]?.id !== card.id
+    JSON.stringify(restoredGame.leadingPlay?.cards?.[0]) !==
+      JSON.stringify(card.card)
   ) {
     throw new Error(
       `active game was not restored: ${JSON.stringify(restoredGame)}`,
