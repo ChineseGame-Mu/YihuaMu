@@ -12,7 +12,7 @@ const deterministicRandom = (): (() => number) => {
 };
 
 describe("runtime snapshots", () => {
-  it("restores an active game with the exact revision and card identities", () => {
+  it("restores active game state while requiring humans to reconnect", () => {
     const runtime = createServerRuntime();
     let managed = runtime.rooms.create("recover-room", 4);
 
@@ -37,8 +37,29 @@ describe("runtime snapshots", () => {
     const snapshot = runtime.snapshot();
 
     const recovered = createServerRuntime(snapshot).rooms.get("recover-room");
-    expect(recovered).toEqual(played);
     expect(recovered.revision).toBe(played.revision);
+    expect(recovered.game).toEqual(played.game);
+    expect(recovered.room.config).toEqual(played.room.config);
+    expect(
+      recovered.room.participants.map(({ id, name, kind, seat }) => ({
+        id,
+        name,
+        kind,
+        seat,
+      })),
+    ).toEqual(
+      played.room.participants.map(({ id, name, kind, seat }) => ({
+        id,
+        name,
+        kind,
+        seat,
+      })),
+    );
+    expect(
+      recovered.room.participants
+        .filter(({ kind }) => kind === "human")
+        .every(({ connected }) => connected === false),
+    ).toBe(true);
     expect(recovered.game.phase).toBe("playing");
     if (recovered.game.phase !== "playing") return;
 
