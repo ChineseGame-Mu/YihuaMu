@@ -1,3 +1,4 @@
+import { passGameSeat, playGameCardIds } from "./game-actions.js";
 import { createLobbyState, startGame, type GameState } from "./game-state.js";
 import { createRoom, roomIsReady, type RoomState } from "./room.js";
 import { type SupportedPlayerCount } from "./table.js";
@@ -70,6 +71,36 @@ export class RoomManager {
         ),
         random,
       ),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  play(roomId: string, seat: number, cardIds: readonly string[]): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing") {
+      throw new Error("game is not accepting plays");
+    }
+
+    const next = {
+      ...managed,
+      game: playGameCardIds(managed.game, seat, cardIds),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  pass(roomId: string, seat: number): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing") {
+      throw new Error("game is not accepting passes");
+    }
+
+    const next = {
+      ...managed,
+      game: passGameSeat(managed.game, seat),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
