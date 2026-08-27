@@ -6,7 +6,9 @@ import {
 } from "../src/core/game-state.js";
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
-const supportedOpeningTables: readonly SupportedPlayerCount[] = [4, 6, 8, 10, 12, 14];
+const supportedOpeningTables: readonly SupportedPlayerCount[] = [
+  4, 6, 8, 10, 12, 14,
+];
 
 describe("opening draw to first turn integration", () => {
   for (const playerCount of supportedOpeningTables) {
