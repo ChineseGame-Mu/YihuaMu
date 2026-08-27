@@ -22,27 +22,26 @@ jobs:
           node-version: 22
       - run: npm install
       - name: Verify Prettier 3.4.1
-        run: npm run prettier:version
+        run: npx prettier@3.4.1 --version
       - name: Check formatting
-        run: npm run format:check
+        run: npx prettier@3.4.1 --check "src/**/*.ts" "test/**/*.ts"
       - name: Typecheck
         run: npm run typecheck
       - name: Build standalone server
-        run: npm run build
+        run: npm run build:server
       - name: Live HTTP and WebSocket smoke
-        run: npm run smoke
+        run: npm run smoke:live
       - name: Live gameplay transport smoke
-        run: node scripts/smoke-gameplay-network.mjs
+        run: npm run smoke:gameplay
       - name: Live restart recovery smoke
         run: npm run smoke:restart
       - name: Hard-crash checkpoint recovery smoke
-        run: node scripts/smoke-crash-recovery.mjs
+        run: npm run smoke:hard-crash
       - name: WebSocket lifecycle soak smoke
-        # Keep all supported even table sizes in the fast reconnect gate.
         env:
-          SOAK_DURATION_MS: "1000"
-          SOAK_PLAYER_COUNTS: "4,6,8,10,12,14"
-          SOAK_RECONNECT_EVERY: "10"
-        run: node scripts/soak-websocket.mjs
+          SOAK_DURATION_MS: 1000
+          SOAK_PLAYER_COUNTS: 4,6,8,10,12,14
+          SOAK_RECONNECT_EVERY: 10
+        run: npm run smoke:soak
       - name: Test
         run: npm test
