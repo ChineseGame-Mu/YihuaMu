@@ -170,6 +170,10 @@ const guandanErrorLabel = (message: string): string => {
     "only a player on the losing team may shuffle": "只能由输方玩家洗牌。",
     "the next round is not ready to deal": "请先由输方完成洗牌。",
     "only the previous winner may deal": "只能由上一局赢家发牌。",
+    "participation cannot be changed in the requested state":
+      "当前状态不能更改参与方式。",
+    "players may only swap within the same team before start or while awaiting the next shuffle":
+      "只能在开局前或下一局洗牌前，与同队玩家换位。",
     "shuffle positions must both be between 1 and 108":
       "抽牌位置和插入位置都必须在1到108之间。",
   };
@@ -221,6 +225,8 @@ const GuandanTable: React.FunctionComponent = () => {
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
+  const queuedForNextRound =
+    observing && state.pendingPlayers.includes(name.trim());
   const role = tributeRole(
     state.pendingTribute as GuandanTributePlan | null,
     state.seat,
@@ -440,7 +446,13 @@ const GuandanTable: React.FunctionComponent = () => {
   };
 
   const swapSeat = (targetSeat: number): void => {
-    if (gameStarted || state.seat === null || targetSeat === state.seat) return;
+    if (
+      (gameStarted && !nextRoundPending) ||
+      state.seat === null ||
+      targetSeat === state.seat ||
+      targetSeat % 2 !== state.seat % 2
+    )
+      return;
     send({ type: "reorder_players", order: [state.seat, targetSeat] });
   };
 
@@ -750,7 +762,34 @@ const GuandanTable: React.FunctionComponent = () => {
         <>
           {observing && (
             <section className="guandan-observer-notice" role="status">
-              您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。
+              {queuedForNextRound
+                ? "您已排队等待下局加入。系统会按排队顺序每两人一组正式入座；如果暂时只有一人，会继续等待。"
+                : "您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。"}
+              {!queuedForNextRound &&
+                state.maximumPlayers !== null &&
+                state.players.length + state.pendingPlayers.length <
+                  state.maximumPlayers && (
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={() =>
+                      send({ type: "set_participation", active: true })
+                    }
+                  >
+                    排队下局加入
+                  </button>
+                )}
+              {queuedForNextRound && (
+                <button
+                  type="button"
+                  className="normal"
+                  onClick={() =>
+                    send({ type: "set_participation", active: false })
+                  }
+                >
+                  取消排队
+                </button>
+              )}
               {testMode &&
                 requestedPlayerCount > 4 &&
                 state.maximumPlayers !== null &&
@@ -934,9 +973,11 @@ const GuandanTable: React.FunctionComponent = () => {
                         ? "剩余：待发牌"
                         : `剩余：${remainingCountForSeat(index)} 张`}
                     </div>
-                    {!gameStarted &&
+                    {(!gameStarted ||
+                      state.nextRoundPhase === "awaiting_shuffle") &&
                       state.seat !== null &&
-                      index !== state.seat && (
+                      index !== state.seat &&
+                      index % 2 === state.seat % 2 && (
                         <button
                           type="button"
                           className="normal"
@@ -948,6 +989,12 @@ const GuandanTable: React.FunctionComponent = () => {
                   </div>
                 ))}
               </div>
+              {state.pendingPlayers.length > 0 && (
+                <div className="guandan-observers">
+                  下局排队：{state.pendingPlayers.join("、")}
+                  （每两人一组按顺序入座）
+                </div>
+              )}
               {state.observers.length > 0 && (
                 <div className="guandan-observers">
                   围观：{state.observers.join("、")}

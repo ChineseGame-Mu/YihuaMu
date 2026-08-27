@@ -50,6 +50,7 @@ export type GuandanServerMessage =
   | {
       type: "waiting";
       players: string[];
+      pending_players: string[];
       observers: string[];
       online_players: boolean[];
       minimum_players: number;
@@ -60,6 +61,7 @@ export type GuandanServerMessage =
   | {
       type: "state";
       players: string[];
+      pending_players: string[];
       observers: string[];
       online_players: boolean[];
       turn: number;
