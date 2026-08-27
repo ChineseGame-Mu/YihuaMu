@@ -5,8 +5,11 @@ import {
   addHuman,
   createRoom,
   disconnectHuman,
+  LATE_JOIN_WINDOW_MS,
   reconnectHuman,
   removeParticipant,
+  replaceRobotWithHuman,
+  roomAcceptsLateJoin,
   roomIsReady,
   setRobotCount,
 } from "../src/core/room.js";
@@ -75,6 +78,54 @@ describe("independent room state", () => {
 
     room = disconnectHuman(room, "p1");
     expect(roomIsReady(room)).toBe(false);
+  });
+
+  it("keeps late joining open for exactly three hours", () => {
+    const openedAt = 1_000_000;
+    const room = createRoom("late-room", 4, openedAt);
+
+    expect(room.joinClosesAt).toBe(openedAt + LATE_JOIN_WINDOW_MS);
+    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS)).toBe(true);
+    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS + 1)).toBe(
+      false,
+    );
+    expect(() =>
+      addHuman(
+        room,
+        { id: "late", name: "后到玩家", seat: 0 },
+        openedAt + LATE_JOIN_WINDOW_MS + 1,
+      ),
+    ).toThrow(/three-hour join window/);
+  });
+
+  it("lets a late human take over a robot seat without changing the seat", () => {
+    const openedAt = 2_000_000;
+    let room = createRoom("late-robot", 4, openedAt);
+    room = addHuman(
+      room,
+      { id: "p1", name: "玩家1", seat: 0 },
+      openedAt,
+    );
+    room = setRobotCount(room, 3);
+    const robotSeat = room.participants.find(
+      ({ kind }) => kind === "robot",
+    )?.seat;
+    if (robotSeat === undefined) throw new Error("robot seat expected");
+
+    room = replaceRobotWithHuman(
+      room,
+      { id: "late", name: "后到玩家", seat: robotSeat },
+      openedAt + 60 * 60 * 1000,
+    );
+
+    expect(room.participants.find(({ id }) => id === "late")?.seat).toBe(
+      robotSeat,
+    );
+    expect(room.participants.find(({ seat }) => seat === robotSeat)?.kind).toBe(
+      "human",
+    );
+    expect(room.config.botCount).toBe(2);
+    expect(room.participants).toHaveLength(4);
   });
 });
 
