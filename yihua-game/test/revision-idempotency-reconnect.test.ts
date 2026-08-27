@@ -317,6 +317,6 @@ describe("4–14 player reconnect stress", () => {
     expect(gameState?.revision).toBe(current.revision);
     expect(privateHand?.revision).toBe(current.revision);
     expect(gameState).toMatchObject(baseline);
-    expect(privateHand?.cards).toHaveLength(baseline.handCounts[0]);
+    expect(privateHand?.cards).toHaveLength(baseline.handCounts[0] ?? 0);
   });
 });
