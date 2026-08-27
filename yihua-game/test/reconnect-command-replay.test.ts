@@ -64,9 +64,9 @@ describe("command replay across reconnect", () => {
 
     await first.triggerClose();
     expect(runtime.rooms.get("replay-room").revision).toBe(2);
-    expect(runtime.rooms.get("replay-room").room.participants[0]?.connected).toBe(
-      false,
-    );
+    expect(
+      runtime.rooms.get("replay-room").room.participants[0]?.connected,
+    ).toBe(false);
 
     const second = new FakeConnection({
       roomId: "replay-room",
