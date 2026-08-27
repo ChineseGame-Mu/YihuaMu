@@ -44,7 +44,7 @@ const waitForCheckpoint = async () => {
       const room = snapshot.rooms?.find(
         ({ roomId: savedRoomId }) => savedRoomId === roomId,
       );
-      if (room) return room.revision;
+      if (room) return;
     } catch {}
     await sleep(50);
   }
@@ -66,7 +66,7 @@ try {
   });
   if (created.status !== 201) throw new Error("room creation failed");
 
-  const checkpointRevision = await waitForCheckpoint();
+  await waitForCheckpoint();
   first.child.kill("SIGKILL");
   await waitForExit(first.child);
   first = undefined;
@@ -76,7 +76,11 @@ try {
   const restored = await fetch(`${baseUrl}/api/rooms/${roomId}`);
   if (!restored.ok) throw new Error("room was not restored after SIGKILL");
   const body = await restored.json();
-  if (body.revision !== checkpointRevision || body.room?.roomId !== roomId) {
+  if (
+    body.room?.roomId !== roomId ||
+    body.room?.config?.playerCount !== 4 ||
+    body.phase !== "lobby"
+  ) {
     throw new Error(`restored checkpoint mismatch: ${JSON.stringify(body)}`);
   }
 
