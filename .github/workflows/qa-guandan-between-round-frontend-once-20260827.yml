@@ -7,7 +7,7 @@ on:
       - .github/workflows/qa-guandan-between-round-frontend-once-20260827.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   validate:
@@ -15,6 +15,9 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-between-round-join-reorder-20260827
+          fetch-depth: 0
       - name: Normalize guarded duplicate expectations
         run: |
           python - <<'PY'
@@ -48,18 +51,13 @@ jobs:
       - name: Verify formal diff scope
         run: |
           git diff --check
-          git diff --name-only -- backend/src/guandan_handler.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts
           test "$(git diff --name-only -- backend/src/guandan_handler.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts | sort | tr '\n' ' ')" = "backend/src/guandan_handler.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts "
-      - name: Stage verified files for artifact
+      - name: Commit only verified formal files
         run: |
-          mkdir -p verified/backend/src verified/frontend/src
-          cp backend/src/guandan_handler.rs verified/backend/src/guandan_handler.rs
-          cp frontend/src/GuandanStateProvider.tsx verified/frontend/src/GuandanStateProvider.tsx
-          cp frontend/src/GuandanTable.tsx verified/frontend/src/GuandanTable.tsx
-          cp frontend/src/guandanProtocol.ts verified/frontend/src/guandanProtocol.ts
-      - uses: actions/upload-artifact@v4
-        with:
-          name: guandan-between-round-verified-files
-          path: verified/
-          if-no-files-found: error
-          retention-days: 1
+          git checkout -- Cargo.lock
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_handler.rs frontend/src/GuandanStateProvider.tsx frontend/src/GuandanTable.tsx frontend/src/guandanProtocol.ts
+          git diff --cached --check
+          git commit -m "feat(guandan): wire between-round join queue and same-team swaps"
+          git push origin HEAD:feature/guandan-between-round-join-reorder-20260827
