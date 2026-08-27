@@ -84,8 +84,15 @@ const cases: readonly { kind: HandKind; cards: readonly Card[] }[] = [
   },
 ];
 
-const asDeckCards = (cards: readonly Card[]): readonly DeckCard[] =>
-  cards.map((card, copy) => ({ card, deck: copy % 2 }));
+const asDeckCards = (
+  cards: readonly Card[],
+  prefix: string,
+): readonly DeckCard[] =>
+  cards.map((card, index) => ({
+    id: `${prefix}-${index}`,
+    copy: index % 2,
+    card,
+  }));
 
 describe("combination-hand automation", () => {
   it.each(cases)(
@@ -98,10 +105,10 @@ describe("combination-hand automation", () => {
         config: createTableConfig(4, 0),
         openingDraw: { attempts: [], winnerSeat: 0 },
         hands: [
-          asDeckCards([...cards, filler]),
-          asDeckCards([filler]),
-          asDeckCards([filler]),
-          asDeckCards([filler]),
+          asDeckCards([...cards, filler], "seat-0"),
+          asDeckCards([filler], "seat-1"),
+          asDeckCards([filler], "seat-2"),
+          asDeckCards([filler], "seat-3"),
         ],
         currentTurn: 0,
         trick: createTrickState(4, 0),
