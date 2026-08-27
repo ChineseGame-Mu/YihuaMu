@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  createLobbyState,
   dealAfterOpeningDraw,
   startOpeningDraw,
-  createLobbyState,
 } from "../src/core/game-state.js";
+import type { SupportedPlayerCount } from "../src/core/table.js";
+
+const supportedOpeningTables: readonly SupportedPlayerCount[] = [4, 6, 8, 10, 12, 14];
 
 describe("opening draw to first turn integration", () => {
-  it.each([2, 4, 6] as const)(
-    "uses the unique opening-draw winner as the first leader at a %i-player table",
-    (playerCount) => {
+  for (const playerCount of supportedOpeningTables) {
+    it(`uses the unique opening-draw winner as the first leader at a ${playerCount}-player table`, () => {
       const lobby = createLobbyState(playerCount, 0);
       const opening = startOpeningDraw(lobby, () => 0);
       const playing = dealAfterOpeningDraw(opening, () => 0);
@@ -21,8 +23,8 @@ describe("opening draw to first turn integration", () => {
       expect(playing.openingDraw).toEqual(opening.openingDraw);
       expect(playing.hands).toHaveLength(playerCount);
       expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
-    },
-  );
+    });
+  }
 
   it("keeps opening-draw cards separate from the subsequently dealt deck", () => {
     const opening = startOpeningDraw(createLobbyState(4, 0), () => 0);
