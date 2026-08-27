@@ -19,7 +19,14 @@ export const createServerRuntime = (
   const rooms = new RoomManager();
   for (const saved of snapshot?.rooms ?? []) {
     rooms.restore({
-      room: saved.room,
+      room: {
+        ...saved.room,
+        participants: saved.room.participants.map((participant) =>
+          participant.kind === "human"
+            ? { ...participant, connected: false }
+            : participant,
+        ),
+      },
       game: saved.game,
       revision: saved.revision,
     });
