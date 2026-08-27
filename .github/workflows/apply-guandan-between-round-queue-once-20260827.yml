@@ -1,0 +1,48 @@
+name: Apply Guandan between-round queue backend once
+
+on:
+  push:
+    branches: [feature/guandan-between-round-join-reorder-20260827]
+    paths:
+      - .github/workflows/apply-guandan-between-round-queue-once-20260827.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/guandan-between-round-join-reorder-20260827
+          fetch-depth: 0
+
+      - name: Apply guarded backend patch
+        run: python .github/scripts/patch_guandan_between_round_queue_20260827.py
+
+      - name: Format Rust
+        run: cargo fmt --all
+
+      - name: Install frontend dependencies
+        run: yarn --cwd frontend install --frozen-lockfile
+
+      - name: Build frontend for backend include_dir
+        run: yarn --cwd frontend build
+
+      - name: Run Guandan backend tests
+        run: cargo test -p shengji guandan -- --nocapture
+
+      - name: Commit backend changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/src/guandan_serving_types.rs backend/src/guandan_handler.rs
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No backend changes to commit"
+            exit 0
+          fi
+          git commit -m "feat(guandan): queue joins and allow same-team between-round swaps"
+          git push origin HEAD:feature/guandan-between-round-join-reorder-20260827
