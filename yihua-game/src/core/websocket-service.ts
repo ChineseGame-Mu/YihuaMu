@@ -131,7 +131,8 @@ export class WebSocketService {
 
   private rememberCommand(roomId: string, message: MutatingMessage): void {
     if (message.commandId === undefined) return;
-    const commands = this.processedCommands.get(roomId) ?? new Map<string, string>();
+    const commands =
+      this.processedCommands.get(roomId) ?? new Map<string, string>();
     commands.set(message.commandId, commandFingerprint(message));
     while (commands.size > 512) {
       const oldest = commands.keys().next().value as string | undefined;
@@ -148,7 +149,8 @@ export class WebSocketService {
     const participant = managed.room.participants.find(
       ({ id, kind }) => id === context.playerId && kind === "human",
     );
-    if (!participant) throw new Error("connection player is not seated in the room");
+    if (!participant)
+      throw new Error("connection player is not seated in the room");
     return participant.seat;
   }
 
@@ -166,7 +168,10 @@ export class WebSocketService {
     );
   }
 
-  private async rejectCommandIdConflict(socket: TextSocket, commandId: string): Promise<void> {
+  private async rejectCommandIdConflict(
+    socket: TextSocket,
+    commandId: string,
+  ): Promise<void> {
     await socket.send(
       encodeServerMessage({
         type: "error",
@@ -202,12 +207,19 @@ export class WebSocketService {
       targetPlayerId !== undefined &&
       targetPlayerId !== context.playerId
     ) {
-      await this.rejectPlayerIdentityMismatch(socket, context.playerId, targetPlayerId);
+      await this.rejectPlayerIdentityMismatch(
+        socket,
+        context.playerId,
+        targetPlayerId,
+      );
       return false;
     }
 
     if (message.commandId !== undefined) {
-      const processed = this.processedFingerprint(context.roomId, message.commandId);
+      const processed = this.processedFingerprint(
+        context.roomId,
+        message.commandId,
+      );
       if (processed !== undefined) {
         if (processed !== commandFingerprint(message)) {
           await this.rejectCommandIdConflict(socket, message.commandId);
@@ -222,7 +234,11 @@ export class WebSocketService {
       message.expectedRevision !== undefined &&
       message.expectedRevision !== managed.revision
     ) {
-      await this.rejectStaleRevision(socket, message.expectedRevision, managed.revision);
+      await this.rejectStaleRevision(
+        socket,
+        message.expectedRevision,
+        managed.revision,
+      );
       return false;
     }
 
@@ -244,7 +260,8 @@ export class WebSocketService {
         return managed;
       }
 
-      if (!(await this.guardMutation(socket, context, managed, message))) return managed;
+      if (!(await this.guardMutation(socket, context, managed, message)))
+        return managed;
 
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
@@ -281,7 +298,10 @@ export class WebSocketService {
       }
 
       const result = applyClientMessage(managed.room, message);
-      const next = this.rooms.set(context.roomId, { ...managed, room: result.room });
+      const next = this.rooms.set(context.roomId, {
+        ...managed,
+        room: result.room,
+      });
       this.rememberCommand(context.roomId, message);
 
       if (result.response.type === "room_state") {
@@ -305,7 +325,11 @@ export class WebSocketService {
     }
   }
 
-  async sendSnapshot(socket: TextSocket, roomId: string, playerId?: string): Promise<void> {
+  async sendSnapshot(
+    socket: TextSocket,
+    roomId: string,
+    playerId?: string,
+  ): Promise<void> {
     const managed = this.rooms.get(roomId);
     await socket.send(encodeServerMessage(versionedRoomStateMessage(managed)));
     const publicGame = gameStateMessage(managed);
@@ -326,7 +350,10 @@ export class WebSocketService {
   async broadcastGameState(managed: ManagedRoom): Promise<void> {
     const message = gameStateMessage(managed);
     if (!message) return;
-    await this.sockets.broadcast(managed.room.roomId, encodeServerMessage(message));
+    await this.sockets.broadcast(
+      managed.room.roomId,
+      encodeServerMessage(message),
+    );
   }
 
   async sendPrivateHands(managed: ManagedRoom): Promise<void> {

@@ -15,7 +15,9 @@ const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 const durationMs = Number(process.env.SOAK_DURATION_MS ?? THREE_HOURS_MS);
 const actionLimit = Number(process.env.SOAK_ACTION_LIMIT ?? 10000);
 const requestedCounts = process.env.SOAK_PLAYER_COUNTS
-  ? process.env.SOAK_PLAYER_COUNTS.split(",").map((value) => Number(value.trim()))
+  ? process.env.SOAK_PLAYER_COUNTS.split(",").map((value) =>
+      Number(value.trim()),
+    )
   : [...SUPPORTED_PLAYER_COUNTS];
 
 const assertSupportedCounts = () => {
@@ -134,6 +136,11 @@ const runTableSoak = (playerCount) => {
 
 assertSupportedCounts();
 const results = requestedCounts.map(runTableSoak);
-if (results.some(({ deadlocks, stateErrors, crashes }) => deadlocks || stateErrors || crashes)) {
+if (
+  results.some(
+    ({ deadlocks, stateErrors, crashes }) =>
+      deadlocks || stateErrors || crashes,
+  )
+) {
   process.exitCode = 1;
 }
