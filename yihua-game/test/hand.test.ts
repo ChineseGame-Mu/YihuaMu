@@ -68,6 +68,29 @@ describe("classifyHand", () => {
     ).toMatchObject({ kind: "straight-flush", highRank: "A" });
   });
 
+  it("rejects straights and repeated sequences that contain rank 2", () => {
+    expect(
+      classifyHand([
+        suited("J", "clubs"),
+        suited("Q", "diamonds"),
+        suited("K", "spades"),
+        suited("A", "hearts"),
+        suited("2", "clubs"),
+      ]).kind,
+    ).toBe("invalid");
+
+    expect(
+      classifyHand([
+        suited("K", "clubs"),
+        suited("K", "hearts"),
+        suited("A", "clubs"),
+        suited("A", "diamonds"),
+        suited("2", "spades"),
+        suited("2", "hearts"),
+      ]).kind,
+    ).toBe("invalid");
+  });
+
   it("recognizes consecutive pairs and consecutive triples", () => {
     expect(
       classifyHand([
@@ -122,6 +145,43 @@ describe("canHandBeat", () => {
     expect(canHandBeat(pair9, pair8)).toBe(true);
     expect(canHandBeat(pair8, pair8)).toBe(false);
     expect(canHandBeat(triple9, pair8)).toBe(false);
+  });
+
+  it("orders ordinary sequence hands by their high rank", () => {
+    const straight9 = classifyHand([
+      suited("5", "clubs"),
+      suited("6", "diamonds"),
+      suited("7", "spades"),
+      suited("8", "hearts"),
+      suited("9", "clubs"),
+    ]);
+    const straight10 = classifyHand([
+      suited("6", "clubs"),
+      suited("7", "diamonds"),
+      suited("8", "spades"),
+      suited("9", "hearts"),
+      suited("10", "clubs"),
+    ]);
+    const pairs6 = classifyHand([
+      suited("4", "clubs"),
+      suited("4", "hearts"),
+      suited("5", "clubs"),
+      suited("5", "diamonds"),
+      suited("6", "spades"),
+      suited("6", "hearts"),
+    ]);
+    const pairs7 = classifyHand([
+      suited("5", "clubs"),
+      suited("5", "hearts"),
+      suited("6", "clubs"),
+      suited("6", "diamonds"),
+      suited("7", "spades"),
+      suited("7", "hearts"),
+    ]);
+
+    expect(canHandBeat(straight10, straight9)).toBe(true);
+    expect(canHandBeat(straight9, straight10)).toBe(false);
+    expect(canHandBeat(pairs7, pairs6)).toBe(true);
   });
 
   it("orders bombs by the clean-room bomb hierarchy", () => {
