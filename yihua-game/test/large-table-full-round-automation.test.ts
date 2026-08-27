@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
+import {
+  createDeck,
+  dealHands,
+  shuffleDeck,
+  type DeckCard,
+  type RandomSource,
+} from "../src/core/deck.js";
 import {
   passGameTurn,
   playGameCards,
@@ -20,6 +26,14 @@ import { createTrickState } from "../src/core/trick-state.js";
 
 const counts: readonly SupportedPlayerCount[] = [6, 8, 10, 12, 14];
 
+const seededRandom = (seed: number): RandomSource => {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+};
+
 const createInitialState = (
   playerCount: SupportedPlayerCount,
   winnerSeat: number,
@@ -27,7 +41,13 @@ const createInitialState = (
   phase: "playing",
   config: createTableConfig(playerCount, 0),
   openingDraw: { attempts: [], winnerSeat },
-  hands: dealHands(createDeck(playerCount), playerCount),
+  hands: dealHands(
+    shuffleDeck(
+      createDeck(playerCount),
+      seededRandom(playerCount * 1000 + winnerSeat + 1),
+    ),
+    playerCount,
+  ),
   currentTurn: winnerSeat,
   trick: createTrickState(playerCount, winnerSeat),
   finishedSeats: [],
@@ -95,7 +115,10 @@ describe.each(counts)("%i-player full-round automation", (playerCount) => {
         first.completed.finishedSeats[playerCount - 1],
       );
 
-      const secondStart = startNextRound(first.completed, () => 0);
+      const secondStart = startNextRound(
+        first.completed,
+        seededRandom(playerCount * 2000 + openingWinner + 1),
+      );
       expect(secondStart.currentTurn).toBe(first.completed.winnerSeat);
       expect(secondStart.trick.leaderSeat).toBe(first.completed.winnerSeat);
       expect(secondStart.finishedSeats).toEqual([]);
