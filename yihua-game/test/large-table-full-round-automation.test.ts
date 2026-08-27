@@ -22,13 +22,14 @@ const counts: readonly SupportedPlayerCount[] = [6, 8, 10, 12, 14];
 
 const createInitialState = (
   playerCount: SupportedPlayerCount,
+  winnerSeat: number,
 ): PlayingState => ({
   phase: "playing",
   config: createTableConfig(playerCount, 0),
-  openingDraw: { attempts: [], winnerSeat: 0 },
+  openingDraw: { attempts: [], winnerSeat },
   hands: dealHands(createDeck(playerCount), playerCount),
-  currentTurn: 0,
-  trick: createTrickState(playerCount, 0),
+  currentTurn: winnerSeat,
+  trick: createTrickState(playerCount, winnerSeat),
   finishedSeats: [],
 });
 
@@ -74,37 +75,44 @@ const playToCompletion = (
 };
 
 describe.each(counts)("%i-player full-round automation", (playerCount) => {
-  it("plays two complete rounds without deadlock or rerunning the opening draw", () => {
-    const openingState = createInitialState(playerCount);
-    const first = playToCompletion(openingState);
+  const openingWinners = [0, Math.floor(playerCount / 2), playerCount - 1];
 
-    expect(first.completed.finishedSeats).toHaveLength(playerCount);
-    expect(new Set(first.completed.finishedSeats).size).toBe(playerCount);
-    expect(first.completed.placements).toHaveLength(playerCount);
-    expect(first.completed.winnerSeat).toBe(first.completed.finishedSeats[0]);
-    expect(first.completed.outcome?.firstPlaceSeat).toBe(
-      first.completed.winnerSeat,
-    );
-    expect(first.completed.outcome?.lastPlaceSeat).toBe(
-      first.completed.finishedSeats[playerCount - 1],
-    );
+  it.each(openingWinners)(
+    "plays two complete rounds from opening winner seat %i without deadlock or rerunning the opening draw",
+    (openingWinner) => {
+      const openingState = createInitialState(playerCount, openingWinner);
+      const first = playToCompletion(openingState);
 
-    const secondStart = startNextRound(first.completed, () => 0);
-    expect(secondStart.currentTurn).toBe(first.completed.winnerSeat);
-    expect(secondStart.trick.leaderSeat).toBe(first.completed.winnerSeat);
-    expect(secondStart.finishedSeats).toEqual([]);
-    expect(secondStart.hands).toHaveLength(playerCount);
-    expect(secondStart.hands.every((hand) => hand.length === 27)).toBe(true);
-    expect(secondStart.openingDraw).toBe(first.completed.openingDraw);
+      expect(first.completed.finishedSeats).toHaveLength(playerCount);
+      expect(new Set(first.completed.finishedSeats).size).toBe(playerCount);
+      expect(first.completed.placements).toHaveLength(playerCount);
+      expect(first.completed.winnerSeat).toBe(first.completed.finishedSeats[0]);
+      expect(first.completed.openingDraw.winnerSeat).toBe(openingWinner);
+      expect(first.completed.outcome?.firstPlaceSeat).toBe(
+        first.completed.winnerSeat,
+      );
+      expect(first.completed.outcome?.lastPlaceSeat).toBe(
+        first.completed.finishedSeats[playerCount - 1],
+      );
 
-    const second = playToCompletion(secondStart);
-    expect(second.completed.finishedSeats).toHaveLength(playerCount);
-    expect(new Set(second.completed.finishedSeats).size).toBe(playerCount);
-    expect(second.completed.placements).toHaveLength(playerCount);
-    expect(second.completed.winnerSeat).toBe(second.completed.finishedSeats[0]);
-    expect(second.completed.openingDraw).toBe(first.completed.openingDraw);
-    expect(second.completed.outcome?.firstPlaceSeat).toBe(
-      second.completed.winnerSeat,
-    );
-  });
+      const secondStart = startNextRound(first.completed, () => 0);
+      expect(secondStart.currentTurn).toBe(first.completed.winnerSeat);
+      expect(secondStart.trick.leaderSeat).toBe(first.completed.winnerSeat);
+      expect(secondStart.finishedSeats).toEqual([]);
+      expect(secondStart.hands).toHaveLength(playerCount);
+      expect(secondStart.hands.every((hand) => hand.length === 27)).toBe(true);
+      expect(secondStart.openingDraw).toBe(first.completed.openingDraw);
+
+      const second = playToCompletion(secondStart);
+      expect(second.completed.finishedSeats).toHaveLength(playerCount);
+      expect(new Set(second.completed.finishedSeats).size).toBe(playerCount);
+      expect(second.completed.placements).toHaveLength(playerCount);
+      expect(second.completed.winnerSeat).toBe(second.completed.finishedSeats[0]);
+      expect(second.completed.openingDraw).toBe(first.completed.openingDraw);
+      expect(second.completed.openingDraw.winnerSeat).toBe(openingWinner);
+      expect(second.completed.outcome?.firstPlaceSeat).toBe(
+        second.completed.winnerSeat,
+      );
+    },
+  );
 });
