@@ -74,7 +74,9 @@ export const applyClientMessage = (
     }
     case "set_next_round_ready": {
       if (actingPlayerId === undefined) {
-        throw new Error("player identity is required to choose next-round entry");
+        throw new Error(
+          "player identity is required to choose next-round entry",
+        );
       }
       const nextRoom = setReadyForNextRound(
         room,
