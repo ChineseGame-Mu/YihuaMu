@@ -6,6 +6,7 @@ import {
   createRoom,
   disconnectHuman,
   LATE_JOIN_WINDOW_MS,
+  openLateJoinWindow,
   reconnectHuman,
   removeParticipant,
   replaceRobotWithHuman,
@@ -80,31 +81,37 @@ describe("independent room state", () => {
     expect(roomIsReady(room)).toBe(false);
   });
 
-  it("keeps late joining open for exactly three hours", () => {
-    const openedAt = 1_000_000;
-    const room = createRoom("late-room", 4, openedAt);
-
-    expect(room.joinClosesAt).toBe(openedAt + LATE_JOIN_WINDOW_MS);
-    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS)).toBe(
+  it("starts the three-hour late-join clock when play begins", () => {
+    const startedAt = 1_000_000;
+    const lobbyRoom = createRoom("late-room", 4);
+    expect(lobbyRoom.joinClosesAt).toBeUndefined();
+    expect(roomAcceptsLateJoin(lobbyRoom, startedAt + 10 * LATE_JOIN_WINDOW_MS)).toBe(
       true,
     );
-    expect(roomAcceptsLateJoin(room, openedAt + LATE_JOIN_WINDOW_MS + 1)).toBe(
+
+    const room = openLateJoinWindow(lobbyRoom, startedAt);
+    expect(room.joinClosesAt).toBe(startedAt + LATE_JOIN_WINDOW_MS);
+    expect(roomAcceptsLateJoin(room, startedAt + LATE_JOIN_WINDOW_MS)).toBe(
+      true,
+    );
+    expect(roomAcceptsLateJoin(room, startedAt + LATE_JOIN_WINDOW_MS + 1)).toBe(
       false,
     );
     expect(() =>
       addHuman(
         room,
         { id: "late", name: "后到玩家", seat: 0 },
-        openedAt + LATE_JOIN_WINDOW_MS + 1,
+        startedAt + LATE_JOIN_WINDOW_MS + 1,
       ),
     ).toThrow(/three-hour join window/);
   });
 
   it("lets a late human take over a robot seat without changing the seat", () => {
-    const openedAt = 2_000_000;
-    let room = createRoom("late-robot", 4, openedAt);
-    room = addHuman(room, { id: "p1", name: "玩家1", seat: 0 }, openedAt);
+    const startedAt = 2_000_000;
+    let room = createRoom("late-robot", 4);
+    room = addHuman(room, { id: "p1", name: "玩家1", seat: 0 }, startedAt);
     room = setRobotCount(room, 3);
+    room = openLateJoinWindow(room, startedAt);
     const robotSeat = room.participants.find(
       ({ kind }) => kind === "robot",
     )?.seat;
@@ -113,7 +120,7 @@ describe("independent room state", () => {
     room = replaceRobotWithHuman(
       room,
       { id: "late", name: "后到玩家", seat: robotSeat },
-      openedAt + 60 * 60 * 1000,
+      startedAt + 60 * 60 * 1000,
     );
 
     expect(room.participants.find(({ id }) => id === "late")?.seat).toBe(
