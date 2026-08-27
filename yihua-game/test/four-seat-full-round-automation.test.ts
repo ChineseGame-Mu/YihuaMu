@@ -3,6 +3,7 @@ import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import {
   passGameTurn,
   playGameCards,
+  startNextRound,
   type PlayingState,
   type RoundCompleteState,
 } from "../src/core/game-state.js";
@@ -65,5 +66,12 @@ describe("four-seat full-round automation", () => {
     expect(state.winnerSeat).toBe(state.finishedSeats[0]);
     expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
     expect(state.outcome?.lastPlaceSeat).toBe(state.finishedSeats[3]);
+
+    const next = startNextRound(state, () => 0);
+    expect(next.currentTurn).toBe(state.winnerSeat);
+    expect(next.trick.leaderSeat).toBe(state.winnerSeat);
+    expect(next.finishedSeats).toEqual([]);
+    expect(next.hands).toHaveLength(4);
+    expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
   });
 });
