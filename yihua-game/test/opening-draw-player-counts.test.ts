@@ -25,7 +25,11 @@ const keepOrder = () => 0.999999;
 describe("opening draw supported player counts", () => {
   for (const playerCount of [2, 3, 4, 5, 6] as const) {
     it(`selects the unique highest card at a ${playerCount}-player table`, () => {
-      const result = runOpeningDraw(deckFor(playerCount), playerCount, keepOrder);
+      const result = runOpeningDraw(
+        deckFor(playerCount),
+        playerCount,
+        keepOrder,
+      );
 
       expect(result.attempts).toHaveLength(1);
       expect(result.attempts[0]!.cards).toHaveLength(playerCount);
