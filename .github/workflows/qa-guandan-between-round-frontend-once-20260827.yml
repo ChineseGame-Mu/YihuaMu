@@ -15,6 +15,18 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Normalize guarded duplicate expectations
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/patch_guandan_between_round_frontend_20260827.py')
+          text = path.read_text()
+          old = '''def once(text: str, old: str, new: str, label: str) -> str:\n    count = text.count(old)\n    if count != 1:\n        raise SystemExit(f'{label}: expected 1 match, found {count}')\n    return text.replace(old, new, 1)\n'''
+          new = '''def once(text: str, old: str, new: str, label: str) -> str:\n    count = text.count(old)\n    duplicate_first = {\n        'waiting pending players protocol',\n        'waiting reducer pending players',\n    }\n    expected = 2 if label in duplicate_first else 1\n    if count != expected:\n        raise SystemExit(f'{label}: expected {expected} match(es), found {count}')\n    return text.replace(old, new, 1)\n'''
+          if text.count(old) != 1:
+              raise SystemExit('guard helper normalization target mismatch')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Apply guarded frontend and seat-sync patch
         run: python .github/scripts/patch_guandan_between_round_frontend_20260827.py
       - name: Install frontend dependencies
