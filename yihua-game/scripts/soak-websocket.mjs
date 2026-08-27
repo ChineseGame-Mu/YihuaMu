@@ -397,8 +397,12 @@ const result = {
 console.log(JSON.stringify(result));
 if (
   result.tables.some(
-    ({ deadlocks, stateErrors, crashes }) =>
-      deadlocks || stateErrors || crashes,
+    ({ reconnects, staleErrors, deadlocks, stateErrors, crashes }) =>
+      deadlocks ||
+      stateErrors ||
+      crashes ||
+      staleErrors > reconnects ||
+      (reconnects > 0 && staleErrors === 0),
   )
 )
   process.exitCode = 1;
