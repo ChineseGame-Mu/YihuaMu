@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dealAfterOpeningDraw, startOpeningDraw, createLobbyState } from "../src/core/game-state.js";
+import {
+  dealAfterOpeningDraw,
+  startOpeningDraw,
+  createLobbyState,
+} from "../src/core/game-state.js";
 
 describe("opening draw to first turn integration", () => {
   it.each([2, 4, 6] as const)(
