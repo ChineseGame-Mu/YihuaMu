@@ -246,7 +246,9 @@ const reconnectOnePlayer = async (table) => {
     const activeSeat = afterReconnect.game.currentTurn;
     const activeConnection = table.connections.get(activeSeat);
     if (!activeConnection)
-      throw new Error(`${table.roomId}: active connection missing after reconnect`);
+      throw new Error(
+        `${table.roomId}: active connection missing after reconnect`,
+      );
     const messagesBefore = activeConnection.socket.messages.length;
     table.commandSequence += 1;
     await activeConnection.receive(
@@ -262,7 +264,11 @@ const reconnectOnePlayer = async (table) => {
     const newMessages = activeConnection.socket.messages
       .slice(messagesBefore)
       .map((text) => JSON.parse(text));
-    if (!newMessages.some(({ type, code }) => type === "error" && code === "stale_revision"))
+    if (
+      !newMessages.some(
+        ({ type, code }) => type === "error" && code === "stale_revision",
+      )
+    )
       throw new Error(`${table.roomId}: stale command was not rejected`);
     table.metrics.staleErrors += 1;
   }
