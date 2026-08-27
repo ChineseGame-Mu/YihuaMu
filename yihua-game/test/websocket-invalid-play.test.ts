@@ -76,7 +76,9 @@ describe("invalid websocket play commands", () => {
     await attachUpgradedConnection(runtime, leaderConnection);
 
     const initialRevision = runtime.rooms.get("invalid-play").revision;
-    const initialLeaderIds = started.game.hands[leaderSeat]!.map(({ id }) => id);
+    const initialLeaderIds = started.game.hands[leaderSeat]!.map(
+      ({ id }) => id,
+    );
 
     await leaderConnection.receive(
       JSON.stringify({
@@ -94,7 +96,9 @@ describe("invalid websocket play commands", () => {
     expect(afterBadId.game.hands[leaderSeat]!.map(({ id }) => id)).toEqual(
       initialLeaderIds,
     );
-    expect(JSON.parse(leaderConnection.socket.sent.at(-1) ?? "{}")).toMatchObject({
+    expect(
+      JSON.parse(leaderConnection.socket.sent.at(-1) ?? "{}"),
+    ).toMatchObject({
       type: "error",
       code: "invalid_message",
     });
@@ -175,9 +179,9 @@ describe("invalid websocket play commands", () => {
     expect(afterStalePlay.revision).toBe(afterValidPlay.revision);
     expect(afterStalePlay.game.phase).toBe("playing");
     if (afterStalePlay.game.phase !== "playing") return;
-    expect(afterStalePlay.game.hands[responderSeat]!.map(({ id }) => id)).toEqual(
-      responderIds,
-    );
+    expect(
+      afterStalePlay.game.hands[responderSeat]!.map(({ id }) => id),
+    ).toEqual(responderIds);
     expect(
       JSON.parse(responderConnection.socket.sent.at(-1) ?? "{}"),
     ).toMatchObject({ type: "error", code: "stale_revision" });
