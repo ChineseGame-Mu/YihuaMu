@@ -8,6 +8,10 @@ import {
 } from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
 import {
+  buildRoundPlacements,
+  type RoundPlacement,
+} from "./round-result.js";
+import {
   createTableConfig,
   teamForSeat,
   teammateSeatsForSeat,
@@ -47,6 +51,7 @@ export interface RoundCompleteState extends Omit<PlayingState, "phase"> {
   readonly phase: "round-complete";
   readonly winnerSeat: number;
   readonly finishedSeats: readonly number[];
+  readonly placements: readonly RoundPlacement[];
 }
 
 export type GameState =
@@ -285,10 +290,17 @@ export const completeRound = (
     throw new Error("winner seat is outside the table");
   }
 
+  const finishedSeats = state.finishedSeats ?? [];
+  const placements =
+    finishedSeats.length === state.config.playerCount
+      ? buildRoundPlacements(state.config.playerCount, finishedSeats)
+      : [];
+
   return {
     ...state,
     phase: "round-complete",
     winnerSeat,
-    finishedSeats: state.finishedSeats ?? [],
+    finishedSeats,
+    placements,
   };
 };
