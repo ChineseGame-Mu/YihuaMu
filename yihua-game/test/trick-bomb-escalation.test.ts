@@ -55,9 +55,9 @@ describe("bomb escalation in a live trick", () => {
 
     expect(() =>
       playCards(trick, 1, straightFlush(["10", "J", "Q", "K", "A"])),
-    ).toThrow("play does not beat the current leading play");
+    ).toThrow("played hand does not beat the current hand");
     expect(() => playCards(trick, 1, bomb("A", 5))).toThrow(
-      "play does not beat the current leading play",
+      "played hand does not beat the current hand",
     );
   });
 });
