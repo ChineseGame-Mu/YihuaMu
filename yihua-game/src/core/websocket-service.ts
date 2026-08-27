@@ -17,7 +17,9 @@ export interface ConnectionContext {
   readonly playerId?: string;
 }
 
-const versionedRoomStateMessage = (managed: ManagedRoom): ServerMessage => ({
+type RoomStateMessage = Extract<ServerMessage, { readonly type: "room_state" }>;
+
+const versionedRoomStateMessage = (managed: ManagedRoom): RoomStateMessage => ({
   ...roomStateMessage(managed.room),
   revision: managed.revision,
 });
