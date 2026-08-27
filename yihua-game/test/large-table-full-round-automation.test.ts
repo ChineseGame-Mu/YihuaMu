@@ -107,7 +107,9 @@ describe.each(counts)("%i-player full-round automation", (playerCount) => {
       expect(second.completed.finishedSeats).toHaveLength(playerCount);
       expect(new Set(second.completed.finishedSeats).size).toBe(playerCount);
       expect(second.completed.placements).toHaveLength(playerCount);
-      expect(second.completed.winnerSeat).toBe(second.completed.finishedSeats[0]);
+      expect(second.completed.winnerSeat).toBe(
+        second.completed.finishedSeats[0],
+      );
       expect(second.completed.openingDraw).toBe(first.completed.openingDraw);
       expect(second.completed.openingDraw.winnerSeat).toBe(openingWinner);
       expect(second.completed.outcome?.firstPlaceSeat).toBe(
