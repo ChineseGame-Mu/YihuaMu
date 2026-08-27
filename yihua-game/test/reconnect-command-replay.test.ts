@@ -176,4 +176,55 @@ describe("command replay across reconnect", () => {
     expect(current.room.participants).toHaveLength(1);
     expect(current.room.participants[0]?.id).toBe("p1");
   });
+
+  it("deduplicates leave and blocks leaving as another player", async () => {
+    const runtime = createServerRuntime();
+    runtime.rooms.create("leave-room", 4);
+    const connection = new FakeConnection({
+      roomId: "leave-room",
+      playerId: "p1",
+    });
+    await attachUpgradedConnection(runtime, connection);
+
+    await connection.receive(
+      JSON.stringify({
+        type: "join_room",
+        roomId: "leave-room",
+        playerId: "p1",
+        name: "玩家1",
+        seat: 0,
+        expectedRevision: 0,
+        commandId: "join-before-leave",
+      }),
+    );
+    expect(runtime.rooms.get("leave-room").revision).toBe(1);
+
+    const leave = JSON.stringify({
+      type: "leave_room",
+      playerId: "p1",
+      expectedRevision: 1,
+      commandId: "leave-once",
+    });
+    await connection.receive(leave);
+    expect(runtime.rooms.get("leave-room").revision).toBe(2);
+    expect(runtime.rooms.get("leave-room").room.participants).toHaveLength(0);
+
+    await connection.receive(leave);
+    expect(runtime.rooms.get("leave-room").revision).toBe(2);
+    expect(runtime.rooms.get("leave-room").room.participants).toHaveLength(0);
+
+    await connection.receive(
+      JSON.stringify({
+        type: "leave_room",
+        playerId: "p2",
+        expectedRevision: 2,
+        commandId: "leave-other-player",
+      }),
+    );
+    expect(runtime.rooms.get("leave-room").revision).toBe(2);
+    expect(JSON.parse(connection.socket.sent.at(-1) ?? "{}")).toMatchObject({
+      type: "error",
+      code: "player_identity_mismatch",
+    });
+  });
 });
