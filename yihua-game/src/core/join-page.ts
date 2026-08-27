@@ -60,7 +60,7 @@ export const renderJoinPage = (roomId: string): string => {
       </div>
       <button id="join-button" type="submit">进入牌室</button>
     </form>
-    <p class="hint">无需注册，选择人数并输入姓名即可加入</p>
+    <p class="hint">牌室建立后 3 小时内，后到玩家仍可加入并接替机器人座位。</p>
     <p id="join-status" class="status" role="status" aria-live="polite"></p>
   </main>
   <script>
@@ -95,7 +95,17 @@ export const renderJoinPage = (roomId: string): string => {
         const data = await response.json();
         count.value = String(data.room.config.playerCount);
         count.disabled = true;
-        countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人。";
+        if (typeof data.room.joinClosesAt === "number") {
+          const remainingMs = data.room.joinClosesAt - Date.now();
+          if (remainingMs <= 0) {
+            countNote.textContent = "今晚牌室的 3 小时入室时间已结束。";
+          } else {
+            const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
+            countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人；后到玩家还可在约 " + minutes + " 分钟内加入。";
+          }
+        } else {
+          countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人。";
+        }
         return true;
       };
 
@@ -113,7 +123,7 @@ export const renderJoinPage = (roomId: string): string => {
         }
         if (!response.ok) throw new Error("无法建立牌室");
         count.disabled = true;
-        countNote.textContent = "今晚已设为 " + playerCount + " 人。";
+        countNote.textContent = "今晚已设为 " + playerCount + " 人；3 小时内均可后到加入。";
       };
 
       void readExistingRoom().catch(() => {
@@ -148,14 +158,26 @@ export const renderJoinPage = (roomId: string): string => {
         socket.addEventListener("message", (event) => {
           let message;
           try { message = JSON.parse(event.data); } catch { return; }
-          if (message.type === "error") { fail(message.message || "无法进入牌室，请重试。"); return; }
+          if (message.type === "error") {
+            const text = String(message.message || "");
+            if (text.includes("three-hour join window")) {
+              fail("本牌室的 3 小时入室时间已结束。");
+            } else {
+              fail(text || "无法进入牌室，请重试。");
+            }
+            return;
+          }
           if (message.type !== "room_state" || joined) return;
           const occupied = new Set(message.participants.map((participant) => participant.seat));
           let seat = -1;
           for (let candidate = 0; candidate < message.playerCount; candidate += 1) {
             if (!occupied.has(candidate)) { seat = candidate; break; }
           }
-          if (seat < 0) { fail("牌室已满，请联系房主。"); return; }
+          if (seat < 0) {
+            const robot = message.participants.find((participant) => participant.kind === "robot");
+            if (robot) seat = robot.seat;
+          }
+          if (seat < 0) { fail("今晚牌室的真人座位已满。"); return; }
           joined = true;
           socket.send(JSON.stringify({ type: "join_room", roomId, playerId, name, seat }));
         });
