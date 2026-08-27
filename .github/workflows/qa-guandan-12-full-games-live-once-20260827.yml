@@ -1,0 +1,43 @@
+name: QA Guandan 12 full robot games LIVE once
+
+on:
+  push:
+    branches: [qa/guandan-live-after-between-round-20260827]
+    paths:
+      - .github/workflows/qa-guandan-12-full-games-live-once-20260827.yml
+
+permissions:
+  contents: read
+
+jobs:
+  robot-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install websocket client
+        run: python -m pip install --quiet 'websockets>=12,<16'
+      - name: Run exact previously verified 12-game robot script
+        run: |
+          git fetch origin optimize/guandan-online-performance-20260826
+          git show origin/optimize/guandan-online-performance-20260826:.github/workflows/qa-guandan-12-full-games-20260826.yml > /tmp/qa12.yml
+          python - <<'PY'
+          from pathlib import Path
+          lines=Path('/tmp/qa12.yml').read_text().splitlines()
+          start=None; end=None
+          for i,line in enumerate(lines):
+              if "python - <<'PY'" in line:
+                  start=i+1
+                  continue
+              if start is not None and line.strip()=='PY':
+                  end=i
+                  break
+          assert start is not None and end is not None, (start,end)
+          body=[]
+          for line in lines[start:end]:
+              body.append(line[10:] if line.startswith('          ') else line)
+          Path('/tmp/qa12.py').write_text('\n'.join(body)+'\n')
+          PY
+          python /tmp/qa12.py
