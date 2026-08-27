@@ -13,7 +13,10 @@ export type ClientMessage =
       readonly name: string;
       readonly seat: number;
     } & CommandMetadata)
-  | ({ readonly type: "leave_room"; readonly playerId: string } & CommandMetadata)
+  | ({
+      readonly type: "leave_room";
+      readonly playerId: string;
+    } & CommandMetadata)
   | ({ readonly type: "set_robots"; readonly count: number } & CommandMetadata)
   | ({ readonly type: "start_game" } & CommandMetadata)
   | { readonly type: "ping"; readonly nonce: string };
@@ -66,9 +69,7 @@ export type ServerMessage =
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const commandMetadata = (
-  parsed: Record<string, unknown>,
-): CommandMetadata => {
+const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
   const metadata: { expectedRevision?: number; commandId?: string } = {};
 
   if (parsed.expectedRevision !== undefined) {
