@@ -52,7 +52,7 @@ export const renderJoinPage = (roomId: string): string => {
           <option value="12">12 人</option>
           <option value="14">14 人</option>
         </select>
-        <p id="count-note" class="count-note">第一位进入的玩家确定今晚人数。</p>
+        <p id="count-note" class="count-note">第一位进入的玩家确定今晚计划人数。</p>
       </div>
       <div class="field">
         <label for="player-name">您的姓名</label>
@@ -60,7 +60,7 @@ export const renderJoinPage = (roomId: string): string => {
       </div>
       <button id="join-button" type="submit">进入牌室</button>
     </form>
-    <p class="hint">牌室建立后 3 小时内，后到玩家仍可加入并接替机器人座位。</p>
+    <p class="hint">全部使用真人。游戏开始后 3 小时内，后到玩家仍可加入；当前一局不中断，从下一局开始参赛。</p>
     <p id="join-status" class="status" role="status" aria-live="polite"></p>
   </main>
   <script>
@@ -101,10 +101,10 @@ export const renderJoinPage = (roomId: string): string => {
             countNote.textContent = "今晚牌室的 3 小时入室时间已结束。";
           } else {
             const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
-            countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人；后到玩家还可在约 " + minutes + " 分钟内加入。";
+            countNote.textContent = "今晚计划 " + data.room.config.playerCount + " 人；后到真人还可在约 " + minutes + " 分钟内加入。";
           }
         } else {
-          countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人。";
+          countNote.textContent = "今晚计划 " + data.room.config.playerCount + " 人；游戏开始后才启动 3 小时后到计时。";
         }
         return true;
       };
@@ -123,11 +123,11 @@ export const renderJoinPage = (roomId: string): string => {
         }
         if (!response.ok) throw new Error("无法建立牌室");
         count.disabled = true;
-        countNote.textContent = "今晚已设为 " + playerCount + " 人；3 小时内均可后到加入。";
+        countNote.textContent = "今晚计划 " + playerCount + " 人，全部真人。";
       };
 
       void readExistingRoom().catch(() => {
-        countNote.textContent = "请选择今晚参加人数。";
+        countNote.textContent = "请选择今晚计划参加人数。";
       });
 
       form.addEventListener("submit", async (event) => {
@@ -173,11 +173,7 @@ export const renderJoinPage = (roomId: string): string => {
           for (let candidate = 0; candidate < message.playerCount; candidate += 1) {
             if (!occupied.has(candidate)) { seat = candidate; break; }
           }
-          if (seat < 0) {
-            const robot = message.participants.find((participant) => participant.kind === "robot");
-            if (robot) seat = robot.seat;
-          }
-          if (seat < 0) { fail("今晚牌室的真人座位已满。"); return; }
+          if (seat < 0) { fail("今晚计划的真人座位已满。"); return; }
           joined = true;
           socket.send(JSON.stringify({ type: "join_room", roomId, playerId, name, seat }));
         });
