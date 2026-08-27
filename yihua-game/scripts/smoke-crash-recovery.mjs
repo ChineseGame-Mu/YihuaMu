@@ -88,7 +88,7 @@ const connect = async (seat) => {
   return { seat, playerId, socket, next, roomState };
 };
 
-const join = async (client, revision) => {
+const joinRoom = async (client, revision) => {
   client.socket.send(
     JSON.stringify({
       type: "join_room",
@@ -120,7 +120,7 @@ try {
   );
   let revision = clients[0].roomState.revision;
   for (const client of clients) {
-    await join(client, revision);
+    await joinRoom(client, revision);
     const updates = await Promise.all(clients.map(({ next }) => next()));
     revision = updates[0].revision;
   }
@@ -180,8 +180,7 @@ try {
   if (
     restoredGame.type !== "game_state" ||
     restoredGame.currentTurn !== expectedTurn ||
-    JSON.stringify(restoredGame.handCounts) !==
-      JSON.stringify(expectedCounts) ||
+    JSON.stringify(restoredGame.handCounts) !== JSON.stringify(expectedCounts) ||
     restoredGame.leadingPlay?.cards?.[0]?.id !== card.id
   ) {
     throw new Error(
