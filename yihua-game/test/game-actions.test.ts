@@ -56,4 +56,14 @@ describe("exact card id game actions", () => {
     expect(hand.some(({ id }) => id === duplicate.playId)).toBe(false);
     expect(hand.some(({ id }) => id === duplicate.keepId)).toBe(true);
   });
+
+  it("rejects the same physical card id twice in one play", () => {
+    const state = startGame(createLobbyState(4, 0), seededRandom(101));
+    const seat = state.currentTurn;
+    const cardId = state.hands[seat]![0]!.id;
+
+    expect(() => playGameCardIds(state, seat, [cardId, cardId])).toThrow(
+      "card ids must be unique",
+    );
+  });
 });
