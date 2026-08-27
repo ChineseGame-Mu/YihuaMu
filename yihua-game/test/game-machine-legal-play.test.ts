@@ -14,7 +14,9 @@ const suited = (rank: Rank, suit: Suit): Card => ({
 
 const deckCard = (id: string, card: Card): DeckCard => ({ id, copy: 0, card });
 
-const stateWithHands = (hands: readonly (readonly DeckCard[])[]): PlayingState => ({
+const stateWithHands = (
+  hands: readonly (readonly DeckCard[])[],
+): PlayingState => ({
   phase: "playing",
   config: createTableConfig(4, 0),
   openingDraw: { attempts: [], winnerSeat: 0 },
