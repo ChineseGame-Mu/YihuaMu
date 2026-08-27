@@ -102,6 +102,13 @@ const commandFingerprint = (message: MutatingMessage): string => {
       return JSON.stringify({ type: message.type, count: message.count });
     case "start_game":
       return JSON.stringify({ type: message.type });
+    case "play_cards":
+      return JSON.stringify({
+        type: message.type,
+        cardIds: [...message.cardIds].sort(),
+      });
+    case "pass_turn":
+      return JSON.stringify({ type: message.type });
   }
 };
 
@@ -138,6 +145,19 @@ export class WebSocketService {
       commands.delete(oldest);
     }
     this.processedCommands.set(roomId, commands);
+  }
+
+  private humanSeat(managed: ManagedRoom, context: ConnectionContext): number {
+    if (context.playerId === undefined) {
+      throw new Error("player identity is required for game commands");
+    }
+    const participant = managed.room.participants.find(
+      ({ id, kind }) => id === context.playerId && kind === "human",
+    );
+    if (!participant) {
+      throw new Error("connection player is not seated in the room");
+    }
+    return participant.seat;
   }
 
   private async rejectPlayerIdentityMismatch(
@@ -253,6 +273,23 @@ export class WebSocketService {
         await this.broadcastRoomState(next);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
+        return next;
+      }
+
+      if (message.type === "play_cards") {
+        const seat = this.humanSeat(managed, context);
+        const next = this.rooms.play(context.roomId, seat, message.cardIds);
+        this.rememberCommand(context.roomId, message);
+        await this.broadcastGameState(next);
+        await this.sendPrivateHands(next);
+        return next;
+      }
+
+      if (message.type === "pass_turn") {
+        const seat = this.humanSeat(managed, context);
+        const next = this.rooms.pass(context.roomId, seat);
+        this.rememberCommand(context.roomId, message);
+        await this.broadcastGameState(next);
         return next;
       }
 
