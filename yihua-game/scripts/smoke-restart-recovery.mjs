@@ -177,7 +177,9 @@ try {
     afterPlay.leadingPlay?.seat !== leaderSeat ||
     afterPlay.handCounts[leaderSeat] !== 26
   ) {
-    throw new Error(`play before restart was lost: ${JSON.stringify(afterPlay)}`);
+    throw new Error(
+      `play before restart was lost: ${JSON.stringify(afterPlay)}`,
+    );
   }
 
   await Promise.all(clients.map(({ socket }) => closeSocket(socket)));
