@@ -41,8 +41,8 @@ const waitForCheckpoint = async () => {
   for (let i = 0; i < 80; i += 1) {
     try {
       const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
-      const room = snapshot.rooms?.find(({ room }) => room.roomId === roomId);
-      if (room?.revision >= 1) return room.revision;
+      const room = snapshot.rooms?.find(({ roomId: savedRoomId }) => savedRoomId === roomId);
+      if (room) return room.revision;
     } catch {}
     await sleep(50);
   }
