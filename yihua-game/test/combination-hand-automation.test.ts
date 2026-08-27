@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { type Card } from "../src/core/cards.js";
 import { type DeckCard } from "../src/core/deck.js";
-import { playGameCards, type PlayingState } from "../src/core/game-state.js";
+import { transitionGame } from "../src/core/game-machine.js";
+import { type PlayingState } from "../src/core/game-state.js";
 import { classifyHand, type HandKind } from "../src/core/hand.js";
 import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
@@ -96,7 +97,7 @@ const asDeckCards = (
 
 describe("combination-hand automation", () => {
   it.each(cases)(
-    "plays $kind through the real game-state transition",
+    "plays $kind through the explicit table state machine",
     ({ kind, cards }) => {
       expect(classifyHand(cards).kind).toBe(kind);
       const filler = suited("2", "spades");
@@ -115,7 +116,7 @@ describe("combination-hand automation", () => {
         finishedSeats: [],
       };
 
-      const next = playGameCards(state, 0, cards);
+      const next = transitionGame(state, { type: "play-cards", seat: 0, cards });
       expect(next.phase).toBe("playing");
       if (next.phase !== "playing")
         throw new Error("combination play unexpectedly completed the round");
