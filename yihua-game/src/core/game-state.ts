@@ -297,6 +297,9 @@ export const completeRound = (
       ? buildRoundPlacements(state.config.playerCount, finishedSeats)
       : [];
   const outcome = placements.length > 0 ? buildRoundOutcome(placements) : null;
+  if (outcome !== null && outcome.firstPlaceSeat !== winnerSeat) {
+    throw new Error("winner seat must match first place");
+  }
 
   return {
     ...state,
