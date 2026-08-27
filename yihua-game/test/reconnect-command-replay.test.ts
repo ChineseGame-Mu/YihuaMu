@@ -151,7 +151,9 @@ describe("command replay across reconnect", () => {
     );
 
     expect(runtime.rooms.get("identity-room").revision).toBe(0);
-    expect(runtime.rooms.get("identity-room").room.participants).toHaveLength(0);
+    expect(runtime.rooms.get("identity-room").room.participants).toHaveLength(
+      0,
+    );
     expect(JSON.parse(connection.socket.sent.at(-1) ?? "{}")).toMatchObject({
       type: "error",
       code: "player_identity_mismatch",
