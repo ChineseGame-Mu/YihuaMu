@@ -52,6 +52,8 @@ describe("opening draw retry state", () => {
 
     expect(result.attempts).toHaveLength(1);
     expect(result.winnerSeat).toBe(3);
-    expect(result.attempts[0]?.cards.every(({ card }) => card.kind === "suited")).toBe(true);
+    expect(
+      result.attempts[0]?.cards.every(({ card }) => card.kind === "suited"),
+    ).toBe(true);
   });
 });
