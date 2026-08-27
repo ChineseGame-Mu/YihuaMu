@@ -5,6 +5,7 @@ import { type SupportedPlayerCount } from "./table.js";
 export interface ManagedRoom {
   readonly room: RoomState;
   readonly game: GameState;
+  readonly revision: number;
 }
 
 export class RoomManager {
@@ -19,6 +20,7 @@ export class RoomManager {
     const managed = {
       room,
       game: createLobbyState(playerCount, 0),
+      revision: 0,
     } satisfies ManagedRoom;
     this.rooms.set(room.roomId, managed);
     return managed;
@@ -36,8 +38,10 @@ export class RoomManager {
     if (managed.room.roomId !== roomId) {
       throw new Error("managed room id mismatch");
     }
-    this.rooms.set(roomId, managed);
-    return managed;
+    const current = this.get(roomId);
+    const next = { ...managed, revision: current.revision + 1 };
+    this.rooms.set(roomId, next);
+    return next;
   }
 
   delete(roomId: string): boolean {
@@ -66,6 +70,7 @@ export class RoomManager {
         ),
         random,
       ),
+      revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
     return next;
