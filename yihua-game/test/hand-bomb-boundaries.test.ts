@@ -10,7 +10,10 @@ const suited = (rank: Rank, suit: Suit): Card => ({
 
 const bomb = (rank: Rank, count: number): Card[] =>
   Array.from({ length: count }, (_, index) =>
-    suited(rank, (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!),
+    suited(
+      rank,
+      (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!,
+    ),
   );
 
 const straightFlush = (ranks: readonly Rank[]): Card[] =>
