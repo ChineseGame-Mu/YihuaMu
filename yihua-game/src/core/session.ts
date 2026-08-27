@@ -6,12 +6,19 @@ import {
 } from "./room.js";
 import { type ClientMessage, type ServerMessage } from "./protocol.js";
 
+type RoomStateServerMessage = Extract<
+  ServerMessage,
+  { readonly type: "room_state" }
+>;
+
 export interface SessionResult {
   readonly room: RoomState;
   readonly response: ServerMessage;
 }
 
-export const roomStateMessage = (room: RoomState): ServerMessage => ({
+export const roomStateMessage = (
+  room: RoomState,
+): RoomStateServerMessage => ({
   type: "room_state",
   roomId: room.roomId,
   playerCount: room.config.playerCount,
