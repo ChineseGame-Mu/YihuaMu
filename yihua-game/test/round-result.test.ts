@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildRoundPlacements } from "../src/core/round-result.js";
+import {
+  buildRoundOutcome,
+  buildRoundPlacements,
+} from "../src/core/round-result.js";
 
 describe("round placements", () => {
   it("preserves finish order as explicit places and teams", () => {
@@ -9,6 +12,21 @@ describe("round placements", () => {
       { place: 3, seat: 0, team: "A" },
       { place: 4, seat: 2, team: "A" },
     ]);
+  });
+
+  it("derives the winning team from first place and the last-place seat", () => {
+    const placements = buildRoundPlacements(4, [1, 0, 3, 2]);
+
+    expect(buildRoundOutcome(placements)).toEqual({
+      winningTeam: "B",
+      losingTeam: "A",
+      firstPlaceSeat: 1,
+      lastPlaceSeat: 2,
+    });
+  });
+
+  it("rejects an empty outcome", () => {
+    expect(() => buildRoundOutcome([])).toThrow();
   });
 
   it("rejects duplicate, missing, or out-of-range seats", () => {
