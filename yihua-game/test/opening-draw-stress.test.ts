@@ -11,8 +11,8 @@ const card = (id: string, value: Card): DeckCard => ({
 
 const suited = (
   id: string,
-  rank: Extract<Card, { kind: "suited" }>['rank'],
-  suit: Extract<Card, { kind: "suited" }>['suit'],
+  rank: Extract<Card, { kind: "suited" }>["rank"],
+  suit: Extract<Card, { kind: "suited" }>["suit"],
 ): DeckCard => card(id, { kind: "suited", rank, suit });
 
 const joker = (id: string, size: "small" | "big"): DeckCard =>
@@ -42,7 +42,9 @@ describe("opening draw stress boundaries", () => {
     expect(result.attempts[1]!.winnerSeat).toBe(3);
     expect(result.winnerSeat).toBe(3);
     expect(
-      result.attempts.flatMap(({ cards }) => cards).every(({ card }) => card.kind === "suited"),
+      result.attempts
+        .flatMap(({ cards }) => cards)
+        .every(({ card }) => card.kind === "suited"),
     ).toBe(true);
   });
 
