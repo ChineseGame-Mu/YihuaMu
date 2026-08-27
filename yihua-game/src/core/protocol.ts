@@ -35,6 +35,13 @@ export type ServerMessage =
       readonly handCounts: readonly number[];
       readonly openingDraw: readonly Card[];
       readonly openingDrawWinner: number;
+      readonly leadingPlay: {
+        readonly seat: number;
+        readonly cards: readonly Card[];
+      } | null;
+      readonly passedSeats: readonly number[];
+      readonly finishedSeats: readonly number[];
+      readonly completedTricks: number;
     }
   | {
       readonly type: "private_hand";
