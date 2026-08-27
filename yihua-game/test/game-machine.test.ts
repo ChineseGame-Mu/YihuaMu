@@ -13,7 +13,8 @@ describe("explicit table game state machine", () => {
       fixedRandom,
     );
     expect(opening.phase).toBe("opening-draw");
-    if (opening.phase !== "opening-draw") throw new Error("opening phase expected");
+    if (opening.phase !== "opening-draw")
+      throw new Error("opening phase expected");
 
     const drawSnapshot = JSON.stringify(opening.openingDraw);
     const playing = transitionGame(
