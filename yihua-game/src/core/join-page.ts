@@ -43,7 +43,7 @@ export const renderJoinPage = (roomId: string): string => {
     <p class="room-label">房间：<span class="room-code">${safeRoomId}</span></p>
     <form id="join-form">
       <div class="field">
-        <label for="player-count">选择人数：4–14 人</label>
+        <label for="player-count">开始人数：4–14 人</label>
         <select id="player-count" name="playerCount">
           <option value="4">4 人</option>
           <option value="6">6 人</option>
@@ -52,7 +52,7 @@ export const renderJoinPage = (roomId: string): string => {
           <option value="12">12 人</option>
           <option value="14">14 人</option>
         </select>
-        <p id="count-note" class="count-note">第一位进入的玩家确定今晚计划人数。</p>
+        <p id="count-note" class="count-note">第一位进入的玩家确定开始人数；之后可继续增加到 14 人。</p>
       </div>
       <div class="field">
         <label for="player-name">您的姓名</label>
@@ -60,7 +60,7 @@ export const renderJoinPage = (roomId: string): string => {
       </div>
       <button id="join-button" type="submit">进入牌室</button>
     </form>
-    <p class="hint">全部使用真人。游戏开始后 3 小时内，后到玩家仍可加入；当前一局不中断，从下一局开始参赛。</p>
+    <p class="hint">全部使用真人。游戏开始后 3 小时内可继续加入；人数按 6→8→10→12→14 逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。</p>
     <p id="join-status" class="status" role="status" aria-live="polite"></p>
   </main>
   <script>
@@ -101,10 +101,10 @@ export const renderJoinPage = (roomId: string): string => {
             countNote.textContent = "今晚牌室的 3 小时入室时间已结束。";
           } else {
             const minutes = Math.max(1, Math.ceil(remainingMs / 60000));
-            countNote.textContent = "今晚计划 " + data.room.config.playerCount + " 人；后到真人还可在约 " + minutes + " 分钟内加入。";
+            countNote.textContent = "当前已扩展到 " + data.room.config.playerCount + " 人；后到真人还可在约 " + minutes + " 分钟内加入，最多 14 人。";
           }
         } else {
-          countNote.textContent = "今晚计划 " + data.room.config.playerCount + " 人；游戏开始后才启动 3 小时后到计时。";
+          countNote.textContent = "当前开始人数为 " + data.room.config.playerCount + " 人；开局后 3 小时内仍可逐步增加到 14 人。";
         }
         return true;
       };
@@ -123,11 +123,11 @@ export const renderJoinPage = (roomId: string): string => {
         }
         if (!response.ok) throw new Error("无法建立牌室");
         count.disabled = true;
-        countNote.textContent = "今晚计划 " + playerCount + " 人，全部真人。";
+        countNote.textContent = "本桌从 " + playerCount + " 人开始，之后可继续增加到 14 人。";
       };
 
       void readExistingRoom().catch(() => {
-        countNote.textContent = "请选择今晚计划参加人数。";
+        countNote.textContent = "请选择今晚开始参加人数。";
       });
 
       form.addEventListener("submit", async (event) => {
@@ -162,6 +162,8 @@ export const renderJoinPage = (roomId: string): string => {
             const text = String(message.message || "");
             if (text.includes("three-hour join window")) {
               fail("本牌室的 3 小时入室时间已结束。");
+            } else if (text.includes("14-player maximum")) {
+              fail("本牌室已经达到 14 人上限。\n");
             } else {
               fail(text || "无法进入牌室，请重试。");
             }
@@ -173,7 +175,8 @@ export const renderJoinPage = (roomId: string): string => {
           for (let candidate = 0; candidate < message.playerCount; candidate += 1) {
             if (!occupied.has(candidate)) { seat = candidate; break; }
           }
-          if (seat < 0) { fail("今晚计划的真人座位已满。"); return; }
+          if (seat < 0 && message.playerCount < 14) seat = message.playerCount;
+          if (seat < 0) { fail("本牌室已经达到 14 人上限。"); return; }
           joined = true;
           socket.send(JSON.stringify({ type: "join_room", roomId, playerId, name, seat }));
         });
