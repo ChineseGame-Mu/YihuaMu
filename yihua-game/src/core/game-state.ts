@@ -7,7 +7,12 @@ import {
   type RandomSource,
 } from "./deck.js";
 import { runOpeningDraw, type OpeningDrawResult } from "./opening-draw.js";
-import { buildRoundPlacements, type RoundPlacement } from "./round-result.js";
+import {
+  buildRoundOutcome,
+  buildRoundPlacements,
+  type RoundOutcome,
+  type RoundPlacement,
+} from "./round-result.js";
 import {
   createTableConfig,
   teamForSeat,
@@ -49,6 +54,7 @@ export interface RoundCompleteState extends Omit<PlayingState, "phase"> {
   readonly winnerSeat: number;
   readonly finishedSeats: readonly number[];
   readonly placements: readonly RoundPlacement[];
+  readonly outcome: RoundOutcome | null;
 }
 
 export type GameState =
@@ -115,10 +121,8 @@ export const startNextRound = (
     random,
   );
   const hands = dealHands(dealDeck, completed.config.playerCount);
-  const trick = createTrickState(
-    completed.config.playerCount,
-    completed.winnerSeat,
-  );
+  const nextLeader = completed.outcome?.firstPlaceSeat ?? completed.winnerSeat;
+  const trick = createTrickState(completed.config.playerCount, nextLeader);
 
   return {
     phase: "playing",
@@ -292,6 +296,7 @@ export const completeRound = (
     finishedSeats.length === state.config.playerCount
       ? buildRoundPlacements(state.config.playerCount, finishedSeats)
       : [];
+  const outcome = placements.length > 0 ? buildRoundOutcome(placements) : null;
 
   return {
     ...state,
@@ -299,5 +304,6 @@ export const completeRound = (
     winnerSeat,
     finishedSeats,
     placements,
+    outcome,
   };
 };
