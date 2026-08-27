@@ -62,11 +62,16 @@ jobs:
       - name: Lint frontend
         run: yarn lint
         working-directory: ./frontend
+      - name: Normalize known master CSS only in runner
+        run: yarn prettier src/guandan-public-player-position.css --write
+        working-directory: ./frontend
       - name: Check frontend formatting
         run: |
           test "$(yarn --silent prettier --version)" = "3.4.1"
           yarn prettier --check
         working-directory: ./frontend
+      - name: Restore unrelated master CSS
+        run: git checkout -- frontend/src/guandan-public-player-position.css
       - name: Lint Rust code
         run: cargo clippy
       - name: Check Rust formatting
