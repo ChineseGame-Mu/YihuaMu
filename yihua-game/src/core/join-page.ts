@@ -24,10 +24,14 @@ export const renderJoinPage = (roomId: string): string => {
     .join-title { margin: 0; font-size: 30px; text-align: center; }
     .room-label { margin: 10px 0 26px; text-align: center; color: #52705e; font-size: 15px; }
     .room-code { font-weight: 800; color: #245c3a; }
+    .field { margin-top: 16px; }
+    .field:first-child { margin-top: 0; }
     label { display: block; margin-bottom: 8px; font-weight: 700; }
-    input { width: 100%; min-height: 54px; border: 1.5px solid #b7cdbd; border-radius: 14px; padding: 0 16px; font-size: 18px; outline: none; background: #fff; }
-    input:focus { border-color: #2d7a4d; box-shadow: 0 0 0 4px rgba(45,122,77,.12); }
-    button { width: 100%; min-height: 56px; margin-top: 16px; border: 0; border-radius: 14px; font-size: 19px; font-weight: 800; color: #fff; background: #247447; cursor: pointer; }
+    input, select { width: 100%; min-height: 54px; border: 1.5px solid #b7cdbd; border-radius: 14px; padding: 0 16px; font-size: 18px; outline: none; background: #fff; color: #173d29; }
+    input:focus, select:focus { border-color: #2d7a4d; box-shadow: 0 0 0 4px rgba(45,122,77,.12); }
+    select:disabled { background: #f2f6f3; color: #52705e; }
+    .count-note { margin: 7px 2px 0; color: #6a7c70; font-size: 13px; }
+    button { width: 100%; min-height: 56px; margin-top: 20px; border: 0; border-radius: 14px; font-size: 19px; font-weight: 800; color: #fff; background: #247447; cursor: pointer; }
     button:disabled { opacity: .55; cursor: wait; }
     .hint { margin: 14px 0 0; text-align: center; color: #6a7c70; font-size: 14px; }
     .status { min-height: 22px; margin: 14px 0 0; text-align: center; color: #9b2f2f; font-size: 14px; }
@@ -38,11 +42,25 @@ export const renderJoinPage = (roomId: string): string => {
     <h1 class="join-title">加入牌室</h1>
     <p class="room-label">房间：<span class="room-code">${safeRoomId}</span></p>
     <form id="join-form">
-      <label for="player-name">您的姓名</label>
-      <input id="player-name" name="playerName" maxlength="16" autocomplete="name" enterkeyhint="go" placeholder="请输入姓名" required>
+      <div class="field">
+        <label for="player-count">当晚参加人数</label>
+        <select id="player-count" name="playerCount">
+          <option value="4">4 人</option>
+          <option value="6">6 人</option>
+          <option value="8">8 人</option>
+          <option value="10">10 人</option>
+          <option value="12">12 人</option>
+          <option value="14">14 人</option>
+        </select>
+        <p id="count-note" class="count-note">第一位进入的玩家确定今晚人数。</p>
+      </div>
+      <div class="field">
+        <label for="player-name">您的姓名</label>
+        <input id="player-name" name="playerName" maxlength="16" autocomplete="name" enterkeyhint="go" placeholder="请输入姓名" required>
+      </div>
       <button id="join-button" type="submit">进入牌室</button>
     </form>
-    <p class="hint">无需注册，输入姓名即可加入</p>
+    <p class="hint">无需注册，选择人数并输入姓名即可加入</p>
     <p id="join-status" class="status" role="status" aria-live="polite"></p>
   </main>
   <script>
@@ -50,6 +68,8 @@ export const renderJoinPage = (roomId: string): string => {
       const roomId = decodeURIComponent("${encodedRoomId}");
       const form = document.getElementById("join-form");
       const input = document.getElementById("player-name");
+      const count = document.getElementById("player-count");
+      const countNote = document.getElementById("count-note");
       const button = document.getElementById("join-button");
       const status = document.getElementById("join-status");
       const storageKey = "yihua-room-name:" + roomId;
@@ -68,12 +88,53 @@ export const renderJoinPage = (roomId: string): string => {
         return scheme + "//" + location.host + "/ws/rooms/${encodedRoomId}" + suffix;
       };
 
-      form.addEventListener("submit", (event) => {
+      const readExistingRoom = async () => {
+        const response = await fetch("/api/rooms/${encodedRoomId}");
+        if (response.status === 404) return false;
+        if (!response.ok) throw new Error("无法读取牌室状态");
+        const data = await response.json();
+        count.value = String(data.room.config.playerCount);
+        count.disabled = true;
+        countNote.textContent = "今晚已设为 " + data.room.config.playerCount + " 人。";
+        return true;
+      };
+
+      const ensureRoom = async () => {
+        if (await readExistingRoom()) return;
+        const playerCount = Number(count.value);
+        const response = await fetch("/api/rooms", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ roomId, playerCount }),
+        });
+        if (response.status === 409) {
+          await readExistingRoom();
+          return;
+        }
+        if (!response.ok) throw new Error("无法建立牌室");
+        count.disabled = true;
+        countNote.textContent = "今晚已设为 " + playerCount + " 人。";
+      };
+
+      void readExistingRoom().catch(() => {
+        countNote.textContent = "请选择今晚参加人数。";
+      });
+
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const name = input.value.trim();
         if (!name) { status.textContent = "请输入您的姓名。"; input.focus(); return; }
         button.disabled = true;
         status.textContent = "正在进入牌室…";
+
+        try {
+          await ensureRoom();
+        } catch (error) {
+          status.textContent = error instanceof Error ? error.message : "无法建立牌室，请重试。";
+          button.disabled = false;
+          return;
+        }
+
         const playerId = randomId();
         const socket = new WebSocket(connectUrl());
         let joined = false;
