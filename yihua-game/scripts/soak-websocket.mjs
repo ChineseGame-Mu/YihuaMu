@@ -8,7 +8,9 @@ const durationMs = Number(process.env.SOAK_DURATION_MS ?? THREE_HOURS_MS);
 const actionLimit = Number(process.env.SOAK_ACTION_LIMIT ?? 10000);
 const reconnectEvery = Number(process.env.SOAK_RECONNECT_EVERY ?? 75);
 const requestedCounts = process.env.SOAK_PLAYER_COUNTS
-  ? process.env.SOAK_PLAYER_COUNTS.split(",").map((value) => Number(value.trim()))
+  ? process.env.SOAK_PLAYER_COUNTS.split(",").map((value) =>
+      Number(value.trim()),
+    )
   : [...SUPPORTED_PLAYER_COUNTS];
 
 class CountingSocket {
@@ -73,10 +75,15 @@ const auditRoom = (table) => {
   if (room.participants.length !== table.playerCount) {
     throw new Error(`${table.roomId}: participant count changed`);
   }
-  if (new Set(room.participants.map(({ id }) => id)).size !== table.playerCount) {
+  if (
+    new Set(room.participants.map(({ id }) => id)).size !== table.playerCount
+  ) {
     throw new Error(`${table.roomId}: duplicate participant id`);
   }
-  if (new Set(room.participants.map(({ seat }) => seat)).size !== table.playerCount) {
+  if (
+    new Set(room.participants.map(({ seat }) => seat)).size !==
+    table.playerCount
+  ) {
     throw new Error(`${table.roomId}: duplicate participant seat`);
   }
 
@@ -88,9 +95,14 @@ const auditRoom = (table) => {
       throw new Error(`${table.roomId}: participant remained disconnected`);
     }
     if (
-      table.runtime.sockets.playerConnectionCount(table.roomId, participant.id) !== 1
+      table.runtime.sockets.playerConnectionCount(
+        table.roomId,
+        participant.id,
+      ) !== 1
     ) {
-      throw new Error(`${table.roomId}: player socket count is not exactly one`);
+      throw new Error(
+        `${table.roomId}: player socket count is not exactly one`,
+      );
     }
   }
 
@@ -196,7 +208,9 @@ const reconnectOnePlayer = async (table) => {
   await current.close();
   const afterClose = table.runtime.rooms.get(table.roomId);
   if (afterClose.revision !== beforeClose + 1) {
-    throw new Error(`${table.roomId}: disconnect did not advance revision once`);
+    throw new Error(
+      `${table.roomId}: disconnect did not advance revision once`,
+    );
   }
 
   const replacement = await attachPlayer(table, seat);
@@ -205,7 +219,10 @@ const reconnectOnePlayer = async (table) => {
     throw new Error(`${table.roomId}: reconnect did not advance revision once`);
   }
   const snapshot = JSON.parse(replacement.socket.lastText || "{}");
-  if (snapshot.type !== "private_hand" || snapshot.revision !== afterReconnect.revision) {
+  if (
+    snapshot.type !== "private_hand" ||
+    snapshot.revision !== afterReconnect.revision
+  ) {
     throw new Error(`${table.roomId}: reconnect private snapshot is stale`);
   }
   table.metrics.reconnects += 1;
@@ -219,7 +236,8 @@ const sendGameCommand = async (table) => {
     const firstPlaceSeat = game.outcome?.firstPlaceSeat ?? game.winnerSeat;
     const openingDraw = JSON.stringify(game.openingDraw);
     const connection = table.connections.get(firstPlaceSeat);
-    if (!connection) throw new Error(`${table.roomId}: next-round leader missing`);
+    if (!connection)
+      throw new Error(`${table.roomId}: next-round leader missing`);
 
     table.commandSequence += 1;
     await connection.receive(
@@ -234,7 +252,9 @@ const sendGameCommand = async (table) => {
       throw new Error(`${table.roomId}: next_round revision mismatch`);
     }
     if (next.game.phase !== "playing") {
-      throw new Error(`${table.roomId}: next_round did not enter playing phase`);
+      throw new Error(
+        `${table.roomId}: next_round did not enter playing phase`,
+      );
     }
     if (next.game.currentTurn !== firstPlaceSeat) {
       throw new Error(`${table.roomId}: first place did not lead next round`);
@@ -255,13 +275,16 @@ const sendGameCommand = async (table) => {
   }
   if (table.actionsInRound >= actionLimit) {
     table.metrics.deadlocks += 1;
-    throw new Error(`${table.roomId}: round exceeded action limit ${actionLimit}`);
+    throw new Error(
+      `${table.roomId}: round exceeded action limit ${actionLimit}`,
+    );
   }
 
   const seat = game.currentTurn;
   const connection = table.connections.get(seat);
   const hand = game.hands[seat];
-  if (!connection || !hand) throw new Error(`${table.roomId}: active player missing`);
+  if (!connection || !hand)
+    throw new Error(`${table.roomId}: active player missing`);
 
   const leadingHand = game.trick.leadingPlay?.hand ?? null;
   const playable =
@@ -345,7 +368,8 @@ const result = {
 console.log(JSON.stringify(result));
 if (
   result.tables.some(
-    ({ deadlocks, stateErrors, crashes }) => deadlocks || stateErrors || crashes,
+    ({ deadlocks, stateErrors, crashes }) =>
+      deadlocks || stateErrors || crashes,
   )
 ) {
   process.exitCode = 1;
