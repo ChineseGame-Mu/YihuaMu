@@ -1,6 +1,7 @@
 import {
   encodeServerMessage,
   parseClientMessage,
+  type ClientMessage,
   type ServerMessage,
 } from "./protocol.js";
 import { roomStateMessage, applyClientMessage } from "./session.js";
@@ -18,6 +19,7 @@ export interface ConnectionContext {
 }
 
 type RoomStateMessage = Extract<ServerMessage, { readonly type: "room_state" }>;
+type MutatingMessage = Exclude<ClientMessage, { readonly type: "ping" }>;
 
 const versionedRoomStateMessage = (managed: ManagedRoom): RoomStateMessage => ({
   ...roomStateMessage(managed.room),
@@ -82,10 +84,70 @@ const privateHandMessage = (
 };
 
 export class WebSocketService {
+  private readonly processedCommands = new Map<string, Set<string>>();
+
   constructor(
     private readonly rooms: RoomManager,
     private readonly sockets: RoomSocketHub,
   ) {}
+
+  private hasProcessed(roomId: string, commandId: string): boolean {
+    return this.processedCommands.get(roomId)?.has(commandId) ?? false;
+  }
+
+  private rememberCommand(roomId: string, commandId?: string): void {
+    if (commandId === undefined) return;
+    const commands = this.processedCommands.get(roomId) ?? new Set<string>();
+    commands.add(commandId);
+    while (commands.size > 512) {
+      const oldest = commands.values().next().value as string | undefined;
+      if (oldest === undefined) break;
+      commands.delete(oldest);
+    }
+    this.processedCommands.set(roomId, commands);
+  }
+
+  private async rejectStaleRevision(
+    socket: TextSocket,
+    expectedRevision: number,
+    actualRevision: number,
+  ): Promise<void> {
+    const response: ServerMessage = {
+      type: "error",
+      code: "stale_revision",
+      message: `expected revision ${expectedRevision}, current revision is ${actualRevision}`,
+    };
+    await socket.send(encodeServerMessage(response));
+  }
+
+  private async guardMutation(
+    socket: TextSocket,
+    context: ConnectionContext,
+    managed: ManagedRoom,
+    message: MutatingMessage,
+  ): Promise<boolean> {
+    if (
+      message.commandId !== undefined &&
+      this.hasProcessed(context.roomId, message.commandId)
+    ) {
+      await this.sendSnapshot(socket, context.roomId, context.playerId);
+      return false;
+    }
+
+    if (
+      message.expectedRevision !== undefined &&
+      message.expectedRevision !== managed.revision
+    ) {
+      await this.rejectStaleRevision(
+        socket,
+        message.expectedRevision,
+        managed.revision,
+      );
+      return false;
+    }
+
+    return true;
+  }
 
   async handleText(
     socket: TextSocket,
@@ -96,8 +158,19 @@ export class WebSocketService {
       const message = parseClientMessage(raw);
       const managed = this.rooms.get(context.roomId);
 
+      if (message.type === "ping") {
+        const result = applyClientMessage(managed.room, message);
+        await socket.send(encodeServerMessage(result.response));
+        return managed;
+      }
+
+      if (!(await this.guardMutation(socket, context, managed, message))) {
+        return managed;
+      }
+
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
+        this.rememberCommand(context.roomId, message.commandId);
         await this.broadcastRoomState(next);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
@@ -105,15 +178,11 @@ export class WebSocketService {
       }
 
       const result = applyClientMessage(managed.room, message);
-      if (result.response.type === "pong") {
-        await socket.send(encodeServerMessage(result.response));
-        return managed;
-      }
-
       const next = this.rooms.set(context.roomId, {
         ...managed,
         room: result.room,
       });
+      this.rememberCommand(context.roomId, message.commandId);
 
       if (result.response.type === "room_state") {
         await this.sockets.broadcast(
