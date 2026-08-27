@@ -88,6 +88,14 @@ const connect = async (seat) => {
   return { seat, playerId, socket, next, roomState };
 };
 
+const nextOfType = async (client, type) => {
+  for (let i = 0; i < 20; i += 1) {
+    const message = await client.next();
+    if (message.type === type) return message;
+  }
+  throw new Error(`expected ${type} message was not received`);
+};
+
 const joinRoom = async (client, revision) => {
   client.socket.send(
     JSON.stringify({
@@ -167,18 +175,22 @@ try {
 
   second = spawnServer();
   await waitForHealth(second);
-  clients = await Promise.all(
-    Array.from({ length: 4 }, (_, seat) => connect(seat)),
-  );
-  const reconnectSnapshots = await Promise.all(
-    clients.map(async (client) => {
-      const gameState = await client.next();
-      const privateHand = await client.next();
-      return { roomState: client.roomState, gameState, privateHand };
-    }),
-  );
-  const restoredGame = reconnectSnapshots[0].gameState;
+  const reconnectSnapshots = [];
+  for (let seat = 0; seat < 4; seat += 1) {
+    const client = await connect(seat);
+    clients.push(client);
+    const gameState = await nextOfType(client, "game_state");
+    const privateHand = await nextOfType(client, "private_hand");
+    reconnectSnapshots.push({
+      roomState: client.roomState,
+      gameState,
+      privateHand,
+    });
+  }
+
+  const restoredGame = reconnectSnapshots.at(-1)?.gameState;
   if (
+    !restoredGame ||
     restoredGame.type !== "game_state" ||
     restoredGame.currentTurn !== expectedTurn ||
     JSON.stringify(restoredGame.handCounts) !==
@@ -208,11 +220,12 @@ try {
       commandId: "continue-after-crash",
     }),
   );
-  const continued = await Promise.all(clients.map(({ next }) => next()));
+  const continued = await Promise.all(
+    clients.map((client) => nextOfType(client, "game_state")),
+  );
   if (
     continued.some(
       (state) =>
-        state.type !== "game_state" ||
         state.revision !== restoredGame.revision + 1 ||
         !state.passedSeats.includes(expectedTurn),
     )
