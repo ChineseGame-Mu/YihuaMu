@@ -52,7 +52,10 @@ describe("opening draw lifecycle state-machine matrix", () => {
         transitionGame(playing, { type: "next-round" }, fixedRandom),
       ).toThrow(/cannot next-round while game is playing/);
 
-      const finishOrder = Array.from({ length: playerCount }, (_, seat) => seat);
+      const finishOrder = Array.from(
+        { length: playerCount },
+        (_, seat) => seat,
+      );
       const completed = completeRound(
         { ...playing, finishedSeats: finishOrder },
         finishOrder[0] ?? 0,
