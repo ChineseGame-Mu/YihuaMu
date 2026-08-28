@@ -227,6 +227,9 @@ describe("RoomManager", () => {
     managed = manager.nextRound(roomId, () => 0.3);
 
     expect(managed.game.config.playerCount).toBe(10);
+    if (managed.game.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
     expect(managed.game.hands).toHaveLength(10);
   });
 });
