@@ -33,7 +33,11 @@ export type LegacyClientMessage =
 
 export type LegacyServerMessage =
   | { readonly type: "connected"; readonly protocol: string }
-  | { readonly type: "joined"; readonly room: string; readonly seat: number | null }
+  | {
+      readonly type: "joined";
+      readonly room: string;
+      readonly seat: number | null;
+    }
   | {
       readonly type: "waiting";
       readonly players: readonly string[];
@@ -42,7 +46,11 @@ export type LegacyServerMessage =
       readonly minimum_players: number;
       readonly maximum_players: number;
     }
-  | { readonly type: "started"; readonly player_count: number; readonly cards_per_player: number }
+  | {
+      readonly type: "started";
+      readonly player_count: number;
+      readonly cards_per_player: number;
+    }
   | { readonly type: "hand"; readonly cards: readonly LegacyGuandanCard[] }
   | {
       readonly type: "state";
@@ -62,7 +70,20 @@ export type LegacyServerMessage =
       readonly last_trick_winner: number | null;
       readonly initial_draw: readonly LegacyGuandanCard[];
       readonly initial_draw_winner: number | null;
-      readonly level: "Two" | "Three" | "Four" | "Five" | "Six" | "Seven" | "Eight" | "Nine" | "Ten" | "Jack" | "Queen" | "King" | "Ace";
+      readonly level:
+        | "Two"
+        | "Three"
+        | "Four"
+        | "Five"
+        | "Six"
+        | "Seven"
+        | "Eight"
+        | "Nine"
+        | "Ten"
+        | "Jack"
+        | "Queen"
+        | "King"
+        | "Ace";
       readonly team_levels: null;
       readonly finish_order: readonly number[];
       readonly last_game_winner: number | null;
@@ -121,7 +142,9 @@ export const toCleanroomCommand = (
 ): ClientMessage => {
   switch (message.type) {
     case "join":
-      throw new Error("legacy join requires room allocation before command translation");
+      throw new Error(
+        "legacy join requires room allocation before command translation",
+      );
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
     case "start":
@@ -129,7 +152,8 @@ export const toCleanroomCommand = (
     case "play": {
       const cardIds = message.card_indexes.map((index) => {
         const cardId = state.privateCardIds[index];
-        if (cardId === undefined) throw new Error("legacy play card index is out of range");
+        if (cardId === undefined)
+          throw new Error("legacy play card index is out of range");
         return cardId;
       });
       return { type: "play_cards", cardIds };
@@ -144,7 +168,9 @@ export const toCleanroomCommand = (
 export const roomStateToLegacyWaiting = (
   message: Extract<ServerMessage, { readonly type: "room_state" }>,
 ): LegacyServerMessage => {
-  const participants = [...message.participants].sort((a, b) => a.seat - b.seat);
+  const participants = [...message.participants].sort(
+    (a, b) => a.seat - b.seat,
+  );
   return {
     type: "waiting",
     players: participants.map(({ name }) => name),
