@@ -22,8 +22,12 @@ describe("opening draw deck integrity matrix", () => {
 
       for (const attempt of result.attempts) {
         expect(attempt.cards).toHaveLength(playerCount);
-        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(true);
-        expect(new Set(attempt.cards.map((card) => card.id)).size).toBe(playerCount);
+        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(
+          true,
+        );
+        expect(new Set(attempt.cards.map((card) => card.id)).size).toBe(
+          playerCount,
+        );
       }
     },
   );
