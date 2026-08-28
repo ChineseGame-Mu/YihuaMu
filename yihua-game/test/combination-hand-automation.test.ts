@@ -12,6 +12,11 @@ const suited = (
   suit: Extract<Card, { kind: "suited" }>["suit"],
 ): Card => ({ kind: "suited", rank, suit });
 
+const joker = (size: Extract<Card, { kind: "joker" }>["size"]): Card => ({
+  kind: "joker",
+  size,
+});
+
 const cases: readonly { kind: HandKind; cards: readonly Card[] }[] = [
   { kind: "pair", cards: [suited("3", "clubs"), suited("3", "diamonds")] },
   {
@@ -82,6 +87,21 @@ const cases: readonly { kind: HandKind; cards: readonly Card[] }[] = [
       suited("J", "hearts"),
       suited("J", "spades"),
     ],
+  },
+  {
+    kind: "bomb",
+    cards: [
+      suited("Q", "clubs"),
+      suited("Q", "diamonds"),
+      suited("Q", "hearts"),
+      suited("Q", "spades"),
+      suited("Q", "clubs"),
+      suited("Q", "diamonds"),
+    ],
+  },
+  {
+    kind: "joker-bomb",
+    cards: [joker("small"), joker("small"), joker("big"), joker("big")],
   },
 ];
 
