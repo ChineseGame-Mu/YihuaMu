@@ -14,14 +14,19 @@ describe("round-complete state guards", () => {
     "rejects play/pass after completion and only resumes through next round for %i players",
     (playerCount) => {
       const playing = startGame(playerCount, fixedRandom);
-      const finishOrder = Array.from({ length: playerCount }, (_, seat) => seat);
+      const finishOrder = Array.from(
+        { length: playerCount },
+        (_, seat) => seat,
+      );
       const completed = completeRound(
         { ...playing, finishedSeats: finishOrder },
         finishOrder[0],
       );
 
       expect(completed.phase).toBe("round-complete");
-      expect(() => playGameCards(completed, completed.currentTurn, [])).toThrow();
+      expect(() =>
+        playGameCards(completed, completed.currentTurn, []),
+      ).toThrow();
       expect(() => passGameTurn(completed, completed.currentTurn)).toThrow();
 
       const next = startNextRound(completed, fixedRandom);
