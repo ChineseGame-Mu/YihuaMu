@@ -150,7 +150,9 @@ export interface FrontendCompatState {
 }
 
 const unsupportedLegacyCommand = (type: LegacyClientMessage["type"]): never => {
-  throw new Error(`legacy command ${type} is not implemented by the clean-room engine`);
+  throw new Error(
+    `legacy command ${type} is not implemented by the clean-room engine`,
+  );
 };
 
 export const toCleanroomCommand = (
