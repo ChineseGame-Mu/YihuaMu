@@ -3,7 +3,10 @@ import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import { transitionGame } from "../src/core/game-machine.js";
 import type { GameState, PlayingState } from "../src/core/game-state.js";
 import { canHandBeat, classifyHand } from "../src/core/hand.js";
-import { createTableConfig, type SupportedPlayerCount } from "../src/core/table.js";
+import {
+  createTableConfig,
+  type SupportedPlayerCount,
+} from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
