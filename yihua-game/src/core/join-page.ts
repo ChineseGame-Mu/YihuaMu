@@ -173,7 +173,7 @@ export const renderJoinPage = (roomId: string): string => {
             if (text.includes("three-hour join window")) {
               fail("本牌室的 3 小时入室时间已结束。");
             } else if (text.includes("14-player maximum")) {
-              fail("本牌室已经达到 14 人上限。\n");
+              fail("本牌室已经达到 14 人上限。");
             } else {
               fail(text || "无法进入牌室，请重试。");
             }
