@@ -39,7 +39,9 @@ describe("legacy frontend compatibility adapter", () => {
     expect(legacyCard({ kind: "suited", suit: "hearts", rank: "A" })).toEqual({
       Suited: { suit: "Hearts", rank: "Ace" },
     });
-    expect(legacyCard({ kind: "joker", size: "big" })).toEqual({ Joker: "Big" });
+    expect(legacyCard({ kind: "joker", size: "big" })).toEqual({
+      Joker: "Big",
+    });
   });
 
   it("maps existing frontend commands onto clean-room commands", () => {
@@ -50,10 +52,14 @@ describe("legacy frontend compatibility adapter", () => {
       privateCardIds: ["c0", "c1", "c2"],
     };
 
-    expect(toCleanroomCommand({ type: "start", player_count: 6 }, state)).toEqual({
+    expect(
+      toCleanroomCommand({ type: "start", player_count: 6 }, state),
+    ).toEqual({
       type: "start_game",
     });
-    expect(toCleanroomCommand({ type: "play", card_indexes: [2, 0] }, state)).toEqual({
+    expect(
+      toCleanroomCommand({ type: "play", card_indexes: [2, 0] }, state),
+    ).toEqual({
       type: "play_cards",
       cardIds: ["c2", "c0"],
     });
