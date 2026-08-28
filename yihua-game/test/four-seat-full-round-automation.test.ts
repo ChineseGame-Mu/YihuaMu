@@ -22,7 +22,9 @@ const createInitialState = (playerCount: number): PlayingState => ({
   finishedSeats: [],
 });
 
-const driveRound = (initialState: PlayingState): { state: GameState; actions: number } => {
+const driveRound = (
+  initialState: PlayingState,
+): { state: GameState; actions: number } => {
   let state: GameState = initialState;
   let actions = 0;
   const maximumActions = 10000;
@@ -39,7 +41,8 @@ const driveRound = (initialState: PlayingState): { state: GameState; actions: nu
       throw new Error("current turn points to an empty or missing hand");
     }
 
-    const leadingHand: ClassifiedHand | null = playingState.trick.leadingPlay?.hand ?? null;
+    const leadingHand: ClassifiedHand | null =
+      playingState.trick.leadingPlay?.hand ?? null;
     const playable: DeckCard | undefined =
       leadingHand === null
         ? hand[0]
@@ -78,7 +81,9 @@ describe("full-round table automation", () => {
       expect(state.placements).toHaveLength(playerCount);
       expect(state.winnerSeat).toBe(state.finishedSeats[0]);
       expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
-      expect(state.outcome?.lastPlaceSeat).toBe(state.finishedSeats[playerCount - 1]);
+      expect(state.outcome?.lastPlaceSeat).toBe(
+        state.finishedSeats[playerCount - 1],
+      );
       expect(JSON.stringify(state.openingDraw)).toBe(openingDrawSnapshot);
 
       const completedWinner = state.winnerSeat;
