@@ -148,9 +148,9 @@ describe("clean-room /api/guandan compatibility gateway", () => {
 
     expect(errors.length).toBeGreaterThan(0);
     expect(runtime.rooms.get(room).room.participants).toHaveLength(14);
-    expect(runtime.sockets.playerConnectionCount(room, "legacy:第十五位玩家")).toBe(
-      0,
-    );
+    expect(
+      runtime.sockets.playerConnectionCount(room, "legacy:第十五位玩家"),
+    ).toBe(0);
 
     await rejected.close();
     expect(runtime.rooms.get(room).room.participants).toHaveLength(14);
