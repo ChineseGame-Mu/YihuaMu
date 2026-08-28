@@ -7,7 +7,7 @@ describe("playable table frontend/backend connection", () => {
     const html = renderTablePage("manual test/一号");
 
     expect(html).toContain(
-      'new WebSocket(scheme + "//" + location.host + "/ws/rooms/${encodedRoomId}?playerId=" + encodeURIComponent(playerId))',
+      'new WebSocket(scheme + "//" + location.host + "/ws/rooms/manual%20test%2F%E4%B8%80%E5%8F%B7?playerId=" + encodeURIComponent(playerId))',
     );
     expect(html).toContain('send({ type: "start_game" })');
     expect(html).toContain(
@@ -23,7 +23,7 @@ describe("playable table frontend/backend connection", () => {
 
     expect(html).toContain('message.type === "room_state"');
     expect(html).toContain('message.type === "game_state"');
-    expect(html).toContain('message.type === "hand_state"');
+    expect(html).toContain('message.type === "private_hand"');
     expect(html).toContain('message.type === "error"');
     expect(html).toContain("latestGameState.revision");
     expect(html).toContain("latestGameState.handCounts.length");
