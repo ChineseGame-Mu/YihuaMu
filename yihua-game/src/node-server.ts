@@ -4,6 +4,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { renderJoinPage } from "./core/join-page.js";
+import { attachLegacyGuandanConnection } from "./core/legacy-guandan-gateway.js";
 import {
   createServerRuntime,
   type ServerRuntime,
@@ -147,12 +148,15 @@ export const createNodeHttpServer = (
         }
 
         const url = new URL(request.url ?? "/", "http://localhost");
+        const isLegacyGuandan = url.pathname === "/api/guandan";
         const query = Object.fromEntries(url.searchParams.entries());
-        const context = websocketContextFromRequest({
-          path: url.pathname,
-          query,
-        });
-        runtime.rooms.get(context.roomId);
+        const context = isLegacyGuandan
+          ? { roomId: "__legacy_guandan_pending__" }
+          : websocketContextFromRequest({ path: url.pathname, query });
+
+        if (!isLegacyGuandan) {
+          runtime.rooms.get(context.roomId);
+        }
 
         socket.write(
           "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -162,7 +166,11 @@ export const createNodeHttpServer = (
         );
 
         const upgraded = new NodeWebSocketConnection(socket, context);
-        await attachUpgradedConnection(runtime, upgraded);
+        if (isLegacyGuandan) {
+          await attachLegacyGuandanConnection(runtime, upgraded);
+        } else {
+          await attachUpgradedConnection(runtime, upgraded);
+        }
         socket.on("data", (chunk: Buffer) => upgraded.feed(chunk));
         if (head.length > 0) upgraded.feed(head);
         socket.resume();
