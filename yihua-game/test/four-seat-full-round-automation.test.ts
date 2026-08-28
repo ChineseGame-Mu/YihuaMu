@@ -14,7 +14,9 @@ const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
 type SupportedPlayerCount = (typeof PLAYER_COUNTS)[number];
 const ROUND_COUNT = 3;
 
-const createInitialState = (playerCount: SupportedPlayerCount): PlayingState => ({
+const createInitialState = (
+  playerCount: SupportedPlayerCount,
+): PlayingState => ({
   phase: "playing",
   config: createTableConfig(playerCount, 0),
   openingDraw: { attempts: [], winnerSeat: 0 },
