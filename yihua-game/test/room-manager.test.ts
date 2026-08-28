@@ -28,6 +28,26 @@ const fillFourPlayerRoom = (manager: RoomManager, roomId: string): void => {
   fillHumanRoom(manager, roomId, 4);
 };
 
+const addLateHumans = (
+  manager: RoomManager,
+  roomId: string,
+  firstSeat: number,
+  lastSeat: number,
+  now: number,
+): void => {
+  let managed = manager.get(roomId);
+  for (let seat = firstSeat; seat <= lastSeat; seat += 1) {
+    managed = manager.set(roomId, {
+      ...managed,
+      room: addHuman(
+        managed.room,
+        { id: `p${seat + 1}`, name: `玩家${seat + 1}`, seat },
+        now,
+      ),
+    });
+  }
+};
+
 describe("RoomManager", () => {
   it("creates, lists and deletes independent rooms", () => {
     const manager = new RoomManager();
@@ -120,6 +140,86 @@ describe("RoomManager", () => {
     expect(managed.game.hands.every((hand) => hand.length === 27)).toBe(true);
     expect(managed.game.currentTurn).toBe(winner);
     expect(managed.game.trick.leaderSeat).toBe(winner);
+  });
+
+  it("never expands across an unready lower late-player seat", () => {
+    const manager = new RoomManager();
+    const roomId = "late-gap";
+    const startedAt = 2_000_000;
+    fillHumanRoom(manager, roomId, 6);
+
+    let managed = manager.start(roomId, () => 0.2, () => startedAt);
+    addLateHumans(manager, roomId, 6, 11, startedAt + 60_000);
+    managed = manager.get(roomId);
+
+    for (const playerId of ["p8", "p9", "p10", "p11", "p12"]) {
+      managed = manager.set(roomId, {
+        ...managed,
+        room: setReadyForNextRound(managed.room, playerId, true),
+      });
+    }
+
+    if (managed.game.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    const winner = managed.game.currentTurn;
+    managed = manager.set(roomId, {
+      ...managed,
+      game: completeRound(managed.game, winner),
+    });
+    managed = manager.nextRound(roomId, () => 0.2);
+
+    expect(managed.game.config.playerCount).toBe(6);
+  });
+
+  it("expands to the largest supported contiguous ready prefix and honors cancellation", () => {
+    const manager = new RoomManager();
+    const roomId = "late-prefix";
+    const startedAt = 3_000_000;
+    fillHumanRoom(manager, roomId, 6);
+
+    let managed = manager.start(roomId, () => 0.3, () => startedAt);
+    addLateHumans(manager, roomId, 6, 9, startedAt + 60_000);
+    managed = manager.get(roomId);
+
+    for (const playerId of ["p7", "p8", "p9", "p10"]) {
+      managed = manager.set(roomId, {
+        ...managed,
+        room: setReadyForNextRound(managed.room, playerId, true),
+      });
+    }
+    managed = manager.set(roomId, {
+      ...managed,
+      room: setReadyForNextRound(managed.room, "p8", false),
+    });
+
+    if (managed.game.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    let winner = managed.game.currentTurn;
+    managed = manager.set(roomId, {
+      ...managed,
+      game: completeRound(managed.game, winner),
+    });
+    managed = manager.nextRound(roomId, () => 0.3);
+    expect(managed.game.config.playerCount).toBe(6);
+
+    managed = manager.set(roomId, {
+      ...managed,
+      room: setReadyForNextRound(managed.room, "p8", true),
+    });
+    if (managed.game.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    winner = managed.game.currentTurn;
+    managed = manager.set(roomId, {
+      ...managed,
+      game: completeRound(managed.game, winner),
+    });
+    managed = manager.nextRound(roomId, () => 0.3);
+
+    expect(managed.game.config.playerCount).toBe(10);
+    expect(managed.game.hands).toHaveLength(10);
   });
 });
 
