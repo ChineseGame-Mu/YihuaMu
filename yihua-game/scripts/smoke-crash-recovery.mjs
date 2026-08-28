@@ -6,9 +6,14 @@ import { join } from "node:path";
 const port = 36000 + Math.floor(Math.random() * 1000);
 const baseUrl = `http://127.0.0.1:${port}`;
 const roomId = "crash-recovery";
+const crashCycles = Number(process.env.CRASH_RECOVERY_CYCLES ?? "3");
 const directory = await mkdtemp(join(tmpdir(), "yihua-crash-"));
 const snapshotPath = join(directory, "runtime.json");
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+if (!Number.isInteger(crashCycles) || crashCycles < 1) {
+  throw new Error("CRASH_RECOVERY_CYCLES must be a positive integer");
+}
 
 const spawnServer = () => {
   const child = spawn(process.execPath, ["dist/main.js"], {
@@ -110,12 +115,40 @@ const joinRoom = async (client, revision) => {
   );
 };
 
-let first;
-let second;
+const closeClients = (clients) => {
+  clients.forEach(({ socket }) => socket.close());
+};
+
+const reconnectAll = async () => {
+  const clients = [];
+  const snapshots = [];
+  for (let seat = 0; seat < 4; seat += 1) {
+    const client = await connect(seat);
+    clients.push(client);
+    const gameState = await nextOfType(client, "game_state");
+    const privateHand = await nextOfType(client, "private_hand");
+    snapshots.push({ roomState: client.roomState, gameState, privateHand });
+  }
+  return { clients, snapshots };
+};
+
+const assertAlignedSnapshots = (snapshots) => {
+  if (
+    snapshots.some(
+      ({ roomState, gameState, privateHand }) =>
+        roomState.revision !== gameState.revision ||
+        gameState.revision !== privateHand.revision,
+    )
+  ) {
+    throw new Error("reconnect snapshot revisions disagree after hard crash");
+  }
+};
+
+let server;
 let clients = [];
 try {
-  first = spawnServer();
-  await waitForHealth(first);
+  server = spawnServer();
+  await waitForHealth(server);
   const created = await fetch(`${baseUrl}/api/rooms`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -153,95 +186,102 @@ try {
       commandId: "play-before-crash",
     }),
   );
-  const afterPlayStates = await Promise.all(clients.map(({ next }) => next()));
-  const afterPlay = afterPlayStates[0];
+  let currentStates = await Promise.all(clients.map(({ next }) => next()));
   await Promise.all(clients.map(({ next }) => next()));
+  let currentGame = currentStates[0];
 
-  const checkpoint = await waitForCheckpoint(
-    (room) =>
-      room.game?.phase === "playing" &&
-      room.revision === afterPlay.revision &&
-      JSON.stringify(room.game?.trick?.leadingPlay?.cards?.[0]) ===
-        JSON.stringify(card.card),
-  );
-  const expectedTurn = checkpoint.game.currentTurn;
-  const expectedCounts = checkpoint.game.hands.map((hand) => hand.length);
-
-  first.child.kill("SIGKILL");
-  await waitForExit(first.child);
-  first = undefined;
-  clients.forEach(({ socket }) => socket.close());
-  clients = [];
-
-  second = spawnServer();
-  await waitForHealth(second);
-  const reconnectSnapshots = [];
-  for (let seat = 0; seat < 4; seat += 1) {
-    const client = await connect(seat);
-    clients.push(client);
-    const gameState = await nextOfType(client, "game_state");
-    const privateHand = await nextOfType(client, "private_hand");
-    reconnectSnapshots.push({
-      roomState: client.roomState,
-      gameState,
-      privateHand,
-    });
-  }
-
-  const restoredGame = reconnectSnapshots.at(-1)?.gameState;
-  if (
-    !restoredGame ||
-    restoredGame.type !== "game_state" ||
-    restoredGame.currentTurn !== expectedTurn ||
-    JSON.stringify(restoredGame.handCounts) !==
-      JSON.stringify(expectedCounts) ||
-    JSON.stringify(restoredGame.leadingPlay?.cards?.[0]) !==
-      JSON.stringify(card.card)
-  ) {
-    throw new Error(
-      `active game was not restored: ${JSON.stringify(restoredGame)}`,
+  for (let cycle = 1; cycle <= crashCycles; cycle += 1) {
+    const checkpoint = await waitForCheckpoint(
+      (room) =>
+        room.game?.phase === "playing" &&
+        room.revision === currentGame.revision &&
+        room.game.currentTurn === currentGame.currentTurn &&
+        JSON.stringify(room.game.hands.map((hand) => hand.length)) ===
+          JSON.stringify(currentGame.handCounts),
     );
-  }
-  if (
-    reconnectSnapshots.some(
-      ({ roomState, gameState, privateHand }) =>
-        roomState.revision !== gameState.revision ||
-        gameState.revision !== privateHand.revision,
-    )
-  ) {
-    throw new Error("reconnect snapshot revisions disagree after hard crash");
+    const expected = {
+      revision: checkpoint.revision,
+      currentTurn: checkpoint.game.currentTurn,
+      handCounts: checkpoint.game.hands.map((hand) => hand.length),
+      leadingPlay: checkpoint.game.trick.leadingPlay,
+      finishedSeats: checkpoint.game.finishedSeats,
+    };
+
+    server.child.kill("SIGKILL");
+    await waitForExit(server.child);
+    server = undefined;
+    closeClients(clients);
+    clients = [];
+
+    server = spawnServer();
+    await waitForHealth(server);
+    const reconnected = await reconnectAll();
+    clients = reconnected.clients;
+    const snapshots = reconnected.snapshots;
+    assertAlignedSnapshots(snapshots);
+
+    const restoredGame = snapshots.at(-1)?.gameState;
+    if (
+      !restoredGame ||
+      restoredGame.type !== "game_state" ||
+      restoredGame.revision !== expected.revision ||
+      restoredGame.currentTurn !== expected.currentTurn ||
+      JSON.stringify(restoredGame.handCounts) !==
+        JSON.stringify(expected.handCounts) ||
+      JSON.stringify(restoredGame.leadingPlay) !==
+        JSON.stringify(expected.leadingPlay) ||
+      JSON.stringify(restoredGame.finishedSeats) !==
+        JSON.stringify(expected.finishedSeats)
+    ) {
+      throw new Error(
+        `active game was not restored in cycle ${cycle}: ${JSON.stringify(restoredGame)}`,
+      );
+    }
+
+    const active = clients[restoredGame.currentTurn];
+    const activeSnapshot = snapshots[restoredGame.currentTurn];
+    if (restoredGame.leadingPlay === null) {
+      const nextCard = activeSnapshot.privateHand.cards[0];
+      if (!nextCard) throw new Error("active player has no card after recovery");
+      active.socket.send(
+        JSON.stringify({
+          type: "play_cards",
+          cardIds: [nextCard.id],
+          expectedRevision: restoredGame.revision,
+          commandId: `continue-play-after-crash-${cycle}`,
+        }),
+      );
+    } else {
+      active.socket.send(
+        JSON.stringify({
+          type: "pass_turn",
+          expectedRevision: restoredGame.revision,
+          commandId: `continue-pass-after-crash-${cycle}`,
+        }),
+      );
+    }
+
+    currentStates = await Promise.all(
+      clients.map((client) => nextOfType(client, "game_state")),
+    );
+    currentGame = currentStates[0];
+    if (
+      currentStates.some((state) => state.revision !== restoredGame.revision + 1)
+    ) {
+      throw new Error(`game did not continue after hard crash cycle ${cycle}`);
+    }
   }
 
-  const active = clients[expectedTurn];
-  active.socket.send(
-    JSON.stringify({
-      type: "pass_turn",
-      expectedRevision: restoredGame.revision,
-      commandId: "continue-after-crash",
-    }),
-  );
-  const continued = await Promise.all(
-    clients.map((client) => nextOfType(client, "game_state")),
-  );
-  if (
-    continued.some(
-      (state) =>
-        state.revision !== restoredGame.revision + 1 ||
-        !state.passedSeats.includes(expectedTurn),
-    )
-  ) {
-    throw new Error("game did not continue after hard-crash reconnect");
-  }
-
-  clients.forEach(({ socket }) => socket.close());
+  closeClients(clients);
   clients = [];
-  second.child.kill("SIGTERM");
-  await waitForExit(second.child);
-  second = undefined;
-  console.log("YIHUA_GAME_ACTIVE_CRASH_RECOVERY_SMOKE_OK");
+  server.child.kill("SIGTERM");
+  await waitForExit(server.child);
+  server = undefined;
+  console.log(
+    `YIHUA_GAME_ACTIVE_CRASH_RECOVERY_SMOKE_OK cycles=${crashCycles}`,
+  );
 } finally {
-  clients.forEach(({ socket }) => socket.close());
-  if (first?.child) first.child.kill("SIGKILL");
-  if (second?.child) second.child.kill("SIGKILL");
+  closeClients(clients);
+  if (server?.child) server.child.kill("SIGKILL");
   await rm(directory, { recursive: true, force: true });
 }
