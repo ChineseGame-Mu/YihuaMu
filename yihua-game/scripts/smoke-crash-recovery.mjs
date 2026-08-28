@@ -242,7 +242,8 @@ try {
     const activeSnapshot = snapshots[restoredGame.currentTurn];
     if (restoredGame.leadingPlay === null) {
       const nextCard = activeSnapshot.privateHand.cards[0];
-      if (!nextCard) throw new Error("active player has no card after recovery");
+      if (!nextCard)
+        throw new Error("active player has no card after recovery");
       active.socket.send(
         JSON.stringify({
           type: "play_cards",
@@ -266,7 +267,9 @@ try {
     );
     currentGame = currentStates[0];
     if (
-      currentStates.some((state) => state.revision !== restoredGame.revision + 1)
+      currentStates.some(
+        (state) => state.revision !== restoredGame.revision + 1,
+      )
     ) {
       throw new Error(`game did not continue after hard crash cycle ${cycle}`);
     }
