@@ -69,27 +69,61 @@ jobs:
           echo "YIHUA_CLEANROOM_PUBLIC_HTTP=$URL"
           echo "YIHUA_CLEANROOM_PUBLIC_WS=${URL/https:/wss:}/api/guandan"
 
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --max-time 5 "$URL/health" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "public tunnel did not become HTTP-ready"
+            cat "$RUNNER_TEMP/cloudflared.log"
+            exit 1
+          fi
+
           PUBLIC_WS="${URL/https:/wss:}/api/guandan" node --input-type=module <<'NODE'
           const url = process.env.PUBLIC_WS;
-          const socket = new WebSocket(url);
-          const timer = setTimeout(() => {
-            console.error("live websocket verification timed out");
+          const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+          const verifyOnce = () =>
+            new Promise((resolve) => {
+              const socket = new WebSocket(url);
+              const timer = setTimeout(() => {
+                socket.close();
+                resolve(false);
+              }, 5000);
+              socket.addEventListener("message", (event) => {
+                try {
+                  const message = JSON.parse(String(event.data));
+                  if (message.type === "connected") {
+                    clearTimeout(timer);
+                    socket.close();
+                    resolve(true);
+                  }
+                } catch {
+                  clearTimeout(timer);
+                  socket.close();
+                  resolve(false);
+                }
+              });
+              socket.addEventListener("error", () => {
+                clearTimeout(timer);
+                resolve(false);
+              });
+            });
+
+          let ok = false;
+          for (let attempt = 1; attempt <= 20; attempt += 1) {
+            ok = await verifyOnce();
+            if (ok) break;
+            await sleep(2000);
+          }
+          if (!ok) {
+            console.error("live websocket verification failed after retries");
             process.exit(1);
-          }, 15000);
-          socket.addEventListener("message", (event) => {
-            const message = JSON.parse(String(event.data));
-            if (message.type === "connected") {
-              console.log(`YIHUA_CLEANROOM_LIVE_WS_OK ${url}`);
-              clearTimeout(timer);
-              socket.close();
-              process.exit(0);
-            }
-          });
-          socket.addEventListener("error", () => {
-            console.error("live websocket verification failed");
-            clearTimeout(timer);
-            process.exit(1);
-          });
+          }
+          console.log(`YIHUA_CLEANROOM_LIVE_WS_OK ${url}`);
           NODE
 
       - name: Keep manual-test backend online
