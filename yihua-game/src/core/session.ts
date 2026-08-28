@@ -36,7 +36,9 @@ export const roomStateMessage = (room: RoomState): RoomStateServerMessage => ({
     seat: participant.seat,
     kind: participant.kind,
     connected: participant.connected,
-    readyForNextRound: participant.readyForNextRound,
+    ...(participant.readyForNextRound === undefined
+      ? {}
+      : { readyForNextRound: participant.readyForNextRound }),
   })),
 });
 

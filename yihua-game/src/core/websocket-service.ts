@@ -95,6 +95,8 @@ const commandFingerprint = (message: MutatingMessage): string => {
       return JSON.stringify({ type: message.type, playerId: message.playerId });
     case "set_robots":
       return JSON.stringify({ type: message.type, count: message.count });
+    case "set_next_round_ready":
+      return JSON.stringify({ type: message.type, ready: message.ready });
     case "start_game":
     case "next_round":
     case "pass_turn":
