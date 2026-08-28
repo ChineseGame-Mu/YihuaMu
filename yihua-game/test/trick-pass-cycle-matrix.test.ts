@@ -8,7 +8,12 @@ import {
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
-const card = (rank: Card["rank"], suit: Card["suit"] = "clubs"): Card => ({
+type SuitedCard = Extract<Card, { readonly kind: "suited" }>;
+const card = (
+  rank: SuitedCard["rank"],
+  suit: SuitedCard["suit"] = "clubs",
+): Card => ({
+  kind: "suited",
   rank,
   suit,
 });
