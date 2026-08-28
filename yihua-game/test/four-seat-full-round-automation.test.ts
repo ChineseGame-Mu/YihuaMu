@@ -11,6 +11,7 @@ import { createTableConfig } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
+const ROUND_COUNT = 3;
 
 const createInitialState = (playerCount: number): PlayingState => ({
   phase: "playing",
@@ -66,38 +67,50 @@ const driveRound = (
 
 describe("full-round table automation", () => {
   for (const playerCount of PLAYER_COUNTS) {
-    it(`plays ${playerCount} seats through a full round without deadlock`, () => {
-      const initialState = createInitialState(playerCount);
-      const openingDrawSnapshot = JSON.stringify(initialState.openingDraw);
-      const { state, actions } = driveRound(initialState);
+    it(`plays ${playerCount} seats through ${ROUND_COUNT} rounds without deadlock`, () => {
+      let state: GameState = createInitialState(playerCount);
+      const openingDrawSnapshot = JSON.stringify(state.openingDraw);
 
-      expect(state.phase).toBe("round-complete");
-      if (state.phase !== "round-complete") {
-        throw new Error("round-complete phase expected");
-      }
-      expect(actions).toBeLessThan(10000);
-      expect(state.finishedSeats).toHaveLength(playerCount);
-      expect(new Set(state.finishedSeats).size).toBe(playerCount);
-      expect(state.placements).toHaveLength(playerCount);
-      expect(state.winnerSeat).toBe(state.finishedSeats[0]);
-      expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
-      expect(state.outcome?.lastPlaceSeat).toBe(
-        state.finishedSeats[playerCount - 1],
-      );
-      expect(JSON.stringify(state.openingDraw)).toBe(openingDrawSnapshot);
+      for (let round = 0; round < ROUND_COUNT; round += 1) {
+        if (state.phase !== "playing") {
+          throw new Error("playing phase expected before automated round");
+        }
 
-      const completedWinner = state.winnerSeat;
-      const next = transitionGame(state, { type: "next-round" }, () => 0);
-      expect(next.phase).toBe("playing");
-      if (next.phase !== "playing") {
-        throw new Error("playing phase expected");
+        const { state: completedState, actions } = driveRound(state);
+        state = completedState;
+
+        expect(state.phase).toBe("round-complete");
+        if (state.phase !== "round-complete") {
+          throw new Error("round-complete phase expected");
+        }
+        expect(actions).toBeLessThan(10000);
+        expect(state.finishedSeats).toHaveLength(playerCount);
+        expect(new Set(state.finishedSeats).size).toBe(playerCount);
+        expect(state.placements).toHaveLength(playerCount);
+        expect(state.winnerSeat).toBe(state.finishedSeats[0]);
+        expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
+        expect(state.outcome?.lastPlaceSeat).toBe(
+          state.finishedSeats[playerCount - 1],
+        );
+        expect(JSON.stringify(state.openingDraw)).toBe(openingDrawSnapshot);
+
+        if (round === ROUND_COUNT - 1) {
+          continue;
+        }
+
+        const completedWinner = state.winnerSeat;
+        state = transitionGame(state, { type: "next-round" }, () => 0);
+        expect(state.phase).toBe("playing");
+        if (state.phase !== "playing") {
+          throw new Error("playing phase expected");
+        }
+        expect(state.currentTurn).toBe(completedWinner);
+        expect(state.trick.leaderSeat).toBe(completedWinner);
+        expect(state.finishedSeats).toEqual([]);
+        expect(state.hands).toHaveLength(playerCount);
+        expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+        expect(JSON.stringify(state.openingDraw)).toBe(openingDrawSnapshot);
       }
-      expect(next.currentTurn).toBe(completedWinner);
-      expect(next.trick.leaderSeat).toBe(completedWinner);
-      expect(next.finishedSeats).toEqual([]);
-      expect(next.hands).toHaveLength(playerCount);
-      expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
-      expect(JSON.stringify(next.openingDraw)).toBe(openingDrawSnapshot);
     });
   }
 });
