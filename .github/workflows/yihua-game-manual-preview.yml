@@ -76,7 +76,7 @@ jobs:
             echo
             echo "- Base: $preview_url"
             echo "- Join: $preview_url/room/manual-test"
-            echo "- Refreshed after the latest join-flow fixes."
+            echo "- Refreshed after manual join query-parameter fix."
             echo "- This temporary preview stays alive while this job is running."
           } >> "$GITHUB_STEP_SUMMARY"
 
