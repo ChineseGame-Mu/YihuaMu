@@ -105,6 +105,34 @@ const cases: readonly { kind: HandKind; cards: readonly Card[] }[] = [
   },
 ];
 
+const invalidCases: readonly { name: string; cards: readonly Card[] }[] = [
+  {
+    name: "mismatched pair",
+    cards: [suited("3", "clubs"), suited("4", "diamonds")],
+  },
+  {
+    name: "broken consecutive pairs",
+    cards: [
+      suited("6", "clubs"),
+      suited("6", "diamonds"),
+      suited("8", "clubs"),
+      suited("8", "diamonds"),
+      suited("9", "clubs"),
+      suited("9", "diamonds"),
+    ],
+  },
+  {
+    name: "joker mixed into a straight",
+    cards: [
+      suited("3", "clubs"),
+      suited("4", "diamonds"),
+      suited("5", "hearts"),
+      suited("6", "spades"),
+      joker("small"),
+    ],
+  },
+];
+
 const asDeckCards = (
   cards: readonly Card[],
   prefix: string,
@@ -149,4 +177,29 @@ describe("combination-hand automation", () => {
       expect(next.hands[0]).toHaveLength(1);
     },
   );
+
+  it.each(invalidCases)("rejects $name without mutating table state", ({ cards }) => {
+    expect(classifyHand(cards).kind).toBe("invalid");
+    const filler = suited("2", "spades");
+    const state: PlayingState = {
+      phase: "playing",
+      config: createTableConfig(4, 0),
+      openingDraw: { attempts: [], winnerSeat: 0 },
+      hands: [
+        asDeckCards([...cards, filler], "seat-0"),
+        asDeckCards([filler], "seat-1"),
+        asDeckCards([filler], "seat-2"),
+        asDeckCards([filler], "seat-3"),
+      ],
+      currentTurn: 0,
+      trick: createTrickState(4, 0),
+      finishedSeats: [],
+    };
+    const before = JSON.stringify(state);
+
+    expect(() =>
+      transitionGame(state, { type: "play-cards", seat: 0, cards }),
+    ).toThrow("invalid hand");
+    expect(JSON.stringify(state)).toBe(before);
+  });
 });
