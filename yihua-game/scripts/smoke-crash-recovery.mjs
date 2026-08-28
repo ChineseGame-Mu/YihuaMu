@@ -144,6 +144,14 @@ const assertAlignedSnapshots = (snapshots) => {
   }
 };
 
+const networkLeadingPlay = (leadingPlay) =>
+  leadingPlay === null
+    ? null
+    : {
+        seat: leadingPlay.seat,
+        cards: leadingPlay.cards.map((card) => card.card ?? card),
+      };
+
 let server;
 let clients = [];
 try {
@@ -203,7 +211,7 @@ try {
       revision: checkpoint.revision,
       currentTurn: checkpoint.game.currentTurn,
       handCounts: checkpoint.game.hands.map((hand) => hand.length),
-      leadingPlay: checkpoint.game.trick.leadingPlay,
+      leadingPlay: networkLeadingPlay(checkpoint.game.trick.leadingPlay),
       finishedSeats: checkpoint.game.finishedSeats,
     };
 
