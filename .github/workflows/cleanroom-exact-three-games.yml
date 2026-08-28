@@ -1,0 +1,27 @@
+name: Yihua Game Exact Three Complete Games
+
+on:
+  push:
+    branches:
+      - cleanroom/ip-isolation-20260828
+    paths:
+      - "yihua-game/scripts/exact-three-complete-games-all-sizes.mjs"
+      - ".github/workflows/cleanroom-exact-three-games.yml"
+  workflow_dispatch:
+
+jobs:
+  exact-three:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
+      - name: Run exactly three complete games at 4-14 players
+        run: node scripts/exact-three-complete-games-all-sizes.mjs
