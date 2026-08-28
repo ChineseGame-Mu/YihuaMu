@@ -155,9 +155,7 @@ describe("table machine legal-play enforcement", () => {
         deckCard("seat0-extra", suited("A", "clubs")),
       ],
       [
-        ...straightFlush.map((card, index) =>
-          deckCard(`flush-${index}`, card),
-        ),
+        ...straightFlush.map((card, index) => deckCard(`flush-${index}`, card)),
         deckCard("seat1-extra", suited("A", "diamonds")),
       ],
       [
