@@ -30,9 +30,13 @@ const run = (players, game) =>
         reject(new Error(`${players}p game ${game} exited ${code}`));
         return;
       }
-      const bad = /deadlocks=(?!0\b)|stateErrors=(?!0\b)|crashes=(?!0\b)/.test(output);
+      const bad = /deadlocks=(?!0\b)|stateErrors=(?!0\b)|crashes=(?!0\b)/.test(
+        output,
+      );
       if (bad) {
-        reject(new Error(`${players}p game ${game} reported an integrity failure`));
+        reject(
+          new Error(`${players}p game ${game} reported an integrity failure`),
+        );
         return;
       }
       resolve();
