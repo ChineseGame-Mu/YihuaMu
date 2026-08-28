@@ -177,31 +177,36 @@ export const attachLegacyGuandanConnection = async (
           seat,
           privateCardIds: [],
         });
-        runtime.sockets.register(roomId, adapter, playerId);
-        active = { roomId, playerId, adapter };
 
-        if (existing !== undefined) {
-          if (!existing.connected) {
-            managed = runtime.rooms.set(roomId, {
-              ...managed,
-              room: reconnectHuman(managed.room, playerId),
-            });
-            await runtime.websocket.broadcastRoomState(managed);
+        try {
+          runtime.sockets.register(roomId, adapter, playerId);
+          if (existing !== undefined) {
+            if (!existing.connected) {
+              managed = runtime.rooms.set(roomId, {
+                ...managed,
+                room: reconnectHuman(managed.room, playerId),
+              });
+              await runtime.websocket.broadcastRoomState(managed);
+            }
+          } else {
+            await runtime.websocket.handleText(
+              adapter,
+              { roomId, playerId },
+              JSON.stringify({
+                type: "join_room",
+                roomId,
+                playerId,
+                name: message.name,
+                seat,
+              }),
+            );
           }
-        } else {
-          await runtime.websocket.handleText(
-            adapter,
-            { roomId, playerId },
-            JSON.stringify({
-              type: "join_room",
-              roomId,
-              playerId,
-              name: message.name,
-              seat,
-            }),
-          );
+        } catch (error) {
+          runtime.sockets.unregister(roomId, adapter);
+          throw error;
         }
 
+        active = { roomId, playerId, adapter };
         await sendLegacy(connection.socket, {
           type: "joined",
           room: roomId,
