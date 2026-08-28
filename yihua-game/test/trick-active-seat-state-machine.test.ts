@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { Card } from "../src/core/cards.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 
-const card = (rank: "3" | "4" | "5" | "6"): Card => ({ kind: "suited", rank, suit: "clubs" });
+const card = (rank: "3" | "4" | "5" | "6"): Card => ({
+  kind: "suited",
+  rank,
+  suit: "clubs",
+});
 
 describe("active-seat trick state machine", () => {
   it("skips finished seats while rotating turns", () => {
