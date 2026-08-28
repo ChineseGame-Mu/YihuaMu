@@ -24,7 +24,10 @@ const activeCountForNextRound = (
   const currentCount = managed.game.config.playerCount;
   const target = managed.room.config.playerCount;
   const participantsBySeat = new Map(
-    managed.room.participants.map((participant) => [participant.seat, participant]),
+    managed.room.participants.map((participant) => [
+      participant.seat,
+      participant,
+    ]),
   );
 
   let contiguousEligibleCount = currentCount;
