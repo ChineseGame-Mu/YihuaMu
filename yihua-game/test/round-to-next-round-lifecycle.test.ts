@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { completeRound, createLobbyState, startGame, startNextRound } from "../src/core/game-state.js";
+import {
+  completeRound,
+  createLobbyState,
+  startGame,
+  startNextRound,
+} from "../src/core/game-state.js";
 
 const fixedRandom = () => 0.42;
 
@@ -8,7 +13,10 @@ describe("round completion to next-round lifecycle", () => {
     "preserves full placement order and lets first place lead the next %i-player round",
     (playerCount) => {
       const playing = startGame(createLobbyState(playerCount, 0), fixedRandom);
-      const finishOrder = Array.from({ length: playerCount }, (_, seat) => (seat + 1) % playerCount);
+      const finishOrder = Array.from(
+        { length: playerCount },
+        (_, seat) => (seat + 1) % playerCount,
+      );
       const firstPlaceSeat = finishOrder[0]!;
       const completed = completeRound(
         { ...playing, finishedSeats: finishOrder },
