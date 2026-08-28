@@ -125,4 +125,81 @@ describe("table machine legal-play enforcement", () => {
       transitionGame(afterBomb, { type: "play-cards", seat: 2, cards: pair2 }),
     ).toThrow("played hand does not beat the current hand");
   });
+
+  it("enforces five-bomb, straight-flush, and six-bomb hierarchy in live table state", () => {
+    const fiveBomb = [
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
+    ];
+    const straightFlush = [
+      suited("5", "hearts"),
+      suited("6", "hearts"),
+      suited("7", "hearts"),
+      suited("8", "hearts"),
+      suited("9", "hearts"),
+    ];
+    const sixBomb = [
+      suited("4", "clubs"),
+      suited("4", "diamonds"),
+      suited("4", "hearts"),
+      suited("4", "spades"),
+      suited("4", "clubs"),
+      suited("4", "diamonds"),
+    ];
+    const state = stateWithHands([
+      [
+        ...fiveBomb.map((card, index) => deckCard(`five-${index}`, card)),
+        deckCard("seat0-extra", suited("A", "clubs")),
+      ],
+      [
+        ...straightFlush.map((card, index) =>
+          deckCard(`flush-${index}`, card),
+        ),
+        deckCard("seat1-extra", suited("A", "diamonds")),
+      ],
+      [
+        ...sixBomb.map((card, index) => deckCard(`six-${index}`, card)),
+        deckCard("seat2-extra", suited("A", "hearts")),
+      ],
+      [deckCard("seat3", suited("A", "spades"))],
+    ]);
+
+    const afterFiveBomb = expectPlaying(
+      transitionGame(state, {
+        type: "play-cards",
+        seat: 0,
+        cards: fiveBomb,
+      }),
+    );
+    expect(afterFiveBomb.trick.leadingPlay?.hand).toMatchObject({
+      kind: "bomb",
+      size: 5,
+    });
+
+    const afterStraightFlush = expectPlaying(
+      transitionGame(afterFiveBomb, {
+        type: "play-cards",
+        seat: 1,
+        cards: straightFlush,
+      }),
+    );
+    expect(afterStraightFlush.trick.leadingPlay?.hand.kind).toBe(
+      "straight-flush",
+    );
+
+    const afterSixBomb = expectPlaying(
+      transitionGame(afterStraightFlush, {
+        type: "play-cards",
+        seat: 2,
+        cards: sixBomb,
+      }),
+    );
+    expect(afterSixBomb.trick.leadingPlay?.hand).toMatchObject({
+      kind: "bomb",
+      size: 6,
+    });
+  });
 });
