@@ -17,6 +17,7 @@
     "smoke": "node scripts/smoke-server.mjs",
     "smoke:live": "npm run smoke",
     "smoke:gameplay": "node scripts/smoke-gameplay-network.mjs",
+    "smoke:legacy-guandan": "node scripts/smoke-legacy-guandan-network.mjs",
     "smoke:restart": "node scripts/smoke-restart-recovery.mjs",
     "smoke:crash": "node scripts/smoke-crash-recovery.mjs",
     "smoke:hard-crash": "npm run smoke:crash",
