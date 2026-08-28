@@ -299,7 +299,11 @@ export class WebSocketService {
         return next;
       }
 
-      const result = applyClientMessage(managed.room, message);
+      const result = applyClientMessage(
+        managed.room,
+        message,
+        context.playerId,
+      );
       const next = this.rooms.set(context.roomId, {
         ...managed,
         room: result.room,
