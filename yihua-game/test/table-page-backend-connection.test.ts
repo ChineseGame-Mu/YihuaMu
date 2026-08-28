@@ -15,9 +15,7 @@ describe("playable table frontend/backend connection", () => {
     );
     expect(html).toContain('send({ type:"pass_turn" })');
     expect(html).toContain('send({ type:"next_round" })');
-    expect(html).toContain(
-      'send({ type:"set_next_round_ready", ready:true })',
-    );
+    expect(html).toContain('send({ type:"set_next_round_ready", ready:true })');
     expect(html).toContain(
       'send({ type:"set_next_round_ready", ready:false })',
     );
