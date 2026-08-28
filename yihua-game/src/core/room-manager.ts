@@ -18,23 +18,34 @@ export interface ManagedRoom {
   readonly revision: number;
 }
 
-const connectedHumans = (room: RoomState) =>
-  room.participants.filter(
-    ({ kind, connected }) => kind === "human" && connected,
-  );
-
 const activeCountForNextRound = (
   managed: ManagedRoom,
 ): SupportedPlayerCount => {
   const currentCount = managed.game.config.playerCount;
-  const eligibleHumans = connectedHumans(managed.room).filter(
-    ({ seat, readyForNextRound }) =>
-      seat < currentCount || readyForNextRound === true,
-  ).length;
   const target = managed.room.config.playerCount;
+  const participantsBySeat = new Map(
+    managed.room.participants.map((participant) => [participant.seat, participant]),
+  );
+
+  let contiguousEligibleCount = currentCount;
+  while (contiguousEligibleCount < target) {
+    const participant = participantsBySeat.get(contiguousEligibleCount);
+    if (
+      participant === undefined ||
+      participant.kind !== "human" ||
+      !participant.connected ||
+      participant.readyForNextRound !== true
+    ) {
+      break;
+    }
+    contiguousEligibleCount += 1;
+  }
+
   const eligible = SUPPORTED_PLAYER_COUNTS.filter(
     (count) =>
-      count >= currentCount && count <= eligibleHumans && count <= target,
+      count >= currentCount &&
+      count <= contiguousEligibleCount &&
+      count <= target,
   );
   return eligible.at(-1) ?? currentCount;
 };
