@@ -23,6 +23,7 @@ const createInitialState = (): PlayingState => ({
 describe("four-seat full-round automation", () => {
   it("plays all four seats through the table machine without deadlock", () => {
     let state: GameState = createInitialState();
+    const openingDrawSnapshot = JSON.stringify(state.openingDraw);
     let actions = 0;
     const maximumActions = 2000;
 
@@ -69,6 +70,7 @@ describe("four-seat full-round automation", () => {
     expect(state.winnerSeat).toBe(state.finishedSeats[0]);
     expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
     expect(state.outcome?.lastPlaceSeat).toBe(state.finishedSeats[3]);
+    expect(JSON.stringify(state.openingDraw)).toBe(openingDrawSnapshot);
 
     const completedWinner = state.winnerSeat;
     const next = transitionGame(state, { type: "next-round" }, () => 0);
@@ -81,5 +83,6 @@ describe("four-seat full-round automation", () => {
     expect(next.finishedSeats).toEqual([]);
     expect(next.hands).toHaveLength(4);
     expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
+    expect(JSON.stringify(next.openingDraw)).toBe(openingDrawSnapshot);
   });
 });
