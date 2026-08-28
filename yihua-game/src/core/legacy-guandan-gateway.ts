@@ -223,7 +223,8 @@ export const attachLegacyGuandanConnection = async (
     } catch (error) {
       await sendLegacy(connection.socket, {
         type: "error",
-        message: error instanceof Error ? error.message : "invalid legacy message",
+        message:
+          error instanceof Error ? error.message : "invalid legacy message",
       });
     }
   });

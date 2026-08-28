@@ -13,9 +13,7 @@ class MemorySocket implements TextSocket {
   }
 
   messages(): Array<Record<string, unknown>> {
-    return this.sent.map(
-      (text) => JSON.parse(text) as Record<string, unknown>,
-    );
+    return this.sent.map((text) => JSON.parse(text) as Record<string, unknown>);
   }
 }
 
