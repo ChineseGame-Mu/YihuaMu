@@ -10,7 +10,9 @@ describe("playable table frontend/backend connection", () => {
       'new WebSocket(scheme + "//" + location.host + "/ws/rooms/${encodedRoomId}?playerId=" + encodeURIComponent(playerId))',
     );
     expect(html).toContain('send({ type: "start_game" })');
-    expect(html).toContain('send({ type: "play_cards", cardIds: [...selected] })');
+    expect(html).toContain(
+      'send({ type: "play_cards", cardIds: [...selected] })',
+    );
     expect(html).toContain('send({ type: "pass_turn" })');
     expect(html).toContain('send({ type: "next_round" })');
     expect(html).toContain('{ type: "set_next_round_ready", ready }');
