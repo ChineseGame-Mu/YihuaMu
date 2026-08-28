@@ -200,6 +200,16 @@ export const attachLegacyGuandanConnection = async (
                 seat,
               }),
             );
+            const joined = runtime
+              .rooms
+              .get(roomId)
+              .room.participants.some(
+                ({ id, kind }) => id === playerId && kind === "human",
+              );
+            if (!joined) {
+              runtime.sockets.unregister(roomId, adapter);
+              return;
+            }
           }
         } catch (error) {
           runtime.sockets.unregister(roomId, adapter);
