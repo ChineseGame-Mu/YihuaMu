@@ -24,6 +24,8 @@ jobs:
         working-directory: yihua-game
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -133,13 +135,15 @@ jobs:
         run: |
           URL=$(cat "$RUNNER_TEMP/public-url.txt")
           WS="${URL/https:/wss:}/api/guandan"
-          printf '%s\n' "$WS" > ../.github/live-tunnel-url.txt
           git -C .. config user.name "github-actions[bot]"
           git -C .. config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .. fetch origin cleanroom/ip-isolation-20260828
+          git -C .. reset --hard origin/cleanroom/ip-isolation-20260828
+          printf '%s\n' "$WS" > ../.github/live-tunnel-url.txt
           git -C .. add .github/live-tunnel-url.txt
           if ! git -C .. diff --cached --quiet; then
             git -C .. commit -m "chore(cleanroom): publish verified manual-test websocket"
-            git -C .. push
+            git -C .. push origin HEAD:cleanroom/ip-isolation-20260828
           fi
 
       - name: Keep manual-test backend online
