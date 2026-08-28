@@ -31,14 +31,15 @@ describe("four-seat full-round automation", () => {
         throw new Error("automated round exceeded the action limit");
       }
 
-      const seat = state.currentTurn;
-      const hand: readonly DeckCard[] | undefined = state.hands[seat];
+      const playingState: PlayingState = state;
+      const seat: number = playingState.currentTurn;
+      const hand: readonly DeckCard[] | undefined = playingState.hands[seat];
       if (hand === undefined || hand.length === 0) {
         throw new Error("current turn points to an empty or missing hand");
       }
 
       const leadingHand: ClassifiedHand | null =
-        state.trick.leadingPlay?.hand ?? null;
+        playingState.trick.leadingPlay?.hand ?? null;
       const playable: DeckCard | undefined =
         leadingHand === null
           ? hand[0]
@@ -48,8 +49,8 @@ describe("four-seat full-round automation", () => {
 
       state =
         playable === undefined
-          ? transitionGame(state, { type: "pass-turn", seat })
-          : transitionGame(state, {
+          ? transitionGame(playingState, { type: "pass-turn", seat })
+          : transitionGame(playingState, {
               type: "play-cards",
               seat,
               cards: [playable.card],
