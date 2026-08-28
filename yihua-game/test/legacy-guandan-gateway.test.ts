@@ -13,7 +13,9 @@ class MemorySocket implements TextSocket {
   }
 
   messages(): Array<Record<string, unknown>> {
-    return this.sent.map((text) => JSON.parse(text) as Record<string, unknown>);
+    return this.sent.map(
+      (text) => JSON.parse(text) as Record<string, unknown>,
+    );
   }
 }
 
@@ -32,7 +34,9 @@ class MemoryConnection implements UpgradedConnection {
   }
 
   async receive(message: unknown): Promise<void> {
-    if (this.textHandler === undefined) throw new Error("text handler is missing");
+    if (this.textHandler === undefined) {
+      throw new Error("text handler is missing");
+    }
     await this.textHandler(JSON.stringify(message));
   }
 
@@ -63,7 +67,11 @@ describe("clean-room /api/guandan compatibility gateway", () => {
 
     const managedBeforeStart = runtime.rooms.get("gateway-4p");
     expect(managedBeforeStart.room.participants).toHaveLength(4);
-    expect(managedBeforeStart.room.participants.every(({ kind }) => kind === "human")).toBe(true);
+    expect(
+      managedBeforeStart.room.participants.every(
+        ({ kind }) => kind === "human",
+      ),
+    ).toBe(true);
 
     await players[0]!.receive({ type: "start", player_count: 4 });
 
@@ -79,25 +87,38 @@ describe("clean-room /api/guandan compatibility gateway", () => {
     const managedAfterStart = runtime.rooms.get("gateway-4p");
     expect(managedAfterStart.game.config.playerCount).toBe(4);
     expect(managedAfterStart.game.hands).toHaveLength(4);
-    expect(managedAfterStart.game.hands.every((hand) => hand.length === 27)).toBe(true);
+    expect(
+      managedAfterStart.game.hands.every((hand) => hand.length === 27),
+    ).toBe(true);
   });
 
   it("reconnects the same legacy player without allocating a duplicate seat", async () => {
     const runtime = createServerRuntime();
-    const first = await connectLegacyPlayer(runtime, "gateway-reconnect", "玩家1");
+    const first = await connectLegacyPlayer(
+      runtime,
+      "gateway-reconnect",
+      "玩家1",
+    );
     await connectLegacyPlayer(runtime, "gateway-reconnect", "玩家2");
     await connectLegacyPlayer(runtime, "gateway-reconnect", "玩家3");
     await connectLegacyPlayer(runtime, "gateway-reconnect", "玩家4");
 
     await first.close();
     expect(
-      runtime.rooms.get("gateway-reconnect").room.participants.find(({ name }) => name === "玩家1")
-        ?.connected,
+      runtime.rooms
+        .get("gateway-reconnect")
+        .room.participants.find(({ name }) => name === "玩家1")?.connected,
     ).toBe(false);
 
-    const reconnected = await connectLegacyPlayer(runtime, "gateway-reconnect", "玩家1");
+    const reconnected = await connectLegacyPlayer(
+      runtime,
+      "gateway-reconnect",
+      "玩家1",
+    );
     const managed = runtime.rooms.get("gateway-reconnect");
-    const sameName = managed.room.participants.filter(({ name }) => name === "玩家1");
+    const sameName = managed.room.participants.filter(
+      ({ name }) => name === "玩家1",
+    );
 
     expect(managed.room.participants).toHaveLength(4);
     expect(sameName).toHaveLength(1);
