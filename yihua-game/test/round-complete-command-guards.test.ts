@@ -38,7 +38,11 @@ describe("round-complete state guards", () => {
         }),
       ).toThrow("cannot pass-turn while game is round-complete");
 
-      const next = transitionGame(completed, { type: "next-round" }, fixedRandom);
+      const next = transitionGame(
+        completed,
+        { type: "next-round" },
+        fixedRandom,
+      );
       expect(next.phase).toBe("playing");
       if (next.phase !== "playing") {
         throw new Error("playing phase expected");
