@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createLobbyState, dealAfterOpeningDraw, startOpeningDraw } from "../src/core/game-state.js";
+import {
+  createLobbyState,
+  dealAfterOpeningDraw,
+  startOpeningDraw,
+} from "../src/core/game-state.js";
 
 const constantRandom = (value: number) => () => value;
 
@@ -16,7 +20,9 @@ describe("independent opening draw lifecycle", () => {
       expect(opening.openingDraw.attempts.length).toBeGreaterThan(0);
       for (const attempt of opening.openingDraw.attempts) {
         expect(attempt.cards).toHaveLength(playerCount);
-        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(true);
+        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(
+          true,
+        );
       }
 
       const playing = dealAfterOpeningDraw(opening, constantRandom(0.75));
@@ -34,8 +40,14 @@ describe("independent opening draw lifecycle", () => {
     const opening = startOpeningDraw(lobby, constantRandom(0.1));
     const playing = dealAfterOpeningDraw(opening, constantRandom(0.9));
 
-    const drawIds = new Set(opening.openingDraw.attempts.flatMap((attempt) => attempt.cards.map((card) => card.id)));
-    const dealtIds = playing.hands.flatMap((hand) => hand.map((card) => card.id));
+    const drawIds = new Set(
+      opening.openingDraw.attempts.flatMap((attempt) =>
+        attempt.cards.map((card) => card.id),
+      ),
+    );
+    const dealtIds = playing.hands.flatMap((hand) =>
+      hand.map((card) => card.id),
+    );
 
     expect(dealtIds).toHaveLength(108);
     expect(new Set(dealtIds).size).toBe(108);
