@@ -148,7 +148,11 @@ describe("RoomManager", () => {
     const startedAt = 2_000_000;
     fillHumanRoom(manager, roomId, 6);
 
-    let managed = manager.start(roomId, () => 0.2, () => startedAt);
+    let managed = manager.start(
+      roomId,
+      () => 0.2,
+      () => startedAt,
+    );
     addLateHumans(manager, roomId, 6, 11, startedAt + 60_000);
     managed = manager.get(roomId);
 
@@ -178,7 +182,11 @@ describe("RoomManager", () => {
     const startedAt = 3_000_000;
     fillHumanRoom(manager, roomId, 6);
 
-    let managed = manager.start(roomId, () => 0.3, () => startedAt);
+    let managed = manager.start(
+      roomId,
+      () => 0.3,
+      () => startedAt,
+    );
     addLateHumans(manager, roomId, 6, 9, startedAt + 60_000);
     managed = manager.get(roomId);
 
