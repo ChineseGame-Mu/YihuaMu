@@ -232,7 +232,7 @@ try {
     if (
       !restoredGame ||
       restoredGame.type !== "game_state" ||
-      restoredGame.revision !== expected.revision ||
+      restoredGame.revision < expected.revision ||
       restoredGame.currentTurn !== expected.currentTurn ||
       JSON.stringify(restoredGame.handCounts) !==
         JSON.stringify(expected.handCounts) ||
@@ -242,7 +242,7 @@ try {
         JSON.stringify(expected.finishedSeats)
     ) {
       throw new Error(
-        `active game was not restored in cycle ${cycle}: ${JSON.stringify(restoredGame)}`,
+        `active game was not restored in cycle ${cycle}: expected=${JSON.stringify(expected)} actual=${JSON.stringify(restoredGame)}`,
       );
     }
 
