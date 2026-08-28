@@ -8,6 +8,9 @@ on:
       - ".github/workflows/cleanroom-live-tunnel.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: yihua-game-cleanroom-live-tunnel
   cancel-in-progress: true
@@ -41,7 +44,7 @@ jobs:
           done
           cat "$RUNNER_TEMP/yihua-server.log"
 
-      - name: Start Cloudflare quick tunnel
+      - name: Start and verify Cloudflare quick tunnel
         run: |
           curl -L --fail --silent --show-error \
             https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
@@ -125,6 +128,19 @@ jobs:
           }
           console.log(`YIHUA_CLEANROOM_LIVE_WS_OK ${url}`);
           NODE
+
+      - name: Publish verified manual-test URL
+        run: |
+          URL=$(cat "$RUNNER_TEMP/public-url.txt")
+          WS="${URL/https:/wss:}/api/guandan"
+          printf '%s\n' "$WS" > ../.github/live-tunnel-url.txt
+          git -C .. config user.name "github-actions[bot]"
+          git -C .. config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C .. add .github/live-tunnel-url.txt
+          if ! git -C .. diff --cached --quiet; then
+            git -C .. commit -m "chore(cleanroom): publish verified manual-test websocket"
+            git -C .. push
+          fi
 
       - name: Keep manual-test backend online
         run: |
