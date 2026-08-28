@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { canHandBeat, classifyHand } from "../src/core/hand.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 const joker = (size: "small" | "big"): Card => ({ kind: "joker", size });
 
 const hand = (...cards: Card[]) => classifyHand(cards);
@@ -82,18 +86,33 @@ describe("hand comparison boundary matrix", () => {
       suited("A", "spades"),
     );
     const five3 = hand(
-      suited("3", "clubs"), suited("3", "diamonds"), suited("3", "hearts"),
-      suited("3", "spades"), suited("3", "clubs"),
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
     );
     const straightFlush = hand(
-      suited("5", "hearts"), suited("6", "hearts"), suited("7", "hearts"),
-      suited("8", "hearts"), suited("9", "hearts"),
+      suited("5", "hearts"),
+      suited("6", "hearts"),
+      suited("7", "hearts"),
+      suited("8", "hearts"),
+      suited("9", "hearts"),
     );
     const six3 = hand(
-      suited("3", "clubs"), suited("3", "diamonds"), suited("3", "hearts"),
-      suited("3", "spades"), suited("3", "clubs"), suited("3", "diamonds"),
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
     );
-    const jokerBomb = hand(joker("small"), joker("small"), joker("big"), joker("big"));
+    const jokerBomb = hand(
+      joker("small"),
+      joker("small"),
+      joker("big"),
+      joker("big"),
+    );
     expect(canHandBeat(five3, fourA)).toBe(true);
     expect(canHandBeat(straightFlush, five3)).toBe(true);
     expect(canHandBeat(six3, straightFlush)).toBe(true);
