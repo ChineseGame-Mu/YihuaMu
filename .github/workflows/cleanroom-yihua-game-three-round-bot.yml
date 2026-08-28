@@ -6,6 +6,8 @@ on:
       - cleanroom/yihua-game-20260826
     paths:
       - ".github/workflows/cleanroom-yihua-game-three-round-bot.yml"
+      - "yihua-game/src/core/**"
+      - "yihua-game/test/**"
   workflow_dispatch:
 
 jobs:
