@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - cleanroom/yihua-game-20260826
+      - cleanroom/ip-isolation-20260828
 
 permissions:
   contents: write
@@ -15,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: cleanroom/yihua-game-20260826
+          ref: ${{ github.ref_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -38,4 +39,4 @@ jobs:
           git config user.email "muyihua@gmail.com"
           git add yihua-game
           git commit --no-verify -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
-          git push origin HEAD:cleanroom/yihua-game-20260826
+          git push origin HEAD:${{ github.ref_name }}
