@@ -84,6 +84,9 @@ describe("clean-room /api/guandan compatibility gateway", () => {
 
     const managedAfterStart = runtime.rooms.get("gateway-4p");
     expect(managedAfterStart.game.config.playerCount).toBe(4);
+    if (!("hands" in managedAfterStart.game)) {
+      throw new Error("expected started game state with private hands");
+    }
     expect(managedAfterStart.game.hands).toHaveLength(4);
     expect(
       managedAfterStart.game.hands.every((hand) => hand.length === 27),
@@ -129,5 +132,3 @@ describe("clean-room /api/guandan compatibility gateway", () => {
     ).toBe(true);
   });
 });
-
-// CI trigger: validate the formatter-generated gateway files through the full clean-room pipeline.
