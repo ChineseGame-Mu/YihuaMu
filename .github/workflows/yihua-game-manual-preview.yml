@@ -1,0 +1,84 @@
+name: Yihua Game Manual Preview
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - .github/workflows/yihua-game-manual-preview.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: yihua-game-manual-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build clean-room server
+        working-directory: yihua-game
+        run: |
+          npm install
+          npm run build
+
+      - name: Start clean-room server
+        working-directory: yihua-game
+        run: |
+          HOST=0.0.0.0 PORT=4173 nohup npm start >/tmp/yihua-game-preview.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4173/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/yihua-game-preview.log
+          exit 1
+
+      - name: Start public HTTPS and WebSocket tunnel
+        run: |
+          curl --fail --location --silent --show-error \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            --output /tmp/cloudflared
+          chmod +x /tmp/cloudflared
+          nohup /tmp/cloudflared tunnel --no-autoupdate --url http://127.0.0.1:4173 \
+            >/tmp/cloudflared-preview.log 2>&1 &
+
+          preview_url=""
+          for attempt in $(seq 1 90); do
+            preview_url=$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' /tmp/cloudflared-preview.log | head -n 1 || true)
+            if [ -n "$preview_url" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ -z "$preview_url" ]; then
+            cat /tmp/cloudflared-preview.log
+            exit 1
+          fi
+
+          echo "MANUAL_PREVIEW_URL=$preview_url"
+          echo "MANUAL_JOIN_URL=$preview_url/room/manual-test"
+          {
+            echo "## Yihua Game manual preview"
+            echo
+            echo "- Base: $preview_url"
+            echo "- Join: $preview_url/room/manual-test"
+            echo "- This temporary preview stays alive while this job is running."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep manual preview alive
+        run: |
+          echo "Preview remains available for manual browser testing."
+          sleep 9900
