@@ -1,3 +1,9 @@
 /target
 **/target
 .DS_Store
+
+# Clean-room JavaScript/TypeScript dependencies are reproducible build inputs.
+# Never commit installed third-party dependency trees.
+yihua-game/node_modules/
+yihua-game/dist/
+yihua-game/coverage/
