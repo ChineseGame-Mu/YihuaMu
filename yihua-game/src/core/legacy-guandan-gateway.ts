@@ -22,7 +22,11 @@ const sendLegacy = async (
 
 const parseLegacyClientMessage = (raw: string): LegacyClientMessage => {
   const parsed = JSON.parse(raw) as Partial<LegacyClientMessage>;
-  if (parsed === null || typeof parsed !== "object" || typeof parsed.type !== "string") {
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    typeof parsed.type !== "string"
+  ) {
     throw new Error("legacy message must be an object with a type");
   }
   return parsed as LegacyClientMessage;
@@ -89,7 +93,10 @@ class LegacyAdapterSocket implements TextSocket {
         );
         return;
       case "error":
-        await sendLegacy(this.socket, { type: "error", message: message.message });
+        await sendLegacy(this.socket, {
+          type: "error",
+          message: message.message,
+        });
         return;
       case "pong":
         return;
@@ -130,7 +137,9 @@ export const attachLegacyGuandanConnection = async (
   connection.onClose(async () => {
     if (active === undefined) return;
     runtime.sockets.unregister(active.roomId, active.adapter);
-    if (runtime.sockets.playerConnectionCount(active.roomId, active.playerId) > 0) {
+    if (
+      runtime.sockets.playerConnectionCount(active.roomId, active.playerId) > 0
+    ) {
       return;
     }
     try {
@@ -149,7 +158,9 @@ export const attachLegacyGuandanConnection = async (
     try {
       const message = parseLegacyClientMessage(raw);
       if (message.type === "join") {
-        if (active !== undefined) throw new Error("connection already joined a room");
+        if (active !== undefined) {
+          throw new Error("connection already joined a room");
+        }
         const roomId = message.room.trim();
         if (roomId.length === 0) throw new Error("room id is required");
         const playerId = legacyPlayerId(message.name);
@@ -191,12 +202,18 @@ export const attachLegacyGuandanConnection = async (
           );
         }
 
-        await sendLegacy(connection.socket, { type: "joined", room: roomId, seat });
+        await sendLegacy(connection.socket, {
+          type: "joined",
+          room: roomId,
+          seat,
+        });
         await runtime.websocket.sendSnapshot(adapter, roomId, playerId);
         return;
       }
 
-      if (active === undefined) throw new Error("join is required before game commands");
+      if (active === undefined) {
+        throw new Error("join is required before game commands");
+      }
       const clean = toCleanroomCommand(message, active.adapter.compat);
       await runtime.websocket.handleText(
         active.adapter,
