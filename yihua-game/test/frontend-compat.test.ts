@@ -74,6 +74,29 @@ describe("legacy frontend compatibility adapter", () => {
     ).toEqual({ type: "set_next_round_ready", ready: true });
   });
 
+  it("rejects unsupported legacy-only commands instead of proxying them", () => {
+    const state = {
+      roomId: "room-1",
+      playerId: "p1",
+      seat: 0,
+      privateCardIds: ["c0"],
+    };
+    const unsupported = [
+      { type: "reorder_players", order: [0, 1] as const },
+      { type: "set_bots", count: 1 as const },
+      { type: "shuffle_next_round", from_position: 0, to_position: 1 },
+      { type: "deal_next_round" },
+      { type: "tribute_card", card_index: 0 },
+      { type: "return_tribute", card_index: 0 },
+    ] as const;
+
+    for (const command of unsupported) {
+      expect(() => toCleanroomCommand(command, state)).toThrow(
+        `legacy command ${command.type} is not implemented by the clean-room engine`,
+      );
+    }
+  });
+
   it("rejects an old frontend card index that cannot be resolved", () => {
     expect(() =>
       toCleanroomCommand(
@@ -152,5 +175,3 @@ describe("legacy frontend compatibility adapter", () => {
     });
   });
 });
-
-// Keep this compatibility suite on the formatted descendant so full CI runs there.
