@@ -1,0 +1,100 @@
+name: Yihua Game Clean-room Live Tunnel
+
+on:
+  push:
+    branches:
+      - cleanroom/ip-isolation-20260828
+    paths:
+      - ".github/workflows/cleanroom-live-tunnel.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: yihua-game-cleanroom-live-tunnel
+  cancel-in-progress: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm install
+      - run: npm run build:server
+
+      - name: Start clean-room backend
+        run: |
+          PORT=3000 HOST=127.0.0.1 YIHUA_SNAPSHOT_PATH="$RUNNER_TEMP/yihua-live-snapshot.json" npm start > "$RUNNER_TEMP/yihua-server.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/yihua-server.pid"
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://127.0.0.1:3000/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/yihua-server.log"
+
+      - name: Start Cloudflare quick tunnel
+        run: |
+          curl -L --fail --silent --show-error \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+            -o "$RUNNER_TEMP/cloudflared"
+          chmod +x "$RUNNER_TEMP/cloudflared"
+          "$RUNNER_TEMP/cloudflared" tunnel --no-autoupdate --url http://127.0.0.1:3000 \
+            > "$RUNNER_TEMP/cloudflared.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/cloudflared.pid"
+
+          URL=""
+          for attempt in $(seq 1 60); do
+            URL=$(grep -o 'https://[-a-z0-9]*\.trycloudflare\.com' "$RUNNER_TEMP/cloudflared.log" | head -n 1 || true)
+            if [ -n "$URL" ]; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [ -z "$URL" ]; then
+            cat "$RUNNER_TEMP/cloudflared.log"
+            exit 1
+          fi
+
+          echo "$URL" > "$RUNNER_TEMP/public-url.txt"
+          echo "YIHUA_CLEANROOM_PUBLIC_HTTP=$URL"
+          echo "YIHUA_CLEANROOM_PUBLIC_WS=${URL/https:/wss:}/api/guandan"
+
+          PUBLIC_WS="${URL/https:/wss:}/api/guandan" node --input-type=module <<'NODE'
+          const url = process.env.PUBLIC_WS;
+          const socket = new WebSocket(url);
+          const timer = setTimeout(() => {
+            console.error("live websocket verification timed out");
+            process.exit(1);
+          }, 15000);
+          socket.addEventListener("message", (event) => {
+            const message = JSON.parse(String(event.data));
+            if (message.type === "connected") {
+              console.log(`YIHUA_CLEANROOM_LIVE_WS_OK ${url}`);
+              clearTimeout(timer);
+              socket.close();
+              process.exit(0);
+            }
+          });
+          socket.addEventListener("error", () => {
+            console.error("live websocket verification failed");
+            clearTimeout(timer);
+            process.exit(1);
+          });
+          NODE
+
+      - name: Keep manual-test backend online
+        run: |
+          URL=$(cat "$RUNNER_TEMP/public-url.txt")
+          echo "Manual test backend remains available for this job: $URL"
+          echo "Frontend override: ?test=1&ws=${URL/https:/wss:}/api/guandan"
+          sleep 10500
