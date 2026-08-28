@@ -57,11 +57,10 @@ const connectLegacyPlayer = async (
 describe("clean-room /api/guandan compatibility gateway", () => {
   it("runs four human players through join, start, private hand, and public state", async () => {
     const runtime = createServerRuntime();
-    const players = await Promise.all(
-      ["玩家1", "玩家2", "玩家3", "玩家4"].map((name) =>
-        connectLegacyPlayer(runtime, "gateway-4p", name),
-      ),
-    );
+    const players: MemoryConnection[] = [];
+    for (const name of ["玩家1", "玩家2", "玩家3", "玩家4"]) {
+      players.push(await connectLegacyPlayer(runtime, "gateway-4p", name));
+    }
 
     const managedBeforeStart = runtime.rooms.get("gateway-4p");
     expect(managedBeforeStart.room.participants).toHaveLength(4);
