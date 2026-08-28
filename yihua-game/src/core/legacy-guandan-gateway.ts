@@ -200,8 +200,7 @@ export const attachLegacyGuandanConnection = async (
                 seat,
               }),
             );
-            const joined = runtime
-              .rooms
+            const joined = runtime.rooms
               .get(roomId)
               .room.participants.some(
                 ({ id, kind }) => id === playerId && kind === "human",
