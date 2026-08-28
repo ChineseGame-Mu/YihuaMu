@@ -130,4 +130,29 @@ describe("clean-room /api/guandan compatibility gateway", () => {
         .some(({ type, seat }) => type === "joined" && seat === 0),
     ).toBe(true);
   });
+
+  it("cleans up socket registration when a legacy join is rejected", async () => {
+    const runtime = createServerRuntime();
+    const room = "gateway-failed-join";
+    const players: MemoryConnection[] = [];
+    for (let index = 1; index <= 14; index += 1) {
+      players.push(
+        await connectLegacyPlayer(runtime, room, `已入座玩家${index}`),
+      );
+    }
+
+    const rejected = await connectLegacyPlayer(runtime, room, "第十五位玩家");
+    const errors = rejected.socket
+      .messages()
+      .filter(({ type }) => type === "error");
+
+    expect(errors.length).toBeGreaterThan(0);
+    expect(runtime.rooms.get(room).room.participants).toHaveLength(14);
+    expect(runtime.sockets.playerConnectionCount(room, "legacy:第十五位玩家")).toBe(
+      0,
+    );
+
+    await rejected.close();
+    expect(runtime.rooms.get(room).room.participants).toHaveLength(14);
+  });
 });
