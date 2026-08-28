@@ -33,7 +33,8 @@ const activeCountForNextRound = (
   ).length;
   const target = managed.room.config.playerCount;
   const eligible = SUPPORTED_PLAYER_COUNTS.filter(
-    (count) => count >= currentCount && count <= eligibleHumans && count <= target,
+    (count) =>
+      count >= currentCount && count <= eligibleHumans && count <= target,
   );
   return eligible.at(-1) ?? currentCount;
 };
