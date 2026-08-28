@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
-import { classifyHand } from "../src/core/hand.js";
+import { canHandBeat, classifyHand } from "../src/core/hand.js";
 
 const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
   kind: "suited",
@@ -88,6 +88,38 @@ describe("sequence hand boundaries", () => {
         suited("6", "diamonds"),
       ]).kind,
     ).toBe("invalid");
+  });
+
+  it("rejects pair and triple runs that cross from ace into 2", () => {
+    const pairsThroughTwo = ["K", "K", "A", "A", "2", "2"].map((rank) =>
+      suited(rank as Rank),
+    );
+    const triplesThroughTwo = ["A", "A", "A", "2", "2", "2"].map((rank) =>
+      suited(rank as Rank),
+    );
+
+    expect(classifyHand(pairsThroughTwo).kind).toBe("invalid");
+    expect(classifyHand(triplesThroughTwo).kind).toBe("invalid");
+  });
+
+  it("compares the ace-low wheel by its five-high boundary", () => {
+    const wheel = classifyHand([
+      suited("A", "clubs"),
+      suited("2", "diamonds"),
+      suited("3", "spades"),
+      suited("4", "hearts"),
+      suited("5", "clubs"),
+    ]);
+    const tenHigh = classifyHand([
+      suited("6", "clubs"),
+      suited("7", "diamonds"),
+      suited("8", "spades"),
+      suited("9", "hearts"),
+      suited("10", "clubs"),
+    ]);
+
+    expect(canHandBeat(tenHigh, wheel)).toBe(true);
+    expect(canHandBeat(wheel, tenHigh)).toBe(false);
   });
 
   it("rejects ordinary combinations that mix suited cards and jokers", () => {
