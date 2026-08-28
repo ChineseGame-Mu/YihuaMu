@@ -25,3 +25,5 @@ jobs:
       - run: npm run build
       - name: Run 4-14 players, three games each
         run: node scripts/smoke-three-games-all-sizes.mjs
+
+# trigger: 2026-08-28T10:06-04:00
