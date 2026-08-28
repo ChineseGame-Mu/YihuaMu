@@ -97,7 +97,8 @@ class LegacyAdapterSocket implements TextSocket {
   }
 
   close(code?: number, reason?: string): void | Promise<void> {
-    return this.socket.close?.(code, reason);
+    if (this.socket.close === undefined) return;
+    return this.socket.close(code, reason);
   }
 }
 
