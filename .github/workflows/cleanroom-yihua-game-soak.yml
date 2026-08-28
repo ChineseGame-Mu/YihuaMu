@@ -38,6 +38,8 @@ jobs:
         run: npm run typecheck
       - name: Build standalone server
         run: npm run build
+      - name: Active-game hard-crash recovery fault injection
+        run: npm run smoke:crash
       # Keep long runs segmented so each child process releases transient heap.
       - name: Long WebSocket lifecycle soak
         env:
