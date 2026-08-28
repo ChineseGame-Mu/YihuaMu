@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import { transitionGame } from "../src/core/game-machine.js";
 import type { GameState, PlayingState } from "../src/core/game-state.js";
-import { canHandBeat, classifyHand } from "../src/core/hand.js";
+import {
+  canHandBeat,
+  classifyHand,
+  type ClassifiedHand,
+} from "../src/core/hand.js";
 import {
   createTableConfig,
   type SupportedPlayerCount,
@@ -25,17 +29,17 @@ const finishRound = (initial: PlayingState): GameState => {
   let state: GameState = initial;
   for (let actions = 0; state.phase === "playing"; actions += 1) {
     if (actions >= 10000) throw new Error("round did not complete");
-    const playing = state;
-    const seat = playing.currentTurn;
-    const hand = playing.hands[seat];
+    const playing: PlayingState = state;
+    const seat: number = playing.currentTurn;
+    const hand: readonly DeckCard[] | undefined = playing.hands[seat];
     if (hand === undefined || hand.length === 0) {
       throw new Error("turn points to finished seat");
     }
-    const lead = playing.trick.leadingPlay?.hand ?? null;
+    const lead: ClassifiedHand | null = playing.trick.leadingPlay?.hand ?? null;
     const card: DeckCard | undefined =
       lead === null
         ? hand[0]
-        : hand.find((candidate) =>
+        : hand.find((candidate: DeckCard) =>
             canHandBeat(classifyHand([candidate.card]), lead),
           );
     state =
