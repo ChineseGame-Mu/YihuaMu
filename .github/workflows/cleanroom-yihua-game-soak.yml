@@ -16,6 +16,10 @@ on:
         description: "Reconnect one player after this many game actions"
         required: true
         default: "10"
+      crash_recovery_cycles:
+        description: "Independent active-game SIGKILL recovery cycles before the soak"
+        required: true
+        default: "3"
 
 jobs:
   websocket-soak:
@@ -38,8 +42,15 @@ jobs:
         run: npm run typecheck
       - name: Build standalone server
         run: npm run build
-      - name: Active-game hard-crash recovery fault injection
-        run: npm run smoke:crash
+      - name: Repeated active-game hard-crash recovery fault injection
+        env:
+          CRASH_RECOVERY_CYCLES: ${{ inputs.crash_recovery_cycles || '3' }}
+        run: |
+          set -euo pipefail
+          for cycle in $(seq 1 "$CRASH_RECOVERY_CYCLES"); do
+            echo "Hard-crash recovery cycle ${cycle}/${CRASH_RECOVERY_CYCLES}"
+            npm run smoke:crash
+          done
       # Keep long runs segmented so each child process releases transient heap.
       - name: Long WebSocket lifecycle soak
         env:
