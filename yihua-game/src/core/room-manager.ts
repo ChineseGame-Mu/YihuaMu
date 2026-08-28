@@ -27,10 +27,13 @@ const activeCountForNextRound = (
   managed: ManagedRoom,
 ): SupportedPlayerCount => {
   const currentCount = managed.game.config.playerCount;
-  const available = connectedHumans(managed.room).length;
+  const eligibleHumans = connectedHumans(managed.room).filter(
+    ({ seat, readyForNextRound }) =>
+      seat < currentCount || readyForNextRound === true,
+  ).length;
   const target = managed.room.config.playerCount;
   const eligible = SUPPORTED_PLAYER_COUNTS.filter(
-    (count) => count >= currentCount && count <= available && count <= target,
+    (count) => count >= currentCount && count <= eligibleHumans && count <= target,
   );
   return eligible.at(-1) ?? currentCount;
 };
