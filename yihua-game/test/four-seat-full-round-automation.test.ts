@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
-import {
-  passGameTurn,
-  playGameCards,
-  startNextRound,
-  type PlayingState,
-  type RoundCompleteState,
-} from "../src/core/game-state.js";
+import { transitionGame } from "../src/core/game-machine.js";
+import type { GameState, PlayingState } from "../src/core/game-state.js";
 import {
   canHandBeat,
   classifyHand,
@@ -26,8 +21,8 @@ const createInitialState = (): PlayingState => ({
 });
 
 describe("four-seat full-round automation", () => {
-  it("plays all four seats through a complete round without deadlock", () => {
-    let state: PlayingState | RoundCompleteState = createInitialState();
+  it("plays all four seats through the table machine without deadlock", () => {
+    let state: GameState = createInitialState();
     let actions = 0;
     const maximumActions = 2000;
 
@@ -36,7 +31,7 @@ describe("four-seat full-round automation", () => {
         throw new Error("automated round exceeded the action limit");
       }
 
-      const seat: number = state.currentTurn;
+      const seat = state.currentTurn;
       const hand: readonly DeckCard[] | undefined = state.hands[seat];
       if (hand === undefined || hand.length === 0) {
         throw new Error("current turn points to an empty or missing hand");
@@ -53,12 +48,19 @@ describe("four-seat full-round automation", () => {
 
       state =
         playable === undefined
-          ? passGameTurn(state, seat)
-          : playGameCards(state, seat, [playable.card]);
+          ? transitionGame(state, { type: "pass-turn", seat })
+          : transitionGame(state, {
+              type: "play-cards",
+              seat,
+              cards: [playable.card],
+            });
       actions += 1;
     }
 
     expect(state.phase).toBe("round-complete");
+    if (state.phase !== "round-complete") {
+      throw new Error("round-complete phase expected");
+    }
     expect(actions).toBeLessThan(maximumActions);
     expect(state.finishedSeats).toHaveLength(4);
     expect(new Set(state.finishedSeats).size).toBe(4);
@@ -67,9 +69,14 @@ describe("four-seat full-round automation", () => {
     expect(state.outcome?.firstPlaceSeat).toBe(state.winnerSeat);
     expect(state.outcome?.lastPlaceSeat).toBe(state.finishedSeats[3]);
 
-    const next = startNextRound(state, () => 0);
-    expect(next.currentTurn).toBe(state.winnerSeat);
-    expect(next.trick.leaderSeat).toBe(state.winnerSeat);
+    const completedWinner = state.winnerSeat;
+    const next = transitionGame(state, { type: "next-round" }, () => 0);
+    expect(next.phase).toBe("playing");
+    if (next.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(next.currentTurn).toBe(completedWinner);
+    expect(next.trick.leaderSeat).toBe(completedWinner);
     expect(next.finishedSeats).toEqual([]);
     expect(next.hands).toHaveLength(4);
     expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
