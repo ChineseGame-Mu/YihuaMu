@@ -152,3 +152,5 @@ describe("legacy frontend compatibility adapter", () => {
     });
   });
 });
+
+// Keep this compatibility suite on the formatted descendant so full CI runs there.
