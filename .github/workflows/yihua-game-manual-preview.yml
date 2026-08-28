@@ -68,6 +68,7 @@ jobs:
             exit 1
           fi
 
+          echo "$preview_url/room/manual-test" >/tmp/manual-preview-url.txt
           echo "MANUAL_PREVIEW_URL=$preview_url"
           echo "MANUAL_JOIN_URL=$preview_url/room/manual-test"
           {
@@ -77,6 +78,13 @@ jobs:
             echo "- Join: $preview_url/room/manual-test"
             echo "- This temporary preview stays alive while this job is running."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish manual preview URL
+        uses: actions/upload-artifact@v4
+        with:
+          name: yihua-game-manual-preview-url
+          path: /tmp/manual-preview-url.txt
+          retention-days: 1
 
       - name: Keep manual preview alive
         run: |
