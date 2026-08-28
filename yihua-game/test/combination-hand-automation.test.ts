@@ -178,28 +178,31 @@ describe("combination-hand automation", () => {
     },
   );
 
-  it.each(invalidCases)("rejects $name without mutating table state", ({ cards }) => {
-    expect(classifyHand(cards).kind).toBe("invalid");
-    const filler = suited("2", "spades");
-    const state: PlayingState = {
-      phase: "playing",
-      config: createTableConfig(4, 0),
-      openingDraw: { attempts: [], winnerSeat: 0 },
-      hands: [
-        asDeckCards([...cards, filler], "seat-0"),
-        asDeckCards([filler], "seat-1"),
-        asDeckCards([filler], "seat-2"),
-        asDeckCards([filler], "seat-3"),
-      ],
-      currentTurn: 0,
-      trick: createTrickState(4, 0),
-      finishedSeats: [],
-    };
-    const before = JSON.stringify(state);
+  it.each(invalidCases)(
+    "rejects $name without mutating table state",
+    ({ cards }) => {
+      expect(classifyHand(cards).kind).toBe("invalid");
+      const filler = suited("2", "spades");
+      const state: PlayingState = {
+        phase: "playing",
+        config: createTableConfig(4, 0),
+        openingDraw: { attempts: [], winnerSeat: 0 },
+        hands: [
+          asDeckCards([...cards, filler], "seat-0"),
+          asDeckCards([filler], "seat-1"),
+          asDeckCards([filler], "seat-2"),
+          asDeckCards([filler], "seat-3"),
+        ],
+        currentTurn: 0,
+        trick: createTrickState(4, 0),
+        finishedSeats: [],
+      };
+      const before = JSON.stringify(state);
 
-    expect(() =>
-      transitionGame(state, { type: "play-cards", seat: 0, cards }),
-    ).toThrow("invalid hand");
-    expect(JSON.stringify(state)).toBe(before);
-  });
+      expect(() =>
+        transitionGame(state, { type: "play-cards", seat: 0, cards }),
+      ).toThrow("invalid hand");
+      expect(JSON.stringify(state)).toBe(before);
+    },
+  );
 });
