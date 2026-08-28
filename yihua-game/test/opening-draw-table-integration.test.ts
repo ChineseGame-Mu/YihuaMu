@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { openingDrawStrength } from "../src/core/cards.js";
 import {
   createLobbyState,
   dealAfterOpeningDraw,
@@ -37,8 +38,19 @@ describe("opening draw table integration", () => {
         drawIds.push(...attempt.cards.map(({ id }) => id));
       }
       expect(new Set(drawIds).size).toBe(drawIds.length);
-      expect(opening.openingDraw.attempts.at(-1)?.winnerSeat).toBe(
-        opening.openingDraw.winnerSeat,
+      expect(
+        opening.openingDraw.attempts
+          .slice(0, -1)
+          .every(({ winnerSeat }) => winnerSeat === null),
+      ).toBe(true);
+
+      const finalAttempt = opening.openingDraw.attempts.at(-1)!;
+      expect(finalAttempt.winnerSeat).toBe(opening.openingDraw.winnerSeat);
+      const finalStrengths = finalAttempt.cards.map(({ card }) =>
+        openingDrawStrength(card),
+      );
+      expect(finalStrengths[opening.openingDraw.winnerSeat]).toBe(
+        Math.max(...finalStrengths),
       );
 
       const playing = dealAfterOpeningDraw(opening, random);
