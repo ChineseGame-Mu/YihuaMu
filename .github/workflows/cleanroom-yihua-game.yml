@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - cleanroom/yihua-game-20260826
+      - cleanroom/ip-isolation-20260828
     paths:
       - "yihua-game/**"
       - ".github/workflows/cleanroom-yihua-game.yml"
