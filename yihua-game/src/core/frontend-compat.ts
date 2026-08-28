@@ -29,7 +29,20 @@ export type LegacyClientMessage =
   | { readonly type: "start"; readonly player_count: number }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
   | { readonly type: "pass" }
-  | { readonly type: "end_round" };
+  | { readonly type: "end_round" }
+  | {
+      readonly type: "reorder_players";
+      readonly order: readonly [number, number];
+    }
+  | { readonly type: "set_bots"; readonly count: 1 | 2 | 3 }
+  | {
+      readonly type: "shuffle_next_round";
+      readonly from_position: number;
+      readonly to_position: number;
+    }
+  | { readonly type: "deal_next_round" }
+  | { readonly type: "tribute_card"; readonly card_index: number }
+  | { readonly type: "return_tribute"; readonly card_index: number };
 
 export type LegacyServerMessage =
   | { readonly type: "connected"; readonly protocol: string }
@@ -136,6 +149,10 @@ export interface FrontendCompatState {
   readonly privateCardIds: readonly string[];
 }
 
+const unsupportedLegacyCommand = (type: LegacyClientMessage["type"]): never => {
+  throw new Error(`legacy command ${type} is not implemented by the clean-room engine`);
+};
+
 export const toCleanroomCommand = (
   message: LegacyClientMessage,
   state: FrontendCompatState,
@@ -162,6 +179,13 @@ export const toCleanroomCommand = (
       return { type: "pass_turn" };
     case "end_round":
       return { type: "next_round" };
+    case "reorder_players":
+    case "set_bots":
+    case "shuffle_next_round":
+    case "deal_next_round":
+    case "tribute_card":
+    case "return_tribute":
+      return unsupportedLegacyCommand(message.type);
   }
 };
 
