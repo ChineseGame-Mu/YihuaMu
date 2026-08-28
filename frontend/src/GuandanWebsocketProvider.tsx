@@ -28,7 +28,7 @@ interface GuandanWebsocketProviderProps {
 }
 
 const EXPANDED_TEST_WEBSOCKET =
-  "wss://euro-adam-lib-schemes.trycloudflare.com/api/guandan";
+  "wss://beginning-tobacco-anniversary-dictionaries.trycloudflare.com/api/guandan";
 
 const testWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
