@@ -1,0 +1,27 @@
+name: Yihua Game Three Games Matrix
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - cleanroom/ip-isolation-20260828
+    paths:
+      - "yihua-game/scripts/smoke-three-games-all-sizes.mjs"
+      - ".github/workflows/cleanroom-three-games-matrix.yml"
+
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
+      - name: Run 4-14 players, three games each
+        run: node scripts/smoke-three-games-all-sizes.mjs
