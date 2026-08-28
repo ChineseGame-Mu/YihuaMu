@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { completeRound } from "../src/core/game-state.js";
-import { addHuman } from "../src/core/room.js";
+import { addHuman, setReadyForNextRound } from "../src/core/room.js";
 import { RoomManager } from "../src/core/room-manager.js";
 import { RoomSocketHub } from "../src/core/room-socket-hub.js";
 import { WebSocketService } from "../src/core/websocket-service.js";
@@ -53,7 +53,7 @@ describe("RoomManager", () => {
     }
   });
 
-  it("keeps seven humans on a six-player round, then expands the next round to eight", () => {
+  it("lets late humans wait freely and expands only after both choose the next round", () => {
     const manager = new RoomManager();
     const roomId = "late-expand";
     const startedAt = 1_000_000;
@@ -75,21 +75,6 @@ describe("RoomManager", () => {
         startedAt + 30 * 60 * 1000,
       ),
     });
-    expect(managed.room.config.playerCount).toBe(8);
-    expect(managed.room.participants).toHaveLength(7);
-    expect(managed.game.config.playerCount).toBe(6);
-
-    if (managed.game.phase !== "playing") {
-      throw new Error("playing phase expected");
-    }
-    const firstWinner = managed.game.currentTurn;
-    managed = manager.set(roomId, {
-      ...managed,
-      game: completeRound(managed.game, firstWinner),
-    });
-    managed = manager.nextRound(roomId, () => 0.25);
-    expect(managed.game.config.playerCount).toBe(6);
-
     managed = manager.set(roomId, {
       ...managed,
       room: addHuman(
@@ -98,16 +83,30 @@ describe("RoomManager", () => {
         startedAt + 31 * 60 * 1000,
       ),
     });
+    expect(managed.room.config.playerCount).toBe(8);
     expect(managed.room.participants).toHaveLength(8);
     expect(managed.game.config.playerCount).toBe(6);
 
     if (managed.game.phase !== "playing") {
       throw new Error("playing phase expected");
     }
-    const secondWinner = managed.game.currentTurn;
+    let winner = managed.game.currentTurn;
     managed = manager.set(roomId, {
       ...managed,
-      game: completeRound(managed.game, secondWinner),
+      game: completeRound(managed.game, winner),
+      room: setReadyForNextRound(managed.room, "p7", true),
+    });
+    managed = manager.nextRound(roomId, () => 0.25);
+    expect(managed.game.config.playerCount).toBe(6);
+
+    if (managed.game.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    winner = managed.game.currentTurn;
+    managed = manager.set(roomId, {
+      ...managed,
+      game: completeRound(managed.game, winner),
+      room: setReadyForNextRound(managed.room, "p8", true),
     });
     managed = manager.nextRound(roomId, () => 0.25);
 
@@ -119,8 +118,8 @@ describe("RoomManager", () => {
     expect(managed.game.config.botCount).toBe(0);
     expect(managed.game.hands).toHaveLength(8);
     expect(managed.game.hands.every((hand) => hand.length === 27)).toBe(true);
-    expect(managed.game.currentTurn).toBe(secondWinner);
-    expect(managed.game.trick.leaderSeat).toBe(secondWinner);
+    expect(managed.game.currentTurn).toBe(winner);
+    expect(managed.game.trick.leaderSeat).toBe(winner);
   });
 });
 
