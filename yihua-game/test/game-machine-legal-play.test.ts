@@ -200,4 +200,68 @@ describe("table machine legal-play enforcement", () => {
       size: 6,
     });
   });
+
+  it("lets the four-joker bomb beat a six-card bomb and remain unbeatable", () => {
+    const sixBomb = [
+      suited("Q", "clubs"),
+      suited("Q", "diamonds"),
+      suited("Q", "hearts"),
+      suited("Q", "spades"),
+      suited("Q", "clubs"),
+      suited("Q", "diamonds"),
+    ];
+    const jokerBomb: Card[] = [
+      { kind: "joker", size: "small" },
+      { kind: "joker", size: "small" },
+      { kind: "joker", size: "big" },
+      { kind: "joker", size: "big" },
+    ];
+    const higherSixBomb = [
+      suited("K", "clubs"),
+      suited("K", "diamonds"),
+      suited("K", "hearts"),
+      suited("K", "spades"),
+      suited("K", "clubs"),
+      suited("K", "diamonds"),
+    ];
+    const state = stateWithHands([
+      [
+        ...sixBomb.map((card, index) => deckCard(`six-q-${index}`, card)),
+        deckCard("seat0-extra", suited("3", "clubs")),
+      ],
+      [
+        ...jokerBomb.map((card, index) => deckCard(`joker-${index}`, card)),
+        deckCard("seat1-extra", suited("4", "clubs")),
+      ],
+      [
+        ...higherSixBomb.map((card, index) => deckCard(`six-k-${index}`, card)),
+        deckCard("seat2-extra", suited("5", "clubs")),
+      ],
+      [deckCard("seat3", suited("6", "clubs"))],
+    ]);
+
+    const afterSixBomb = expectPlaying(
+      transitionGame(state, {
+        type: "play-cards",
+        seat: 0,
+        cards: sixBomb,
+      }),
+    );
+    const afterJokerBomb = expectPlaying(
+      transitionGame(afterSixBomb, {
+        type: "play-cards",
+        seat: 1,
+        cards: jokerBomb,
+      }),
+    );
+    expect(afterJokerBomb.trick.leadingPlay?.hand.kind).toBe("joker-bomb");
+
+    expect(() =>
+      transitionGame(afterJokerBomb, {
+        type: "play-cards",
+        seat: 2,
+        cards: higherSixBomb,
+      }),
+    ).toThrow("played hand does not beat the current hand");
+  });
 });
