@@ -38,7 +38,9 @@ const createMessageQueue = (socket) => {
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data));
-    const waiterIndex = waiters.findIndex(({ predicate }) => predicate(message));
+    const waiterIndex = waiters.findIndex(({ predicate }) =>
+      predicate(message),
+    );
     if (waiterIndex >= 0) {
       const [waiter] = waiters.splice(waiterIndex, 1);
       waiter.resolve(message);
@@ -83,7 +85,10 @@ const connect = async (name) => {
     throw new Error(`unexpected clean-room protocol: ${connected.protocol}`);
   }
   socket.send(JSON.stringify({ type: "join", room, name }));
-  const joined = await waitFor(({ type }) => type === "joined", `${name} joined`);
+  const joined = await waitFor(
+    ({ type }) => type === "joined",
+    `${name} joined`,
+  );
   return { name, socket, waitFor, seat: joined.seat };
 };
 
@@ -140,7 +145,10 @@ try {
     ({ type }) => type === "state",
     "reconnect state",
   );
-  if (!Array.isArray(reconnectState.players) || reconnectState.players.length !== 4) {
+  if (
+    !Array.isArray(reconnectState.players) ||
+    reconnectState.players.length !== 4
+  ) {
     throw new Error("reconnect created a duplicate participant");
   }
 
