@@ -68,4 +68,48 @@ describe("game machine phase/action rejection matrix", () => {
       }
     }
   });
+
+  it("runs the only legal phase-changing path without skipping or replaying phases", () => {
+    const lobby = createLobbyState(4, 0);
+    expect(lobby.phase).toBe("lobby");
+
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
+    expect(opening.phase).toBe("opening-draw");
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+    const openingDraw = opening.openingDraw;
+
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      fixedRandom,
+    );
+    expect(playing.phase).toBe("playing");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(playing.openingDraw).toEqual(openingDraw);
+
+    const completed = completeRound(playing, playing.currentTurn);
+    expect(completed.phase).toBe("round-complete");
+    expect(completed.openingDraw).toEqual(openingDraw);
+
+    const nextRound = transitionGame(
+      completed,
+      { type: "next-round" },
+      fixedRandom,
+    );
+    expect(nextRound.phase).toBe("playing");
+    if (nextRound.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(nextRound.openingDraw).toEqual(openingDraw);
+    expect(nextRound.currentTurn).toBe(completed.winnerSeat);
+    expect(nextRound.trick.leaderSeat).toBe(completed.winnerSeat);
+  });
 });
