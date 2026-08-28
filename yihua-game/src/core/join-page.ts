@@ -72,10 +72,20 @@ export const renderJoinPage = (roomId: string): string => {
       const countNote = document.getElementById("count-note");
       const button = document.getElementById("join-button");
       const status = document.getElementById("join-status");
+      const params = new URLSearchParams(location.search);
       const storageKey = "yihua-room-name:" + roomId;
+      const queryName = (params.get("playerName") || "").trim();
       const priorName = localStorage.getItem(storageKey);
-      if (priorName) input.value = priorName;
-      setTimeout(() => input.focus(), 0);
+      if (queryName) input.value = queryName;
+      else if (priorName) input.value = priorName;
+      const requestedCount = Number(params.get("playerCount"));
+      if ([4, 6, 8, 10, 12, 14].includes(requestedCount)) {
+        count.value = String(requestedCount);
+      }
+      setTimeout(() => {
+        if (input.value) button.focus();
+        else input.focus();
+      }, 0);
 
       const randomId = () => {
         if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") return globalThis.crypto.randomUUID();
