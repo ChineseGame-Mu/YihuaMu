@@ -129,3 +129,5 @@ describe("clean-room /api/guandan compatibility gateway", () => {
     ).toBe(true);
   });
 });
+
+// CI trigger: validate the formatter-generated gateway files through the full clean-room pipeline.
