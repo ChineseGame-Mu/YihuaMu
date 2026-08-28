@@ -9,17 +9,17 @@ describe("playable table frontend/backend connection", () => {
     expect(html).toContain(
       'new WebSocket(scheme + "//" + location.host + "/ws/rooms/manual%20test%2F%E4%B8%80%E5%8F%B7?playerId=" + encodeURIComponent(playerId))',
     );
-    expect(html).toContain('send({ type: "start_game" })');
+    expect(html).toContain('send({ type:"start_game" })');
     expect(html).toContain(
-      'send({ type: "play_cards", cardIds: [...selected] })',
+      'send({ type:"play_cards", cardIds:[...selected] })',
     );
-    expect(html).toContain('send({ type: "pass_turn" })');
-    expect(html).toContain('send({ type: "next_round" })');
+    expect(html).toContain('send({ type:"pass_turn" })');
+    expect(html).toContain('send({ type:"next_round" })');
     expect(html).toContain(
-      'send({ type: "set_next_round_ready", ready: true })',
+      'send({ type:"set_next_round_ready", ready:true })',
     );
     expect(html).toContain(
-      'send({ type: "set_next_round_ready", ready: false })',
+      'send({ type:"set_next_round_ready", ready:false })',
     );
   });
 
