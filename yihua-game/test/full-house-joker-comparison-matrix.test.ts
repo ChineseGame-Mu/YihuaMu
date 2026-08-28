@@ -46,7 +46,10 @@ describe("full-house and joker comparison matrix", () => {
 
   it("requires a strict increase rather than allowing equal hands to beat", () => {
     const leftPair = classifyHand([suited("9"), suited("9", "diamonds")]);
-    const rightPair = classifyHand([suited("9", "hearts"), suited("9", "spades")]);
+    const rightPair = classifyHand([
+      suited("9", "hearts"),
+      suited("9", "spades"),
+    ]);
     const leftBomb = classifyHand([
       suited("Q"),
       suited("Q", "diamonds"),
@@ -65,7 +68,12 @@ describe("full-house and joker comparison matrix", () => {
   });
 
   it("treats four jokers as the top bomb and mixed joker groups as invalid", () => {
-    const jokerBomb = classifyHand([smallJoker, smallJoker, bigJoker, bigJoker]);
+    const jokerBomb = classifyHand([
+      smallJoker,
+      smallJoker,
+      bigJoker,
+      bigJoker,
+    ]);
     const sixBomb = classifyHand([
       suited("A"),
       suited("A", "diamonds"),
