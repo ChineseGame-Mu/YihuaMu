@@ -47,10 +47,10 @@ describe("opening draw tie redeal", () => {
   it("keeps redrawing all seats across consecutive ties until one seat wins", () => {
     const deck: DeckCard[] = [
       deckCard("tie1-a-1", suited("A", "clubs")),
-      deckCard("tie1-a-2", suited("A", "diamonds")),
+      deckCard("tie1-a-2", suited("A", "clubs")),
       deckCard("tie1-9", suited("9", "hearts")),
       deckCard("tie1-8", suited("8", "spades")),
-      deckCard("tie2-k-1", suited("K", "clubs")),
+      deckCard("tie2-k-1", suited("K", "hearts")),
       deckCard("tie2-7", suited("7", "diamonds")),
       deckCard("tie2-k-2", suited("K", "hearts")),
       deckCard("tie2-6", suited("6", "spades")),
