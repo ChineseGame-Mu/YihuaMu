@@ -119,4 +119,65 @@ describe("hand comparison boundary matrix", () => {
     expect(canHandBeat(jokerBomb, six3)).toBe(true);
     expect(canHandBeat(six3, jokerBomb)).toBe(false);
   });
+
+  it("orders bombs inside the same tier by rank and larger 6+ bombs by size first", () => {
+    const five3 = hand(
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
+    );
+    const five4 = hand(
+      suited("4", "clubs"),
+      suited("4", "diamonds"),
+      suited("4", "hearts"),
+      suited("4", "spades"),
+      suited("4", "clubs"),
+    );
+    const sixA = hand(
+      suited("A", "clubs"),
+      suited("A", "diamonds"),
+      suited("A", "hearts"),
+      suited("A", "spades"),
+      suited("A", "clubs"),
+      suited("A", "diamonds"),
+    );
+    const seven3 = hand(
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+      suited("3", "spades"),
+      suited("3", "clubs"),
+      suited("3", "diamonds"),
+      suited("3", "hearts"),
+    );
+
+    expect(canHandBeat(five4, five3)).toBe(true);
+    expect(canHandBeat(five3, five4)).toBe(false);
+    expect(canHandBeat(five3, five3)).toBe(false);
+    expect(canHandBeat(seven3, sixA)).toBe(true);
+    expect(canHandBeat(sixA, seven3)).toBe(false);
+  });
+
+  it("orders straight flushes by high rank and rejects equal strength", () => {
+    const sevenHigh = hand(
+      suited("3", "hearts"),
+      suited("4", "hearts"),
+      suited("5", "hearts"),
+      suited("6", "hearts"),
+      suited("7", "hearts"),
+    );
+    const eightHigh = hand(
+      suited("4", "spades"),
+      suited("5", "spades"),
+      suited("6", "spades"),
+      suited("7", "spades"),
+      suited("8", "spades"),
+    );
+
+    expect(canHandBeat(eightHigh, sevenHigh)).toBe(true);
+    expect(canHandBeat(sevenHigh, eightHigh)).toBe(false);
+    expect(canHandBeat(sevenHigh, sevenHigh)).toBe(false);
+  });
 });
