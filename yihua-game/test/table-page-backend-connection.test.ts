@@ -15,7 +15,12 @@ describe("playable table frontend/backend connection", () => {
     );
     expect(html).toContain('send({ type: "pass_turn" })');
     expect(html).toContain('send({ type: "next_round" })');
-    expect(html).toContain('{ type: "set_next_round_ready", ready }');
+    expect(html).toContain(
+      'send({ type: "set_next_round_ready", ready: true })',
+    );
+    expect(html).toContain(
+      'send({ type: "set_next_round_ready", ready: false })',
+    );
   });
 
   it("renders live backend room, game and private-hand messages", () => {
