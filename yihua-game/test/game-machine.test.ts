@@ -123,4 +123,48 @@ describe("explicit table game state machine", () => {
     expect(next.openingDraw).toEqual(completed.openingDraw);
     expect(next.currentTurn).toBe(completed.winnerSeat);
   });
+
+  it("never repeats the first-round draw when later rounds begin", () => {
+    let calls = 0;
+    const countedRandom = () => {
+      calls += 1;
+      return 0.25;
+    };
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      countedRandom,
+    );
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+    const drawSnapshot = JSON.stringify(opening.openingDraw);
+
+    const firstRound = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      countedRandom,
+    );
+    if (firstRound.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    const completed = completeRound(firstRound, firstRound.currentTurn);
+    const callsBeforeNextRound = calls;
+
+    const nextRound = transitionGame(
+      completed,
+      { type: "next-round" },
+      countedRandom,
+    );
+    expect(nextRound.phase).toBe("playing");
+    if (nextRound.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(calls).toBeGreaterThan(callsBeforeNextRound);
+    expect(JSON.stringify(nextRound.openingDraw)).toBe(drawSnapshot);
+    expect(nextRound.currentTurn).toBe(completed.winnerSeat);
+    expect(nextRound.trick.leaderSeat).toBe(completed.winnerSeat);
+    expect(nextRound.hands.every((hand) => hand.length === 27)).toBe(true);
+  });
 });
