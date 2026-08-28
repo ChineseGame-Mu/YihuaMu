@@ -52,6 +52,7 @@ jobs:
             npm run smoke:crash
           done
       # Keep long runs segmented so each child process releases transient heap.
+      # Aug 28 acceptance run: 3 hours across 4/6/8/10/12/14 players.
       - name: Long WebSocket lifecycle soak
         env:
           SOAK_DURATION_MS: ${{ inputs.duration_ms || '10800000' }}
