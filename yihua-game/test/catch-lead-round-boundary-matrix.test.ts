@@ -52,7 +52,10 @@ describe("catch lead across the round boundary", () => {
 
       const finishOrder = [
         1,
-        ...Array.from({ length: playerCount - 1 }, (_, index) => (index + 2) % playerCount),
+        ...Array.from(
+          { length: playerCount - 1 },
+          (_, index) => (index + 2) % playerCount,
+        ),
       ];
       const completed = completeRound(
         { ...state, finishedSeats: finishOrder },
