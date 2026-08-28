@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   autoformat:
@@ -32,10 +33,14 @@ jobs:
         run: |
           if git diff --quiet; then
             echo "Already formatted by Prettier 3.4.1"
-            exit 0
+          else
+            git config user.name "ChineseGame-Mu"
+            git config user.email "muyihua@gmail.com"
+            git add yihua-game
+            git commit --no-verify -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
+            git push origin HEAD:cleanroom/yihua-game-20260826
           fi
-          git config user.name "ChineseGame-Mu"
-          git config user.email "muyihua@gmail.com"
-          git add yihua-game
-          git commit --no-verify -m "style(yihua-game): exact Prettier 3.4.1 output [prettier-autoformat]"
-          git push origin HEAD:cleanroom/yihua-game-20260826
+      - name: Dispatch clean-room CI for formatted branch head
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run cleanroom-yihua-game.yml --ref cleanroom/yihua-game-20260826
