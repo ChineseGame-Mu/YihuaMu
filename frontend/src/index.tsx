@@ -16,6 +16,7 @@ import "./guandan-statusbar-restore.css";
 import "./guandan-topbar-final.css";
 import "./guandan-button-3d.css";
 import "./guandan-public-player-position.css";
+import "./cleanroom-join.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
@@ -29,6 +30,7 @@ import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import ExitGameButton from "./ExitGameButton";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
+import CleanroomEntry from "./CleanroomEntry";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -67,6 +69,21 @@ const bootstrap = (): void => {
 
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
+  const cleanroom =
+    params.get("cleanroom") === "1" ||
+    (game === null && params.get("classic") !== "1");
+
+  // The clean-room branch enters through the dedicated Join Room page first.
+  // After joining, CleanroomEntry mounts the already-approved GuandanTable
+  // unchanged and inserts only the compatibility transport adapter underneath.
+  if (cleanroom) {
+    root_.render(
+      <React.Suspense fallback={fallback}>
+        <CleanroomEntry />
+      </React.Suspense>,
+    );
+    return;
+  }
 
   if (game === "guandan") {
     root_.render(

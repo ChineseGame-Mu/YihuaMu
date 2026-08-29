@@ -1,0 +1,97 @@
+.cleanroom-join-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(145deg, #eef8f1, #dcefe3);
+  color: #173d29;
+}
+
+.cleanroom-join-card {
+  width: min(100%, 430px);
+  padding: 30px 24px;
+  border: 1px solid rgba(23, 61, 41, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20px 55px rgba(23, 61, 41, 0.14);
+}
+
+.cleanroom-join-card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 30px;
+}
+
+.cleanroom-room-label {
+  margin: 10px 0 26px;
+  text-align: center;
+  color: #52705e;
+  font-size: 15px;
+}
+
+.cleanroom-room-label strong {
+  color: #245c3a;
+  font-weight: 800;
+}
+
+.cleanroom-join-card label {
+  display: block;
+  margin: 16px 0 8px;
+  font-weight: 700;
+}
+
+.cleanroom-join-card input,
+.cleanroom-join-card select {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 16px;
+  border: 1.5px solid #b7cdbd;
+  border-radius: 14px;
+  background: #fff;
+  color: #173d29;
+  font-size: 18px;
+  outline: none;
+}
+
+.cleanroom-join-card input:focus,
+.cleanroom-join-card select:focus {
+  border-color: #2d7a4d;
+  box-shadow: 0 0 0 4px rgba(45, 122, 77, 0.12);
+}
+
+.cleanroom-join-card button {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 20px;
+  border: 0;
+  border-radius: 14px;
+  background: #247447;
+  color: #fff;
+  cursor: pointer;
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.cleanroom-join-card button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.cleanroom-note {
+  margin: 7px 2px 0;
+  color: #6a7c70;
+  font-size: 13px;
+}
+
+.cleanroom-hint,
+.cleanroom-status {
+  margin: 14px 0 0;
+  text-align: center;
+  color: #6a7c70;
+  font-size: 14px;
+}
+
+.cleanroom-status {
+  min-height: 22px;
+  color: #9b2f2f;
+}
