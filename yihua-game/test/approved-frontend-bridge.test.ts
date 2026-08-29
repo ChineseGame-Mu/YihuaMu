@@ -44,6 +44,28 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
   });
 
+  it("locks the approved frontend to the clean-room card-games-yihua backend", () => {
+    const entry = readFileSync(
+      new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
+      "utf8",
+    );
+    const transport = readFileSync(
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(entry).toContain(
+      'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
+    );
+    expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
+    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+    expect(transport).toContain('if (query.get("cleanroom") !== "1") return null');
+    expect(transport).toContain('url.pathname = "/api/guandan"');
+  });
+
   it("preserves an arbitrary clean-room room id behind the approved UI room alias", () => {
     const entry = readFileSync(
       new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
