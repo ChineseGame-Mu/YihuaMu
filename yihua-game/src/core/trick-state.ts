@@ -61,12 +61,14 @@ const nextEligibleSeat = (
   activeSeats: readonly number[],
 ): number => {
   const eligible = activeSeats.filter(
-    (activeSeat) => !state.passedSeats.includes(activeSeat),
+    (activeSeat) =>
+      activeSeat !== seat && !state.passedSeats.includes(activeSeat),
   );
+  const fallback = activeSeats.filter((activeSeat) => activeSeat !== seat);
   return nextActiveSeat(
     state,
     seat,
-    eligible.length > 0 ? eligible : activeSeats,
+    eligible.length > 0 ? eligible : fallback.length > 0 ? fallback : activeSeats,
   );
 };
 
