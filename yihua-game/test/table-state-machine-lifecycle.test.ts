@@ -79,9 +79,9 @@ describe("table state machine lifecycle", () => {
     expect(() => passTableTurn(opening, 0)).toThrow(
       "table is not in the playing phase",
     );
-    expect(() =>
-      playTableCards(opening, 0, [asCard(card("p0", "3"))]),
-    ).toThrow("table is not in the playing phase");
+    expect(() => playTableCards(opening, 0, [asCard(card("p0", "3"))])).toThrow(
+      "table is not in the playing phase",
+    );
 
     const playing = advanceTableOpeningDraw(opening);
     expect(() => advanceTableOpeningDraw(playing)).toThrow(
