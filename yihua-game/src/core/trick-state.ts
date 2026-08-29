@@ -87,7 +87,8 @@ export const playCards = (
 ): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
   const active = activeSeatsOrAll(state, activeSeats);
-  if (!active.includes(seat)) throw new Error("current turn must be an active seat");
+  if (!active.includes(seat))
+    throw new Error("current turn must be an active seat");
 
   const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
