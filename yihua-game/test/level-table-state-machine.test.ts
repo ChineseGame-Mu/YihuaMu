@@ -89,12 +89,7 @@ describe("level-aware table state machine", () => {
     const state = playTableCardsWithLevel(
       playingState(4, [0, 1], [2, 3]),
       0,
-      [
-        suited("Q"),
-        suited("Q", "diamonds"),
-        suited("Q", "spades"),
-        wild("6"),
-      ],
+      [suited("Q"), suited("Q", "diamonds"), suited("Q", "spades"), wild("6")],
       "6",
       { finishesHand: true },
     );
