@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Card } from "../src/core/cards.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
 const singleSeven: Card = {
@@ -16,7 +20,10 @@ describe("finished leader pass-cycle matrix", () => {
     "hands the next trick to the next active seat after a finishing leader for %i players",
     (playerCount) => {
       const finishedLeader = playerCount - 1;
-      const activeSeats = Array.from({ length: playerCount - 1 }, (_, seat) => seat);
+      const activeSeats = Array.from(
+        { length: playerCount - 1 },
+        (_, seat) => seat,
+      );
       let state = createTrickState(playerCount, finishedLeader);
 
       state = playCards(state, finishedLeader, [singleSeven], activeSeats);
