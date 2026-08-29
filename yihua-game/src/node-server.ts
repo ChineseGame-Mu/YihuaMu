@@ -9,7 +9,6 @@ import {
   createServerRuntime,
   type ServerRuntime,
 } from "./core/server-runtime.js";
-import { renderTablePage } from "./core/table-page.js";
 import { routeHttp, type HttpRequest } from "./core/http-router.js";
 import {
   attachUpgradedConnection,
@@ -20,14 +19,15 @@ import {
   websocketAcceptKey,
 } from "./node-websocket.js";
 
+const APPROVED_GUANDAN_FRONTEND =
+  "https://yihua-mu-git-optimize-guandan-online-perfor-de2a6d-chinese-game.vercel.app/";
+
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
   for await (const chunk of request) {
     chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
   }
-  if (chunks.length === 0) {
-    return undefined;
-  }
+  if (chunks.length === 0) return undefined;
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 };
 
@@ -45,6 +45,42 @@ const headerValue = (
   value: string | string[] | undefined,
 ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
+const publicWebsocketUrl = (request: IncomingMessage): string => {
+  const host = headerValue(request.headers.host);
+  if (host === undefined || host.trim() === "") {
+    throw new Error("host header is required");
+  }
+  const forwarded = headerValue(request.headers["x-forwarded-proto"])
+    ?.split(",")[0]
+    ?.trim()
+    .toLowerCase();
+  return `${forwarded === "https" ? "wss:" : "ws:"}//${host}/api/guandan`;
+};
+
+const approvedTableUrl = (
+  request: IncomingMessage,
+  runtime: ServerRuntime,
+  roomId: string,
+  playerId: string,
+): string => {
+  const managed = runtime.rooms.get(roomId);
+  const participant = managed.room.participants.find(
+    ({ id, kind }) => id === playerId && kind === "human",
+  );
+  if (participant === undefined) {
+    throw new Error("player must join the room before opening the table");
+  }
+
+  const target = new URL(APPROVED_GUANDAN_FRONTEND);
+  target.searchParams.set("test", "1");
+  target.searchParams.set("game", "guandan");
+  target.searchParams.set("players", String(managed.room.config.playerCount));
+  target.searchParams.set("room", roomId);
+  target.searchParams.set("name", participant.name);
+  target.searchParams.set("ws", publicWebsocketUrl(request));
+  return target.toString();
+};
+
 const rejectUpgrade = (
   socket: NodeJS.WritableStream,
   message: string,
@@ -56,9 +92,7 @@ const rejectUpgrade = (
       `Content-Length: ${Buffer.byteLength(message)}\r\n\r\n` +
       message,
   );
-  if ("end" in socket && typeof socket.end === "function") {
-    socket.end();
-  }
+  if ("end" in socket && typeof socket.end === "function") socket.end();
 };
 
 export const createNodeHttpServer = (
@@ -82,11 +116,18 @@ export const createNodeHttpServer = (
         const tablePage = url.pathname.match(/^\/room\/([^/]+)\/table$/);
         if (tablePage) {
           const roomId = decodeURIComponent(tablePage[1]!);
+          const playerId = url.searchParams.get("playerId")?.trim();
+          if (playerId === undefined || playerId === "") {
+            throw new Error("playerId is required");
+          }
           writeResponse(
             response,
-            200,
-            { "content-type": "text/html; charset=utf-8" },
-            renderTablePage(roomId),
+            302,
+            {
+              location: approvedTableUrl(request, runtime, roomId, playerId),
+              "cache-control": "no-store",
+            },
+            "",
           );
           return;
         }
@@ -94,9 +135,7 @@ export const createNodeHttpServer = (
         const joinPage = url.pathname.match(/^\/room\/([^/]+)$/);
         if (joinPage) {
           const roomId = decodeURIComponent(joinPage[1]!);
-          if (roomId.trim().length === 0) {
-            throw new Error("room id is required");
-          }
+          if (roomId.trim().length === 0) throw new Error("room id is required");
           writeResponse(
             response,
             200,
@@ -131,9 +170,7 @@ export const createNodeHttpServer = (
     void (async () => {
       try {
         const upgrade = headerValue(request.headers.upgrade)?.toLowerCase();
-        const connection = headerValue(
-          request.headers.connection,
-        )?.toLowerCase();
+        const connection = headerValue(request.headers.connection)?.toLowerCase();
         const version = headerValue(request.headers["sec-websocket-version"]);
         const clientKey = headerValue(request.headers["sec-websocket-key"]);
 
@@ -154,9 +191,7 @@ export const createNodeHttpServer = (
           ? { roomId: "__legacy_guandan_pending__" }
           : websocketContextFromRequest({ path: url.pathname, query });
 
-        if (!isLegacyGuandan) {
-          runtime.rooms.get(context.roomId);
-        }
+        if (!isLegacyGuandan) runtime.rooms.get(context.roomId);
 
         socket.write(
           "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -166,11 +201,8 @@ export const createNodeHttpServer = (
         );
 
         const upgraded = new NodeWebSocketConnection(socket, context);
-        if (isLegacyGuandan) {
-          await attachLegacyGuandanConnection(runtime, upgraded);
-        } else {
-          await attachUpgradedConnection(runtime, upgraded);
-        }
+        if (isLegacyGuandan) await attachLegacyGuandanConnection(runtime, upgraded);
+        else await attachUpgradedConnection(runtime, upgraded);
         socket.on("data", (chunk: Buffer) => upgraded.feed(chunk));
         if (head.length > 0) upgraded.feed(head);
         socket.resume();
