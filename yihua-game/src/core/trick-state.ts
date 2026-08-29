@@ -18,14 +18,31 @@ export interface TrickState {
   readonly completedTricks: number;
 }
 
-const nextSeat = (seat: number, playerCount: number) =>
-  (seat + 1) % playerCount;
-
 const activeSeatsOrAll = (
   state: TrickState,
   activeSeats?: readonly number[],
-): readonly number[] =>
-  activeSeats ?? Array.from({ length: state.playerCount }, (_, seat) => seat);
+): readonly number[] => {
+  if (activeSeats === undefined) {
+    return Array.from({ length: state.playerCount }, (_, seat) => seat);
+  }
+
+  const unique = [...new Set(activeSeats)];
+  if (
+    unique.length === 0 ||
+    unique.some(
+      (seat) =>
+        !Number.isInteger(seat) || seat < 0 || seat >= state.playerCount,
+    )
+  ) {
+    throw new Error("active seats must be valid table seats");
+  }
+
+  if (!unique.includes(state.currentTurn)) {
+    throw new Error("current turn must be an active seat");
+  }
+
+  return unique;
+};
 
 const nextActiveSeat = (
   state: TrickState,
@@ -69,6 +86,9 @@ export const playCards = (
   activeSeats?: readonly number[],
 ): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
+  const active = activeSeatsOrAll(state, activeSeats);
+  if (!active.includes(seat)) throw new Error("current turn must be an active seat");
+
   const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
   if (
@@ -82,7 +102,7 @@ export const playCards = (
   return {
     ...state,
     leaderSeat: seat,
-    currentTurn: nextActiveSeat(state, seat, activeSeats),
+    currentTurn: nextActiveSeat(state, seat, active),
     leadingPlay: play,
     plays: [...state.plays, play],
     passedSeats: [],
