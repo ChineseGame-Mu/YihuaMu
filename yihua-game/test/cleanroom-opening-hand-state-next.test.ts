@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { Card } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
 import { canHandBeat, classifyHand } from "../src/core/hand.js";
-import { runOpeningDraw } from "../src/core/opening-draw.js";
+import {
+  createOpeningDrawSession,
+  drawOpeningAttempt,
+  runOpeningDraw,
+} from "../src/core/opening-draw.js";
 import {
   createTrickState,
   passTurn,
@@ -59,6 +63,35 @@ describe("clean-room opening, hand, and table-state next step", () => {
     expect(result.attempts[1]!.seatDraws.map(({ seat }) => seat)).toEqual([
       0, 1, 2, 3,
     ]);
+  });
+
+  it("advances opening draw one attempt at a time through tie and winner states", () => {
+    const deck: DeckCard[] = [
+      suited("0:a", 0, "hearts", "A"),
+      suited("1:a", 1, "hearts", "A"),
+      suited("0:7", 0, "clubs", "7"),
+      suited("0:8", 0, "clubs", "8"),
+      suited("1:7", 1, "clubs", "7"),
+      suited("1:8", 1, "diamonds", "8"),
+      suited("1:a2", 1, "spades", "A"),
+      suited("1:9", 1, "hearts", "9"),
+    ];
+
+    let session = createOpeningDrawSession(deck, () => 0.999999);
+    session = drawOpeningAttempt(session, 4);
+
+    expect(session.winnerSeat).toBeNull();
+    expect(session.attempts).toHaveLength(1);
+    expect(session.remainingCards).toHaveLength(4);
+
+    session = drawOpeningAttempt(session, 4);
+
+    expect(session.winnerSeat).toBe(2);
+    expect(session.attempts).toHaveLength(2);
+    expect(session.remainingCards).toHaveLength(0);
+    expect(() => drawOpeningAttempt(session, 4)).toThrow(
+      "opening draw already has a winner",
+    );
   });
 
   it("classifies same-size joker pairs and orders big pair above small pair", () => {
