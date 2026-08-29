@@ -23,6 +23,13 @@ const APPROVED_GUANDAN_FRONTEND =
   "https://yihua-mu-git-optimize-guandan-online-perfor-de2a6d-chinese-game.vercel.app/";
 const CLEANROOM_GUANDAN_WEBSOCKET =
   "wss://card-games-yihua.onrender.com/api/guandan";
+const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
+
+const cleanroomGuandanWebsocket = (roomId: string): string => {
+  const target = new URL(CLEANROOM_GUANDAN_WEBSOCKET);
+  target.searchParams.set("cleanroomRoom", roomId);
+  return target.toString();
+};
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -68,7 +75,7 @@ const approvedTableUrl = (
   target.searchParams.set("cleanroomRoom", roomId);
   target.searchParams.set("room", "0001");
   target.searchParams.set("name", participant.name);
-  target.searchParams.set("ws", CLEANROOM_GUANDAN_WEBSOCKET);
+  target.searchParams.set("ws", cleanroomGuandanWebsocket(roomId));
   return target.toString();
 };
 
@@ -181,8 +188,14 @@ export const createNodeHttpServer = (
         const url = new URL(request.url ?? "/", "http://localhost");
         const isLegacyGuandan = url.pathname === "/api/guandan";
         const query = Object.fromEntries(url.searchParams.entries());
+        const cleanroomRoom = query.cleanroomRoom?.trim();
         const context = isLegacyGuandan
-          ? { roomId: "__legacy_guandan_pending__" }
+          ? {
+              roomId:
+                cleanroomRoom === undefined || cleanroomRoom === ""
+                  ? LEGACY_PENDING_ROOM
+                  : cleanroomRoom,
+            }
           : websocketContextFromRequest({ path: url.pathname, query });
 
         if (!isLegacyGuandan) runtime.rooms.get(context.roomId);
