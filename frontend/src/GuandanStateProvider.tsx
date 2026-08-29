@@ -91,6 +91,11 @@ interface GuandanStateProviderProps {
   children: JSX.Element[] | JSX.Element;
 }
 
+export const shouldClearOwnHand = (
+  ownSeat: number | null,
+  finishOrder: number[],
+): boolean => ownSeat !== null && finishOrder.includes(ownSeat);
+
 const reduceMessage = (
   state: GuandanTableState,
   message: GuandanServerMessage,
@@ -138,11 +143,7 @@ const reduceMessage = (
     case "hand":
       return { ...state, hand: message.cards, error: null };
     case "state": {
-      const ownSeat = state.seat;
-      const ownHandFinished =
-        ownSeat !== null &&
-        (message.hand_counts[ownSeat] === 0 ||
-          message.finish_order.includes(ownSeat));
+      const ownHandFinished = shouldClearOwnHand(state.seat, message.finish_order);
       return {
         ...state,
         players: message.players,
