@@ -1,0 +1,104 @@
+import type { Card } from "./cards.js";
+import type { RandomSource } from "./deck.js";
+import {
+  availableGameMachineActions,
+  transitionGame,
+  type GameMachineAction,
+  type GameMachineActionType,
+} from "./game-machine.js";
+import type { GameState } from "./game-state.js";
+import {
+  advanceInteractiveOpeningDraw,
+  beginInteractiveOpeningDraw,
+  dealAfterInteractiveOpeningDraw,
+  type InteractiveOpeningState,
+} from "./interactive-opening-state.js";
+
+export type InteractiveGameState = GameState | InteractiveOpeningState;
+
+export type InteractiveGameMachineAction =
+  | { readonly type: "begin-interactive-opening" }
+  | { readonly type: "draw-opening-attempt" }
+  | { readonly type: "deal-after-interactive-opening" }
+  | GameMachineAction;
+
+export type InteractiveGameMachineActionType = InteractiveGameMachineAction["type"];
+
+const interactiveActionTypes = (
+  state: InteractiveOpeningState,
+): readonly InteractiveGameMachineActionType[] =>
+  state.draw.phase === "complete"
+    ? ["deal-after-interactive-opening"]
+    : ["draw-opening-attempt"];
+
+export const availableInteractiveGameActions = (
+  state: InteractiveGameState,
+): readonly InteractiveGameMachineActionType[] => {
+  if (state.phase === "interactive-opening-draw") {
+    return interactiveActionTypes(state);
+  }
+  if (state.phase === "lobby") {
+    return ["begin-interactive-opening", ...availableGameMachineActions(state)];
+  }
+  return availableGameMachineActions(state);
+};
+
+const phaseError = (
+  state: InteractiveGameState,
+  action: InteractiveGameMachineAction,
+): never => {
+  throw new Error(`cannot ${action.type} while game is ${state.phase}`);
+};
+
+const asLegacyAction = (
+  action: InteractiveGameMachineAction,
+): GameMachineAction | null => {
+  switch (action.type) {
+    case "start-first-round":
+    case "begin-opening-draw":
+    case "deal-after-opening-draw":
+    case "next-round":
+      return action;
+    case "play-cards":
+      return {
+        type: "play-cards",
+        seat: action.seat,
+        cards: action.cards as readonly Card[],
+      };
+    case "pass-turn":
+      return action;
+    case "begin-interactive-opening":
+    case "draw-opening-attempt":
+    case "deal-after-interactive-opening":
+      return null;
+  }
+};
+
+export const transitionInteractiveGame = (
+  state: InteractiveGameState,
+  action: InteractiveGameMachineAction,
+  random: RandomSource = Math.random,
+): InteractiveGameState => {
+  switch (action.type) {
+    case "begin-interactive-opening":
+      return state.phase === "lobby"
+        ? beginInteractiveOpeningDraw(state, random)
+        : phaseError(state, action);
+    case "draw-opening-attempt":
+      return state.phase === "interactive-opening-draw"
+        ? advanceInteractiveOpeningDraw(state)
+        : phaseError(state, action);
+    case "deal-after-interactive-opening":
+      return state.phase === "interactive-opening-draw"
+        ? dealAfterInteractiveOpeningDraw(state, random)
+        : phaseError(state, action);
+    default: {
+      if (state.phase === "interactive-opening-draw") {
+        return phaseError(state, action);
+      }
+      const legacyAction = asLegacyAction(action);
+      if (legacyAction === null) return phaseError(state, action);
+      return transitionGame(state, legacyAction, random);
+    }
+  }
+};
