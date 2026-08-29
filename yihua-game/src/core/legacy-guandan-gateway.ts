@@ -44,6 +44,11 @@ class LegacyAdapterSocket implements TextSocket {
     | Extract<ServerMessage, { readonly type: "room_state" }>
     | undefined;
   private startedRevision: number | undefined;
+  private completedTricks = 0;
+  private tablePlays: Extract<
+    LegacyServerMessage,
+    { readonly type: "state" }
+  >["table_plays"] = [];
   readonly compat: {
     roomId: string;
     playerId: string;
@@ -78,7 +83,7 @@ class LegacyAdapterSocket implements TextSocket {
         );
         await sendLegacy(this.socket, privateHandToLegacy(message));
         return;
-      case "game_state":
+      case "game_state": {
         if (this.roomState === undefined) return;
         if (this.startedRevision === undefined) {
           this.startedRevision = message.revision;
@@ -88,11 +93,30 @@ class LegacyAdapterSocket implements TextSocket {
             cards_per_player: message.handCounts[0] ?? 0,
           });
         }
-        await sendLegacy(
-          this.socket,
-          gameStateToLegacy(this.roomState, message),
-        );
+
+        if (message.completedTricks !== this.completedTricks) {
+          this.completedTricks = message.completedTricks;
+          this.tablePlays = [];
+        }
+
+        const legacyState = gameStateToLegacy(this.roomState, message);
+        if (legacyState.type !== "state") return;
+        const currentPlay = legacyState.table_plays[0];
+        if (currentPlay !== undefined) {
+          this.tablePlays = [
+            ...this.tablePlays.filter(
+              ({ player }) => player !== currentPlay.player,
+            ),
+            currentPlay,
+          ];
+        }
+
+        await sendLegacy(this.socket, {
+          ...legacyState,
+          table_plays: this.tablePlays,
+        });
         return;
+      }
       case "error":
         await sendLegacy(this.socket, {
           type: "error",
