@@ -49,16 +49,16 @@ describe("next-step supported table matrix", () => {
   }
 
   it("classifies every supported non-bomb combination family", () => {
-    expect(classifyHand([suited("A", "clubs")]).type).toBe("single");
+    expect(classifyHand([suited("A", "clubs")]).kind).toBe("single");
     expect(
-      classifyHand([suited("9", "clubs"), suited("9", "hearts")]).type,
+      classifyHand([suited("9", "clubs"), suited("9", "hearts")]).kind,
     ).toBe("pair");
     expect(
       classifyHand([
         suited("7", "clubs"),
         suited("7", "diamonds"),
         suited("7", "hearts"),
-      ]).type,
+      ]).kind,
     ).toBe("triple");
     expect(
       classifyHand([
@@ -67,7 +67,7 @@ describe("next-step supported table matrix", () => {
         suited("6", "hearts"),
         suited("K", "clubs"),
         suited("K", "hearts"),
-      ]).type,
+      ]).kind,
     ).toBe("full-house");
     expect(
       classifyHand([
@@ -76,7 +76,7 @@ describe("next-step supported table matrix", () => {
         suited("7", "hearts"),
         suited("8", "spades"),
         suited("9", "clubs"),
-      ]).type,
+      ]).kind,
     ).toBe("straight");
     expect(
       classifyHand([
@@ -85,7 +85,7 @@ describe("next-step supported table matrix", () => {
         suited("7", "hearts"),
         suited("8", "hearts"),
         suited("9", "hearts"),
-      ]).type,
+      ]).kind,
     ).toBe("straight-flush");
     expect(
       classifyHand([
@@ -95,7 +95,7 @@ describe("next-step supported table matrix", () => {
         suited("6", "hearts"),
         suited("7", "clubs"),
         suited("7", "hearts"),
-      ]).type,
+      ]).kind,
     ).toBe("consecutive-pairs");
     expect(
       classifyHand([
@@ -105,7 +105,7 @@ describe("next-step supported table matrix", () => {
         suited("6", "clubs"),
         suited("6", "diamonds"),
         suited("6", "hearts"),
-      ]).type,
+      ]).kind,
     ).toBe("consecutive-triples");
   });
 });
