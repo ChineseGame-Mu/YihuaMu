@@ -2,7 +2,7 @@
   "redirects": [
     {
       "source": "/guandan",
-      "destination": "/?test=1&game=guandan&players=14&room=0001&ws=wss%3A%2F%2Fchinesegame-yihua.onrender.com%2Fapi%2Fguandan",
+      "destination": "/?test=1&game=guandan&players=14&room=0001&ws=wss%3A%2F%2Fcard-games-yihua.onrender.com%2Fws%2Frooms%2F0001",
       "permanent": false
     }
   ]
