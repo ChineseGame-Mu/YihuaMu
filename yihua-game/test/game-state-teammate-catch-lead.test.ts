@@ -39,11 +39,9 @@ describe("game-state teammate catch lead", () => {
   it.each([4, 6, 8, 10, 12, 14] as const)(
     "hands the next trick to the nearest active teammate after seat 0 finishes at a %i-player table",
     (playerCount) => {
-      let state = playGameCards(
-        playingState(playerCount),
-        0,
-        [asCard(card(0, "3"))],
-      );
+      let state = playGameCards(playingState(playerCount), 0, [
+        asCard(card(0, "3")),
+      ]);
       expect(state.phase).toBe("playing");
       if (state.phase !== "playing") return;
 
@@ -59,11 +57,7 @@ describe("game-state teammate catch lead", () => {
   );
 
   it("skips an already-finished teammate and catches the lead with the next active teammate", () => {
-    let state = playGameCards(
-      playingState(6, [2]),
-      0,
-      [asCard(card(0, "3"))],
-    );
+    let state = playGameCards(playingState(6, [2]), 0, [asCard(card(0, "3"))]);
     expect(state.phase).toBe("playing");
     if (state.phase !== "playing") return;
 
