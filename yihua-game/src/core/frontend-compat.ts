@@ -26,6 +26,7 @@ export type LegacyGuandanCard =
 export type LegacyClientMessage =
   | { readonly type: "join"; readonly room: string; readonly name: string }
   | { readonly type: "set_participation"; readonly active: boolean }
+  | { readonly type: "set_bots"; readonly count: 1 | 2 | 3 }
   | { readonly type: "start"; readonly player_count: number }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
   | { readonly type: "pass" }
@@ -45,6 +46,7 @@ export type LegacyServerMessage =
       readonly online_players: readonly boolean[];
       readonly minimum_players: number;
       readonly maximum_players: number;
+      readonly card_count_alert_threshold: number;
     }
   | {
       readonly type: "started";
@@ -93,8 +95,11 @@ export type LegacyServerMessage =
       readonly tribute_resisted: false;
       readonly match_winner: null;
       readonly next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
+      readonly card_count_alert_threshold: number;
     }
   | { readonly type: "error"; readonly message: string };
+
+const LEGACY_CARD_COUNT_ALERT_THRESHOLD = 6;
 
 const rankMap = {
   "2": "Two",
@@ -147,6 +152,8 @@ export const toCleanroomCommand = (
       );
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
+    case "set_bots":
+      return { type: "set_robots", count: message.count };
     case "start":
       return { type: "start_game" };
     case "play": {
@@ -178,6 +185,7 @@ export const roomStateToLegacyWaiting = (
     online_players: participants.map(({ connected }) => connected),
     minimum_players: 4,
     maximum_players: 14,
+    card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
   };
 };
 
@@ -222,5 +230,6 @@ export const gameStateToLegacy = (
     tribute_resisted: false,
     match_winner: null,
     next_round_phase: game.phase === "round-complete" ? "awaiting_deal" : null,
+    card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
   };
 };
