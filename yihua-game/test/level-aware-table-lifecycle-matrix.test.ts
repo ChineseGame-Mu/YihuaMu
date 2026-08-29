@@ -62,7 +62,11 @@ describe("level-aware table lifecycle matrix", () => {
       });
       expect(state.trick?.currentTurn).toBe(1);
 
-      for (let seat = 1; seat < playerCount; seat += 1) {
+      const opponents = Array.from(
+        { length: playerCount / 2 },
+        (_, index) => 1 + index * 2,
+      );
+      for (const seat of opponents) {
         expect(state.trick?.currentTurn).toBe(seat);
         state = passTableTurn(state, seat);
       }
@@ -70,8 +74,8 @@ describe("level-aware table lifecycle matrix", () => {
       expect(state.phase).toBe("playing");
       expect(state.trick?.leadingPlay).toBeNull();
       expect(state.trick?.completedTricks).toBe(1);
-      expect(state.trick?.leaderSeat).toBe(1);
-      expect(state.trick?.currentTurn).toBe(1);
+      expect(state.trick?.leaderSeat).toBe(2);
+      expect(state.trick?.currentTurn).toBe(2);
       expect(state.finishingOrder).toEqual([0]);
       expect(state.activeSeats).toEqual(
         Array.from({ length: playerCount - 1 }, (_, index) => index + 1),
