@@ -42,13 +42,16 @@ describe("ordinary hand comparison matrix", () => {
     [straight(["3", "4", "5", "6", "7"]), straight(["4", "5", "6", "7", "8"])],
     [pairs(["3", "4", "5"]), pairs(["4", "5", "6"])],
     [triples(["3", "4"]), triples(["4", "5"])],
-  ] as const)("compares matching ordinary families by their controlling rank", (lowerCards, higherCards) => {
-    const lower = classifyHand(lowerCards);
-    const higher = classifyHand(higherCards);
+  ] as const)(
+    "compares matching ordinary families by their controlling rank",
+    (lowerCards, higherCards) => {
+      const lower = classifyHand(lowerCards);
+      const higher = classifyHand(higherCards);
 
-    expect(canHandBeat(higher, lower)).toBe(true);
-    expect(canHandBeat(lower, higher)).toBe(false);
-  });
+      expect(canHandBeat(higher, lower)).toBe(true);
+      expect(canHandBeat(lower, higher)).toBe(false);
+    },
+  );
 
   it("orders joker singles and pairs above suited ranks", () => {
     const ace = classifyHand([suited("A")]);
@@ -71,10 +74,7 @@ describe("ordinary hand comparison matrix", () => {
   it("never compares unlike ordinary families as if rank alone were enough", () => {
     const pair = classifyHand(repeated("A", 2));
     const triple = classifyHand(repeated("3", 3));
-    const fullHouse = classifyHand([
-      ...repeated("3", 3),
-      ...repeated("4", 2),
-    ]);
+    const fullHouse = classifyHand([...repeated("3", 3), ...repeated("4", 2)]);
     const straightHand = classifyHand(straight(["10", "J", "Q", "K", "A"]));
 
     expect(canHandBeat(triple, pair)).toBe(false);
