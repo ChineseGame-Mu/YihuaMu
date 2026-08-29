@@ -43,7 +43,11 @@ describe("opening draw retry matrix", () => {
       expect(result.attempts[0]!.winnerSeat).toBeNull();
       expect(result.attempts[1]!.winnerSeat).toBe(playerCount - 1);
       expect(result.winnerSeat).toBe(playerCount - 1);
-      expect(result.attempts.every((attempt) => attempt.cards.length === playerCount)).toBe(true);
+      expect(
+        result.attempts.every(
+          (attempt) => attempt.cards.length === playerCount,
+        ),
+      ).toBe(true);
 
       const usedIds = result.attempts.flatMap((attempt) =>
         attempt.cards.map(({ id }) => id),
