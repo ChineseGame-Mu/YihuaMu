@@ -1,0 +1,6 @@
+/* Clean-room-only adjustment: move the first-round draw result down by half a mini card.
+ * The original GuandanTable already auto-hides this panel after 5 minutes.
+ */
+html body .guandan-table .guandan-initial-draw-mini {
+  translate: 0 22px !important;
+}
