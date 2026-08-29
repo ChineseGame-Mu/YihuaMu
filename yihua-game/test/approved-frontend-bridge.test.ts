@@ -12,34 +12,29 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(html).toContain("进入牌室");
   });
 
-  it("mounts the original GuandanTable behind a compatibility transport", () => {
+  it("mounts the original Guandan frontend stack without replacing GuandanTable", () => {
     const entry = readFileSync(
       new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
-      "utf8",
-    );
-    const adapter = readFileSync(
-      new URL(
-        "../../frontend/src/CleanroomGuandanWebsocketProvider.tsx",
-        import.meta.url,
-      ),
       "utf8",
     );
     const table = readFileSync(
       new URL("../../frontend/src/GuandanTable.tsx", import.meta.url),
       "utf8",
     );
+    const transport = readFileSync(
+      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
+      "utf8",
+    );
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
-    expect(entry).toContain("<CleanroomGuandanWebsocketProvider");
+    expect(entry).toContain('import GuandanWebsocketProvider from "./GuandanWebsocketProvider"');
+    expect(entry).toContain("<GuandanWebsocketProvider>");
     expect(entry).toContain("<GuandanStateProvider>");
     expect(entry).toContain("<GuandanTable />");
-    expect(adapter).toContain('type: "play_cards", cardIds');
-    expect(adapter).toContain('type: "pass_turn"');
-    expect(adapter).toContain('type: "start_game"');
+    expect(transport).toContain('url.pathname = "/api/guandan"');
+    expect(transport).toContain("player_count: playerCount");
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
-    expect(table).toContain(
-      "const GuandanTable: React.FunctionComponent = () =>",
-    );
+    expect(table).toContain("const GuandanTable: React.FunctionComponent = () =>");
   });
 
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
@@ -50,5 +45,16 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(index).toContain('import CleanroomEntry from "./CleanroomEntry"');
     expect(index).toContain('(game === null && params.get("classic") !== "1")');
     expect(index).toContain("<CleanroomEntry />");
+  });
+
+  it("keeps the compatibility boundary on the backend legacy gateway", () => {
+    const gateway = readFileSync(
+      new URL("../src/core/legacy-guandan-gateway.ts", import.meta.url),
+      "utf8",
+    );
+    expect(gateway).toContain("toCleanroomCommand");
+    expect(gateway).toContain("gameStateToLegacy");
+    expect(gateway).toContain("requestedPlayerCount");
+    expect(gateway).toContain("runtime.rooms.create(roomId, supportedPlayerCount");
   });
 });

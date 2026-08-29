@@ -109,11 +109,20 @@ class LegacyAdapterSocket implements TextSocket {
   }
 }
 
-const ensureLegacyRoom = (runtime: ServerRuntime, roomId: string): void => {
+const supportedPlayerCount = (value: unknown): number => {
+  const count = Number(value);
+  return [4, 6, 8, 10, 12, 14].includes(count) ? count : 4;
+};
+
+const ensureLegacyRoom = (
+  runtime: ServerRuntime,
+  roomId: string,
+  requestedPlayerCount: unknown,
+): void => {
   try {
     runtime.rooms.get(roomId);
   } catch {
-    runtime.rooms.create(roomId, 14);
+    runtime.rooms.create(roomId, supportedPlayerCount(requestedPlayerCount));
   }
 };
 
@@ -164,7 +173,10 @@ export const attachLegacyGuandanConnection = async (
         const roomId = message.room.trim();
         if (roomId.length === 0) throw new Error("room id is required");
         const playerId = legacyPlayerId(message.name);
-        ensureLegacyRoom(runtime, roomId);
+        const requestedPlayerCount = (
+          message as LegacyClientMessage & { readonly player_count?: number }
+        ).player_count;
+        ensureLegacyRoom(runtime, roomId, requestedPlayerCount);
 
         let managed = runtime.rooms.get(roomId);
         const existing = managed.room.participants.find(

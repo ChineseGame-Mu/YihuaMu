@@ -29,6 +29,27 @@ interface GuandanWebsocketProviderProps {
 
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 
+const cleanroomWebsocketOverride = (): string | null => {
+  const query = new URLSearchParams(window.location.search);
+  if (query.get("cleanroom") !== "1") return null;
+
+  const raw = query.get("backend") ?? (window as any)._CLEANROOM_BACKEND;
+  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+
+  try {
+    const url = new URL(String(raw));
+    if (url.protocol === "https:") url.protocol = "wss:";
+    else if (url.protocol === "http:") url.protocol = "ws:";
+    else if (url.protocol !== "ws:" && url.protocol !== "wss:") return null;
+    url.pathname = "/api/guandan";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
 const testWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("test") !== "1") return null;
@@ -44,6 +65,9 @@ const testWebsocketOverride = (): string | null => {
 };
 
 const websocketUri = (): string => {
+  const cleanroom = cleanroomWebsocketOverride();
+  if (cleanroom !== null) return cleanroom;
+
   const override = testWebsocketOverride();
   if (override !== null) return override;
 
@@ -178,6 +202,19 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const send = React.useCallback((message: GuandanClientMessage): boolean => {
     const ws = websocketRef.current;
     if (ws === null || ws.readyState !== WebSocket.OPEN) return false;
+
+    if (message.type === "join") {
+      const query = new URLSearchParams(window.location.search);
+      if (query.get("cleanroom") === "1") {
+        const requested = Number(query.get("players") ?? "4");
+        const playerCount = [4, 6, 8, 10, 12, 14].includes(requested)
+          ? requested
+          : 4;
+        ws.send(JSON.stringify({ ...message, player_count: playerCount }));
+        return true;
+      }
+    }
+
     ws.send(JSON.stringify(message));
     return true;
   }, []);
