@@ -35,7 +35,11 @@ describe("level-aware table lifecycle matrix", () => {
     "keeps wildcard classification and active-seat rotation coherent for %i players",
     (playerCount) => {
       let state = advanceTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, () => 0.999999),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          () => 0.999999,
+        ),
       );
 
       expect(state.openingDraw.winnerSeat).toBe(0);
@@ -84,7 +88,12 @@ describe("level-aware table lifecycle matrix", () => {
     state = playTableCardsWithLevel(
       state,
       1,
-      cards(c("8"), c("8", "diamonds"), c("8", "spades"), c(levelRank, "hearts")),
+      cards(
+        c("8"),
+        c("8", "diamonds"),
+        c("8", "spades"),
+        c(levelRank, "hearts"),
+      ),
       levelRank,
     );
 
