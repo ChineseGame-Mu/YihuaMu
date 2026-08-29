@@ -30,7 +30,11 @@ const openingDeck = (playerCount: SupportedPlayerCount): DeckCard[] => [
 
 const start = (playerCount: SupportedPlayerCount) =>
   advanceTableOpeningDraw(
-    createTableRoundState(openingDeck(playerCount), playerCount, () => 0.999999),
+    createTableRoundState(
+      openingDeck(playerCount),
+      playerCount,
+      () => 0.999999,
+    ),
   );
 
 describe("table state machine catch lead", () => {
@@ -65,12 +69,9 @@ describe("table state machine catch lead", () => {
   );
 
   it("lets the catching teammate start a fresh trick without an extra pass", () => {
-    let state = playTableCards(
-      start(4),
-      0,
-      [asCard(deckCard("lead", "3"))],
-      { finishesHand: true },
-    );
+    let state = playTableCards(start(4), 0, [asCard(deckCard("lead", "3"))], {
+      finishesHand: true,
+    });
     state = passTableTurn(state, 1);
     state = passTableTurn(state, 3);
 
