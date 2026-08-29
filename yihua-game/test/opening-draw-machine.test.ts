@@ -68,9 +68,9 @@ describe("stepwise opening draw machine", () => {
       state = advanceOpeningDrawMachine(state);
 
       expect(state.phase).toBe("complete");
-      expect(state.session.attempts[0]!.seatDraws.map(({ seat }) => seat)).toEqual(
-        Array.from({ length: playerCount }, (_, seat) => seat),
-      );
+      expect(
+        state.session.attempts[0]!.seatDraws.map(({ seat }) => seat),
+      ).toEqual(Array.from({ length: playerCount }, (_, seat) => seat));
       expect(openingDrawMachineResult(state)?.winnerSeat).toBe(playerCount - 1);
     },
   );
