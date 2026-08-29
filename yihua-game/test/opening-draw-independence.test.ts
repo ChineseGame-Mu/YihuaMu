@@ -35,7 +35,8 @@ describe("independent opening draw lifecycle", () => {
       const winningAttempt = opening.openingDraw.attempts.at(-1)!;
       expect(winningAttempt.winnerSeat).toBe(opening.openingDraw.winnerSeat);
       expect(
-        winningAttempt.seatDraws[opening.openingDraw.winnerSeat]?.card.card.kind,
+        winningAttempt.seatDraws[opening.openingDraw.winnerSeat]?.card.card
+          .kind,
       ).toBe("suited");
 
       const playing = dealAfterOpeningDraw(opening, constantRandom(0.75));
