@@ -6,7 +6,7 @@ import { renderJoinPage } from "../src/core/join-page.js";
 describe("approved Guandan frontend clean-room bridge", () => {
   it("keeps the clean-room entry page as the approved join-room screen", () => {
     const html = renderJoinPage("manual-test");
-    expect(html).toContain("<h1 class=\"join-title\">加入牌室</h1>");
+    expect(html).toContain('<h1 class="join-title">加入牌室</h1>');
     expect(html).toContain("开始人数：4–14 人");
     expect(html).toContain("您的姓名");
     expect(html).toContain("进入牌室");
@@ -37,7 +37,9 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(adapter).toContain('type: "pass_turn"');
     expect(adapter).toContain('type: "start_game"');
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
-    expect(table).toContain("const GuandanTable: React.FunctionComponent = () =>");
+    expect(table).toContain(
+      "const GuandanTable: React.FunctionComponent = () =>",
+    );
   });
 
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
