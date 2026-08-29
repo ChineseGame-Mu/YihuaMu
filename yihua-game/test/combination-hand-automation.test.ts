@@ -131,6 +131,10 @@ const invalidCases: readonly { name: string; cards: readonly Card[] }[] = [
       joker("small"),
     ],
   },
+  {
+    name: "incomplete four-joker composition",
+    cards: [joker("small"), joker("small"), joker("small"), joker("big")],
+  },
 ];
 
 const asDeckCards = (
