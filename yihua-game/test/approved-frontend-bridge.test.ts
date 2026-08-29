@@ -22,19 +22,26 @@ describe("approved Guandan frontend clean-room bridge", () => {
       "utf8",
     );
     const transport = readFileSync(
-      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
       "utf8",
     );
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
-    expect(entry).toContain('import GuandanWebsocketProvider from "./GuandanWebsocketProvider"');
+    expect(entry).toContain(
+      'import GuandanWebsocketProvider from "./GuandanWebsocketProvider"',
+    );
     expect(entry).toContain("<GuandanWebsocketProvider>");
     expect(entry).toContain("<GuandanStateProvider>");
     expect(entry).toContain("<GuandanTable />");
     expect(transport).toContain('url.pathname = "/api/guandan"');
     expect(transport).toContain("player_count: playerCount");
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
-    expect(table).toContain("const GuandanTable: React.FunctionComponent = () =>");
+    expect(table).toContain(
+      "const GuandanTable: React.FunctionComponent = () =>",
+    );
   });
 
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
@@ -55,6 +62,8 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
-    expect(gateway).toContain("runtime.rooms.create(roomId, supportedPlayerCount");
+    expect(gateway).toContain(
+      "runtime.rooms.create(roomId, supportedPlayerCount",
+    );
   });
 });
