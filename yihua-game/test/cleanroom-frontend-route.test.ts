@@ -25,13 +25,17 @@ describe("clean-room approved GuandanTable routing", () => {
     const config = JSON.parse(readRepoFile("frontend/vercel.json")) as {
       redirects: Array<{ source: string; destination: string }>;
     };
-    const guandan = config.redirects.find(({ source }) => source === "/guandan");
+    const guandan = config.redirects.find(
+      ({ source }) => source === "/guandan",
+    );
 
     expect(guandan).toBeDefined();
     expect(guandan?.destination).toContain(
       "card-games-yihua.onrender.com%2Fapi%2Fguandan",
     );
     expect(guandan?.destination).not.toContain("%2Fws%2Frooms%2F");
-    expect(guandan?.destination).not.toContain("chinesegame-yihua.onrender.com");
+    expect(guandan?.destination).not.toContain(
+      "chinesegame-yihua.onrender.com",
+    );
   });
 });
