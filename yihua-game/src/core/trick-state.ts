@@ -68,7 +68,11 @@ const nextEligibleSeat = (
   return nextActiveSeat(
     state,
     seat,
-    eligible.length > 0 ? eligible : fallback.length > 0 ? fallback : activeSeats,
+    eligible.length > 0
+      ? eligible
+      : fallback.length > 0
+        ? fallback
+        : activeSeats,
   );
 };
 
