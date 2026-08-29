@@ -2,8 +2,14 @@ import { determineUniqueOpeningWinner, type Card } from "./cards.js";
 import { shuffleDeck, type DeckCard, type RandomSource } from "./deck.js";
 import type { SupportedPlayerCount } from "./table.js";
 
+export interface OpeningSeatDraw {
+  readonly seat: number;
+  readonly card: DeckCard;
+}
+
 export interface OpeningDrawAttempt {
   readonly cards: readonly DeckCard[];
+  readonly seatDraws: readonly OpeningSeatDraw[];
   readonly winnerSeat: number | null;
 }
 
@@ -18,6 +24,9 @@ const ordinaryCards = (deck: readonly DeckCard[]): DeckCard[] =>
 const cardsOnly = (draw: readonly DeckCard[]): Card[] =>
   draw.map(({ card }) => card);
 
+const seatDrawsFor = (cards: readonly DeckCard[]): OpeningSeatDraw[] =>
+  cards.map((card, seat) => ({ seat, card }));
+
 export const runOpeningDraw = (
   deck: readonly DeckCard[],
   playerCount: SupportedPlayerCount,
@@ -31,7 +40,7 @@ export const runOpeningDraw = (
     const cards = pool.slice(offset, offset + playerCount);
     offset += playerCount;
     const winnerSeat = determineUniqueOpeningWinner(cardsOnly(cards));
-    attempts.push({ cards, winnerSeat });
+    attempts.push({ cards, seatDraws: seatDrawsFor(cards), winnerSeat });
 
     if (winnerSeat !== null) {
       return { attempts, winnerSeat };
