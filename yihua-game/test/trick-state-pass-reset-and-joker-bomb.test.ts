@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank } from "../src/core/cards.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 
 const suited = (rank: Rank): Card => ({
   kind: "suited",
