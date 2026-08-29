@@ -10,6 +10,7 @@ import {
 } from "./game-state.js";
 
 export type GameMachineAction =
+  | { readonly type: "start-first-round" }
   | { readonly type: "begin-opening-draw" }
   | { readonly type: "deal-after-opening-draw" }
   | {
@@ -30,6 +31,10 @@ export const transitionGame = (
   random: RandomSource = Math.random,
 ): GameState => {
   switch (action.type) {
+    case "start-first-round":
+      return state.phase === "lobby"
+        ? dealAfterOpeningDraw(startOpeningDraw(state, random), random)
+        : phaseError(state, action);
     case "begin-opening-draw":
       return state.phase === "lobby"
         ? startOpeningDraw(state, random)
