@@ -45,7 +45,6 @@ describe("table state machine catch lead", () => {
       );
 
       expect(state.finishingOrder).toEqual([0]);
-      expect(state.currentTurn ?? state.trick?.currentTurn).toBeUndefined();
       expect(state.trick?.currentTurn).toBe(1);
 
       const opponents = Array.from(
