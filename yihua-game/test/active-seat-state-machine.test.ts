@@ -52,9 +52,14 @@ describe("active-seat table state", () => {
     expect(() => playCards(state, 0, [single("7")], [0, 4])).toThrow(
       "active seats must be valid table seats",
     );
-    expect(() => playCards(state, 0, [single("7")], [1, 2, 3])).toThrow(
-      "current turn must be an active seat",
-    );
+  });
+
+  it("allows a finishing player to be absent from the post-play active snapshot", () => {
+    const state = createTrickState(4, 0);
+    const next = playCards(state, 0, [single("7")], [1, 2, 3]);
+
+    expect(next.leaderSeat).toBe(0);
+    expect(next.currentTurn).toBe(1);
   });
 
   it("continues to compare plays correctly across a reduced active table", () => {
