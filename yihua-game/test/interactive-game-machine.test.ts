@@ -26,7 +26,10 @@ describe("interactive game machine", () => {
       expect(state.phase).toBe("interactive-opening-draw");
 
       let guard = 0;
-      while (state.phase === "interactive-opening-draw" && state.draw.phase !== "complete") {
+      while (
+        state.phase === "interactive-opening-draw" &&
+        state.draw.phase !== "complete"
+      ) {
         expect(availableInteractiveGameActions(state)).toEqual([
           "draw-opening-attempt",
         ]);

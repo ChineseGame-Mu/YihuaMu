@@ -22,7 +22,8 @@ export type InteractiveGameMachineAction =
   | { readonly type: "deal-after-interactive-opening" }
   | GameMachineAction;
 
-export type InteractiveGameMachineActionType = InteractiveGameMachineAction["type"];
+export type InteractiveGameMachineActionType =
+  InteractiveGameMachineAction["type"];
 
 const interactiveActionTypes = (
   state: InteractiveOpeningState,
