@@ -21,6 +21,8 @@ import {
 
 const APPROVED_GUANDAN_FRONTEND =
   "https://yihua-mu-git-optimize-guandan-online-perfor-de2a6d-chinese-game.vercel.app/";
+const CLEANROOM_GUANDAN_WEBSOCKET =
+  "wss://card-games-yihua.onrender.com/api/guandan";
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -45,20 +47,7 @@ const headerValue = (
   value: string | string[] | undefined,
 ): string | undefined => (Array.isArray(value) ? value[0] : value);
 
-const publicWebsocketUrl = (request: IncomingMessage): string => {
-  const host = headerValue(request.headers.host);
-  if (host === undefined || host.trim() === "") {
-    throw new Error("host header is required");
-  }
-  const forwarded = headerValue(request.headers["x-forwarded-proto"])
-    ?.split(",")[0]
-    ?.trim()
-    .toLowerCase();
-  return `${forwarded === "https" ? "wss:" : "ws:"}//${host}/api/guandan`;
-};
-
 const approvedTableUrl = (
-  request: IncomingMessage,
   runtime: ServerRuntime,
   roomId: string,
   playerId: string,
@@ -73,11 +62,13 @@ const approvedTableUrl = (
 
   const target = new URL(APPROVED_GUANDAN_FRONTEND);
   target.searchParams.set("test", "1");
+  target.searchParams.set("cleanroom", "1");
   target.searchParams.set("game", "guandan");
   target.searchParams.set("players", String(managed.room.config.playerCount));
-  target.searchParams.set("room", roomId);
+  target.searchParams.set("cleanroomRoom", roomId);
+  target.searchParams.set("room", "0001");
   target.searchParams.set("name", participant.name);
-  target.searchParams.set("ws", publicWebsocketUrl(request));
+  target.searchParams.set("ws", CLEANROOM_GUANDAN_WEBSOCKET);
   return target.toString();
 };
 
@@ -124,7 +115,7 @@ export const createNodeHttpServer = (
             response,
             302,
             {
-              location: approvedTableUrl(request, runtime, roomId, playerId),
+              location: approvedTableUrl(runtime, roomId, playerId),
               "cache-control": "no-store",
             },
             "",
