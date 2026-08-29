@@ -43,6 +43,32 @@ describe("level-aware comparison and table matrix", () => {
     expect(canHandBeatWithLevel(bigJoker, smallJoker, levelRank)).toBe(true);
   });
 
+  it("treats four level twos as higher than four kings when playing level two", () => {
+    const levelTwo: Rank = "2";
+    const fourTwos = classifyHandWithLevel(
+      [
+        suited("2", "clubs"),
+        suited("2", "diamonds"),
+        suited("2", "spades"),
+        suited("2", "hearts"),
+      ],
+      levelTwo,
+    );
+    const fourKings = classifyHandWithLevel(
+      [
+        suited("K", "clubs"),
+        suited("K", "diamonds"),
+        suited("K", "spades"),
+        suited("K", "hearts"),
+      ],
+      levelTwo,
+    );
+
+    expect(fourTwos).toMatchObject({ kind: "bomb", size: 4, rank: "2" });
+    expect(fourKings).toMatchObject({ kind: "bomb", size: 4, rank: "K" });
+    expect(canHandBeatWithLevel(fourTwos, fourKings, levelTwo)).toBe(true);
+  });
+
   it("keeps straight-flush and bomb precedence correct with a level wildcard", () => {
     const straightFlush = classify([
       suited("6", "spades"),
