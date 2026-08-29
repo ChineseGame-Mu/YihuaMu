@@ -33,6 +33,8 @@ jobs:
         run: npm run smoke:live
       - name: Live gameplay transport smoke
         run: npm run smoke:gameplay
+      - name: Fourteen-client network acceptance
+        run: node scripts/smoke-fourteen-network.mjs
       - name: Live restart recovery smoke
         run: npm run smoke:restart
       - name: Hard-crash checkpoint recovery smoke
