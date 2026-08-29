@@ -74,6 +74,7 @@ export const renderJoinPage = (roomId: string): string => {
       const status = document.getElementById("join-status");
       const params = new URLSearchParams(location.search);
       const storageKey = "yihua-room-name:" + roomId;
+      const playerStorageKey = "yihua-room-player:" + roomId;
       const queryName = (params.get("playerName") || "").trim();
       const priorName = localStorage.getItem(storageKey);
       if (queryName) input.value = queryName;
@@ -155,6 +156,12 @@ export const renderJoinPage = (roomId: string): string => {
           return;
         }
 
+        const priorPlayerId = localStorage.getItem(playerStorageKey);
+        if (priorPlayerId && priorName === name) {
+          location.assign("/room/${encodedRoomId}/table?playerId=" + encodeURIComponent(priorPlayerId));
+          return;
+        }
+
         const playerId = randomId();
         const socket = new WebSocket(connectUrl());
         let joined = false;
@@ -199,7 +206,7 @@ export const renderJoinPage = (roomId: string): string => {
           const me = message.participants.find((participant) => participant.id === playerId);
           if (!me) return;
           localStorage.setItem(storageKey, name);
-          localStorage.setItem("yihua-room-player:" + roomId, playerId);
+          localStorage.setItem(playerStorageKey, playerId);
           socket.close();
           location.assign("/room/${encodedRoomId}/table?playerId=" + encodeURIComponent(playerId));
         });
