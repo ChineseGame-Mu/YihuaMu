@@ -10,6 +10,7 @@ import {
 import type { ServerMessage } from "./protocol.js";
 import { disconnectHuman, reconnectHuman } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
+import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
 import type { UpgradedConnection } from "./websocket-upgrade.js";
 
@@ -109,9 +110,16 @@ class LegacyAdapterSocket implements TextSocket {
   }
 }
 
-const supportedPlayerCount = (value: unknown): number => {
+const supportedPlayerCount = (value: unknown): SupportedPlayerCount => {
   const count = Number(value);
-  return [4, 6, 8, 10, 12, 14].includes(count) ? count : 4;
+  return count === 4 ||
+    count === 6 ||
+    count === 8 ||
+    count === 10 ||
+    count === 12 ||
+    count === 14
+    ? count
+    : 4;
 };
 
 const ensureLegacyRoom = (
