@@ -210,7 +210,14 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         const playerCount = [4, 6, 8, 10, 12, 14].includes(requested)
           ? requested
           : 4;
-        ws.send(JSON.stringify({ ...message, player_count: playerCount }));
+        const cleanroomRoom = query.get("cleanroomRoom")?.trim();
+        ws.send(
+          JSON.stringify({
+            ...message,
+            room: cleanroomRoom || message.room,
+            player_count: playerCount,
+          }),
+        );
         return true;
       }
     }
