@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Card } from "../src/core/cards.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
@@ -13,7 +17,9 @@ describe("trick turn guard matrix", () => {
       const initial = createTrickState(playerCount, 0);
       const snapshot = structuredClone(initial);
 
-      expect(() => playCards(initial, 1, [three])).toThrow("not this seat's turn");
+      expect(() => playCards(initial, 1, [three])).toThrow(
+        "not this seat's turn",
+      );
       expect(() => passTurn(initial, 1)).toThrow("not this seat's turn");
       expect(initial).toEqual(snapshot);
     },
