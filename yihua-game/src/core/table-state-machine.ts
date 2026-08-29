@@ -129,3 +129,24 @@ export const passTableTurn = (
     trick: passTurn(trick, seat, state.activeSeats),
   };
 };
+
+export const startNextTableRound = (
+  state: TableRoundState,
+): TableRoundState => {
+  if (state.phase !== "round-complete") {
+    throw new Error("current round is not complete");
+  }
+
+  const winnerSeat = state.finishingOrder[0];
+  if (winnerSeat === undefined) {
+    throw new Error("completed round has no winner");
+  }
+
+  return {
+    ...state,
+    phase: "playing",
+    trick: createTrickState(state.playerCount, winnerSeat),
+    activeSeats: allSeats(state.playerCount),
+    finishingOrder: [],
+  };
+};
