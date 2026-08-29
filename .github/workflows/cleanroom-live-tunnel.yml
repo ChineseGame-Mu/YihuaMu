@@ -152,3 +152,5 @@ jobs:
           echo "Manual test backend remains available for this job: $URL"
           echo "Frontend override: ?test=1&ws=${URL/https:/wss:}/api/guandan"
           sleep 10500
+
+# restart: 2026-08-28T20:05-04:00
