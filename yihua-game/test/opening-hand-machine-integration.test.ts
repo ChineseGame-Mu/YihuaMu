@@ -15,7 +15,11 @@ const constantRandom = (): number => 0;
 describe("clean-room opening draw, hand classifier, and table machine integration", () => {
   it("starts the first round atomically while preserving the independent opening draw result", () => {
     const lobby = createLobbyState(4, 0);
-    const playing = transitionGame(lobby, { type: "start-first-round" }, constantRandom);
+    const playing = transitionGame(
+      lobby,
+      { type: "start-first-round" },
+      constantRandom,
+    );
 
     expect(playing.phase).toBe("playing");
     if (playing.phase !== "playing") throw new Error("expected playing state");
@@ -31,7 +35,11 @@ describe("clean-room opening draw, hand classifier, and table machine integratio
 
   it("keeps the explicit opening-draw phase available for UI animation and rejects duplicate starts", () => {
     const lobby = createLobbyState(4, 0);
-    const opening = transitionGame(lobby, { type: "begin-opening-draw" }, constantRandom);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      constantRandom,
+    );
 
     expect(opening.phase).toBe("opening-draw");
     expect(() =>
@@ -41,7 +49,9 @@ describe("clean-room opening draw, hand classifier, and table machine integratio
 
   it("classifies the core Guandan combination families and compares bomb hierarchy", () => {
     expect(classifyHand([suited("clubs", "9")]).kind).toBe("single");
-    expect(classifyHand([suited("clubs", "9"), suited("hearts", "9")]).kind).toBe("pair");
+    expect(
+      classifyHand([suited("clubs", "9"), suited("hearts", "9")]).kind,
+    ).toBe("pair");
     expect(
       classifyHand([
         suited("clubs", "9"),
@@ -96,8 +106,12 @@ describe("clean-room opening draw, hand classifier, and table machine integratio
       ]).kind,
     ).toBe("consecutive-triples");
 
-    const fiveBomb = classifyHand(Array.from({ length: 5 }, () => suited("clubs", "10")));
-    const sixBomb = classifyHand(Array.from({ length: 6 }, () => suited("clubs", "3")));
+    const fiveBomb = classifyHand(
+      Array.from({ length: 5 }, () => suited("clubs", "10")),
+    );
+    const sixBomb = classifyHand(
+      Array.from({ length: 6 }, () => suited("clubs", "3")),
+    );
     const jokerBomb = classifyHand([
       { kind: "joker", size: "small" },
       { kind: "joker", size: "small" },
