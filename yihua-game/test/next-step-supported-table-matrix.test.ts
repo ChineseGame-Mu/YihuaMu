@@ -10,12 +10,20 @@ import {
 } from "../src/core/trick-state.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 
 describe("next-step supported table matrix", () => {
   for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
     it(`keeps opening draw and trick reset valid for ${playerCount} players`, () => {
-      const opening = runOpeningDraw(createDeck(playerCount), playerCount, () => 0.25);
+      const opening = runOpeningDraw(
+        createDeck(playerCount),
+        playerCount,
+        () => 0.25,
+      );
       expect(opening.winnerSeat).toBeGreaterThanOrEqual(0);
       expect(opening.winnerSeat).toBeLessThan(playerCount);
       expect(
@@ -42,7 +50,9 @@ describe("next-step supported table matrix", () => {
 
   it("classifies every supported non-bomb combination family", () => {
     expect(classifyHand([suited("A", "clubs")]).type).toBe("single");
-    expect(classifyHand([suited("9", "clubs"), suited("9", "hearts")]).type).toBe("pair");
+    expect(
+      classifyHand([suited("9", "clubs"), suited("9", "hearts")]).type,
+    ).toBe("pair");
     expect(
       classifyHand([
         suited("7", "clubs"),
