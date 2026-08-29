@@ -1,0 +1,19 @@
+/* Clean-room compatibility repair: keep large same-rank stacks visible.
+ * The accepted Guandan hand uses 126px cards with -82px vertical overlap.
+ * With 6-8 copies in one rank stack that exceeds the lower grid row and the
+ * hand section clips the earliest cards. Compress only those unusually tall
+ * stacks; ordinary 1-5 card stacks keep the approved spacing unchanged.
+ */
+html body .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack:has(> button:nth-child(6))
+  > button {
+  margin-top: -106px !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack:has(> button:nth-child(6))
+  > button:first-child {
+  margin-top: 0 !important;
+}
