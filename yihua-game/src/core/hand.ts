@@ -80,6 +80,19 @@ const repeatedSequenceHighRank = (
   return consecutiveHighRank(ranks);
 };
 
+const isCompleteJokerBomb = (cards: readonly Card[]): boolean => {
+  if (cards.length !== 4 || !cards.every((card) => card.kind === "joker")) {
+    return false;
+  }
+  const small = cards.filter(
+    (card) => card.kind === "joker" && card.size === "small",
+  ).length;
+  const big = cards.filter(
+    (card) => card.kind === "joker" && card.size === "big",
+  ).length;
+  return small === 2 && big === 2;
+};
+
 export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   if (cards.length === 0) return { kind: "invalid", size: 0 };
 
@@ -103,7 +116,7 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
     };
   }
 
-  if (cards.length === 4 && cards.every((card) => card.kind === "joker")) {
+  if (isCompleteJokerBomb(cards)) {
     return { kind: "joker-bomb", size: 4 };
   }
 
