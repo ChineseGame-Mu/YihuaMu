@@ -60,14 +60,26 @@ describe("level wildcard hand classification", () => {
   it("completes straight and A2345 low straight", () => {
     expect(
       classifyHandWithLevel(
-        [suited("7"), suited("8"), suited("9"), suited("J"), wild("6")],
+        [
+          suited("7"),
+          suited("8", "diamonds"),
+          suited("9"),
+          suited("J"),
+          wild("6"),
+        ],
         "6",
       ),
     ).toEqual({ kind: "straight", size: 5, highRank: "J" });
 
     expect(
       classifyHandWithLevel(
-        [suited("A"), suited("2"), suited("3"), suited("5"), wild("6")],
+        [
+          suited("A"),
+          suited("2", "diamonds"),
+          suited("3"),
+          suited("5"),
+          wild("6"),
+        ],
         "6",
       ),
     ).toEqual({ kind: "straight", size: 5, highRank: "5" });
