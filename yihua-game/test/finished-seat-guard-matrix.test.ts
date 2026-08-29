@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { createDeck, dealHands } from "../src/core/deck.js";
 import { playGameCards, type PlayingState } from "../src/core/game-state.js";
-import { createTableConfig, type SupportedPlayerCount } from "../src/core/table.js";
+import {
+  createTableConfig,
+  type SupportedPlayerCount,
+} from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
