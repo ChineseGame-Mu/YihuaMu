@@ -129,14 +129,20 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
       ws.addEventListener("open", () => {
         reconnectAttemptRef.current = 0;
-        setStatus("connected");
+        // Keep the UI in "connecting" until the Guandan server itself confirms
+        // protocol readiness. Sending join immediately on the transport-level
+        // open event can race the server handshake and leave auto-join stuck.
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
         if (typeof event.data !== "string") return;
 
         try {
-          enqueueMessage(JSON.parse(event.data) as GuandanServerMessage);
+          const message = JSON.parse(event.data) as GuandanServerMessage;
+          if (message.type === "connected") {
+            setStatus("connected");
+          }
+          enqueueMessage(message);
         } catch (error) {
           console.error("Failed to parse Guandan websocket message", error);
         }
