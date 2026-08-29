@@ -106,7 +106,11 @@ const tablePlayContext = (
   state: TableRoundState,
   seat: number,
   options: TablePlayOptions,
-): { trick: TrickState; activeSeats: readonly number[]; finishesHand: boolean } => {
+): {
+  trick: TrickState;
+  activeSeats: readonly number[];
+  finishesHand: boolean;
+} => {
   const trick = requirePlayingState(state);
   if (!state.activeSeats.includes(seat)) {
     throw new Error("finished seat cannot play");
