@@ -163,7 +163,8 @@ try {
   }
 
   const leaderHandAfterPlay = await leader.waitFor(
-    ({ type, cards }) => type === "hand" && Array.isArray(cards) && cards.length === 26,
+    ({ type, cards }) =>
+      type === "hand" && Array.isArray(cards) && cards.length === 26,
     `${leader.name} hand after play`,
   );
   if (leaderHandAfterPlay.cards.length !== 26) {
@@ -206,7 +207,9 @@ try {
     reconnectState.hand_counts[leaderSeat] !== 26 ||
     reconnectState.turn !== afterPass.turn
   ) {
-    throw new Error("reconnect lost live game state or created a duplicate participant");
+    throw new Error(
+      "reconnect lost live game state or created a duplicate participant",
+    );
   }
 
   for (const player of players.slice(1)) player.socket.close();
