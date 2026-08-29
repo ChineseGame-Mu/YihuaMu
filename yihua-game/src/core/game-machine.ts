@@ -21,6 +21,23 @@ export type GameMachineAction =
   | { readonly type: "pass-turn"; readonly seat: number }
   | { readonly type: "next-round" };
 
+export type GameMachineActionType = GameMachineAction["type"];
+
+export const availableGameMachineActions = (
+  state: GameState,
+): readonly GameMachineActionType[] => {
+  switch (state.phase) {
+    case "lobby":
+      return ["begin-opening-draw", "start-first-round"];
+    case "opening-draw":
+      return ["deal-after-opening-draw"];
+    case "playing":
+      return ["play-cards", "pass-turn"];
+    case "round-complete":
+      return ["next-round"];
+  }
+};
+
 const phaseError = (state: GameState, action: GameMachineAction): never => {
   throw new Error(`cannot ${action.type} while game is ${state.phase}`);
 };
