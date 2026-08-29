@@ -96,6 +96,7 @@ describe("legacy frontend compatibility adapter", () => {
       online_players: [true, true],
       minimum_players: 4,
       maximum_players: 14,
+      card_count_alert_threshold: 6,
     });
   });
 
