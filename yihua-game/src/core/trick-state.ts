@@ -55,27 +55,6 @@ const nextActiveSeat = (
   return seat;
 };
 
-const nextEligibleSeat = (
-  state: TrickState,
-  seat: number,
-  activeSeats: readonly number[],
-): number => {
-  const eligible = activeSeats.filter(
-    (activeSeat) =>
-      activeSeat !== seat && !state.passedSeats.includes(activeSeat),
-  );
-  const fallback = activeSeats.filter((activeSeat) => activeSeat !== seat);
-  return nextActiveSeat(
-    state,
-    seat,
-    eligible.length > 0
-      ? eligible
-      : fallback.length > 0
-        ? fallback
-        : activeSeats,
-  );
-};
-
 export const createTrickState = (
   playerCount: SupportedPlayerCount,
   leaderSeat: number,
@@ -119,12 +98,10 @@ const applyPlay = (
   return {
     ...state,
     leaderSeat: seat,
-    currentTurn: nextEligibleSeat(state, seat, active),
+    currentTurn: nextActiveSeat(state, seat, active),
     leadingPlay: play,
     plays: [...state.plays, play],
-    passedSeats: state.passedSeats.filter((passedSeat) =>
-      active.includes(passedSeat),
-    ),
+    passedSeats: [],
   };
 };
 
