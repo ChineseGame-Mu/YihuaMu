@@ -62,8 +62,9 @@ describe("14-client websocket room acceptance", () => {
     const roomId = "acceptance-14";
     runtime.rooms.create(roomId, 14);
 
-    const clients = Array.from({ length: 14 }, (_, seat) =>
-      new FakeConnection({ roomId, playerId: `p${seat + 1}` }),
+    const clients = Array.from(
+      { length: 14 },
+      (_, seat) => new FakeConnection({ roomId, playerId: `p${seat + 1}` }),
     );
 
     for (const [seat, client] of clients.entries()) {
@@ -87,17 +88,17 @@ describe("14-client websocket room acceptance", () => {
     expect(room.participants.every(({ kind }) => kind === "human")).toBe(true);
     expect(new Set(room.participants.map(({ id }) => id)).size).toBe(14);
     expect(new Set(room.participants.map(({ seat }) => seat)).size).toBe(14);
-    expect(room.participants.map(({ seat }) => seat).sort((a, b) => a - b)).toEqual(
-      Array.from({ length: 14 }, (_, seat) => seat),
-    );
+    expect(
+      room.participants.map(({ seat }) => seat).sort((a, b) => a - b),
+    ).toEqual(Array.from({ length: 14 }, (_, seat) => seat));
 
     for (const client of clients) {
       const state = client.socket.latest("room_state");
       expect(state?.playerCount).toBe(14);
       expect(roomParticipants(state)).toHaveLength(14);
-      expect(
-        new Set(roomParticipants(state).map(({ id }) => id)).size,
-      ).toBe(14);
+      expect(new Set(roomParticipants(state).map(({ id }) => id)).size).toBe(
+        14,
+      );
     }
 
     const fifteenth = new FakeConnection({ roomId, playerId: "p15" });
@@ -143,8 +144,8 @@ describe("14-client websocket room acceptance", () => {
         .get(roomId)
         .room.participants.find(({ id }) => id === playerId)?.connected,
     ).toBe(true);
-    expect(roomParticipants(reconnected.socket.latest("room_state"))).toHaveLength(
-      14,
-    );
+    expect(
+      roomParticipants(reconnected.socket.latest("room_state")),
+    ).toHaveLength(14);
   });
 });
