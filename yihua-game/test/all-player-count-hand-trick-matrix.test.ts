@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { classifyHand } from "../src/core/hand.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
 
 const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
@@ -20,11 +24,23 @@ const legalHands: readonly [string, readonly Card[]][] = [
   ["full-house", [...repeated("7", 3), ...repeated("8", 2)]],
   [
     "straight",
-    [suited("3", "clubs"), suited("4", "diamonds"), suited("5", "hearts"), suited("6", "spades"), suited("7", "clubs")],
+    [
+      suited("3", "clubs"),
+      suited("4", "diamonds"),
+      suited("5", "hearts"),
+      suited("6", "spades"),
+      suited("7", "clubs"),
+    ],
   ],
   [
     "straight-flush",
-    [suited("3", "hearts"), suited("4", "hearts"), suited("5", "hearts"), suited("6", "hearts"), suited("7", "hearts")],
+    [
+      suited("3", "hearts"),
+      suited("4", "hearts"),
+      suited("5", "hearts"),
+      suited("6", "hearts"),
+      suited("7", "hearts"),
+    ],
   ],
   [
     "consecutive-pairs",
