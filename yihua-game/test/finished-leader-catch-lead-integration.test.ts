@@ -12,13 +12,20 @@ import {
 } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
-const card = (rank: "3" | "4" | "5", suit: "clubs" | "diamonds" = "clubs"): Card => ({
+const card = (
+  rank: "3" | "4" | "5",
+  suit: "clubs" | "diamonds" = "clubs",
+): Card => ({
   kind: "suited",
   rank,
   suit,
 });
 
-const deckCard = (id: string, value: Card): DeckCard => ({ id, copy: 0, card: value });
+const deckCard = (id: string, value: Card): DeckCard => ({
+  id,
+  copy: 0,
+  card: value,
+});
 
 const makeState = (playerCount: SupportedPlayerCount): PlayingState => ({
   phase: "playing",
@@ -27,7 +34,10 @@ const makeState = (playerCount: SupportedPlayerCount): PlayingState => ({
   hands: Array.from({ length: playerCount }, (_, seat) =>
     seat === 1
       ? [deckCard("leader-last", card("3"))]
-      : [deckCard(`seat-${seat}-a`, card("4")), deckCard(`seat-${seat}-b`, card("5"))],
+      : [
+          deckCard(`seat-${seat}-a`, card("4")),
+          deckCard(`seat-${seat}-b`, card("5")),
+        ],
   ),
   currentTurn: 1,
   trick: createTrickState(playerCount, 1),
