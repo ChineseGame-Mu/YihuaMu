@@ -56,4 +56,5 @@ export const finishInteractiveOpeningDraw = (
 export const dealAfterInteractiveOpeningDraw = (
   state: InteractiveOpeningState,
   random: RandomSource = Math.random,
-): PlayingState => dealAfterOpeningDraw(finishInteractiveOpeningDraw(state), random);
+): PlayingState =>
+  dealAfterOpeningDraw(finishInteractiveOpeningDraw(state), random);

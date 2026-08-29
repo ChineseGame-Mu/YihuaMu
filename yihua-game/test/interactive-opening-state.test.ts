@@ -7,7 +7,10 @@ import {
   finishInteractiveOpeningDraw,
 } from "../src/core/interactive-opening-state.js";
 
-const constantRandom = (value: number): (() => number) => () => value;
+const constantRandom =
+  (value: number): (() => number) =>
+  () =>
+    value;
 
 describe("interactive opening draw integration", () => {
   it.each([4, 6, 8, 10, 12, 14] as const)(
@@ -24,7 +27,9 @@ describe("interactive opening draw integration", () => {
       state = advanceInteractiveOpeningDraw(state);
 
       expect(state.draw.session.attempts).toHaveLength(1);
-      expect(state.draw.session.attempts[0]!.seatDraws).toHaveLength(playerCount);
+      expect(state.draw.session.attempts[0]!.seatDraws).toHaveLength(
+        playerCount,
+      );
       expect(state.draw.phase).toBe("complete");
 
       const opening = finishInteractiveOpeningDraw(state);
@@ -38,7 +43,8 @@ describe("interactive opening draw integration", () => {
     let state = beginInteractiveOpeningDraw(lobby, constantRandom(0.5));
     state = advanceInteractiveOpeningDraw(state);
 
-    const winnerSeat = finishInteractiveOpeningDraw(state).openingDraw.winnerSeat;
+    const winnerSeat =
+      finishInteractiveOpeningDraw(state).openingDraw.winnerSeat;
     const playing = dealAfterInteractiveOpeningDraw(state, constantRandom(0.5));
 
     expect(playing.phase).toBe("playing");
