@@ -221,7 +221,8 @@ export const attachLegacyGuandanConnection = async (
         const robotSeat = [...managed.room.participants]
           .filter(({ kind }) => kind === "robot")
           .sort((a, b) => a.seat - b.seat)[0]?.seat;
-        const seat = existing?.seat ?? robotSeat ?? managed.room.participants.length;
+        const seat =
+          existing?.seat ?? robotSeat ?? managed.room.participants.length;
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
