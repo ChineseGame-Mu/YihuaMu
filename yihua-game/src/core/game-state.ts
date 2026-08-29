@@ -233,7 +233,7 @@ export const playGameCards = (
 
   if (
     remainingHand.length === 0 &&
-    rotationSeats.length === 0 &&
+    (rotationSeats.length === 0 || trick.currentTurn === seat) &&
     activeSeats.length > 0
   ) {
     const catchSeat =
