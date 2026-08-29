@@ -90,7 +90,7 @@ jobs:
             echo "- Base: $preview_url"
             echo "- Join: $preview_url/room/manual-test"
             echo "- Verified through the public tunnel before publishing."
-            echo "- Approved join-page to legacy Guandan frontend preview."
+            echo "- Approved join-page to original Guandan frontend with Render clean-room WebSocket."
             echo "- This temporary preview stays alive while this job is running."
           } >> "$GITHUB_STEP_SUMMARY"
 
