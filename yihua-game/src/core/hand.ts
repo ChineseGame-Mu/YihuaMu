@@ -92,9 +92,7 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
 
   if (
     cards.length === 2 &&
-    cards.every(
-      (card) => card.kind === "joker" && card.size === cards[0]!.size,
-    )
+    cards.every((card) => card.kind === "joker" && card.size === cards[0]!.size)
   ) {
     return {
       kind: "pair",
