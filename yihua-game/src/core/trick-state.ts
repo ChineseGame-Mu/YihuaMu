@@ -63,7 +63,11 @@ const nextEligibleSeat = (
   const eligible = activeSeats.filter(
     (activeSeat) => !state.passedSeats.includes(activeSeat),
   );
-  return nextActiveSeat(state, seat, eligible.length > 0 ? eligible : activeSeats);
+  return nextActiveSeat(
+    state,
+    seat,
+    eligible.length > 0 ? eligible : activeSeats,
+  );
 };
 
 export const createTrickState = (
@@ -112,7 +116,9 @@ const applyPlay = (
     currentTurn: nextEligibleSeat(state, seat, active),
     leadingPlay: play,
     plays: [...state.plays, play],
-    passedSeats: state.passedSeats.filter((passedSeat) => active.includes(passedSeat)),
+    passedSeats: state.passedSeats.filter((passedSeat) =>
+      active.includes(passedSeat),
+    ),
   };
 };
 
