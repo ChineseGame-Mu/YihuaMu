@@ -90,6 +90,19 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
       : { kind: "single", size: 1, jokerSize: card.size };
   }
 
+  if (
+    cards.length === 2 &&
+    cards.every(
+      (card) => card.kind === "joker" && card.size === cards[0]!.size,
+    )
+  ) {
+    return {
+      kind: "pair",
+      size: 2,
+      jokerSize: (cards[0] as Extract<Card, { kind: "joker" }>).size,
+    };
+  }
+
   if (cards.length === 4 && cards.every((card) => card.kind === "joker")) {
     return { kind: "joker-bomb", size: 4 };
   }
@@ -148,7 +161,7 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
 };
 
 const normalStrength = (hand: ClassifiedHand): number | null => {
-  if (hand.kind === "single" && hand.jokerSize !== undefined) {
+  if (hand.jokerSize !== undefined) {
     return RANKS.length + (hand.jokerSize === "big" ? 1 : 0);
   }
   const rank = hand.rank ?? hand.highRank;
