@@ -122,25 +122,29 @@ export class RoomManager {
     if (managed.game.phase !== "lobby") {
       throw new Error("game has already started");
     }
-    if (managed.room.participants.some(({ kind }) => kind !== "human")) {
-      throw new Error("this table requires human players only");
-    }
-    if (managed.room.participants.some(({ connected }) => !connected)) {
+    if (
+      managed.room.participants.some(
+        ({ kind, connected }) => kind === "human" && !connected,
+      )
+    ) {
       throw new Error("all seated humans must be connected to start");
     }
 
-    const humanCount = managed.room.participants.length;
-    if (!isSupportedPlayerCount(humanCount)) {
-      throw new Error("start requires 4, 6, 8, 10, 12, or 14 connected humans");
+    const participantCount = managed.room.participants.length;
+    if (!isSupportedPlayerCount(participantCount)) {
+      throw new Error("start requires 4, 6, 8, 10, 12, or 14 seated players");
     }
-    if (humanCount > managed.room.config.playerCount) {
-      throw new Error("human count exceeds tonight's selected player count");
+    if (participantCount > managed.room.config.playerCount) {
+      throw new Error("player count exceeds tonight's selected player count");
     }
 
+    const botCount = managed.room.participants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
     const startedRoom = openLateJoinWindow(managed.room, now());
     const next = {
       room: startedRoom,
-      game: startGame(createLobbyState(humanCount, 0), random),
+      game: startGame(createLobbyState(participantCount, botCount), random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
     this.rooms.set(roomId, next);
