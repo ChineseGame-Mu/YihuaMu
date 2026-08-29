@@ -113,7 +113,8 @@ export const playCards = (
   seat: number,
   cards: readonly Card[],
   activeSeats?: readonly number[],
-): TrickState => applyPlay(state, seat, cards, classifyHand(cards), activeSeats);
+): TrickState =>
+  applyPlay(state, seat, cards, classifyHand(cards), activeSeats);
 
 export const playCardsWithLevel = (
   state: TrickState,

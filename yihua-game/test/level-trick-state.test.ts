@@ -87,12 +87,7 @@ describe("level wildcard trick plays", () => {
     state = playCardsWithLevel(
       state,
       1,
-      [
-        suited("Q"),
-        suited("Q", "diamonds"),
-        suited("Q", "spades"),
-        wild("6"),
-      ],
+      [suited("Q"), suited("Q", "diamonds"), suited("Q", "spades"), wild("6")],
       "6",
     );
 
