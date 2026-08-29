@@ -18,6 +18,12 @@ export interface OpeningDrawResult {
   readonly winnerSeat: number;
 }
 
+export interface OpeningDrawSession {
+  readonly remainingCards: readonly DeckCard[];
+  readonly attempts: readonly OpeningDrawAttempt[];
+  readonly winnerSeat: number | null;
+}
+
 const ordinaryCards = (deck: readonly DeckCard[]): DeckCard[] =>
   deck.filter(({ card }) => card.kind === "suited");
 
@@ -27,25 +33,51 @@ const cardsOnly = (draw: readonly DeckCard[]): Card[] =>
 const seatDrawsFor = (cards: readonly DeckCard[]): OpeningSeatDraw[] =>
   cards.map((card, seat) => ({ seat, card }));
 
+export const createOpeningDrawSession = (
+  deck: readonly DeckCard[],
+  random: RandomSource = Math.random,
+): OpeningDrawSession => ({
+  remainingCards: shuffleDeck(ordinaryCards(deck), random),
+  attempts: [],
+  winnerSeat: null,
+});
+
+export const drawOpeningAttempt = (
+  session: OpeningDrawSession,
+  playerCount: SupportedPlayerCount,
+): OpeningDrawSession => {
+  if (session.winnerSeat !== null) {
+    throw new Error("opening draw already has a winner");
+  }
+  if (session.remainingCards.length < playerCount) {
+    throw new Error("opening draw exhausted before a unique winner was found");
+  }
+
+  const cards = session.remainingCards.slice(0, playerCount);
+  const winnerSeat = determineUniqueOpeningWinner(cardsOnly(cards));
+  const attempt: OpeningDrawAttempt = {
+    cards,
+    seatDraws: seatDrawsFor(cards),
+    winnerSeat,
+  };
+
+  return {
+    remainingCards: session.remainingCards.slice(playerCount),
+    attempts: [...session.attempts, attempt],
+    winnerSeat,
+  };
+};
+
 export const runOpeningDraw = (
   deck: readonly DeckCard[],
   playerCount: SupportedPlayerCount,
   random: RandomSource = Math.random,
 ): OpeningDrawResult => {
-  const pool = shuffleDeck(ordinaryCards(deck), random);
-  const attempts: OpeningDrawAttempt[] = [];
-  let offset = 0;
+  let session = createOpeningDrawSession(deck, random);
 
-  while (offset + playerCount <= pool.length) {
-    const cards = pool.slice(offset, offset + playerCount);
-    offset += playerCount;
-    const winnerSeat = determineUniqueOpeningWinner(cardsOnly(cards));
-    attempts.push({ cards, seatDraws: seatDrawsFor(cards), winnerSeat });
-
-    if (winnerSeat !== null) {
-      return { attempts, winnerSeat };
-    }
+  while (session.winnerSeat === null) {
+    session = drawOpeningAttempt(session, playerCount);
   }
 
-  throw new Error("opening draw exhausted before a unique winner was found");
+  return { attempts: session.attempts, winnerSeat: session.winnerSeat };
 };
