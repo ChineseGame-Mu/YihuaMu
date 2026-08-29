@@ -63,7 +63,7 @@ describe("level-aware table state machine", () => {
     },
   );
 
-  it("removes a wildcard leader who finishes and returns the cleared trick to the next active seat", () => {
+  it("removes a wildcard leader who finishes and lets the teammate catch after opponents pass", () => {
     let state = playTableCardsWithLevel(
       playingState(4),
       0,
@@ -77,20 +77,24 @@ describe("level-aware table state machine", () => {
     expect(state.trick?.currentTurn).toBe(1);
 
     state = passTableTurn(state, 1);
-    state = passTableTurn(state, 2);
     state = passTableTurn(state, 3);
 
     expect(state.trick?.leadingPlay).toBeNull();
     expect(state.trick?.completedTricks).toBe(1);
-    expect(state.trick?.leaderSeat).toBe(1);
-    expect(state.trick?.currentTurn).toBe(1);
+    expect(state.trick?.leaderSeat).toBe(2);
+    expect(state.trick?.currentTurn).toBe(2);
   });
 
   it("completes the round when a level-wildcard play leaves one active seat", () => {
     const state = playTableCardsWithLevel(
       playingState(4, [0, 1], [2, 3]),
       0,
-      [suited("Q"), suited("Q", "diamonds"), suited("Q", "spades"), wild("6")],
+      [
+        suited("Q"),
+        suited("Q", "diamonds"),
+        suited("Q", "spades"),
+        wild("6"),
+      ],
       "6",
       { finishesHand: true },
     );
