@@ -65,12 +65,8 @@ describe("level-rank comparison semantics", () => {
 
   it("does not boost a sequence merely because its high card is the level rank", () => {
     const levelRank: Rank = "K";
-    const kingHigh = classifyHand(
-      mixedStraight(["9", "10", "J", "Q", "K"]),
-    );
-    const aceHigh = classifyHand(
-      mixedStraight(["10", "J", "Q", "K", "A"]),
-    );
+    const kingHigh = classifyHand(mixedStraight(["9", "10", "J", "Q", "K"]));
+    const aceHigh = classifyHand(mixedStraight(["10", "J", "Q", "K", "A"]));
 
     expect(kingHigh).toMatchObject({ kind: "straight", highRank: "K" });
     expect(aceHigh).toMatchObject({ kind: "straight", highRank: "A" });
@@ -84,8 +80,14 @@ describe("level-rank comparison semantics", () => {
     const fourAceBomb = classifyHand(repeated("A", 4));
     const fiveThreeBomb = classifyHand(repeated("3", 5));
 
-    expect(canHandBeatWithLevel(fourLevelBomb, fourAceBomb, levelRank)).toBe(true);
-    expect(canHandBeatWithLevel(fiveThreeBomb, fourLevelBomb, levelRank)).toBe(true);
-    expect(canHandBeatWithLevel(fourLevelBomb, fiveThreeBomb, levelRank)).toBe(false);
+    expect(canHandBeatWithLevel(fourLevelBomb, fourAceBomb, levelRank)).toBe(
+      true,
+    );
+    expect(canHandBeatWithLevel(fiveThreeBomb, fourLevelBomb, levelRank)).toBe(
+      true,
+    );
+    expect(canHandBeatWithLevel(fourLevelBomb, fiveThreeBomb, levelRank)).toBe(
+      false,
+    );
   });
 });
