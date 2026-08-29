@@ -1,5 +1,6 @@
-import type { Card } from "./cards.js";
+import type { Card, Rank } from "./cards.js";
 import { canHandBeat, classifyHand, type ClassifiedHand } from "./hand.js";
+import { classifyHandWithLevel } from "./level-hand.js";
 import type { SupportedPlayerCount } from "./table.js";
 
 export interface TablePlay {
@@ -75,10 +76,11 @@ export const createTrickState = (
   };
 };
 
-export const playCards = (
+const applyPlay = (
   state: TrickState,
   seat: number,
   cards: readonly Card[],
+  hand: ClassifiedHand,
   activeSeats?: readonly number[],
 ): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
@@ -87,7 +89,6 @@ export const playCards = (
   // hand on this play may therefore already be absent from the list.
   const active = activeSeatsOrAll(state, activeSeats);
 
-  const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
   if (
     state.leadingPlay !== null &&
@@ -106,6 +107,28 @@ export const playCards = (
     passedSeats: [],
   };
 };
+
+export const playCards = (
+  state: TrickState,
+  seat: number,
+  cards: readonly Card[],
+  activeSeats?: readonly number[],
+): TrickState => applyPlay(state, seat, cards, classifyHand(cards), activeSeats);
+
+export const playCardsWithLevel = (
+  state: TrickState,
+  seat: number,
+  cards: readonly Card[],
+  levelRank: Rank,
+  activeSeats?: readonly number[],
+): TrickState =>
+  applyPlay(
+    state,
+    seat,
+    cards,
+    classifyHandWithLevel(cards, levelRank),
+    activeSeats,
+  );
 
 export const passTurn = (
   state: TrickState,
