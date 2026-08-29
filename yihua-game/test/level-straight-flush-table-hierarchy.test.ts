@@ -56,7 +56,9 @@ describe("level wildcard straight-flush hierarchy", () => {
     const sixBomb = classifyHand(bomb("3", 6));
 
     expect(canHandBeatWithLevel(straightFlush, fiveBomb, levelRank)).toBe(true);
-    expect(canHandBeatWithLevel(fiveBomb, straightFlush, levelRank)).toBe(false);
+    expect(canHandBeatWithLevel(fiveBomb, straightFlush, levelRank)).toBe(
+      false,
+    );
     expect(canHandBeatWithLevel(sixBomb, straightFlush, levelRank)).toBe(true);
     expect(canHandBeatWithLevel(straightFlush, sixBomb, levelRank)).toBe(false);
   });
