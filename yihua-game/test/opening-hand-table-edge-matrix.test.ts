@@ -3,22 +3,36 @@ import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { createDeck } from "../src/core/deck.js";
 import { canHandBeat, classifyHand } from "../src/core/hand.js";
 import { runOpeningDraw } from "../src/core/opening-draw.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 const joker = (size: "small" | "big"): Card => ({ kind: "joker", size });
 
 describe("opening draw, hand judgement, and table-state edge matrix", () => {
   it.each([4, 6, 8, 10, 12, 14] as const)(
     "opening draw stays joker-free and finds one winner at %i seats",
     (playerCount) => {
-      const result = runOpeningDraw(createDeck(playerCount), playerCount, () => 0.375);
+      const result = runOpeningDraw(
+        createDeck(playerCount),
+        playerCount,
+        () => 0.375,
+      );
       expect(result.winnerSeat).toBeGreaterThanOrEqual(0);
       expect(result.winnerSeat).toBeLessThan(playerCount);
       expect(result.attempts.length).toBeGreaterThan(0);
       for (const attempt of result.attempts) {
         expect(attempt.cards).toHaveLength(playerCount);
-        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(true);
+        expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(
+          true,
+        );
       }
     },
   );
