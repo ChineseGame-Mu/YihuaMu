@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { classifyHandWithLevel } from "../src/core/level-hand.js";
-import {
-  canHandBeatWithLevel,
-  type ClassifiedHand,
-} from "../src/core/hand.js";
+import { canHandBeatWithLevel, type ClassifiedHand } from "../src/core/hand.js";
 import {
   playTableCardsWithLevel,
   type TableRoundState,
