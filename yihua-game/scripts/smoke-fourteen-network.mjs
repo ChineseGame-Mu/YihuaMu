@@ -111,7 +111,9 @@ try {
     );
     const updates = await nextBatch(clients);
     if (updates.some(({ type }) => type !== "room_state")) {
-      throw new Error(`14-client join broadcast failed for seat ${client.seat}`);
+      throw new Error(
+        `14-client join broadcast failed for seat ${client.seat}`,
+      );
     }
     const expectedParticipants = client.seat + 1;
     if (
@@ -134,7 +136,9 @@ try {
     new Set(participants.map(({ id }) => id)).size !== 14 ||
     new Set(participants.map(({ seat }) => seat)).size !== 14
   ) {
-    throw new Error(`14-client final room mismatch: ${JSON.stringify(finalRoom)}`);
+    throw new Error(
+      `14-client final room mismatch: ${JSON.stringify(finalRoom)}`,
+    );
   }
 
   const fifteenth = {
@@ -163,7 +167,9 @@ try {
     rejection.type !== "error" ||
     !String(rejection.message).includes("14-player maximum")
   ) {
-    throw new Error(`15th client was not rejected: ${JSON.stringify(rejection)}`);
+    throw new Error(
+      `15th client was not rejected: ${JSON.stringify(rejection)}`,
+    );
   }
   fifteenth.socket.close();
 
@@ -201,7 +207,9 @@ try {
           ?.connected !== false,
     )
   ) {
-    throw new Error("disconnect state did not synchronize to remaining clients");
+    throw new Error(
+      "disconnect state did not synchronize to remaining clients",
+    );
   }
 
   const reconnectSocket = new WebSocket(
