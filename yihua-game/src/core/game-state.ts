@@ -226,7 +226,10 @@ export const playGameCards = (
       : [...priorFinishedSeats];
   const activeSeats = activeSeatsFor(state, finishedSeats);
   const rotationSeats = respondingSeatsFor(seat, activeSeats, finishedSeats);
-  let trick = playCards(state.trick, seat, cards, rotationSeats);
+  const playRotationSeats = rotationSeats.includes(seat)
+    ? rotationSeats
+    : [seat, ...rotationSeats];
+  let trick = playCards(state.trick, seat, cards, playRotationSeats);
 
   if (
     remainingHand.length === 0 &&
