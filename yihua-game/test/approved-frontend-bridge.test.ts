@@ -62,7 +62,9 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
-    expect(transport).toContain('if (query.get("cleanroom") !== "1") return null');
+    expect(transport).toContain(
+      'if (query.get("cleanroom") !== "1") return null',
+    );
     expect(transport).toContain('url.pathname = "/api/guandan"');
   });
 
