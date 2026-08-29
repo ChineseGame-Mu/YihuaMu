@@ -8,7 +8,11 @@ import {
   type LegacyServerMessage,
 } from "./frontend-compat.js";
 import type { ServerMessage } from "./protocol.js";
-import { disconnectHuman, reconnectHuman } from "./room.js";
+import {
+  disconnectHuman,
+  reconnectHuman,
+  replaceRobotWithHuman,
+} from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
 import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
@@ -214,7 +218,10 @@ export const attachLegacyGuandanConnection = async (
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
-        const seat = existing?.seat ?? managed.room.participants.length;
+        const robotSeat = [...managed.room.participants]
+          .filter(({ kind }) => kind === "robot")
+          .sort((a, b) => a.seat - b.seat)[0]?.seat;
+        const seat = existing?.seat ?? robotSeat ?? managed.room.participants.length;
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
@@ -232,6 +239,16 @@ export const attachLegacyGuandanConnection = async (
               });
               await runtime.websocket.broadcastRoomState(managed);
             }
+          } else if (robotSeat !== undefined) {
+            managed = runtime.rooms.set(roomId, {
+              ...managed,
+              room: replaceRobotWithHuman(managed.room, {
+                id: playerId,
+                name: message.name,
+                seat: robotSeat,
+              }),
+            });
+            await runtime.websocket.broadcastRoomState(managed);
           } else {
             await runtime.websocket.handleText(
               adapter,
