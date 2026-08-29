@@ -163,7 +163,9 @@ export const toCleanroomCommand = (
         "legacy join requires room allocation before command translation",
       );
     case "reorder_players":
-      throw new Error("clean-room backend does not support seat reordering yet");
+      throw new Error(
+        "clean-room backend does not support seat reordering yet",
+      );
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
     case "set_bots":
@@ -187,7 +189,9 @@ export const toCleanroomCommand = (
     }
     case "tribute_card":
     case "return_tribute":
-      throw new Error("clean-room backend does not support tribute exchange yet");
+      throw new Error(
+        "clean-room backend does not support tribute exchange yet",
+      );
     case "pass":
       return { type: "pass_turn" };
     case "end_round":
