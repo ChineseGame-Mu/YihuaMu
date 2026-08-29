@@ -18,6 +18,8 @@ import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
 import type { UpgradedConnection } from "./websocket-upgrade.js";
 
+const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
+
 const sendLegacy = async (
   socket: TextSocket,
   message: LegacyServerMessage,
@@ -206,7 +208,11 @@ export const attachLegacyGuandanConnection = async (
         if (active !== undefined) {
           throw new Error("connection already joined a room");
         }
-        const roomId = message.room.trim();
+        const requestedRoomId =
+          connection.context.roomId === LEGACY_PENDING_ROOM
+            ? message.room
+            : connection.context.roomId;
+        const roomId = requestedRoomId.trim();
         if (roomId.length === 0) throw new Error("room id is required");
         const playerId = legacyPlayerId(message.name);
         const requestedPlayerCount = (
