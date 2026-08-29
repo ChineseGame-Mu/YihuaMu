@@ -37,10 +37,6 @@ const activeSeatsOrAll = (
     throw new Error("active seats must be valid table seats");
   }
 
-  if (!unique.includes(state.currentTurn)) {
-    throw new Error("current turn must be an active seat");
-  }
-
   return unique;
 };
 
@@ -86,9 +82,10 @@ export const playCards = (
   activeSeats?: readonly number[],
 ): TrickState => {
   if (seat !== state.currentTurn) throw new Error("not this seat's turn");
+
+  // activeSeats is the post-play rotation snapshot. A player who empties their
+  // hand on this play may therefore already be absent from the list.
   const active = activeSeatsOrAll(state, activeSeats);
-  if (!active.includes(seat))
-    throw new Error("current turn must be an active seat");
 
   const hand = classifyHand(cards);
   if (hand.kind === "invalid") throw new Error("invalid hand");
@@ -122,6 +119,10 @@ export const passTurn = (
   }
 
   const active = activeSeatsOrAll(state, activeSeats);
+  if (!active.includes(seat)) {
+    throw new Error("current turn must be an active seat");
+  }
+
   const requiredPasses = active.filter(
     (activeSeat) => activeSeat !== state.leadingPlay?.seat,
   ).length;
