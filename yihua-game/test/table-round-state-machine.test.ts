@@ -7,6 +7,7 @@ import {
   createTableRoundState,
   passTableTurn,
   playTableCards,
+  startNextTableRound,
 } from "../src/core/table-state-machine.js";
 
 const suitedCard = (suit: Suit, rank: Rank): Card => ({
@@ -132,6 +133,24 @@ describe("clean-room table round state machine", () => {
     expect(state.activeSeats).toEqual([3]);
     expect(() => passTableTurn(state, 3)).toThrow(
       "table is not in the playing phase",
+    );
+
+    const completedOpeningDraw = state.openingDraw;
+    state = startNextTableRound(state);
+    expect(state.phase).toBe("playing");
+    expect(state.openingDraw).toEqual(completedOpeningDraw);
+    expect(state.activeSeats).toEqual([0, 1, 2, 3]);
+    expect(state.finishingOrder).toEqual([]);
+    expect(state.trick?.currentTurn).toBe(0);
+    expect(state.trick?.leadingPlay).toBeNull();
+  });
+
+  it("does not allow a later round to bypass an unfinished round", () => {
+    const deck: DeckCard[] = [deckCard("a", "hearts", "A")];
+    const state = createTableRoundState(deck, 4, () => 0.999999);
+
+    expect(() => startNextTableRound(state)).toThrow(
+      "current round is not complete",
     );
   });
 });
