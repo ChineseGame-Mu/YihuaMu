@@ -24,7 +24,9 @@ describe("clean-room backend route precedence", () => {
       "utf8",
     );
 
-    const resolverStart = transport.indexOf("const websocketUri = (): string => {");
+    const resolverStart = transport.indexOf(
+      "const websocketUri = (): string => {",
+    );
     const cleanroomCall = transport.indexOf(
       "const cleanroom = cleanroomWebsocketOverride();",
       resolverStart,
