@@ -210,8 +210,11 @@ export const playTableCards = (
   cards: readonly Card[],
   options: TablePlayOptions = {},
 ): TableRoundState => {
-  const { trick, activeSeats, rotationSeats, finishesHand } =
-    tablePlayContext(state, seat, options);
+  const { trick, activeSeats, rotationSeats, finishesHand } = tablePlayContext(
+    state,
+    seat,
+    options,
+  );
   const playedTrick = playCards(
     trick,
     seat,
@@ -236,8 +239,11 @@ export const playTableCardsWithLevel = (
   levelRank: Rank,
   options: TablePlayOptions = {},
 ): TableRoundState => {
-  const { trick, activeSeats, rotationSeats, finishesHand } =
-    tablePlayContext(state, seat, options);
+  const { trick, activeSeats, rotationSeats, finishesHand } = tablePlayContext(
+    state,
+    seat,
+    options,
+  );
   const playedTrick = playCardsWithLevel(
     trick,
     seat,
