@@ -56,9 +56,9 @@ describe("complete Guandan hand classification coverage", () => {
         ...repeated("9", 2),
       ]).kind,
     ).toBe("consecutive-pairs");
-    expect(
-      classifyHand([...repeated("7", 3), ...repeated("8", 3)]).kind,
-    ).toBe("consecutive-triples");
+    expect(classifyHand([...repeated("7", 3), ...repeated("8", 3)]).kind).toBe(
+      "consecutive-triples",
+    );
     expect(classifyHand(repeated("9", 4)).kind).toBe("bomb");
     expect(
       classifyHand([
