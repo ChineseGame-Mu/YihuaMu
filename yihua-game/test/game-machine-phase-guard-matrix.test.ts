@@ -13,7 +13,11 @@ describe("game machine phase guards", () => {
       const lobby = createLobbyState(playerCount, 0);
 
       expect(() =>
-        transitionGame(lobby, { type: "deal-after-opening-draw" }, deterministicRandom),
+        transitionGame(
+          lobby,
+          { type: "deal-after-opening-draw" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot deal-after-opening-draw while game is lobby");
       expect(() =>
         transitionGame(
@@ -23,7 +27,11 @@ describe("game machine phase guards", () => {
         ),
       ).toThrow("cannot play-cards while game is lobby");
       expect(() =>
-        transitionGame(lobby, { type: "pass-turn", seat: 0 }, deterministicRandom),
+        transitionGame(
+          lobby,
+          { type: "pass-turn", seat: 0 },
+          deterministicRandom,
+        ),
       ).toThrow("cannot pass-turn while game is lobby");
       expect(() =>
         transitionGame(lobby, { type: "next-round" }, deterministicRandom),
@@ -39,10 +47,18 @@ describe("game machine phase guards", () => {
 
       expect(opening.phase).toBe("opening-draw");
       expect(() =>
-        transitionGame(opening, { type: "begin-opening-draw" }, deterministicRandom),
+        transitionGame(
+          opening,
+          { type: "begin-opening-draw" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot begin-opening-draw while game is opening-draw");
       expect(() =>
-        transitionGame(opening, { type: "start-first-round" }, deterministicRandom),
+        transitionGame(
+          opening,
+          { type: "start-first-round" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot start-first-round while game is opening-draw");
       expect(() =>
         transitionGame(
@@ -62,13 +78,25 @@ describe("game machine phase guards", () => {
 
       expect(playing.phase).toBe("playing");
       expect(() =>
-        transitionGame(playing, { type: "begin-opening-draw" }, deterministicRandom),
+        transitionGame(
+          playing,
+          { type: "begin-opening-draw" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot begin-opening-draw while game is playing");
       expect(() =>
-        transitionGame(playing, { type: "deal-after-opening-draw" }, deterministicRandom),
+        transitionGame(
+          playing,
+          { type: "deal-after-opening-draw" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot deal-after-opening-draw while game is playing");
       expect(() =>
-        transitionGame(playing, { type: "start-first-round" }, deterministicRandom),
+        transitionGame(
+          playing,
+          { type: "start-first-round" },
+          deterministicRandom,
+        ),
       ).toThrow("cannot start-first-round while game is playing");
       expect(() =>
         transitionGame(playing, { type: "next-round" }, deterministicRandom),
