@@ -9,7 +9,13 @@ const suited = (rank: Rank, suit: Suit): Card => ({
 });
 
 const mixedStraight = (ranks: readonly Rank[]): Card[] => {
-  const suits: readonly Suit[] = ["clubs", "hearts", "spades", "diamonds", "clubs"];
+  const suits: readonly Suit[] = [
+    "clubs",
+    "hearts",
+    "spades",
+    "diamonds",
+    "clubs",
+  ];
   return ranks.map((rank, index) => suited(rank, suits[index]!));
 };
 
@@ -21,12 +27,15 @@ describe("straight versus straight-flush boundary matrix", () => {
     [["3", "4", "5", "6", "7"] as const, "7"],
     [["10", "J", "Q", "K", "A"] as const, "A"],
     [["A", "2", "3", "4", "5"] as const, "5"],
-  ])("keeps mixed-suit sequence %j as an ordinary straight", (ranks, highRank) => {
-    expect(classifyHand(mixedStraight(ranks))).toMatchObject({
-      kind: "straight",
-      highRank,
-    });
-  });
+  ])(
+    "keeps mixed-suit sequence %j as an ordinary straight",
+    (ranks, highRank) => {
+      expect(classifyHand(mixedStraight(ranks))).toMatchObject({
+        kind: "straight",
+        highRank,
+      });
+    },
+  );
 
   it.each(["clubs", "diamonds", "hearts", "spades"] as const)(
     "promotes a same-suit sequence to straight-flush in %s",
