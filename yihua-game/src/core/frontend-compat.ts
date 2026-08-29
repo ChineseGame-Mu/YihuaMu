@@ -25,10 +25,22 @@ export type LegacyGuandanCard =
 
 export type LegacyClientMessage =
   | { readonly type: "join"; readonly room: string; readonly name: string }
+  | {
+      readonly type: "reorder_players";
+      readonly order: readonly [number, number];
+    }
   | { readonly type: "set_participation"; readonly active: boolean }
   | { readonly type: "set_bots"; readonly count: 1 | 2 | 3 }
   | { readonly type: "start"; readonly player_count: number }
+  | {
+      readonly type: "shuffle_next_round";
+      readonly from_position: number | null;
+      readonly to_position: number | null;
+    }
+  | { readonly type: "deal_next_round" }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
+  | { readonly type: "tribute_card"; readonly card_index: number }
+  | { readonly type: "return_tribute"; readonly card_index: number }
   | { readonly type: "pass" }
   | { readonly type: "end_round" };
 
@@ -150,12 +162,20 @@ export const toCleanroomCommand = (
       throw new Error(
         "legacy join requires room allocation before command translation",
       );
+    case "reorder_players":
+      throw new Error("clean-room backend does not support seat reordering yet");
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
     case "set_bots":
       return { type: "set_robots", count: message.count };
     case "start":
       return { type: "start_game" };
+    case "shuffle_next_round":
+      throw new Error(
+        "clean-room backend does not expose a separate shuffle step yet",
+      );
+    case "deal_next_round":
+      return { type: "next_round" };
     case "play": {
       const cardIds = message.card_indexes.map((index) => {
         const cardId = state.privateCardIds[index];
@@ -165,6 +185,9 @@ export const toCleanroomCommand = (
       });
       return { type: "play_cards", cardIds };
     }
+    case "tribute_card":
+    case "return_tribute":
+      throw new Error("clean-room backend does not support tribute exchange yet");
     case "pass":
       return { type: "pass_turn" };
     case "end_round":
