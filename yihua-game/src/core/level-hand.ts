@@ -134,7 +134,6 @@ export const classifyHandWithLevel = (
   levelRank: Rank,
 ): ClassifiedHand => {
   const natural = classifyHand(cards);
-  if (natural.kind !== "invalid") return natural;
   if (cards.some((card) => card.kind === "joker")) return natural;
 
   const wildcardCount = cards.filter((card) =>
@@ -146,12 +145,17 @@ export const classifyHandWithLevel = (
       suited(card) && !isLevelWildcard(card, levelRank),
   );
 
+  if (cards.length === 5) {
+    const straightFlush = classifySequence(fixed, wildcardCount, true);
+    if (straightFlush !== null) return straightFlush;
+  }
+
+  if (natural.kind !== "invalid") return natural;
+
   const sameRank = classifySameRank(fixed, wildcardCount, cards.length);
   if (sameRank !== null) return sameRank;
 
   if (cards.length === 5) {
-    const straightFlush = classifySequence(fixed, wildcardCount, true);
-    if (straightFlush !== null) return straightFlush;
     const fullHouse = classifyFullHouse(fixed, wildcardCount);
     if (fullHouse !== null) return fullHouse;
     const straight = classifySequence(fixed, wildcardCount, false);
