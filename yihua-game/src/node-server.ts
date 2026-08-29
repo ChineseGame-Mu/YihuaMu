@@ -135,7 +135,8 @@ export const createNodeHttpServer = (
         const joinPage = url.pathname.match(/^\/room\/([^/]+)$/);
         if (joinPage) {
           const roomId = decodeURIComponent(joinPage[1]!);
-          if (roomId.trim().length === 0) throw new Error("room id is required");
+          if (roomId.trim().length === 0)
+            throw new Error("room id is required");
           writeResponse(
             response,
             200,
@@ -170,7 +171,9 @@ export const createNodeHttpServer = (
     void (async () => {
       try {
         const upgrade = headerValue(request.headers.upgrade)?.toLowerCase();
-        const connection = headerValue(request.headers.connection)?.toLowerCase();
+        const connection = headerValue(
+          request.headers.connection,
+        )?.toLowerCase();
         const version = headerValue(request.headers["sec-websocket-version"]);
         const clientKey = headerValue(request.headers["sec-websocket-key"]);
 
@@ -201,7 +204,8 @@ export const createNodeHttpServer = (
         );
 
         const upgraded = new NodeWebSocketConnection(socket, context);
-        if (isLegacyGuandan) await attachLegacyGuandanConnection(runtime, upgraded);
+        if (isLegacyGuandan)
+          await attachLegacyGuandanConnection(runtime, upgraded);
         else await attachUpgradedConnection(runtime, upgraded);
         socket.on("data", (chunk: Buffer) => upgraded.feed(chunk));
         if (head.length > 0) upgraded.feed(head);
