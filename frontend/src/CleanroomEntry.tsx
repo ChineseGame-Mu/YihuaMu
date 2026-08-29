@@ -10,6 +10,7 @@ import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import ExitGameButton from "./ExitGameButton";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
+const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
 
 const roomFromLocation = (): string => {
   const query = new URLSearchParams(window.location.search);
@@ -25,6 +26,8 @@ const CleanroomTable = (): JSX.Element => {
     url.searchParams.delete("game");
     url.searchParams.delete("name");
     url.searchParams.delete("players");
+    url.searchParams.delete("test");
+    url.searchParams.delete("ws");
     window.location.href = url.toString();
   };
 
@@ -48,7 +51,9 @@ const CleanroomEntry = (): JSX.Element => {
     [],
   );
   const roomId = React.useMemo(roomFromLocation, []);
-  const requested = Number(initial.get("playerCount") ?? initial.get("players") ?? "4");
+  const requested = Number(
+    initial.get("playerCount") ?? initial.get("players") ?? "4",
+  );
   const initialCount = supportedCounts.includes(
     requested as (typeof supportedCounts)[number],
   )
@@ -59,7 +64,8 @@ const CleanroomEntry = (): JSX.Element => {
     initial.get("playerName") ?? initial.get("name") ?? "",
   );
   const [joined, setJoined] = React.useState(
-    initial.get("game") === "guandan" && (initial.get("name") ?? "").trim() !== "",
+    initial.get("game") === "guandan" &&
+      (initial.get("name") ?? "").trim() !== "",
   );
 
   if (joined) return <CleanroomTable />;
@@ -75,6 +81,8 @@ const CleanroomEntry = (): JSX.Element => {
     url.searchParams.set("room", roomId);
     url.searchParams.set("name", cleanName);
     url.searchParams.set("players", String(playerCount));
+    url.searchParams.set("test", "1");
+    url.searchParams.set("ws", cleanroomWebsocket);
     url.searchParams.delete("playerName");
     url.searchParams.delete("playerCount");
     window.history.replaceState({}, "", url.toString());
