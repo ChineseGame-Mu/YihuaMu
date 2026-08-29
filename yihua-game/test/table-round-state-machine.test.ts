@@ -89,7 +89,7 @@ describe("complete Guandan hand classification coverage", () => {
 });
 
 describe("clean-room table round state machine", () => {
-  it("runs opening draw through play, pass, finish, and round completion", () => {
+  it("runs opening draw through play, pass, catch lead, finish, and round completion", () => {
     const deck: DeckCard[] = [
       deckCard("a", "hearts", "A"),
       deckCard("8", "clubs", "8"),
@@ -118,20 +118,20 @@ describe("clean-room table round state machine", () => {
     });
     expect(state.finishingOrder).toEqual([0, 1]);
     expect(state.activeSeats).toEqual([2, 3]);
+    expect(state.trick?.currentTurn).toBe(2);
 
     state = passTableTurn(state, 2);
-    state = passTableTurn(state, 3);
     expect(state.trick?.leadingPlay).toBeNull();
-    expect(state.trick?.currentTurn).toBe(2);
+    expect(state.trick?.currentTurn).toBe(3);
     expect(state.trick?.completedTricks).toBe(1);
 
-    state = playTableCards(state, 2, ranks(["9"]), {
+    state = playTableCards(state, 3, ranks(["9"]), {
       finishesHand: true,
     });
     expect(state.phase).toBe("round-complete");
-    expect(state.finishingOrder).toEqual([0, 1, 2, 3]);
-    expect(state.activeSeats).toEqual([3]);
-    expect(() => passTableTurn(state, 3)).toThrow(
+    expect(state.finishingOrder).toEqual([0, 1, 3, 2]);
+    expect(state.activeSeats).toEqual([2]);
+    expect(() => passTableTurn(state, 2)).toThrow(
       "table is not in the playing phase",
     );
 
