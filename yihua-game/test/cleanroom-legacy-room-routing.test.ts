@@ -14,7 +14,9 @@ describe("clean-room legacy frontend room routing", () => {
     expect(server).toContain(
       'target.searchParams.set("ws", cleanroomGuandanWebsocket(roomId))',
     );
-    expect(server).toContain("const cleanroomRoom = query.cleanroomRoom?.trim()");
+    expect(server).toContain(
+      "const cleanroomRoom = query.cleanroomRoom?.trim()",
+    );
   });
 
   it("pins legacy join messages to the websocket clean-room context when present", () => {
