@@ -44,6 +44,26 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
   });
 
+  it("preserves an arbitrary clean-room room id behind the approved UI room alias", () => {
+    const entry = readFileSync(
+      new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
+      "utf8",
+    );
+    const transport = readFileSync(
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
+    expect(entry).toContain('const legacyUiRoom = "0001"');
+    expect(entry).toContain('url.searchParams.set("room", legacyUiRoom)');
+    expect(transport).toContain('query.get("cleanroomRoom")?.trim()');
+    expect(transport).toContain("room: cleanroomRoom || message.room");
+  });
+
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
     const index = readFileSync(
       new URL("../../frontend/src/index.tsx", import.meta.url),
