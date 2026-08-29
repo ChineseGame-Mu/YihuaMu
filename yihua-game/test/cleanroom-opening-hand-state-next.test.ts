@@ -16,11 +16,11 @@ const suited = (
   rank: "7" | "8" | "9" | "A",
 ): DeckCard => ({ id, copy, card: { kind: "suited", suit, rank } });
 
-const joker = (
-  id: string,
-  copy: number,
-  size: "small" | "big",
-): DeckCard => ({ id, copy, card: { kind: "joker", size } });
+const joker = (id: string, copy: number, size: "small" | "big"): DeckCard => ({
+  id,
+  copy,
+  card: { kind: "joker", size },
+});
 
 const single = (rank: "7" | "8" | "9"): Card => ({
   kind: "suited",
