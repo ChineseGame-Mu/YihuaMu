@@ -76,7 +76,7 @@ jobs:
             echo
             echo "- Base: $preview_url"
             echo "- Join: $preview_url/room/manual-test"
-            echo "- Refreshed after repairing the join-page browser script."
+            echo "- Refreshed from the CI #497 green baseline."
             echo "- This temporary preview stays alive while this job is running."
           } >> "$GITHUB_STEP_SUMMARY"
 
