@@ -11,23 +11,32 @@ import ExitGameButton from "./ExitGameButton";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
+const legacyUiRoom = "0001";
 
 const roomFromLocation = (): string => {
   const query = new URLSearchParams(window.location.search);
+  const cleanroomRoom = query.get("cleanroomRoom");
+  if (cleanroomRoom !== null && cleanroomRoom.trim() !== "") {
+    return cleanroomRoom.trim();
+  }
+  const pathMatch = window.location.pathname.match(/^\/room\/([^/]+)/);
+  if (pathMatch !== null) return decodeURIComponent(pathMatch[1]!);
   const fromQuery = query.get("room");
   if (fromQuery !== null && fromQuery.trim() !== "") return fromQuery.trim();
-  const match = window.location.pathname.match(/^\/room\/([^/]+)/);
-  return match === null ? "manual-test" : decodeURIComponent(match[1]!);
+  return "manual-test";
 };
 
 const CleanroomTable = (): JSX.Element => {
   const exit = (): void => {
     const url = new URL(window.location.href);
+    const actualRoom = url.searchParams.get("cleanroomRoom");
     url.searchParams.delete("game");
     url.searchParams.delete("name");
     url.searchParams.delete("players");
     url.searchParams.delete("test");
     url.searchParams.delete("ws");
+    url.searchParams.delete("room");
+    if (actualRoom !== null) url.searchParams.set("cleanroomRoom", actualRoom);
     window.location.href = url.toString();
   };
 
@@ -78,7 +87,10 @@ const CleanroomEntry = (): JSX.Element => {
     const url = new URL(window.location.href);
     url.searchParams.set("cleanroom", "1");
     url.searchParams.set("game", "guandan");
-    url.searchParams.set("room", roomId);
+    url.searchParams.set("cleanroomRoom", roomId);
+    // Keep the accepted GuandanTable's historic four-digit room validator intact.
+    // The transport adapter replaces this UI-only alias with cleanroomRoom.
+    url.searchParams.set("room", legacyUiRoom);
     url.searchParams.set("name", cleanName);
     url.searchParams.set("players", String(playerCount));
     url.searchParams.set("test", "1");
