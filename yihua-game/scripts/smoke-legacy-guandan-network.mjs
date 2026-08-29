@@ -107,6 +107,8 @@ try {
 
   players[0].socket.send(JSON.stringify({ type: "start", player_count: 4 }));
 
+  const openingStates = [];
+  const openingHands = [];
   for (const player of players) {
     const started = await player.waitFor(
       ({ type }) => type === "started",
@@ -123,6 +125,7 @@ try {
     if (!Array.isArray(hand.cards) || hand.cards.length !== 27) {
       throw new Error(`invalid hand for ${player.name}`);
     }
+    openingHands[player.seat] = hand;
 
     const state = await player.waitFor(
       ({ type }) => type === "state",
@@ -131,6 +134,58 @@ try {
     if (!Array.isArray(state.players) || state.players.length !== 4) {
       throw new Error(`invalid four-player state for ${player.name}`);
     }
+    openingStates[player.seat] = state;
+  }
+
+  const leaderSeat = openingStates[0].turn;
+  const leader = players[leaderSeat];
+  if (!leader || openingHands[leaderSeat]?.cards.length !== 27) {
+    throw new Error(`invalid opening leader seat: ${leaderSeat}`);
+  }
+
+  leader.socket.send(JSON.stringify({ type: "play", card_indexes: [0] }));
+
+  const afterPlayStates = await Promise.all(
+    players.map((player) =>
+      player.waitFor(
+        ({ type, hand_counts: handCounts, last_player: lastPlayer }) =>
+          type === "state" &&
+          Array.isArray(handCounts) &&
+          handCounts[leaderSeat] === 26 &&
+          lastPlayer === leaderSeat,
+        `${player.name} synchronized play state`,
+      ),
+    ),
+  );
+  const afterPlay = afterPlayStates[0];
+  if (afterPlayStates.some((state) => state.turn !== afterPlay.turn)) {
+    throw new Error("legacy play turn diverged across clients");
+  }
+
+  const leaderHandAfterPlay = await leader.waitFor(
+    ({ type, cards }) => type === "hand" && Array.isArray(cards) && cards.length === 26,
+    `${leader.name} hand after play`,
+  );
+  if (leaderHandAfterPlay.cards.length !== 26) {
+    throw new Error("legacy play did not remove one card from leader hand");
+  }
+
+  const responderSeat = afterPlay.turn;
+  const responder = players[responderSeat];
+  if (!responder) throw new Error(`invalid responder seat: ${responderSeat}`);
+  responder.socket.send(JSON.stringify({ type: "pass" }));
+
+  const afterPassStates = await Promise.all(
+    players.map((player) =>
+      player.waitFor(
+        ({ type, passes }) => type === "state" && passes === 1,
+        `${player.name} synchronized pass state`,
+      ),
+    ),
+  );
+  const afterPass = afterPassStates[0];
+  if (afterPassStates.some((state) => state.turn !== afterPass.turn)) {
+    throw new Error("legacy pass turn diverged across clients");
   }
 
   players[0].socket.close();
@@ -147,9 +202,11 @@ try {
   );
   if (
     !Array.isArray(reconnectState.players) ||
-    reconnectState.players.length !== 4
+    reconnectState.players.length !== 4 ||
+    reconnectState.hand_counts[leaderSeat] !== 26 ||
+    reconnectState.turn !== afterPass.turn
   ) {
-    throw new Error("reconnect created a duplicate participant");
+    throw new Error("reconnect lost live game state or created a duplicate participant");
   }
 
   for (const player of players.slice(1)) player.socket.close();
