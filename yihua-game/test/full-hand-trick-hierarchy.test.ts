@@ -11,11 +11,17 @@ const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
 
 const repeated = (rank: Rank, count: number): Card[] =>
   Array.from({ length: count }, (_, index) =>
-    suited(rank, (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!),
+    suited(
+      rank,
+      (["clubs", "diamonds", "spades", "hearts"] as const)[index % 4]!,
+    ),
   );
 
 const straightFlush = (high: "6" | "7"): Card[] => {
-  const ranks = high === "6" ? (["2", "3", "4", "5", "6"] as const) : (["3", "4", "5", "6", "7"] as const);
+  const ranks =
+    high === "6"
+      ? (["2", "3", "4", "5", "6"] as const)
+      : (["3", "4", "5", "6", "7"] as const);
   return ranks.map((rank) => suited(rank, "hearts"));
 };
 
@@ -24,11 +30,29 @@ describe("full hand hierarchy through the table trick state", () => {
     expect(classifyHand([suited("7")]).kind).toBe("single");
     expect(classifyHand(repeated("7", 2)).kind).toBe("pair");
     expect(classifyHand(repeated("7", 3)).kind).toBe("triple");
-    expect(classifyHand([...repeated("7", 3), ...repeated("8", 2)]).kind).toBe("full-house");
-    expect(classifyHand([suited("3"), suited("4", "diamonds"), suited("5", "spades"), suited("6", "hearts"), suited("7")]).kind).toBe("straight");
+    expect(classifyHand([...repeated("7", 3), ...repeated("8", 2)]).kind).toBe(
+      "full-house",
+    );
+    expect(
+      classifyHand([
+        suited("3"),
+        suited("4", "diamonds"),
+        suited("5", "spades"),
+        suited("6", "hearts"),
+        suited("7"),
+      ]).kind,
+    ).toBe("straight");
     expect(classifyHand(straightFlush("7")).kind).toBe("straight-flush");
-    expect(classifyHand([...repeated("3", 2), ...repeated("4", 2), ...repeated("5", 2)]).kind).toBe("consecutive-pairs");
-    expect(classifyHand([...repeated("3", 3), ...repeated("4", 3)]).kind).toBe("consecutive-triples");
+    expect(
+      classifyHand([
+        ...repeated("3", 2),
+        ...repeated("4", 2),
+        ...repeated("5", 2),
+      ]).kind,
+    ).toBe("consecutive-pairs");
+    expect(classifyHand([...repeated("3", 3), ...repeated("4", 3)]).kind).toBe(
+      "consecutive-triples",
+    );
     expect(classifyHand(repeated("9", 4)).kind).toBe("bomb");
   });
 
@@ -40,7 +64,11 @@ describe("full hand hierarchy through the table trick state", () => {
     state = playCards(state, 3, repeated("3", 6));
 
     expect(state.leadingPlay?.seat).toBe(3);
-    expect(state.leadingPlay?.hand).toMatchObject({ kind: "bomb", size: 6, rank: "3" });
+    expect(state.leadingPlay?.hand).toMatchObject({
+      kind: "bomb",
+      size: 6,
+      rank: "3",
+    });
     expect(() => playCards(state, 0, straightFlush("7"))).toThrow(
       "played hand does not beat the current hand",
     );
