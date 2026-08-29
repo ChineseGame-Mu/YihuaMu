@@ -21,12 +21,15 @@ export interface ClassifiedHand {
   readonly jokerSize?: "small" | "big";
 }
 
-const suitedCards = (cards: readonly Card[]) => cards.filter((card) => card.kind === "suited");
+const suitedCards = (cards: readonly Card[]) =>
+  cards.filter((card) => card.kind === "suited");
 
 const sameSuitedRank = (cards: readonly Card[]): Rank | null => {
   if (cards.length === 0 || cards[0]!.kind !== "suited") return null;
   const rank = cards[0]!.rank;
-  return cards.every((card) => card.kind === "suited" && card.rank === rank) ? rank : null;
+  return cards.every((card) => card.kind === "suited" && card.rank === rank)
+    ? rank
+    : null;
 };
 
 const rankCounts = (cards: readonly Card[]): Map<Rank, number> => {
@@ -41,16 +44,32 @@ const rankCounts = (cards: readonly Card[]): Map<Rank, number> => {
 const rankIndex = (rank: Rank): number => RANKS.indexOf(rank);
 
 const consecutiveHighRank = (ranks: readonly Rank[]): Rank | null => {
-  const unique = [...new Set(ranks)].sort((a, b) => rankIndex(a) - rankIndex(b));
+  const unique = [...new Set(ranks)].sort(
+    (a, b) => rankIndex(a) - rankIndex(b),
+  );
   if (unique.length !== ranks.length) return null;
-  if (unique.length === 5 && unique.includes("A") && unique.includes("2") && unique.includes("3") && unique.includes("4") && unique.includes("5")) return "5";
+  if (
+    unique.length === 5 &&
+    unique.includes("A") &&
+    unique.includes("2") &&
+    unique.includes("3") &&
+    unique.includes("4") &&
+    unique.includes("5")
+  )
+    return "5";
   if (unique.includes("2")) return null;
   const indexes = unique.map(rankIndex);
-  const consecutive = indexes.every((value, index) => index === 0 || value === indexes[index - 1]! + 1);
+  const consecutive = indexes.every(
+    (value, index) => index === 0 || value === indexes[index - 1]! + 1,
+  );
   return consecutive ? unique.at(-1)! : null;
 };
 
-const repeatedSequenceHighRank = (counts: ReadonlyMap<Rank, number>, repeat: number, groups: number): Rank | null => {
+const repeatedSequenceHighRank = (
+  counts: ReadonlyMap<Rank, number>,
+  repeat: number,
+  groups: number,
+): Rank | null => {
   if (counts.size !== groups) return null;
   const ranks = [...counts.keys()];
   if (ranks.some((rank) => counts.get(rank) !== repeat)) return null;
@@ -58,9 +77,14 @@ const repeatedSequenceHighRank = (counts: ReadonlyMap<Rank, number>, repeat: num
 };
 
 const isCompleteJokerBomb = (cards: readonly Card[]): boolean => {
-  if (cards.length !== 4 || !cards.every((card) => card.kind === "joker")) return false;
-  const small = cards.filter((card) => card.kind === "joker" && card.size === "small").length;
-  const big = cards.filter((card) => card.kind === "joker" && card.size === "big").length;
+  if (cards.length !== 4 || !cards.every((card) => card.kind === "joker"))
+    return false;
+  const small = cards.filter(
+    (card) => card.kind === "joker" && card.size === "small",
+  ).length;
+  const big = cards.filter(
+    (card) => card.kind === "joker" && card.size === "big",
+  ).length;
   return small === 2 && big === 2;
 };
 
@@ -68,12 +92,20 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   if (cards.length === 0) return { kind: "invalid", size: 0 };
   if (cards.length === 1) {
     const card = cards[0]!;
-    return card.kind === "suited" ? { kind: "single", size: 1, rank: card.rank } : { kind: "single", size: 1, jokerSize: card.size };
+    return card.kind === "suited"
+      ? { kind: "single", size: 1, rank: card.rank }
+      : { kind: "single", size: 1, jokerSize: card.size };
   }
   const firstCard = cards[0]!;
-  if (cards.length === 2 && firstCard.kind === "joker" && cards.every((card) => card.kind === "joker" && card.size === firstCard.size)) return { kind: "pair", size: 2, jokerSize: firstCard.size };
+  if (
+    cards.length === 2 &&
+    firstCard.kind === "joker" &&
+    cards.every((card) => card.kind === "joker" && card.size === firstCard.size)
+  )
+    return { kind: "pair", size: 2, jokerSize: firstCard.size };
   if (isCompleteJokerBomb(cards)) return { kind: "joker-bomb", size: 4 };
-  if (suitedCards(cards).length !== cards.length) return { kind: "invalid", size: cards.length };
+  if (suitedCards(cards).length !== cards.length)
+    return { kind: "invalid", size: cards.length };
   const rank = sameSuitedRank(cards);
   if (rank !== null) {
     if (cards.length === 2) return { kind: "pair", size: 2, rank };
@@ -84,34 +116,58 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
   if (cards.length === 5) {
     const groups = [...counts.entries()].map(([, count]) => count).sort();
     if (groups.length === 2 && groups[0] === 2 && groups[1] === 3) {
-      const tripleRank = [...counts.entries()].find(([, count]) => count === 3)![0];
+      const tripleRank = [...counts.entries()].find(
+        ([, count]) => count === 3,
+      )![0];
       return { kind: "full-house", size: 5, rank: tripleRank };
     }
-    const ranks = cards.map((card) => (card as Extract<Card, { kind: "suited" }>).rank);
+    const ranks = cards.map(
+      (card) => (card as Extract<Card, { kind: "suited" }>).rank,
+    );
     const highRank = consecutiveHighRank(ranks);
     if (highRank !== null) {
-      const suits = new Set(cards.map((card) => (card as Extract<Card, { kind: "suited" }>).suit));
-      return { kind: suits.size === 1 ? "straight-flush" : "straight", size: 5, highRank };
+      const suits = new Set(
+        cards.map((card) => (card as Extract<Card, { kind: "suited" }>).suit),
+      );
+      return {
+        kind: suits.size === 1 ? "straight-flush" : "straight",
+        size: 5,
+        highRank,
+      };
     }
   }
   if (cards.length === 6) {
     const pairHigh = repeatedSequenceHighRank(counts, 2, 3);
-    if (pairHigh !== null) return { kind: "consecutive-pairs", size: 6, highRank: pairHigh };
+    if (pairHigh !== null)
+      return { kind: "consecutive-pairs", size: 6, highRank: pairHigh };
     const tripleHigh = repeatedSequenceHighRank(counts, 3, 2);
-    if (tripleHigh !== null) return { kind: "consecutive-triples", size: 6, highRank: tripleHigh };
+    if (tripleHigh !== null)
+      return { kind: "consecutive-triples", size: 6, highRank: tripleHigh };
   }
   return { kind: "invalid", size: cards.length };
 };
 
-const normalStrength = (hand: ClassifiedHand, levelRank?: Rank): number | null => {
-  if (hand.jokerSize !== undefined) return RANKS.length + 2 + (hand.jokerSize === "big" ? 1 : 0);
+const normalStrength = (
+  hand: ClassifiedHand,
+  levelRank?: Rank,
+): number | null => {
+  if (hand.jokerSize !== undefined)
+    return RANKS.length + 2 + (hand.jokerSize === "big" ? 1 : 0);
   const rank = hand.rank ?? hand.highRank;
   if (rank === undefined) return null;
-  if (levelRank !== undefined && rank === levelRank && hand.highRank === undefined) return RANKS.length + 1;
+  if (
+    levelRank !== undefined &&
+    rank === levelRank &&
+    hand.highRank === undefined
+  )
+    return RANKS.length + 1;
   return rankIndex(rank);
 };
 
-const bombStrength = (hand: ClassifiedHand, levelRank?: Rank): number | null => {
+const bombStrength = (
+  hand: ClassifiedHand,
+  levelRank?: Rank,
+): number | null => {
   if (hand.kind === "joker-bomb") return 10000;
   if (hand.kind === "straight-flush") return 7000 + (normalStrength(hand) ?? 0);
   if (hand.kind !== "bomb") return null;
@@ -121,7 +177,11 @@ const bombStrength = (hand: ClassifiedHand, levelRank?: Rank): number | null => 
   return 5000 + rank;
 };
 
-const canHandBeatUsingLevel = (candidate: ClassifiedHand, current: ClassifiedHand, levelRank?: Rank): boolean => {
+const canHandBeatUsingLevel = (
+  candidate: ClassifiedHand,
+  current: ClassifiedHand,
+  levelRank?: Rank,
+): boolean => {
   if (candidate.kind === "invalid" || current.kind === "invalid") return false;
   const candidateBomb = bombStrength(candidate, levelRank);
   const currentBomb = bombStrength(current, levelRank);
@@ -130,12 +190,24 @@ const canHandBeatUsingLevel = (candidate: ClassifiedHand, current: ClassifiedHan
     if (currentBomb === null) return true;
     return candidateBomb > currentBomb;
   }
-  if (candidate.kind !== current.kind || candidate.size !== current.size) return false;
+  if (candidate.kind !== current.kind || candidate.size !== current.size)
+    return false;
   const candidateStrength = normalStrength(candidate, levelRank);
   const currentStrength = normalStrength(current, levelRank);
-  return candidateStrength !== null && currentStrength !== null && candidateStrength > currentStrength;
+  return (
+    candidateStrength !== null &&
+    currentStrength !== null &&
+    candidateStrength > currentStrength
+  );
 };
 
-export const canHandBeat = (candidate: ClassifiedHand, current: ClassifiedHand): boolean => canHandBeatUsingLevel(candidate, current);
+export const canHandBeat = (
+  candidate: ClassifiedHand,
+  current: ClassifiedHand,
+): boolean => canHandBeatUsingLevel(candidate, current);
 
-export const canHandBeatWithLevel = (candidate: ClassifiedHand, current: ClassifiedHand, levelRank: Rank): boolean => canHandBeatUsingLevel(candidate, current, levelRank);
+export const canHandBeatWithLevel = (
+  candidate: ClassifiedHand,
+  current: ClassifiedHand,
+  levelRank: Rank,
+): boolean => canHandBeatUsingLevel(candidate, current, levelRank);
