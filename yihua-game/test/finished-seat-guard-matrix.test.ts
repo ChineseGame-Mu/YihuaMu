@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createDeck, dealHands } from "../src/core/deck.js";
 import { playGameCards, type PlayingState } from "../src/core/game-state.js";
+import { createTableConfig, type SupportedPlayerCount } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
-import type { SupportedPlayerCount } from "../src/core/table.js";
 
 const PLAYER_COUNTS = [4, 6, 8, 10, 12, 14] as const;
 
@@ -14,7 +14,7 @@ describe("finished seat guards", () => {
       const trick = createTrickState(playerCount, 0);
       const state: PlayingState = {
         phase: "playing",
-        config: { playerCount, botCount: 0 },
+        config: createTableConfig(playerCount, 0),
         openingDraw: { attempts: [], winnerSeat: 0 },
         hands,
         currentTurn: 0,
