@@ -37,24 +37,24 @@ const completeHands: readonly [HandKind, readonly Card[]][] = [
     "consecutive-pairs",
     [...repeated("3", 2), ...repeated("4", 2), ...repeated("5", 2)],
   ],
-  [
-    "consecutive-triples",
-    [...repeated("3", 3), ...repeated("4", 3)],
-  ],
+  ["consecutive-triples", [...repeated("3", 3), ...repeated("4", 3)]],
   ["bomb", repeated("7", 4)],
   ["joker-bomb", [joker("small"), joker("small"), joker("big"), joker("big")]],
 ];
 
 describe("complete hand judgment integrated with table state", () => {
-  it.each(completeHands)("accepts %s as a legal opening table play", (kind, cards) => {
-    const classified = classifyHand(cards);
-    expect(classified.kind).toBe(kind);
+  it.each(completeHands)(
+    "accepts %s as a legal opening table play",
+    (kind, cards) => {
+      const classified = classifyHand(cards);
+      expect(classified.kind).toBe(kind);
 
-    const state = playCards(createTrickState(4, 0), 0, cards);
-    expect(state.leadingPlay?.hand.kind).toBe(kind);
-    expect(state.leadingPlay?.seat).toBe(0);
-    expect(state.currentTurn).toBe(1);
-  });
+      const state = playCards(createTrickState(4, 0), 0, cards);
+      expect(state.leadingPlay?.hand.kind).toBe(kind);
+      expect(state.leadingPlay?.seat).toBe(0);
+      expect(state.currentTurn).toBe(1);
+    },
+  );
 
   it("enforces the Guandan bomb hierarchy through consecutive table turns", () => {
     let state = createTrickState(4, 0);
