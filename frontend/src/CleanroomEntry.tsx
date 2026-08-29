@@ -28,6 +28,24 @@ const roomFromLocation = (): string => {
   return "manual-test";
 };
 
+const GuandanJoinBrand = (): JSX.Element => (
+  <header className="cleanroom-brand" aria-label="掼蛋游戏 Guandan Game">
+    <div className="cleanroom-emblem" aria-hidden="true">
+      <div className="cleanroom-card-fan">
+        <span className="cleanroom-fan-card cleanroom-fan-card-10">10♦</span>
+        <span className="cleanroom-fan-card cleanroom-fan-card-j">J♣</span>
+        <span className="cleanroom-fan-card cleanroom-fan-card-q">Q♥</span>
+        <span className="cleanroom-fan-card cleanroom-fan-card-k">K♠</span>
+      </div>
+      <div className="cleanroom-emblem-title">掼蛋</div>
+      <div className="cleanroom-emblem-seal">囍</div>
+    </div>
+    <h1 className="cleanroom-game-title">掼蛋游戏</h1>
+    <div className="cleanroom-game-title-en">GUANDAN GAME</div>
+    <p className="cleanroom-game-tagline">经典掼蛋 · 智慧对决 · 乐在其中</p>
+  </header>
+);
+
 const CleanroomTable = (): JSX.Element => {
   const exit = (): void => {
     const url = new URL(window.location.href);
@@ -105,45 +123,60 @@ const CleanroomEntry = (): JSX.Element => {
 
   return (
     <main className="cleanroom-join-shell">
-      <section className="cleanroom-join-card">
-        <h1>加入牌室</h1>
-        <p className="cleanroom-room-label">
-          房间： <strong>{roomId}</strong>
-        </p>
-        <form onSubmit={submit}>
-          <label htmlFor="cleanroom-player-count">开始人数：4–14 人</label>
-          <select
-            id="cleanroom-player-count"
-            value={playerCount}
-            onChange={(event) => setPlayerCount(Number(event.target.value))}
-          >
-            {supportedCounts.map((count) => (
-              <option key={count} value={count}>
-                {count} 人
-              </option>
-            ))}
-          </select>
-          <p className="cleanroom-note">
-            第一位进入的玩家确定开始人数；之后可继续增加到 14 人。
+      <div className="cleanroom-bamboo" aria-hidden="true" />
+      <div className="cleanroom-plum" aria-hidden="true" />
+      <div className="cleanroom-lantern" aria-hidden="true" />
+      <div className="cleanroom-mountains cleanroom-mountains-left" aria-hidden="true" />
+      <div className="cleanroom-mountains cleanroom-mountains-right" aria-hidden="true" />
+      <div className="cleanroom-waves" aria-hidden="true" />
+
+      <div className="cleanroom-join-content">
+        <GuandanJoinBrand />
+        <section className="cleanroom-join-card">
+          <div className="cleanroom-card-corner cleanroom-card-corner-tl" />
+          <div className="cleanroom-card-corner cleanroom-card-corner-tr" />
+          <div className="cleanroom-card-corner cleanroom-card-corner-bl" />
+          <div className="cleanroom-card-corner cleanroom-card-corner-br" />
+          <h2>加入牌室</h2>
+          <p className="cleanroom-room-label">
+            房间： <strong>{roomId}</strong>
           </p>
-          <label htmlFor="cleanroom-player-name">您的姓名</label>
-          <input
-            id="cleanroom-player-name"
-            value={name}
-            maxLength={16}
-            placeholder="请输入姓名"
-            autoFocus
-            onChange={(event) => setName(event.target.value)}
-          />
-          <button type="submit" disabled={name.trim() === ""}>
-            进入牌室
-          </button>
-        </form>
-        <p className="cleanroom-hint">
-          全部使用真人。游戏开始后 3 小时内可继续加入；人数按
-          6→8→10→12→14 逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
-        </p>
-      </section>
+          <form onSubmit={submit}>
+            <label htmlFor="cleanroom-player-count">开始人数：4–14 人</label>
+            <select
+              id="cleanroom-player-count"
+              value={playerCount}
+              onChange={(event) => setPlayerCount(Number(event.target.value))}
+            >
+              {supportedCounts.map((count) => (
+                <option key={count} value={count}>
+                  {count} 人
+                </option>
+              ))}
+            </select>
+            <p className="cleanroom-note">
+              第一位进入的玩家确定开始人数；之后可继续增加到 14 人。
+            </p>
+            <label htmlFor="cleanroom-player-name">您的姓名</label>
+            <input
+              id="cleanroom-player-name"
+              value={name}
+              maxLength={16}
+              placeholder="请输入姓名"
+              autoFocus
+              onChange={(event) => setName(event.target.value)}
+            />
+            <button type="submit" disabled={name.trim() === ""}>
+              <span>进入牌室</span>
+              <small>ENTER ROOM</small>
+            </button>
+          </form>
+          <p className="cleanroom-hint">
+            全部使用真人。游戏开始后 3 小时内可继续加入；人数按
+            6→8→10→12→14 逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
+          </p>
+        </section>
+      </div>
     </main>
   );
 };
