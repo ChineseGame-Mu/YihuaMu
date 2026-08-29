@@ -4,9 +4,17 @@ import { transitionGame } from "../src/core/game-machine.js";
 import { createLobbyState } from "../src/core/game-state.js";
 import { canHandBeat, classifyHand } from "../src/core/hand.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
-import { createTrickState, passTurn, playCards } from "../src/core/trick-state.js";
+import {
+  createTrickState,
+  passTurn,
+  playCards,
+} from "../src/core/trick-state.js";
 
-const suited = (suit: Suit, rank: Rank): Card => ({ kind: "suited", suit, rank });
+const suited = (suit: Suit, rank: Rank): Card => ({
+  kind: "suited",
+  suit,
+  rank,
+});
 const deterministicRandom = (): number => 0;
 
 describe("first-round clean-room core invariants", () => {
@@ -20,7 +28,8 @@ describe("first-round clean-room core invariants", () => {
       );
 
       expect(opening.phase).toBe("opening-draw");
-      if (opening.phase !== "opening-draw") throw new Error("expected opening draw");
+      if (opening.phase !== "opening-draw")
+        throw new Error("expected opening draw");
       expect(opening.openingDraw.attempts.length).toBeGreaterThan(0);
       expect(
         opening.openingDraw.attempts.every((attempt) =>
@@ -34,7 +43,8 @@ describe("first-round clean-room core invariants", () => {
         deterministicRandom,
       );
       expect(playing.phase).toBe("playing");
-      if (playing.phase !== "playing") throw new Error("expected playing state");
+      if (playing.phase !== "playing")
+        throw new Error("expected playing state");
       expect(playing.hands).toHaveLength(playerCount);
       expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
       expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
@@ -87,7 +97,10 @@ describe("first-round clean-room core invariants", () => {
 
   for (const playerCount of SUPPORTED_PLAYER_COUNTS) {
     it(`returns a completed trick to the surviving rotation when the leader has finished at ${playerCount} seats`, () => {
-      const activeSeats = Array.from({ length: playerCount - 1 }, (_, index) => index + 1);
+      const activeSeats = Array.from(
+        { length: playerCount - 1 },
+        (_, index) => index + 1,
+      );
       let state = createTrickState(playerCount, 0);
       state = playCards(state, 0, [suited("clubs", "7")], [0, ...activeSeats]);
 
