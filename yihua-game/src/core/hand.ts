@@ -90,14 +90,16 @@ export const classifyHand = (cards: readonly Card[]): ClassifiedHand => {
       : { kind: "single", size: 1, jokerSize: card.size };
   }
 
+  const firstCard = cards[0]!;
   if (
     cards.length === 2 &&
-    cards.every((card) => card.kind === "joker" && card.size === cards[0]!.size)
+    firstCard.kind === "joker" &&
+    cards.every((card) => card.kind === "joker" && card.size === firstCard.size)
   ) {
     return {
       kind: "pair",
       size: 2,
-      jokerSize: (cards[0] as Extract<Card, { kind: "joker" }>).size,
+      jokerSize: firstCard.size,
     };
   }
 
