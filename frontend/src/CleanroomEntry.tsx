@@ -9,6 +9,7 @@ import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import ExitGameButton from "./ExitGameButton";
 import "./cleanroom-hand-stack-fix.css";
+import "./cleanroom-initial-draw-position.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
