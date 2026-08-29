@@ -13,10 +13,7 @@ const wild = (levelRank: Rank): Card => suited(levelRank, "hearts");
 describe("level wildcard hand classification", () => {
   it("keeps a naturally valid hand unchanged", () => {
     expect(
-      classifyHandWithLevel(
-        [suited("6", "hearts"), suited("6", "clubs")],
-        "6",
-      ),
+      classifyHandWithLevel([suited("6", "hearts"), suited("6", "clubs")], "6"),
     ).toEqual({ kind: "pair", size: 2, rank: "6" });
   });
 
@@ -27,11 +24,19 @@ describe("level wildcard hand classification", () => {
       rank: "9",
     });
     expect(
-      classifyHandWithLevel([suited("9"), suited("9", "spades"), wild("6")], "6"),
+      classifyHandWithLevel(
+        [suited("9"), suited("9", "spades"), wild("6")],
+        "6",
+      ),
     ).toEqual({ kind: "triple", size: 3, rank: "9" });
     expect(
       classifyHandWithLevel(
-        [suited("9"), suited("9", "spades"), suited("9", "diamonds"), wild("6")],
+        [
+          suited("9"),
+          suited("9", "spades"),
+          suited("9", "diamonds"),
+          wild("6"),
+        ],
         "6",
       ),
     ).toEqual({ kind: "bomb", size: 4, rank: "9" });
@@ -40,7 +45,13 @@ describe("level wildcard hand classification", () => {
   it("completes full house while preserving the triple rank", () => {
     expect(
       classifyHandWithLevel(
-        [suited("Q"), suited("Q", "spades"), suited("8"), suited("8", "diamonds"), wild("6")],
+        [
+          suited("Q"),
+          suited("Q", "spades"),
+          suited("8"),
+          suited("8", "diamonds"),
+          wild("6"),
+        ],
         "6",
       ),
     ).toEqual({ kind: "full-house", size: 5, rank: "Q" });
@@ -112,7 +123,10 @@ describe("level wildcard hand classification", () => {
       classifyHandWithLevel([suited("9"), suited("6", "clubs")], "6").kind,
     ).toBe("invalid");
     expect(
-      classifyHandWithLevel([suited("9"), { kind: "joker", size: "small" }], "6").kind,
+      classifyHandWithLevel(
+        [suited("9"), { kind: "joker", size: "small" }],
+        "6",
+      ).kind,
     ).toBe("invalid");
   });
 });

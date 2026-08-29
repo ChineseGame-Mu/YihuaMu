@@ -137,7 +137,9 @@ export const classifyHandWithLevel = (
   if (natural.kind !== "invalid") return natural;
   if (cards.some((card) => card.kind === "joker")) return natural;
 
-  const wildcardCount = cards.filter((card) => isLevelWildcard(card, levelRank)).length;
+  const wildcardCount = cards.filter((card) =>
+    isLevelWildcard(card, levelRank),
+  ).length;
   if (wildcardCount === 0) return natural;
   const fixed = cards.filter(
     (card): card is Extract<Card, { kind: "suited" }> =>
