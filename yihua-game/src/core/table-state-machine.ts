@@ -5,7 +5,11 @@ import {
   drawOpeningAttempt,
   type OpeningDrawSession,
 } from "./opening-draw.js";
-import type { SupportedPlayerCount } from "./table.js";
+import {
+  teamForSeat,
+  teammateSeatsForSeat,
+  type SupportedPlayerCount,
+} from "./table.js";
 import {
   createTrickState,
   passTurn,
@@ -37,6 +41,55 @@ const requirePlayingState = (state: TableRoundState): TrickState => {
     throw new Error("table is not in the playing phase");
   }
   return state.trick;
+};
+
+const respondingSeatsFor = (
+  leaderSeat: number,
+  activeSeats: readonly number[],
+): number[] => {
+  if (activeSeats.includes(leaderSeat)) return [...activeSeats];
+  const leaderTeam = teamForSeat(leaderSeat);
+  return activeSeats.filter((seat) => teamForSeat(seat) !== leaderTeam);
+};
+
+const catchLeadSeat = (
+  state: TableRoundState,
+  finishedLeader: number,
+  activeSeats: readonly number[],
+): number | null => {
+  const active = new Set(activeSeats);
+  const teammates = teammateSeatsForSeat(
+    state.playerCount,
+    finishedLeader,
+  ).filter((seat) => active.has(seat));
+  if (teammates.length === 0) return null;
+
+  return teammates.reduce((nearest, seat) => {
+    const nearestDistance =
+      (nearest - finishedLeader + state.playerCount) % state.playerCount;
+    const seatDistance =
+      (seat - finishedLeader + state.playerCount) % state.playerCount;
+    return seatDistance < nearestDistance ? seat : nearest;
+  });
+};
+
+const closeFinishedLeaderTrick = (
+  state: TableRoundState,
+  finishedLeader: number,
+  activeSeats: readonly number[],
+  trick: TrickState,
+): TrickState => {
+  const catchSeat = catchLeadSeat(state, finishedLeader, activeSeats);
+  if (catchSeat === null) return trick;
+
+  return {
+    ...trick,
+    leaderSeat: catchSeat,
+    currentTurn: catchSeat,
+    leadingPlay: null,
+    passedSeats: [],
+    completedTricks: trick.completedTricks + 1,
+  };
 };
 
 export const createTableRoundState = (
@@ -109,6 +162,7 @@ const tablePlayContext = (
 ): {
   trick: TrickState;
   activeSeats: readonly number[];
+  rotationSeats: readonly number[];
   finishesHand: boolean;
 } => {
   const trick = requirePlayingState(state);
@@ -125,7 +179,29 @@ const tablePlayContext = (
     throw new Error("table must retain at least one active seat");
   }
 
-  return { trick, activeSeats, finishesHand };
+  const rotationSeats = finishesHand
+    ? respondingSeatsFor(seat, activeSeats)
+    : activeSeats;
+
+  return { trick, activeSeats, rotationSeats, finishesHand };
+};
+
+const playRotationSeatsFor = (
+  seat: number,
+  rotationSeats: readonly number[],
+): readonly number[] =>
+  rotationSeats.includes(seat) ? rotationSeats : [seat, ...rotationSeats];
+
+const adjustFinishedLeaderAfterPlay = (
+  state: TableRoundState,
+  seat: number,
+  activeSeats: readonly number[],
+  rotationSeats: readonly number[],
+  finishesHand: boolean,
+  trick: TrickState,
+): TrickState => {
+  if (!finishesHand || rotationSeats.length > 0) return trick;
+  return closeFinishedLeaderTrick(state, seat, activeSeats, trick);
 };
 
 export const playTableCards = (
@@ -134,12 +210,22 @@ export const playTableCards = (
   cards: readonly Card[],
   options: TablePlayOptions = {},
 ): TableRoundState => {
-  const { trick, activeSeats, finishesHand } = tablePlayContext(
+  const { trick, activeSeats, rotationSeats, finishesHand } =
+    tablePlayContext(state, seat, options);
+  const playedTrick = playCards(
+    trick,
+    seat,
+    cards,
+    playRotationSeatsFor(seat, rotationSeats),
+  );
+  const nextTrick = adjustFinishedLeaderAfterPlay(
     state,
     seat,
-    options,
+    activeSeats,
+    rotationSeats,
+    finishesHand,
+    playedTrick,
   );
-  const nextTrick = playCards(trick, seat, cards, activeSeats);
   return finishTablePlay(state, seat, nextTrick, activeSeats, finishesHand);
 };
 
@@ -150,17 +236,22 @@ export const playTableCardsWithLevel = (
   levelRank: Rank,
   options: TablePlayOptions = {},
 ): TableRoundState => {
-  const { trick, activeSeats, finishesHand } = tablePlayContext(
-    state,
-    seat,
-    options,
-  );
-  const nextTrick = playCardsWithLevel(
+  const { trick, activeSeats, rotationSeats, finishesHand } =
+    tablePlayContext(state, seat, options);
+  const playedTrick = playCardsWithLevel(
     trick,
     seat,
     cards,
     levelRank,
+    playRotationSeatsFor(seat, rotationSeats),
+  );
+  const nextTrick = adjustFinishedLeaderAfterPlay(
+    state,
+    seat,
     activeSeats,
+    rotationSeats,
+    finishesHand,
+    playedTrick,
   );
   return finishTablePlay(state, seat, nextTrick, activeSeats, finishesHand);
 };
@@ -174,9 +265,31 @@ export const passTableTurn = (
     throw new Error("finished seat cannot pass");
   }
 
+  const priorLeader = trick.leadingPlay?.seat ?? null;
+  const rotationSeats =
+    priorLeader === null
+      ? state.activeSeats
+      : respondingSeatsFor(priorLeader, state.activeSeats);
+  let nextTrick = passTurn(trick, seat, rotationSeats);
+
+  if (
+    priorLeader !== null &&
+    nextTrick.leadingPlay === null &&
+    !state.activeSeats.includes(priorLeader)
+  ) {
+    const catchSeat = catchLeadSeat(state, priorLeader, state.activeSeats);
+    if (catchSeat !== null) {
+      nextTrick = {
+        ...nextTrick,
+        leaderSeat: catchSeat,
+        currentTurn: catchSeat,
+      };
+    }
+  }
+
   return {
     ...state,
-    trick: passTurn(trick, seat, state.activeSeats),
+    trick: nextTrick,
   };
 };
 
