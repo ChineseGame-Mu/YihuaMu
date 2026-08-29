@@ -23,7 +23,20 @@ describe("independent opening draw lifecycle", () => {
         expect(attempt.cards.every(({ card }) => card.kind === "suited")).toBe(
           true,
         );
+        expect(attempt.seatDraws).toHaveLength(playerCount);
+        expect(attempt.seatDraws.map(({ seat }) => seat)).toEqual(
+          Array.from({ length: playerCount }, (_, seat) => seat),
+        );
+        expect(attempt.seatDraws.map(({ card }) => card.id)).toEqual(
+          attempt.cards.map((card) => card.id),
+        );
       }
+
+      const winningAttempt = opening.openingDraw.attempts.at(-1)!;
+      expect(winningAttempt.winnerSeat).toBe(opening.openingDraw.winnerSeat);
+      expect(
+        winningAttempt.seatDraws[opening.openingDraw.winnerSeat]?.card.card.kind,
+      ).toBe("suited");
 
       const playing = dealAfterOpeningDraw(opening, constantRandom(0.75));
       expect(playing.phase).toBe("playing");
