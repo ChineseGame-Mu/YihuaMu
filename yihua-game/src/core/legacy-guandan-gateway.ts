@@ -344,24 +344,20 @@ export const attachLegacyGuandanConnection = async (
         message.type === "deal_next_round"
       ) {
         const managed = runtime.rooms.get(active.roomId);
-        assertLegacyNextRoundRole(
-          message,
-          active.adapter.compat.seat,
-          {
-            type: "game_state",
-            roomId: active.roomId,
-            revision: managed.revision,
-            phase: managed.game.phase,
-            currentTurn: managed.game.currentTurn,
-            handCounts: managed.game.hands.map((hand) => hand.length),
-            openingDraw: managed.game.openingDraw,
-            openingDrawWinner: managed.game.openingDrawWinner,
-            leadingPlay: managed.game.leadingPlay,
-            passedSeats: managed.game.passedSeats,
-            finishedSeats: managed.game.finishedSeats,
-            completedTricks: managed.game.completedTricks,
-          },
-        );
+        assertLegacyNextRoundRole(message, active.adapter.compat.seat, {
+          type: "game_state",
+          roomId: active.roomId,
+          revision: managed.revision,
+          phase: managed.game.phase,
+          currentTurn: managed.game.currentTurn,
+          handCounts: managed.game.hands.map((hand) => hand.length),
+          openingDraw: managed.game.openingDraw,
+          openingDrawWinner: managed.game.openingDrawWinner,
+          leadingPlay: managed.game.leadingPlay,
+          passedSeats: managed.game.passedSeats,
+          finishedSeats: managed.game.finishedSeats,
+          completedTricks: managed.game.completedTricks,
+        });
       }
       const clean = toCleanroomCommand(message, active.adapter.compat);
       await runtime.websocket.handleText(
