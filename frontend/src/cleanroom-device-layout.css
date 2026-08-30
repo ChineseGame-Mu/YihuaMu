@@ -38,7 +38,8 @@ body,
   height: 100dvh;
 }
 
-/* Public-table player names only: force actual a/b/c... name text to near-black. */
+/* Public-table labels and player names only. Preserve the approved design. */
+.guandan-table .guandan-public-player-back .guandan-public-player-seat,
 .guandan-table .guandan-public-player-backs .guandan-public-player-back > strong,
 .guandan-table .guandan-public-player-back strong[title] {
   color: #08261d !important;
