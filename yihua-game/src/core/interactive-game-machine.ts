@@ -6,7 +6,7 @@ import {
   type GameMachineAction,
   type GameMachineActionType,
 } from "./game-machine.js";
-import type { GameState } from "./game-state.js";
+import type { GameState, PlayingState } from "./game-state.js";
 import {
   advanceInteractiveOpeningDraw,
   beginInteractiveOpeningDraw,
@@ -64,6 +64,20 @@ const phaseError = (
   throw new Error(`cannot ${action.type} while game is ${state.phase}`);
 };
 
+const assertOpeningWinnerOwnsFirstLead = (state: PlayingState): PlayingState => {
+  const winnerSeat = state.openingDraw.winnerSeat;
+  if (state.currentTurn !== winnerSeat || state.trick.leaderSeat !== winnerSeat) {
+    throw new Error("opening draw winner must own the first table lead");
+  }
+  return state;
+};
+
+const dealInteractiveOpening = (
+  state: InteractiveOpeningState,
+  random: RandomSource,
+): PlayingState =>
+  assertOpeningWinnerOwnsFirstLead(dealAfterInteractiveOpeningDraw(state, random));
+
 const asLegacyAction = (
   action: InteractiveGameMachineAction,
 ): GameMachineAction | null => {
@@ -103,7 +117,7 @@ export const transitionInteractiveGame = (
         : phaseError(state, action);
     case "start-interactive-first-round":
       return state.phase === "lobby"
-        ? startInteractiveFirstRound(state, random)
+        ? assertOpeningWinnerOwnsFirstLead(startInteractiveFirstRound(state, random))
         : phaseError(state, action);
     case "draw-opening-attempt":
       return state.phase === "interactive-opening-draw"
@@ -115,13 +129,13 @@ export const transitionInteractiveGame = (
         : phaseError(state, action);
     case "deal-after-interactive-opening":
       return state.phase === "interactive-opening-draw"
-        ? dealAfterInteractiveOpeningDraw(state, random)
+        ? dealInteractiveOpening(state, random)
         : phaseError(state, action);
     case "complete-opening-and-deal":
       if (state.phase !== "interactive-opening-draw") {
         return phaseError(state, action);
       }
-      return dealAfterInteractiveOpeningDraw(
+      return dealInteractiveOpening(
         state.draw.phase === "complete"
           ? state
           : completeInteractiveOpeningDraw(state),
