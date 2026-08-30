@@ -35,29 +35,32 @@ const selectedCards = (
   });
 };
 
+const currentLevelRank = (state: PlayingState, levelRank?: Rank): Rank =>
+  levelRank ?? state.levelRank ?? FIRST_ROUND_LEVEL_RANK;
+
 export const classifyGameCardIds = (
   state: PlayingState,
   seat: number,
   cardIds: readonly string[],
-  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
+  levelRank?: Rank,
 ): ClassifiedHand =>
   classifyHandWithLevel(
     selectedCards(state, seat, cardIds).map(({ card }) => card),
-    levelRank,
+    currentLevelRank(state, levelRank),
   );
 
 export const playGameCardIds = (
   state: PlayingState,
   seat: number,
   cardIds: readonly string[],
-  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
+  levelRank?: Rank,
 ): PlayingState | RoundCompleteState => {
   const selected = selectedCards(state, seat, cardIds);
   const next = playGameCards(
     state,
     seat,
     selected.map(({ card }) => card),
-    levelRank,
+    currentLevelRank(state, levelRank),
   );
   const selectedIds = new Set(cardIds);
   const exactRemainingHand = state.hands[seat]!.filter(
