@@ -14,6 +14,8 @@ export interface InteractiveGameSnapshot {
   readonly availableActions: readonly string[];
   readonly playerCount: number;
   readonly openingDraw: OpeningDrawMachineProgress | null;
+  readonly openingWinnerSeat: number | null;
+  readonly leaderSeat: number | null;
   readonly currentTurn: number | null;
   readonly handCounts: readonly number[];
   readonly leadingPlay: {
@@ -30,11 +32,14 @@ export const interactiveGameSnapshot = (
   state: InteractiveGameState,
 ): InteractiveGameSnapshot => {
   if (state.phase === "interactive-opening-draw") {
+    const openingDraw = openingDrawMachineProgress(state.draw);
     return {
       phase: state.phase,
       availableActions: availableInteractiveGameActions(state),
       playerCount: state.lobby.config.playerCount,
-      openingDraw: openingDrawMachineProgress(state.draw),
+      openingDraw,
+      openingWinnerSeat: openingDraw.winnerSeat,
+      leaderSeat: null,
       currentTurn: null,
       handCounts: [],
       leadingPlay: null,
@@ -54,6 +59,8 @@ export const interactiveGameSnapshot = (
     availableActions: availableInteractiveGameActions(state),
     playerCount: state.config.playerCount,
     openingDraw: null,
+    openingWinnerSeat: tableActive ? state.openingDraw.winnerSeat : null,
+    leaderSeat: tableActive ? state.trick.leaderSeat : null,
     currentTurn: tableActive ? state.currentTurn : null,
     handCounts: tableActive ? state.hands.map((hand) => hand.length) : [],
     leadingPlay:
