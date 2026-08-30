@@ -40,6 +40,16 @@ export const advanceOpeningDrawMachine = (
   };
 };
 
+export const completeOpeningDrawMachine = (
+  state: OpeningDrawMachineState,
+): OpeningDrawMachineState => {
+  let current = state;
+  while (current.phase !== "complete") {
+    current = advanceOpeningDrawMachine(current);
+  }
+  return current;
+};
+
 export const openingDrawMachineResult = (
   state: OpeningDrawMachineState,
 ): OpeningDrawResult | null =>
