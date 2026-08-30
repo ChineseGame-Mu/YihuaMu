@@ -3,8 +3,10 @@ import { createLobbyState } from "../src/core/game-state.js";
 import {
   advanceInteractiveOpeningDraw,
   beginInteractiveOpeningDraw,
+  completeInteractiveOpeningDraw,
   dealAfterInteractiveOpeningDraw,
   finishInteractiveOpeningDraw,
+  interactiveOpeningSnapshot,
 } from "../src/core/interactive-opening-state.js";
 
 const constantRandom =
@@ -13,6 +15,47 @@ const constantRandom =
     value;
 
 describe("interactive opening draw integration", () => {
+  it.each([4, 6, 8, 10, 12, 14] as const)(
+    "exposes a table-ready opening snapshot for %i players",
+    (playerCount) => {
+      const lobby = createLobbyState(playerCount, 0);
+      const initial = beginInteractiveOpeningDraw(lobby, constantRandom(0.5));
+      const before = interactiveOpeningSnapshot(initial);
+
+      expect(before.phase).toBe("interactive-opening-draw");
+      expect(before.playerCount).toBe(playerCount);
+      expect(before.readyToDeal).toBe(false);
+      expect(before.progress.phase).toBe("drawing");
+      expect(before.progress.attemptsCompleted).toBe(0);
+      expect(before.progress.winnerSeat).toBeNull();
+      expect(before.prompt).toMatchObject({
+        phase: "drawing",
+        canDraw: true,
+        attemptNumber: 1,
+        isRedraw: false,
+        cardsRequired: playerCount,
+      });
+      expect(before.prompt.seatsToDraw).toEqual(
+        Array.from({ length: playerCount }, (_, seat) => seat),
+      );
+
+      const completed = completeInteractiveOpeningDraw(initial);
+      const after = interactiveOpeningSnapshot(completed);
+
+      expect(after.readyToDeal).toBe(true);
+      expect(after.progress.phase).toBe("complete");
+      expect(after.progress.attemptsCompleted).toBeGreaterThan(0);
+      expect(after.progress.winnerSeat).not.toBeNull();
+      expect(after.prompt).toMatchObject({
+        phase: "complete",
+        canDraw: false,
+        attemptNumber: null,
+        cardsRequired: 0,
+      });
+      expect(after.prompt.seatsToDraw).toEqual([]);
+    },
+  );
+
   it.each([4, 6, 8, 10, 12, 14] as const)(
     "advances one visible opening attempt at a time for %i players",
     (playerCount) => {
