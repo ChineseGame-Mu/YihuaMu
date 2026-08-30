@@ -22,7 +22,7 @@ const joker = (id: string, copy: number): DeckCard => ({
 });
 
 describe("stepwise opening draw machine", () => {
-  it("redraws only the seats tied for the highest opening card", () => {
+  it("redraws the full table after a tied highest opening card", () => {
     const deck: DeckCard[] = [
       suited("0:a", 0, "hearts", "A"),
       suited("1:a", 1, "hearts", "A"),
@@ -45,8 +45,8 @@ describe("stepwise opening draw machine", () => {
     expect(state.session.attempts[0]!.winnerSeat).toBeNull();
     expect(openingDrawMachinePrompt(state)).toMatchObject({
       isRedraw: true,
-      seatsToDraw: [0, 1],
-      cardsRequired: 2,
+      seatsToDraw: [0, 1, 2, 3],
+      cardsRequired: 4,
     });
 
     state = advanceOpeningDrawMachine(state);
@@ -54,14 +54,14 @@ describe("stepwise opening draw machine", () => {
     expect(state.session.attempts).toHaveLength(2);
     expect(
       state.session.attempts[1]!.seatDraws.map(({ seat }) => seat),
-    ).toEqual([0, 1]);
-    expect(openingDrawMachineResult(state)).toMatchObject({ winnerSeat: 1 });
+    ).toEqual([0, 1, 2, 3]);
+    expect(openingDrawMachineResult(state)).toMatchObject({ winnerSeat: 2 });
     expect(() => advanceOpeningDrawMachine(state)).toThrow(
       "opening draw machine is already complete",
     );
   });
 
-  it("can finish a tied opening draw without hiding redraw attempts", () => {
+  it("can finish a tied opening draw without hiding full-table redraw attempts", () => {
     const deck: DeckCard[] = [
       suited("0:a", 0, "hearts", "A"),
       suited("1:a", 1, "hearts", "A"),
@@ -81,8 +81,8 @@ describe("stepwise opening draw machine", () => {
     expect(complete.phase).toBe("complete");
     expect(result?.attempts).toHaveLength(2);
     expect(result?.attempts[0]!.winnerSeat).toBeNull();
-    expect(result?.attempts[1]!.winnerSeat).toBe(1);
-    expect(result?.winnerSeat).toBe(1);
+    expect(result?.attempts[1]!.winnerSeat).toBe(2);
+    expect(result?.winnerSeat).toBe(2);
     expect(completeOpeningDrawMachine(complete)).toBe(complete);
   });
 
@@ -90,7 +90,7 @@ describe("stepwise opening draw machine", () => {
     "preserves seat mapping for a %i-player first-attempt winner",
     (playerCount) => {
       // Opening draws intentionally ignore jokers, so this matrix must provide
-      // at least playerCount ordinary cards.  Put the unique high card first in
+      // at least playerCount ordinary cards. Put the unique high card first in
       // source order; random=0.999999 keeps Fisher-Yates order unchanged.
       const deck = Array.from({ length: playerCount }, (_, seat) =>
         suited(
