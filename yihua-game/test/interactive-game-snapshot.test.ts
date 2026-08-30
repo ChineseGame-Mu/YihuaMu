@@ -18,6 +18,8 @@ describe("interactive game snapshot", () => {
         phase: "lobby",
         playerCount,
         openingDraw: null,
+        openingWinnerSeat: null,
+        leaderSeat: null,
         currentTurn: null,
         handCounts: [],
         leadingPlay: null,
@@ -35,6 +37,8 @@ describe("interactive game snapshot", () => {
         phase: "interactive-opening-draw",
         playerCount,
         currentTurn: null,
+        openingWinnerSeat: null,
+        leaderSeat: null,
         openingDraw: {
           phase: "drawing",
           attemptsCompleted: 0,
@@ -55,6 +59,8 @@ describe("interactive game snapshot", () => {
       expect(completed.phase).toBe("interactive-opening-draw");
       expect(completed.openingDraw?.phase).toBe("complete");
       expect(completed.openingDraw?.winnerSeat).not.toBeNull();
+      expect(completed.openingWinnerSeat).toBe(completed.openingDraw?.winnerSeat);
+      expect(completed.leaderSeat).toBeNull();
       expect(completed.availableActions).toEqual([
         "deal-after-interactive-opening",
       ]);
@@ -74,6 +80,8 @@ describe("interactive game snapshot", () => {
         phase: "playing",
         playerCount,
         openingDraw: null,
+        openingWinnerSeat: winnerSeat,
+        leaderSeat: winnerSeat,
         currentTurn: winnerSeat,
         handCounts: Array(playerCount).fill(27),
         leadingPlay: null,
@@ -96,6 +104,8 @@ describe("interactive game snapshot", () => {
         cards: [firstCard],
       });
       const afterPlay = interactiveGameSnapshot(state);
+      expect(afterPlay.openingWinnerSeat).toBe(winnerSeat);
+      expect(afterPlay.leaderSeat).toBe(winnerSeat);
       expect(afterPlay.handCounts[winnerSeat]).toBe(26);
       expect(afterPlay.leadingPlay).toEqual({
         seat: winnerSeat,
