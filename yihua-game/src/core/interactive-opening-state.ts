@@ -5,6 +5,7 @@ import {
   type OpeningDrawState,
   type PlayingState,
 } from "./game-state.js";
+import type { OpeningDrawAttempt } from "./opening-draw.js";
 import {
   advanceOpeningDrawMachine,
   completeOpeningDrawMachine,
@@ -28,6 +29,8 @@ export interface InteractiveOpeningSnapshot {
   readonly playerCount: LobbyState["config"]["playerCount"];
   readonly progress: OpeningDrawMachineProgress;
   readonly prompt: OpeningDrawMachinePrompt;
+  readonly attempts: readonly OpeningDrawAttempt[];
+  readonly winnerSeat: number | null;
   readonly readyToDeal: boolean;
 }
 
@@ -51,6 +54,8 @@ export const interactiveOpeningSnapshot = (
   playerCount: state.lobby.config.playerCount,
   progress: openingDrawMachineProgress(state.draw),
   prompt: openingDrawMachinePrompt(state.draw),
+  attempts: state.draw.session.attempts,
+  winnerSeat: state.draw.session.winnerSeat,
   readyToDeal: openingDrawMachineResult(state.draw) !== null,
 });
 
