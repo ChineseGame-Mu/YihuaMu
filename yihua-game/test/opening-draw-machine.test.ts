@@ -89,6 +89,9 @@ describe("stepwise opening draw machine", () => {
   it.each([4, 6, 8, 10, 12, 14] as const)(
     "preserves seat mapping for a %i-player first-attempt winner",
     (playerCount) => {
+      // Opening draws intentionally ignore jokers, so this matrix must provide
+      // at least playerCount ordinary cards.  Put the unique high card first in
+      // source order; random=0.999999 keeps Fisher-Yates order unchanged.
       const deck = Array.from({ length: playerCount }, (_, seat) =>
         suited(
           `0:${seat}`,
