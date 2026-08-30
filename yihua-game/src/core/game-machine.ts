@@ -1,5 +1,6 @@
 import type { Card } from "./cards.js";
 import type { RandomSource } from "./deck.js";
+import { playGameCardIds } from "./game-actions.js";
 import {
   dealAfterOpeningDraw,
   passGameTurn,
@@ -7,6 +8,8 @@ import {
   startNextRound,
   startOpeningDraw,
   type GameState,
+  type PlayingState,
+  type RoundCompleteState,
 } from "./game-state.js";
 
 export type GameMachineAction =
@@ -74,3 +77,9 @@ export const transitionGame = (
         : phaseError(state, action);
   }
 };
+
+export const transitionGameCardIds = (
+  state: PlayingState,
+  seat: number,
+  cardIds: readonly string[],
+): PlayingState | RoundCompleteState => playGameCardIds(state, seat, cardIds);
