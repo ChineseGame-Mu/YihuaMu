@@ -19,6 +19,7 @@ export type InteractiveGameState = GameState | InteractiveOpeningState;
 
 export type InteractiveGameMachineAction =
   | { readonly type: "begin-interactive-opening" }
+  | { readonly type: "start-interactive-first-round" }
   | { readonly type: "draw-opening-attempt" }
   | { readonly type: "complete-interactive-opening" }
   | { readonly type: "deal-after-interactive-opening" }
@@ -46,7 +47,11 @@ export const availableInteractiveGameActions = (
     return interactiveActionTypes(state);
   }
   if (state.phase === "lobby") {
-    return ["begin-interactive-opening", ...availableGameMachineActions(state)];
+    return [
+      "begin-interactive-opening",
+      "start-interactive-first-round",
+      ...availableGameMachineActions(state),
+    ];
   }
   return availableGameMachineActions(state);
 };
@@ -76,6 +81,7 @@ const asLegacyAction = (
     case "pass-turn":
       return action;
     case "begin-interactive-opening":
+    case "start-interactive-first-round":
     case "draw-opening-attempt":
     case "complete-interactive-opening":
     case "deal-after-interactive-opening":
@@ -94,6 +100,12 @@ export const transitionInteractiveGame = (
       return state.phase === "lobby"
         ? beginInteractiveOpeningDraw(state, random)
         : phaseError(state, action);
+    case "start-interactive-first-round":
+      if (state.phase !== "lobby") return phaseError(state, action);
+      return dealAfterInteractiveOpeningDraw(
+        completeInteractiveOpeningDraw(beginInteractiveOpeningDraw(state, random)),
+        random,
+      );
     case "draw-opening-attempt":
       return state.phase === "interactive-opening-draw"
         ? advanceInteractiveOpeningDraw(state)
