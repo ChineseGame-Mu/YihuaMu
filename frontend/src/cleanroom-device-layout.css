@@ -38,10 +38,14 @@ body,
   height: 100dvh;
 }
 
-/* Public-table player names only: keep the approved layout, change text color for contrast. */
-.guandan-public-player-back > strong {
-  color: #062f24 !important;
-  text-shadow: 0 1px 0 rgb(255 255 255 / 70%);
+/* Public-table player names only: force actual a/b/c... name text to near-black. */
+.guandan-table .guandan-public-player-backs .guandan-public-player-back > strong,
+.guandan-table .guandan-public-player-back strong[title] {
+  color: #08261d !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+  -webkit-text-fill-color: #08261d !important;
+  text-shadow: none !important;
 }
 
 /* Compact desktop/laptop heights so the whole join form is immediately usable. */
