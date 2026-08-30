@@ -1,4 +1,5 @@
 import type { Card } from "./cards.js";
+import { classifyHand, type ClassifiedHand } from "./hand.js";
 import {
   availableInteractiveGameActions,
   type InteractiveGameState,
@@ -19,6 +20,7 @@ export interface InteractiveGameSnapshot {
     readonly seat: number;
     readonly cards: readonly Card[];
   } | null;
+  readonly leadingHand: ClassifiedHand | null;
   readonly passedSeats: readonly number[];
   readonly completedTricks: number;
   readonly finishedSeats: readonly number[];
@@ -36,6 +38,7 @@ export const interactiveGameSnapshot = (
       currentTurn: null,
       handCounts: [],
       leadingPlay: null,
+      leadingHand: null,
       passedSeats: [],
       completedTricks: 0,
       finishedSeats: [],
@@ -44,6 +47,7 @@ export const interactiveGameSnapshot = (
 
   const tableActive =
     state.phase === "playing" || state.phase === "round-complete";
+  const leadingPlay = tableActive ? state.trick.leadingPlay : null;
 
   return {
     phase: state.phase,
@@ -52,14 +56,14 @@ export const interactiveGameSnapshot = (
     openingDraw: null,
     currentTurn: tableActive ? state.currentTurn : null,
     handCounts: tableActive ? state.hands.map((hand) => hand.length) : [],
-    leadingPlay: tableActive
-      ? state.trick.leadingPlay === null
+    leadingPlay:
+      leadingPlay === null
         ? null
         : {
-            seat: state.trick.leadingPlay.seat,
-            cards: state.trick.leadingPlay.cards,
-          }
-      : null,
+            seat: leadingPlay.seat,
+            cards: leadingPlay.cards,
+          },
+    leadingHand: leadingPlay === null ? null : classifyHand(leadingPlay.cards),
     passedSeats: tableActive ? state.trick.passedSeats : [],
     completedTricks: tableActive ? state.trick.completedTricks : 0,
     finishedSeats: tableActive ? (state.finishedSeats ?? []) : [],
