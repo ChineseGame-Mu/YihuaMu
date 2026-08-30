@@ -145,6 +145,53 @@ describe("interactive game machine", () => {
     },
   );
 
+  it("carries the current level rank into authoritative card-id play", () => {
+    let state: InteractiveGameState = createLobbyState(4, 0);
+    state = transitionInteractiveGame(
+      state,
+      { type: "start-interactive-first-round" },
+      fixedRandom,
+    );
+    expect(state.phase).toBe("playing");
+    if (state.phase !== "playing") return;
+
+    const seat = state.currentTurn;
+    const originalHand = state.hands[seat]!;
+    const first = originalHand[0]!;
+    const second = originalHand[1]!;
+    state = {
+      ...state,
+      hands: state.hands.map((hand, currentSeat) =>
+        currentSeat === seat
+          ? [
+              {
+                ...first,
+                card: { kind: "suited", rank: "7", suit: "clubs" },
+              },
+              {
+                ...second,
+                card: { kind: "suited", rank: "9", suit: "hearts" },
+              },
+              ...hand.slice(2),
+            ]
+          : hand,
+      ),
+    };
+
+    state = transitionInteractiveGame(state, {
+      type: "play-card-ids",
+      seat,
+      cardIds: [first.id, second.id],
+      levelRank: "9",
+    });
+
+    expect(state.phase).toBe("playing");
+    if (state.phase !== "playing") return;
+    expect(state.hands[seat]).toHaveLength(25);
+    expect(state.trick.leadingPlay?.seat).toBe(seat);
+    expect(state.trick.leadingPlay?.cards).toHaveLength(2);
+  });
+
   it("rejects dealing before the interactive opening draw has a winner", () => {
     let state: InteractiveGameState = createLobbyState(4, 0);
     state = transitionInteractiveGame(
