@@ -89,13 +89,11 @@ const CleanroomEntry = (): JSX.Element => {
     ? requested
     : 4;
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
-  const [name, setName] = React.useState(
-    initial.get("playerName") ?? initial.get("name") ?? "",
-  );
-  const [joined, setJoined] = React.useState(
-    initial.get("game") === "guandan" &&
-      (initial.get("name") ?? "").trim() !== "",
-  );
+  // A test/share URL must always stop at the join screen so the human tester
+  // explicitly enters their own name. Do not treat a name embedded in a URL as
+  // proof that the player has joined this browser session.
+  const [name, setName] = React.useState(initial.get("playerName") ?? "");
+  const [joined, setJoined] = React.useState(false);
 
   if (joined) return <CleanroomTable />;
 
