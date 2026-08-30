@@ -11,7 +11,7 @@ const fixedRandom = (): number => 0;
 
 describe("interactive game snapshot", () => {
   it.each(SUPPORTED_PLAYER_COUNTS)(
-    "projects opening-draw progress and the dealt table for %i players",
+    "projects opening-draw progress and the live table for %i players",
     (playerCount) => {
       let state: InteractiveGameState = createLobbyState(playerCount, 0);
       expect(interactiveGameSnapshot(state)).toMatchObject({
@@ -19,6 +19,10 @@ describe("interactive game snapshot", () => {
         playerCount,
         openingDraw: null,
         currentTurn: null,
+        handCounts: [],
+        leadingPlay: null,
+        passedSeats: [],
+        completedTricks: 0,
       });
 
       state = transitionInteractiveGame(
@@ -36,6 +40,8 @@ describe("interactive game snapshot", () => {
           cardsDrawn: 0,
           winnerSeat: null,
         },
+        handCounts: [],
+        leadingPlay: null,
       });
 
       state = transitionInteractiveGame(
@@ -57,14 +63,39 @@ describe("interactive game snapshot", () => {
         { type: "deal-after-interactive-opening" },
         fixedRandom,
       );
-      expect(interactiveGameSnapshot(state)).toMatchObject({
+      const dealt = interactiveGameSnapshot(state);
+      expect(dealt).toMatchObject({
         phase: "playing",
         playerCount,
         openingDraw: null,
         currentTurn: winnerSeat,
+        handCounts: Array(playerCount).fill(27),
+        leadingPlay: null,
+        passedSeats: [],
+        completedTricks: 0,
         finishedSeats: [],
         availableActions: ["play-cards", "pass-turn"],
       });
+
+      expect(state.phase).toBe("playing");
+      if (state.phase !== "playing" || winnerSeat === undefined) return;
+      const firstCard = state.hands[winnerSeat]?.[0]?.card;
+      expect(firstCard).toBeDefined();
+      if (firstCard === undefined) return;
+
+      state = transitionInteractiveGame(state, {
+        type: "play-cards",
+        seat: winnerSeat,
+        cards: [firstCard],
+      });
+      const afterPlay = interactiveGameSnapshot(state);
+      expect(afterPlay.handCounts[winnerSeat]).toBe(26);
+      expect(afterPlay.leadingPlay).toEqual({
+        seat: winnerSeat,
+        cards: [firstCard],
+      });
+      expect(afterPlay.currentTurn).not.toBe(winnerSeat);
+      expect(afterPlay.finishedSeats).toEqual([]);
     },
   );
 });
