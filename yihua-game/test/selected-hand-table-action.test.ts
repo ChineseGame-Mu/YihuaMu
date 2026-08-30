@@ -94,6 +94,20 @@ describe("selected hand classification at the table action boundary", () => {
     },
   );
 
+  it("uses the current level rank when classifying authoritative card ids", () => {
+    expect(
+      classifyGameCardIds(state, 0, ["pair-7-a", "full-9-c"], "9"),
+    ).toMatchObject({ kind: "pair", rank: "7" });
+    expect(
+      classifyGameCardIds(
+        state,
+        0,
+        ["sf-3", "sf-4", "sf-6", "sf-7", "full-9-c"],
+        "9",
+      ),
+    ).toMatchObject({ kind: "straight-flush", highRank: "7" });
+  });
+
   it("rejects duplicate, missing, and empty card-id selections before table transition", () => {
     expect(() => classifyGameCardIds(state, 0, [])).toThrow(
       "at least one card id is required",
