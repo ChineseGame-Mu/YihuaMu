@@ -65,6 +65,7 @@ describe("interactive game snapshot", () => {
       expect(completed.leaderSeat).toBeNull();
       expect(completed.availableActions).toEqual([
         "deal-after-interactive-opening",
+        "complete-opening-and-deal",
       ]);
 
       const winnerSeat = completed.openingDraw?.winnerSeat;
