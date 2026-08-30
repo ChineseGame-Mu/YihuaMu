@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { JSX } from "react";
 import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
-import GuandanStateProvider from "./GuandanStateProvider";
+import GuandanStateProvider, { GuandanStateContext } from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
@@ -48,6 +48,23 @@ const GuandanJoinBrand = (): JSX.Element => (
   </header>
 );
 
+const PublicPlayerCountMarker = (): null => {
+  const { state } = React.useContext(GuandanStateContext);
+  const queryCount = Number(
+    new URLSearchParams(window.location.search).get("players") ?? "4",
+  );
+  const activeCount = state.playerCount ?? queryCount;
+
+  React.useEffect(() => {
+    document.documentElement.dataset.guandanPlayerCount = String(activeCount);
+    return () => {
+      delete document.documentElement.dataset.guandanPlayerCount;
+    };
+  }, [activeCount]);
+
+  return null;
+};
+
 const CleanroomTable = (): JSX.Element => {
   const exit = (): void => {
     const url = new URL(window.location.href);
@@ -65,6 +82,7 @@ const CleanroomTable = (): JSX.Element => {
   return (
     <GuandanWebsocketProvider>
       <GuandanStateProvider>
+        <PublicPlayerCountMarker />
         <ExitGameButton onClick={exit} />
         <GuandanHeaderDecor />
         <GuandanCustomSortControls />
