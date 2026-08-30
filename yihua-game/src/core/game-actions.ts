@@ -6,7 +6,8 @@ import {
   type PlayingState,
   type RoundCompleteState,
 } from "./game-state.js";
-import { classifyHand, type ClassifiedHand } from "./hand.js";
+import { type ClassifiedHand } from "./hand.js";
+import { classifyHandWithLevel } from "./level-hand.js";
 
 const selectedCards = (
   state: PlayingState,
@@ -38,8 +39,12 @@ export const classifyGameCardIds = (
   state: PlayingState,
   seat: number,
   cardIds: readonly string[],
+  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
 ): ClassifiedHand =>
-  classifyHand(selectedCards(state, seat, cardIds).map(({ card }) => card));
+  classifyHandWithLevel(
+    selectedCards(state, seat, cardIds).map(({ card }) => card),
+    levelRank,
+  );
 
 export const playGameCardIds = (
   state: PlayingState,
