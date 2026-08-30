@@ -8,6 +8,9 @@ on:
       - ".github/workflows/cleanroom-yihua-game-three-round-bot.yml"
       - "yihua-game/src/core/**"
       - "yihua-game/test/**"
+      - "frontend/src/GuandanRoundResultHud.tsx"
+      - "frontend/src/GuandanRoundResultHud.test.tsx"
+      - "frontend/src/CleanroomEntry.tsx"
   workflow_dispatch:
 
 jobs:
@@ -52,3 +55,9 @@ jobs:
             console.log(JSON.stringify({type:"three_round_bot_pass", playerCount, validatedRounds:3, observedRounds:table.rounds, actions:table.actions, plays:table.plays, passes:table.passes, reconnects:table.reconnects}));
           }
           NODE
+      - name: Frontend acceptance - current level and final winner ranking
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm install
+          npm test -- --runInBand GuandanRoundResultHud.test.tsx
