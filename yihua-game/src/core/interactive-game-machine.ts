@@ -163,12 +163,7 @@ export const transitionInteractiveGame = (
       );
     case "play-card-ids":
       return state.phase === "playing"
-        ? playGameCardIds(
-            state,
-            action.seat,
-            action.cardIds,
-            action.levelRank,
-          )
+        ? playGameCardIds(state, action.seat, action.cardIds, action.levelRank)
         : phaseError(state, action);
     default: {
       if (state.phase === "interactive-opening-draw") {
