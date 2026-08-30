@@ -21,7 +21,10 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
 
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
-    expect(transport).toContain('url.pathname = "/api/guandan"');
+    expect(transport).toContain(
+      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+    );
+    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
     expect(transport).toContain("adaptGuandanClientMessage");
     expect(adapter).toContain("const room = options.room?.trim()");
     expect(adapter).toContain("room: room || message.room");
@@ -35,9 +38,14 @@ describe("approved clean-room end-to-end chain regression", () => {
     );
   });
 
-  it("does not allow the clean-room entry to point at the old production backend", () => {
+  it("does not allow the clean-room entry or transport to point at the old production backend", () => {
     const entry = read("../../frontend/src/CleanroomEntry.tsx");
+    const transport = read("../../frontend/src/GuandanWebsocketProvider.tsx");
     expect(entry).not.toContain("chinesegame-yihua.onrender.com");
     expect(entry).toContain("card-games-yihua.onrender.com");
+    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
+    expect(transport).not.toContain(
+      'query.get("backend") ?? (window as any)._CLEANROOM_BACKEND',
+    );
   });
 });
