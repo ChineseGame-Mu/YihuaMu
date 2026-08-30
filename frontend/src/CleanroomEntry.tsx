@@ -7,6 +7,7 @@ import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
+import GuandanRoundResultHud from "./GuandanRoundResultHud";
 import ExitGameButton from "./ExitGameButton";
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
@@ -68,6 +69,7 @@ const CleanroomTable = (): JSX.Element => {
         <GuandanHeaderDecor />
         <GuandanCustomSortControls />
         <GuandanTable />
+        <GuandanRoundResultHud />
         <GuandanNoBeatHint />
         <GuandanNoBeatControls />
       </GuandanStateProvider>
