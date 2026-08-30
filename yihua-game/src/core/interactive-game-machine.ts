@@ -161,10 +161,12 @@ export const transitionInteractiveGame = (
           : completeInteractiveOpeningDraw(state),
         random,
       );
-    case "play-card-ids":
+    case "play-card-ids": {
+      const levelRank = "levelRank" in action ? action.levelRank : undefined;
       return state.phase === "playing"
-        ? playGameCardIds(state, action.seat, action.cardIds, action.levelRank)
+        ? playGameCardIds(state, action.seat, action.cardIds, levelRank)
         : phaseError(state, action);
+    }
     default: {
       if (state.phase === "interactive-opening-draw") {
         return phaseError(state, action);
