@@ -5,10 +5,11 @@ const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
 
 describe("approved clean-room end-to-end chain regression", () => {
-  it("keeps join page -> original GuandanTable -> compatibility gateway -> card-games-yihua", () => {
+  it("keeps join page -> original GuandanTable -> compatibility adapter -> card-games-yihua", () => {
     const entry = read("../../frontend/src/CleanroomEntry.tsx");
     const table = read("../../frontend/src/GuandanTable.tsx");
     const transport = read("../../frontend/src/GuandanWebsocketProvider.tsx");
+    const adapter = read("../../frontend/src/guandanCompatibilityAdapter.ts");
     const gateway = read("../src/core/legacy-guandan-gateway.ts");
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
@@ -21,8 +22,9 @@ describe("approved clean-room end-to-end chain regression", () => {
 
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(transport).toContain('url.pathname = "/api/guandan"');
-    expect(transport).toContain("room: cleanroomRoom || message.room");
-    expect(transport).toContain("player_count: playerCount");
+    expect(transport).toContain("adaptGuandanClientMessage");
+    expect(adapter).toContain("room: cleanroomRoom || message.room");
+    expect(adapter).toContain("player_count: playerCount");
 
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
