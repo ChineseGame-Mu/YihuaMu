@@ -79,6 +79,20 @@ export const shouldClearOwnHand = (
   finishOrder: number[],
 ): boolean => ownSeat !== null && finishOrder.includes(ownSeat);
 
+const inferPromotionSteps = (finishOrder: number[]): number | null => {
+  const winner = finishOrder[0];
+  if (winner === undefined) return null;
+  if (finishOrder.length !== 4) return finishOrder.length >= 4 ? 1 : null;
+  const partner = (winner + 2) % 4;
+  const partnerIndex = finishOrder.indexOf(partner);
+  if (partnerIndex < 0) return null;
+  const partnerPlace = partnerIndex + 1;
+  if (partnerPlace === 2) return 3;
+  if (partnerPlace === 3) return 2;
+  if (partnerPlace === 4) return 1;
+  return null;
+};
+
 export const adaptGuandanServerMessage = (
   state: GuandanTableState,
   message: GuandanServerMessage,
@@ -108,6 +122,7 @@ export const adaptGuandanServerMessage = (
         ...state,
         playerCount: message.player_count,
         cardsPerPlayer: message.cards_per_player,
+        level: state.level ?? "Two",
         turn: 0,
         lastPlay: [],
         lastPlayer: null,
@@ -125,7 +140,18 @@ export const adaptGuandanServerMessage = (
       };
     case "hand":
       return { ...state, hand: message.cards, error: null };
-    case "state":
+    case "state": {
+      const roundComplete =
+        message.hand_counts.length > 0 &&
+        message.hand_counts.every((count) => count === 0) &&
+        message.finish_order.length > 0;
+      const inferredWinner = roundComplete ? (message.finish_order[0] ?? null) : null;
+      const winner = message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
+      const promotionSteps =
+        message.last_promotion_steps ??
+        (roundComplete ? inferPromotionSteps(message.finish_order) : null) ??
+        state.lastPromotionSteps;
+
       return {
         ...state,
         players: message.players,
@@ -146,18 +172,19 @@ export const adaptGuandanServerMessage = (
         lastTrickWinner: message.last_trick_winner,
         initialDraw: message.initial_draw,
         initialDrawWinner: message.initial_draw_winner,
-        level: message.level,
+        level: message.level ?? state.level ?? "Two",
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,
-        lastGameWinner: message.last_game_winner,
+        lastGameWinner: winner,
         lastGameWinnerTeam: message.last_game_winner_team,
-        lastPromotionSteps: message.last_promotion_steps,
+        lastPromotionSteps: promotionSteps,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
         error: null,
       };
+    }
     case "error":
       return { ...state, error: message.message };
   }
