@@ -7,12 +7,12 @@ import {
 } from "../src/core/interactive-game-machine.js";
 
 const stableRandom = (): number => 0.999999;
+const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 
-const startFourPlayerTable = (): Extract<
-  InteractiveGameState,
-  { phase: "playing" }
-> => {
-  const lobby = createLobbyState(4, 0);
+const startTable = (
+  playerCount: (typeof supportedCounts)[number] = 4,
+): Extract<InteractiveGameState, { phase: "playing" }> => {
+  const lobby = createLobbyState(playerCount, 0);
   const state = transitionInteractiveGame(
     lobby,
     { type: "start-interactive-first-round" },
@@ -24,7 +24,7 @@ const startFourPlayerTable = (): Extract<
 
 describe("interactive opening winner first classified table play", () => {
   it("lets the opening-draw winner establish the first table lead by card id", () => {
-    const state = startFourPlayerTable();
+    const state = startTable();
     const winner = state.openingDraw.winnerSeat;
     const firstCard = state.hands[winner]?.[0];
     if (!firstCard) throw new Error("opening winner must have a dealt hand");
@@ -48,7 +48,7 @@ describe("interactive opening winner first classified table play", () => {
   });
 
   it("rejects a non-winner trying to steal the first lead after the opening draw", () => {
-    const state = startFourPlayerTable();
+    const state = startTable();
     const winner = state.openingDraw.winnerSeat;
     const wrongSeat = (winner + 1) % state.config.playerCount;
     const firstCard = state.hands[wrongSeat]?.[0];
@@ -62,4 +62,31 @@ describe("interactive opening winner first classified table play", () => {
       }),
     ).toThrow();
   });
+
+  for (const playerCount of supportedCounts) {
+    it(`${playerCount} players keep the draw winner as first leader and rotate after the lead`, () => {
+      const state = startTable(playerCount);
+      const winner = state.openingDraw.winnerSeat;
+      const firstCard = state.hands[winner]?.[0];
+      if (!firstCard) throw new Error("opening winner must have a dealt hand");
+
+      expect(state.currentTurn).toBe(winner);
+      expect(state.trick.leaderSeat).toBe(winner);
+
+      const next = transitionInteractiveGame(state, {
+        type: "play-card-ids",
+        seat: winner,
+        cardIds: [firstCard.id],
+      });
+
+      expect(next.phase).toBe("playing");
+      if (next.phase !== "playing") return;
+      expect(next.trick.leadingPlay?.seat).toBe(winner);
+      expect(classifyHand(next.trick.leadingPlay?.cards ?? []).kind).toBe(
+        "single",
+      );
+      expect(next.currentTurn).toBe((winner + 1) % playerCount);
+      expect(next.hands[winner]).toHaveLength(state.hands[winner]!.length - 1);
+    });
+  }
 });
