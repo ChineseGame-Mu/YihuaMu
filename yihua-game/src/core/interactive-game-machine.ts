@@ -12,6 +12,7 @@ import {
   beginInteractiveOpeningDraw,
   completeInteractiveOpeningDraw,
   dealAfterInteractiveOpeningDraw,
+  startInteractiveFirstRound,
   type InteractiveOpeningState,
 } from "./interactive-opening-state.js";
 
@@ -101,13 +102,9 @@ export const transitionInteractiveGame = (
         ? beginInteractiveOpeningDraw(state, random)
         : phaseError(state, action);
     case "start-interactive-first-round":
-      if (state.phase !== "lobby") return phaseError(state, action);
-      return dealAfterInteractiveOpeningDraw(
-        completeInteractiveOpeningDraw(
-          beginInteractiveOpeningDraw(state, random),
-        ),
-        random,
-      );
+      return state.phase === "lobby"
+        ? startInteractiveFirstRound(state, random)
+        : phaseError(state, action);
     case "draw-opening-attempt":
       return state.phase === "interactive-opening-draw"
         ? advanceInteractiveOpeningDraw(state)
