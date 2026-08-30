@@ -17,7 +17,8 @@ describe("opening draw to card-id table machine", () => {
       deterministicRandom,
     );
     expect(opening.phase).toBe("opening-draw");
-    if (opening.phase !== "opening-draw") throw new Error("opening draw expected");
+    if (opening.phase !== "opening-draw")
+      throw new Error("opening draw expected");
     expect(opening.openingDraw.attempts.length).toBeGreaterThan(0);
     expect(opening.openingDraw.winnerSeat).toBeGreaterThanOrEqual(0);
     expect(opening.openingDraw.winnerSeat).toBeLessThan(4);
