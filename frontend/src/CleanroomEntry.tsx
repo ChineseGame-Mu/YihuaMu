@@ -11,6 +11,7 @@ import ExitGameButton from "./ExitGameButton";
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
+import "./cleanroom-device-layout.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
