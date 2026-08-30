@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createDeck, dealHands, type DeckCard } from "../src/core/deck.js";
 import { transitionGame } from "../src/core/game-machine.js";
-import type { GameState, PlayingState } from "../src/core/game-state.js";
 import {
-  canHandBeat,
+  FIRST_ROUND_LEVEL_RANK,
+  type GameState,
+  type PlayingState,
+} from "../src/core/game-state.js";
+import {
+  canHandBeatWithLevel,
   classifyHand,
   type ClassifiedHand,
 } from "../src/core/hand.js";
@@ -51,7 +55,11 @@ const driveRound = (
       leadingHand === null
         ? hand[0]
         : hand.find((deckCard: DeckCard) =>
-            canHandBeat(classifyHand([deckCard.card]), leadingHand),
+            canHandBeatWithLevel(
+              classifyHand([deckCard.card]),
+              leadingHand,
+              FIRST_ROUND_LEVEL_RANK,
+            ),
           );
 
     state =
