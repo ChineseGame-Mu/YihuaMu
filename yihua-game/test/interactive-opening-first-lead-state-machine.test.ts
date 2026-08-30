@@ -42,7 +42,9 @@ describe("interactive opening winner first classified table play", () => {
     expect(next.hands[winner]).toHaveLength(state.hands[winner]!.length - 1);
     expect(next.trick.leadingPlay?.seat).toBe(winner);
     expect(next.trick.leadingPlay?.cards).toEqual([firstCard.card]);
-    expect(classifyHand(next.trick.leadingPlay?.cards ?? []).kind).toBe("single");
+    expect(classifyHand(next.trick.leadingPlay?.cards ?? []).kind).toBe(
+      "single",
+    );
   });
 
   it("rejects a non-winner trying to steal the first lead after the opening draw", () => {
