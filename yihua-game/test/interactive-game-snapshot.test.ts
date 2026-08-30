@@ -58,6 +58,10 @@ describe("interactive game snapshot", () => {
       ]);
 
       const winnerSeat = completed.openingDraw?.winnerSeat;
+      expect(winnerSeat).not.toBeNull();
+      expect(winnerSeat).not.toBeUndefined();
+      if (winnerSeat == null) return;
+
       state = transitionInteractiveGame(
         state,
         { type: "deal-after-interactive-opening" },
@@ -78,7 +82,7 @@ describe("interactive game snapshot", () => {
       });
 
       expect(state.phase).toBe("playing");
-      if (state.phase !== "playing" || winnerSeat === undefined) return;
+      if (state.phase !== "playing") return;
       const firstCard = state.hands[winnerSeat]?.[0]?.card;
       expect(firstCard).toBeDefined();
       if (firstCard === undefined) return;
