@@ -45,7 +45,9 @@ describe("interactive opening to exact-card table state", () => {
     expect(next.hands[winner]).toHaveLength(priorCount - 1);
     expect(next.hands[winner]!.some(({ id }) => id === chosen.id)).toBe(false);
     expect(next.trick.leadingPlay?.seat).toBe(winner);
-    expect(classifyHand(next.trick.leadingPlay?.cards ?? []).kind).toBe("single");
+    expect(classifyHand(next.trick.leadingPlay?.cards ?? []).kind).toBe(
+      "single",
+    );
     expect(next.currentTurn).not.toBe(winner);
   });
 
