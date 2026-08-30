@@ -89,9 +89,6 @@ const CleanroomEntry = (): JSX.Element => {
     ? requested
     : 4;
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
-  // A test/share URL must always stop at the join screen so the human tester
-  // explicitly enters their own name. Do not treat a name embedded in a URL as
-  // proof that the player has joined this browser session.
   const [name, setName] = React.useState(initial.get("playerName") ?? "");
   const [joined, setJoined] = React.useState(false);
 
@@ -106,8 +103,6 @@ const CleanroomEntry = (): JSX.Element => {
     url.searchParams.set("cleanroom", "1");
     url.searchParams.set("game", "guandan");
     url.searchParams.set("cleanroomRoom", roomId);
-    // Keep the accepted GuandanTable's historic four-digit room validator intact.
-    // The transport adapter replaces this UI-only alias with cleanroomRoom.
     url.searchParams.set("room", legacyUiRoom);
     url.searchParams.set("name", cleanName);
     url.searchParams.set("players", String(playerCount));
@@ -120,7 +115,10 @@ const CleanroomEntry = (): JSX.Element => {
   };
 
   return (
-    <main className="cleanroom-join-shell cleanroom-join-shell-artwork">
+    <main
+      className="cleanroom-join-shell cleanroom-join-shell-artwork"
+      style={{ backgroundImage: 'url("/guandan-cleanroom-lobby.png")' }}
+    >
       <div className="cleanroom-bamboo" aria-hidden="true" />
       <div className="cleanroom-plum" aria-hidden="true" />
       <div className="cleanroom-lantern" aria-hidden="true" />
