@@ -4,6 +4,7 @@ import {
   advanceOpeningDrawMachine,
   completeOpeningDrawMachine,
   createOpeningDrawMachine,
+  openingDrawMachinePrompt,
   openingDrawMachineResult,
 } from "../src/core/opening-draw-machine.js";
 
@@ -21,7 +22,7 @@ const joker = (id: string, copy: number): DeckCard => ({
 });
 
 describe("stepwise opening draw machine", () => {
-  it("exposes each draw attempt before a winner completes the machine", () => {
+  it("redraws only the seats tied for the highest opening card", () => {
     const deck: DeckCard[] = [
       suited("0:a", 0, "hearts", "A"),
       suited("1:a", 1, "hearts", "A"),
@@ -42,12 +43,19 @@ describe("stepwise opening draw machine", () => {
     expect(state.phase).toBe("drawing");
     expect(state.session.attempts).toHaveLength(1);
     expect(state.session.attempts[0]!.winnerSeat).toBeNull();
-    expect(openingDrawMachineResult(state)).toBeNull();
+    expect(openingDrawMachinePrompt(state)).toMatchObject({
+      isRedraw: true,
+      seatsToDraw: [0, 1],
+      cardsRequired: 2,
+    });
 
     state = advanceOpeningDrawMachine(state);
     expect(state.phase).toBe("complete");
     expect(state.session.attempts).toHaveLength(2);
-    expect(openingDrawMachineResult(state)).toMatchObject({ winnerSeat: 2 });
+    expect(state.session.attempts[1]!.seatDraws.map(({ seat }) => seat)).toEqual([
+      0, 1,
+    ]);
+    expect(openingDrawMachineResult(state)).toMatchObject({ winnerSeat: 1 });
     expect(() => advanceOpeningDrawMachine(state)).toThrow(
       "opening draw machine is already complete",
     );
@@ -73,8 +81,8 @@ describe("stepwise opening draw machine", () => {
     expect(complete.phase).toBe("complete");
     expect(result?.attempts).toHaveLength(2);
     expect(result?.attempts[0]!.winnerSeat).toBeNull();
-    expect(result?.attempts[1]!.winnerSeat).toBe(2);
-    expect(result?.winnerSeat).toBe(2);
+    expect(result?.attempts[1]!.winnerSeat).toBe(1);
+    expect(result?.winnerSeat).toBe(1);
     expect(completeOpeningDrawMachine(complete)).toBe(complete);
   });
 
