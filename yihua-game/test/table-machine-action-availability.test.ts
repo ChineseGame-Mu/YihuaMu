@@ -25,11 +25,12 @@ describe("table-machine action availability", () => {
     ]);
   });
 
-  it("exposes play and pass controls while a round is active", () => {
+  it("exposes card, card-id, and pass controls while a round is active", () => {
     const state = startGame(createLobbyState(4, 0), () => 0.5);
 
     expect(availableGameMachineActions(state)).toEqual([
       "play-cards",
+      "play-card-ids",
       "pass-turn",
     ]);
   });
