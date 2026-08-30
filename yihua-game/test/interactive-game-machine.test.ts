@@ -67,6 +67,7 @@ describe("interactive game machine", () => {
       expect(state.currentTurn).toBe(winnerSeat);
       expect(state.hands).toHaveLength(playerCount);
       expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+      expect(state.levelRank).toBe("2");
     },
   );
 
@@ -87,6 +88,7 @@ describe("interactive game machine", () => {
       expect(state.trick.leaderSeat).toBe(state.openingDraw.winnerSeat);
       expect(state.hands).toHaveLength(playerCount);
       expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+      expect(state.levelRank).toBe("2");
     },
   );
 
@@ -137,6 +139,7 @@ describe("interactive game machine", () => {
       expect(state.trick.leaderSeat).toBe(state.openingDraw.winnerSeat);
       expect(state.hands).toHaveLength(playerCount);
       expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+      expect(state.levelRank).toBe("2");
 
       const firstCard = state.hands[state.currentTurn]?.[0]?.card;
       expect(firstCard).toBeDefined();
@@ -189,6 +192,53 @@ describe("interactive game machine", () => {
     if (state.phase !== "playing") return;
     expect(state.hands[seat]).toHaveLength(25);
     expect(state.trick.leadingPlay?.seat).toBe(seat);
+    expect(state.trick.leadingPlay?.cards).toHaveLength(2);
+  });
+
+  it("uses the playing state's level rank when the play action omits it", () => {
+    let state: InteractiveGameState = createLobbyState(4, 0);
+    state = transitionInteractiveGame(
+      state,
+      { type: "start-interactive-first-round" },
+      fixedRandom,
+    );
+    expect(state.phase).toBe("playing");
+    if (state.phase !== "playing") return;
+
+    const seat = state.currentTurn;
+    const originalHand = state.hands[seat]!;
+    const first = originalHand[0]!;
+    const second = originalHand[1]!;
+    state = {
+      ...state,
+      levelRank: "9",
+      hands: state.hands.map((hand, currentSeat) =>
+        currentSeat === seat
+          ? [
+              {
+                ...first,
+                card: { kind: "suited", rank: "7", suit: "clubs" },
+              },
+              {
+                ...second,
+                card: { kind: "suited", rank: "9", suit: "hearts" },
+              },
+              ...hand.slice(2),
+            ]
+          : hand,
+      ),
+    };
+
+    state = transitionInteractiveGame(state, {
+      type: "play-card-ids",
+      seat,
+      cardIds: [first.id, second.id],
+    });
+
+    expect(state.phase).toBe("playing");
+    if (state.phase !== "playing") return;
+    expect(state.levelRank).toBe("9");
+    expect(state.hands[seat]).toHaveLength(25);
     expect(state.trick.leadingPlay?.cards).toHaveLength(2);
   });
 
