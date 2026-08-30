@@ -1,4 +1,8 @@
-import { determineUniqueOpeningWinner, type Card } from "./cards.js";
+import {
+  determineUniqueOpeningWinner,
+  openingDrawStrength,
+  type Card,
+} from "./cards.js";
 import { shuffleDeck, type DeckCard, type RandomSource } from "./deck.js";
 import type { SupportedPlayerCount } from "./table.js";
 
@@ -30,8 +34,35 @@ const ordinaryCards = (deck: readonly DeckCard[]): DeckCard[] =>
 const cardsOnly = (draw: readonly DeckCard[]): Card[] =>
   draw.map(({ card }) => card);
 
-const seatDrawsFor = (cards: readonly DeckCard[]): OpeningSeatDraw[] =>
-  cards.map((card, seat) => ({ seat, card }));
+const seatDrawsFor = (
+  cards: readonly DeckCard[],
+  seats: readonly number[],
+): OpeningSeatDraw[] =>
+  cards.map((card, index) => ({ seat: seats[index]!, card }));
+
+const tiedHighestSeats = (attempt: OpeningDrawAttempt): number[] => {
+  if (attempt.seatDraws.length === 0) return [];
+  const strengths = attempt.seatDraws.map(({ seat, card }) => ({
+    seat,
+    strength: openingDrawStrength(card.card),
+  }));
+  const maximum = Math.max(...strengths.map(({ strength }) => strength));
+  return strengths
+    .filter(({ strength }) => strength === maximum)
+    .map(({ seat }) => seat);
+};
+
+export const nextOpeningDrawSeats = (
+  session: OpeningDrawSession,
+  playerCount: SupportedPlayerCount,
+): readonly number[] => {
+  const previous = session.attempts.at(-1);
+  if (previous === undefined) {
+    return Array.from({ length: playerCount }, (_, seat) => seat);
+  }
+  if (previous.winnerSeat !== null) return [];
+  return tiedHighestSeats(previous);
+};
 
 export const createOpeningDrawSession = (
   deck: readonly DeckCard[],
@@ -49,20 +80,26 @@ export const drawOpeningAttempt = (
   if (session.winnerSeat !== null) {
     throw new Error("opening draw already has a winner");
   }
-  if (session.remainingCards.length < playerCount) {
+
+  const seats = nextOpeningDrawSeats(session, playerCount);
+  if (seats.length === 0) {
+    throw new Error("opening draw has no eligible seats");
+  }
+  if (session.remainingCards.length < seats.length) {
     throw new Error("opening draw exhausted before a unique winner was found");
   }
 
-  const cards = session.remainingCards.slice(0, playerCount);
-  const winnerSeat = determineUniqueOpeningWinner(cardsOnly(cards));
+  const cards = session.remainingCards.slice(0, seats.length);
+  const localWinner = determineUniqueOpeningWinner(cardsOnly(cards));
+  const winnerSeat = localWinner === null ? null : seats[localWinner]!;
   const attempt: OpeningDrawAttempt = {
     cards,
-    seatDraws: seatDrawsFor(cards),
+    seatDraws: seatDrawsFor(cards, seats),
     winnerSeat,
   };
 
   return {
-    remainingCards: session.remainingCards.slice(playerCount),
+    remainingCards: session.remainingCards.slice(seats.length),
     attempts: [...session.attempts, attempt],
     winnerSeat,
   };
