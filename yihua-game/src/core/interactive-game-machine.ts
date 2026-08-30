@@ -10,6 +10,7 @@ import type { GameState } from "./game-state.js";
 import {
   advanceInteractiveOpeningDraw,
   beginInteractiveOpeningDraw,
+  completeInteractiveOpeningDraw,
   dealAfterInteractiveOpeningDraw,
   type InteractiveOpeningState,
 } from "./interactive-opening-state.js";
@@ -19,6 +20,7 @@ export type InteractiveGameState = GameState | InteractiveOpeningState;
 export type InteractiveGameMachineAction =
   | { readonly type: "begin-interactive-opening" }
   | { readonly type: "draw-opening-attempt" }
+  | { readonly type: "complete-interactive-opening" }
   | { readonly type: "deal-after-interactive-opening" }
   | GameMachineAction;
 
@@ -30,7 +32,7 @@ const interactiveActionTypes = (
 ): readonly InteractiveGameMachineActionType[] =>
   state.draw.phase === "complete"
     ? ["deal-after-interactive-opening"]
-    : ["draw-opening-attempt"];
+    : ["draw-opening-attempt", "complete-interactive-opening"];
 
 export const availableInteractiveGameActions = (
   state: InteractiveGameState,
@@ -70,6 +72,7 @@ const asLegacyAction = (
       return action;
     case "begin-interactive-opening":
     case "draw-opening-attempt":
+    case "complete-interactive-opening":
     case "deal-after-interactive-opening":
       return null;
   }
@@ -88,6 +91,10 @@ export const transitionInteractiveGame = (
     case "draw-opening-attempt":
       return state.phase === "interactive-opening-draw"
         ? advanceInteractiveOpeningDraw(state)
+        : phaseError(state, action);
+    case "complete-interactive-opening":
+      return state.phase === "interactive-opening-draw"
+        ? completeInteractiveOpeningDraw(state)
         : phaseError(state, action);
     case "deal-after-interactive-opening":
       return state.phase === "interactive-opening-draw"
