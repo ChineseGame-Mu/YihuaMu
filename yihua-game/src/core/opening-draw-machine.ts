@@ -2,6 +2,7 @@ import type { DeckCard, RandomSource } from "./deck.js";
 import {
   createOpeningDrawSession,
   drawOpeningAttempt,
+  type OpeningDrawAttempt,
   type OpeningDrawResult,
   type OpeningDrawSession,
 } from "./opening-draw.js";
@@ -13,6 +14,15 @@ export interface OpeningDrawMachineState {
   readonly phase: OpeningDrawMachinePhase;
   readonly playerCount: SupportedPlayerCount;
   readonly session: OpeningDrawSession;
+}
+
+export interface OpeningDrawMachineProgress {
+  readonly phase: OpeningDrawMachinePhase;
+  readonly attemptsCompleted: number;
+  readonly cardsDrawn: number;
+  readonly cardsRemaining: number;
+  readonly winnerSeat: number | null;
+  readonly lastAttempt: OpeningDrawAttempt | null;
 }
 
 export const createOpeningDrawMachine = (
@@ -49,6 +59,20 @@ export const completeOpeningDrawMachine = (
   }
   return current;
 };
+
+export const openingDrawMachineProgress = (
+  state: OpeningDrawMachineState,
+): OpeningDrawMachineProgress => ({
+  phase: state.phase,
+  attemptsCompleted: state.session.attempts.length,
+  cardsDrawn: state.session.attempts.reduce(
+    (total, attempt) => total + attempt.cards.length,
+    0,
+  ),
+  cardsRemaining: state.session.remainingCards.length,
+  winnerSeat: state.session.winnerSeat,
+  lastAttempt: state.session.attempts.at(-1) ?? null,
+});
 
 export const openingDrawMachineResult = (
   state: OpeningDrawMachineState,
