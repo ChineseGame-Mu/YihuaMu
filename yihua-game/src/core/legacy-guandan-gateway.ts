@@ -49,6 +49,9 @@ class LegacyAdapterSocket implements TextSocket {
   private roomState:
     | Extract<ServerMessage, { readonly type: "room_state" }>
     | undefined;
+  private gameState:
+    | Extract<ServerMessage, { readonly type: "game_state" }>
+    | undefined;
   private startedRevision: number | undefined;
   private completedTricks = 0;
   private tablePlays: Extract<
@@ -74,12 +77,25 @@ class LegacyAdapterSocket implements TextSocket {
     };
   }
 
+  private async sendCurrentLegacyState(): Promise<void> {
+    if (this.roomState === undefined || this.gameState === undefined) return;
+    const legacyState = gameStateToLegacy(this.roomState, this.gameState);
+    if (legacyState.type !== "state") return;
+    await sendLegacy(this.socket, {
+      ...legacyState,
+      table_plays: this.tablePlays,
+    });
+  }
+
   async send(text: string): Promise<void> {
     const message = JSON.parse(text) as ServerMessage;
     switch (message.type) {
       case "room_state":
         this.roomState = message;
         await sendLegacy(this.socket, roomStateToLegacyWaiting(message));
+        if (this.gameState?.phase === "round-complete") {
+          await this.sendCurrentLegacyState();
+        }
         return;
       case "private_hand":
         this.compat.privateCardIds.splice(
@@ -90,6 +106,7 @@ class LegacyAdapterSocket implements TextSocket {
         await sendLegacy(this.socket, privateHandToLegacy(message));
         return;
       case "game_state": {
+        this.gameState = message;
         if (this.roomState === undefined) return;
         if (this.startedRevision === undefined) {
           this.startedRevision = message.revision;
