@@ -59,7 +59,9 @@ describe("interactive game snapshot", () => {
       expect(completed.phase).toBe("interactive-opening-draw");
       expect(completed.openingDraw?.phase).toBe("complete");
       expect(completed.openingDraw?.winnerSeat).not.toBeNull();
-      expect(completed.openingWinnerSeat).toBe(completed.openingDraw?.winnerSeat);
+      expect(completed.openingWinnerSeat).toBe(
+        completed.openingDraw?.winnerSeat,
+      );
       expect(completed.leaderSeat).toBeNull();
       expect(completed.availableActions).toEqual([
         "deal-after-interactive-opening",
