@@ -29,26 +29,17 @@ interface GuandanWebsocketProviderProps {
 }
 
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
+const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
 
 const cleanroomWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("cleanroom") !== "1") return null;
 
-  const raw = query.get("backend") ?? (window as any)._CLEANROOM_BACKEND;
-  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
-
-  try {
-    const url = new URL(String(raw));
-    if (url.protocol === "https:") url.protocol = "wss:";
-    else if (url.protocol === "http:") url.protocol = "ws:";
-    else if (url.protocol !== "ws:" && url.protocol !== "wss:") return null;
-    url.pathname = "/api/guandan";
-    url.search = "";
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return null;
-  }
+  // The clean-room entry is deliberately isolated from the legacy production
+  // backend. Ignore stale or user-supplied backend/ws overrides while the
+  // clean-room flag is active so the accepted GuandanTable can only reach the
+  // new clean-room card-games-yihua service through the compatibility adapter.
+  return CLEANROOM_WEBSOCKET;
 };
 
 const testWebsocketOverride = (): string | null => {
