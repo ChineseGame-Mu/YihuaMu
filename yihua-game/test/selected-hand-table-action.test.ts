@@ -87,9 +87,12 @@ const cases: readonly [string, readonly string[]][] = [
 ];
 
 describe("selected hand classification at the table action boundary", () => {
-  it.each(cases)("classifies %s from authoritative private card ids", (kind, ids) => {
-    expect(classifyGameCardIds(state, 0, ids).kind).toBe(kind);
-  });
+  it.each(cases)(
+    "classifies %s from authoritative private card ids",
+    (kind, ids) => {
+      expect(classifyGameCardIds(state, 0, ids).kind).toBe(kind);
+    },
+  );
 
   it("rejects duplicate, missing, and empty card-id selections before table transition", () => {
     expect(() => classifyGameCardIds(state, 0, [])).toThrow(
