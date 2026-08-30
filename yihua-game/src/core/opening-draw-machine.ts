@@ -71,7 +71,10 @@ export const openingDrawMachineProgress = (
   ),
   cardsRemaining: state.session.remainingCards.length,
   winnerSeat: state.session.winnerSeat,
-  lastAttempt: state.session.attempts.at(-1) ?? null,
+  lastAttempt:
+    state.session.attempts.length === 0
+      ? null
+      : state.session.attempts[state.session.attempts.length - 1]!,
 });
 
 export const openingDrawMachineResult = (
