@@ -17,10 +17,11 @@ describe("game machine card id bridge", () => {
     expect(started.phase).toBe("playing");
     if (started.phase !== "playing") return;
 
-    const first = started.hands[0]![0]!;
-    const beforeIds = started.hands[0]!.map(({ id }) => id);
-    const next = transitionGameCardIds(started, 0, [first.id]);
-    const afterIds = next.hands[0]!.map(({ id }) => id);
+    const seat = started.currentTurn;
+    const first = started.hands[seat]![0]!;
+    const beforeIds = started.hands[seat]!.map(({ id }) => id);
+    const next = transitionGameCardIds(started, seat, [first.id]);
+    const afterIds = next.hands[seat]!.map(({ id }) => id);
 
     expect(beforeIds).toContain(first.id);
     expect(afterIds).not.toContain(first.id);
