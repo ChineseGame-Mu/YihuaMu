@@ -21,7 +21,9 @@ const deckCard = (id: string, card: Card): DeckCard => ({
   card,
 });
 
-const playingState = (hands: readonly (readonly DeckCard[])[]): PlayingState => ({
+const playingState = (
+  hands: readonly (readonly DeckCard[])[],
+): PlayingState => ({
   phase: "playing",
   config: createTableConfig(4, 0),
   openingDraw: { attempts: [], winnerSeat: 0 },
@@ -42,7 +44,10 @@ describe("first-round level wildcard game-state integration", () => {
     ];
     const spare = suited("K", "clubs");
     const state = playingState([
-      [...cards.map((card, index) => deckCard(`lead-${index}`, card)), deckCard("spare", spare)],
+      [
+        ...cards.map((card, index) => deckCard(`lead-${index}`, card)),
+        deckCard("spare", spare),
+      ],
       [deckCard("seat-1", suited("3"))],
       [deckCard("seat-2", suited("4"))],
       [deckCard("seat-3", suited("5"))],
@@ -69,7 +74,10 @@ describe("first-round level wildcard game-state integration", () => {
       suited("6", "hearts"),
     ];
     const state = playingState([
-      [...cards.map((card, index) => deckCard(`bomb-${index}`, card)), deckCard("spare", suited("A"))],
+      [
+        ...cards.map((card, index) => deckCard(`bomb-${index}`, card)),
+        deckCard("spare", suited("A")),
+      ],
       [deckCard("seat-1", suited("3"))],
       [deckCard("seat-2", suited("4"))],
       [deckCard("seat-3", suited("5"))],
