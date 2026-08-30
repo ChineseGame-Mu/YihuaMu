@@ -181,6 +181,32 @@ const ensureLegacyRoom = (
   }
 };
 
+export const assertLegacyNextRoundRole = (
+  message: LegacyClientMessage,
+  seat: number | null,
+  game: Extract<ServerMessage, { readonly type: "game_state" }>,
+): void => {
+  if (
+    message.type !== "shuffle_next_round" &&
+    message.type !== "deal_next_round"
+  ) {
+    return;
+  }
+  if (seat === null) throw new Error("a seated player is required");
+  if (game.phase !== "round-complete") {
+    throw new Error("round is not complete");
+  }
+  const winner = game.finishedSeats[0];
+  if (winner === undefined) throw new Error("previous winner is unavailable");
+
+  if (message.type === "shuffle_next_round" && seat % 2 === winner % 2) {
+    throw new Error("only the losing team may shuffle for the next round");
+  }
+  if (message.type === "deal_next_round" && seat !== winner) {
+    throw new Error("only the previous winner may deal the next round");
+  }
+};
+
 export const attachLegacyGuandanConnection = async (
   runtime: ServerRuntime,
   connection: UpgradedConnection,
@@ -312,6 +338,30 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+      if (
+        message.type === "shuffle_next_round" ||
+        message.type === "deal_next_round"
+      ) {
+        const managed = runtime.rooms.get(active.roomId);
+        assertLegacyNextRoundRole(
+          message,
+          active.adapter.compat.seat,
+          {
+            type: "game_state",
+            roomId: active.roomId,
+            revision: managed.revision,
+            phase: managed.game.phase,
+            currentTurn: managed.game.currentTurn,
+            handCounts: managed.game.hands.map((hand) => hand.length),
+            openingDraw: managed.game.openingDraw,
+            openingDrawWinner: managed.game.openingDrawWinner,
+            leadingPlay: managed.game.leadingPlay,
+            passedSeats: managed.game.passedSeats,
+            finishedSeats: managed.game.finishedSeats,
+            completedTricks: managed.game.completedTricks,
+          },
+        );
       }
       const clean = toCleanroomCommand(message, active.adapter.compat);
       await runtime.websocket.handleText(
