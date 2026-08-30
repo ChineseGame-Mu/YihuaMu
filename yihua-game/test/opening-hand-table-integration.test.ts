@@ -9,7 +9,10 @@ import { createLobbyState } from "../src/core/game-state.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
 
 const fixedRandom = (): number => 0;
-const suited = (rank: Extract<Card, { kind: "suited" }>["rank"], suit: Extract<Card, { kind: "suited" }>["suit"] = "clubs"): Card => ({
+const suited = (
+  rank: Extract<Card, { kind: "suited" }>["rank"],
+  suit: Extract<Card, { kind: "suited" }>["suit"] = "clubs",
+): Card => ({
   kind: "suited",
   rank,
   suit,
