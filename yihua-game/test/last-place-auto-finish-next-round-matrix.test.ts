@@ -5,7 +5,10 @@ import {
   startNextRound,
   type PlayingState,
 } from "../src/core/game-state.js";
-import { createTableConfig, SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
+import {
+  createTableConfig,
+  SUPPORTED_PLAYER_COUNTS,
+} from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
 
 const card = (id: string, rank: "3" | "4"): DeckCard => ({
@@ -41,11 +44,9 @@ describe("global round-end to next-round transition", () => {
         finishedSeats: alreadyFinished,
       };
 
-      const completed = playGameCards(
-        state,
-        penultimateSeat,
-        [hands[penultimateSeat]![0]!.card],
-      );
+      const completed = playGameCards(state, penultimateSeat, [
+        hands[penultimateSeat]![0]!.card,
+      ]);
 
       expect(completed.phase).toBe("round-complete");
       if (completed.phase !== "round-complete") return;
