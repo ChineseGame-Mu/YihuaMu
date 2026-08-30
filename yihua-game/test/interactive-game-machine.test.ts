@@ -32,6 +32,7 @@ describe("interactive game machine", () => {
       ) {
         expect(availableInteractiveGameActions(state)).toEqual([
           "draw-opening-attempt",
+          "complete-interactive-opening",
         ]);
         state = transitionInteractiveGame(
           state,
@@ -60,6 +61,31 @@ describe("interactive game machine", () => {
       expect(state.currentTurn).toBe(winnerSeat);
       expect(state.hands).toHaveLength(playerCount);
       expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+    },
+  );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "can complete a %i-player opening draw through the machine action",
+    (playerCount) => {
+      let state: InteractiveGameState = createLobbyState(playerCount, 0);
+      state = transitionInteractiveGame(
+        state,
+        { type: "begin-interactive-opening" },
+        () => 0,
+      );
+      state = transitionInteractiveGame(
+        state,
+        { type: "complete-interactive-opening" },
+        () => 0,
+      );
+
+      expect(state.phase).toBe("interactive-opening-draw");
+      if (state.phase !== "interactive-opening-draw") return;
+      expect(state.draw.phase).toBe("complete");
+      expect(state.draw.session.winnerSeat).not.toBeNull();
+      expect(availableInteractiveGameActions(state)).toEqual([
+        "deal-after-interactive-opening",
+      ]);
     },
   );
 
