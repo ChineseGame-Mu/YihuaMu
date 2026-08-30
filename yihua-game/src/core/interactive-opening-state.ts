@@ -88,3 +88,12 @@ export const dealAfterInteractiveOpeningDraw = (
   random: RandomSource = Math.random,
 ): PlayingState =>
   dealAfterOpeningDraw(finishInteractiveOpeningDraw(state), random);
+
+export const startInteractiveFirstRound = (
+  lobby: LobbyState,
+  random: RandomSource = Math.random,
+): PlayingState =>
+  dealAfterInteractiveOpeningDraw(
+    completeInteractiveOpeningDraw(beginInteractiveOpeningDraw(lobby, random)),
+    random,
+  );
