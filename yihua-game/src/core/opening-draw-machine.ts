@@ -25,6 +25,15 @@ export interface OpeningDrawMachineProgress {
   readonly lastAttempt: OpeningDrawAttempt | null;
 }
 
+export interface OpeningDrawMachinePrompt {
+  readonly phase: OpeningDrawMachinePhase;
+  readonly canDraw: boolean;
+  readonly attemptNumber: number | null;
+  readonly isRedraw: boolean;
+  readonly seatsToDraw: readonly number[];
+  readonly cardsRequired: number;
+}
+
 export const createOpeningDrawMachine = (
   deck: readonly DeckCard[],
   playerCount: SupportedPlayerCount,
@@ -76,6 +85,26 @@ export const openingDrawMachineProgress = (
       ? null
       : state.session.attempts[state.session.attempts.length - 1]!,
 });
+
+export const openingDrawMachinePrompt = (
+  state: OpeningDrawMachineState,
+): OpeningDrawMachinePrompt => {
+  const canDraw = state.phase === "drawing";
+  const attemptsCompleted = state.session.attempts.length;
+  const lastAttempt = state.session.attempts[attemptsCompleted - 1] ?? null;
+
+  return {
+    phase: state.phase,
+    canDraw,
+    attemptNumber: canDraw ? attemptsCompleted + 1 : null,
+    isRedraw:
+      canDraw && lastAttempt !== null && lastAttempt.winnerSeat === null,
+    seatsToDraw: canDraw
+      ? Array.from({ length: state.playerCount }, (_, seat) => seat)
+      : [],
+    cardsRequired: canDraw ? state.playerCount : 0,
+  };
+};
 
 export const openingDrawMachineResult = (
   state: OpeningDrawMachineState,
