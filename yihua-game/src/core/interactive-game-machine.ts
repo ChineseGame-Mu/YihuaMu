@@ -22,6 +22,7 @@ export type InteractiveGameMachineAction =
   | { readonly type: "draw-opening-attempt" }
   | { readonly type: "complete-interactive-opening" }
   | { readonly type: "deal-after-interactive-opening" }
+  | { readonly type: "complete-opening-and-deal" }
   | GameMachineAction;
 
 export type InteractiveGameMachineActionType =
@@ -31,8 +32,12 @@ const interactiveActionTypes = (
   state: InteractiveOpeningState,
 ): readonly InteractiveGameMachineActionType[] =>
   state.draw.phase === "complete"
-    ? ["deal-after-interactive-opening"]
-    : ["draw-opening-attempt", "complete-interactive-opening"];
+    ? ["deal-after-interactive-opening", "complete-opening-and-deal"]
+    : [
+        "draw-opening-attempt",
+        "complete-interactive-opening",
+        "complete-opening-and-deal",
+      ];
 
 export const availableInteractiveGameActions = (
   state: InteractiveGameState,
@@ -74,6 +79,7 @@ const asLegacyAction = (
     case "draw-opening-attempt":
     case "complete-interactive-opening":
     case "deal-after-interactive-opening":
+    case "complete-opening-and-deal":
       return null;
   }
 };
@@ -100,6 +106,16 @@ export const transitionInteractiveGame = (
       return state.phase === "interactive-opening-draw"
         ? dealAfterInteractiveOpeningDraw(state, random)
         : phaseError(state, action);
+    case "complete-opening-and-deal":
+      if (state.phase !== "interactive-opening-draw") {
+        return phaseError(state, action);
+      }
+      return dealAfterInteractiveOpeningDraw(
+        state.draw.phase === "complete"
+          ? state
+          : completeInteractiveOpeningDraw(state),
+        random,
+      );
     default: {
       if (state.phase === "interactive-opening-draw") {
         return phaseError(state, action);
