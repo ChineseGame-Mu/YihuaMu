@@ -344,11 +344,14 @@ export const attachLegacyGuandanConnection = async (
         message.type === "deal_next_round"
       ) {
         const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase !== "round-complete") {
+          throw new Error("round is not complete");
+        }
         assertLegacyNextRoundRole(message, active.adapter.compat.seat, {
           type: "game_state",
           roomId: active.roomId,
           revision: managed.revision,
-          phase: managed.game.phase,
+          phase: "round-complete",
           currentTurn: managed.game.currentTurn,
           handCounts: managed.game.hands.map((hand) => hand.length),
           openingDraw: managed.game.openingDraw,
