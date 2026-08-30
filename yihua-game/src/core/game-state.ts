@@ -1,4 +1,4 @@
-import type { Card } from "./cards.js";
+import type { Card, Rank } from "./cards.js";
 import {
   createDeck,
   dealHands,
@@ -22,11 +22,13 @@ import {
 import {
   createTrickState,
   passTurn,
-  playCards,
+  playCardsWithLevel,
   type TrickState,
 } from "./trick-state.js";
 
 export type GamePhase = "lobby" | "opening-draw" | "playing" | "round-complete";
+
+export const FIRST_ROUND_LEVEL_RANK: Rank = "2";
 
 export interface LobbyState {
   readonly phase: "lobby";
@@ -212,6 +214,7 @@ export const playGameCards = (
   state: PlayingState,
   seat: number,
   cards: readonly Card[],
+  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
 ): PlayingState | RoundCompleteState => {
   const priorFinishedSeats = finishedSeatsOf(state);
   if (priorFinishedSeats.includes(seat)) {
@@ -229,7 +232,13 @@ export const playGameCards = (
   const playRotationSeats = rotationSeats.includes(seat)
     ? rotationSeats
     : [seat, ...rotationSeats];
-  let trick = playCards(state.trick, seat, cards, playRotationSeats);
+  let trick = playCardsWithLevel(
+    state.trick,
+    seat,
+    cards,
+    levelRank,
+    playRotationSeats,
+  );
 
   if (
     remainingHand.length === 0 &&
