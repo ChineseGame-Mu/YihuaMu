@@ -28,6 +28,13 @@ describe("approved Guandan frontend clean-room bridge", () => {
       ),
       "utf8",
     );
+    const adapter = readFileSync(
+      new URL(
+        "../../frontend/src/guandanCompatibilityAdapter.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    );
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
     expect(entry).toContain(
@@ -37,7 +44,8 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(entry).toContain("<GuandanStateProvider>");
     expect(entry).toContain("<GuandanTable />");
     expect(transport).toContain('url.pathname = "/api/guandan"');
-    expect(transport).toContain("player_count: playerCount");
+    expect(transport).toContain("adaptGuandanClientMessage");
+    expect(adapter).toContain("player_count: playerCount");
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(table).toContain(
       "const GuandanTable: React.FunctionComponent = () =>",
@@ -80,12 +88,19 @@ describe("approved Guandan frontend clean-room bridge", () => {
       ),
       "utf8",
     );
+    const adapter = readFileSync(
+      new URL(
+        "../../frontend/src/guandanCompatibilityAdapter.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    );
 
     expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
     expect(entry).toContain('const legacyUiRoom = "0001"');
     expect(entry).toContain('url.searchParams.set("room", legacyUiRoom)');
-    expect(transport).toContain('query.get("cleanroomRoom")?.trim()');
-    expect(transport).toContain("room: cleanroomRoom || message.room");
+    expect(transport).toContain('room: query.get("cleanroomRoom")');
+    expect(adapter).toContain("room: cleanroomRoom || message.room");
   });
 
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
