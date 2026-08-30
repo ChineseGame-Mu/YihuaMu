@@ -75,5 +75,9 @@ export const playGameCardIds = (
   };
 };
 
-export const passGameSeat = (state: PlayingState, seat: number): PlayingState =>
-  passGameTurn(state, seat);
+export const passGameSeat = (
+  state: PlayingState,
+  seat: number,
+): PlayingState => {
+  return passGameTurn(state, seat);
+};
