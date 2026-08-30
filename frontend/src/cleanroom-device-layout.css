@@ -1,0 +1,343 @@
+/* Responsive closeout for the clean-room entry and approved Guandan table.
+ * Desktop keeps the approved 75/25 table geometry; tablets and phones only
+ * adjust sizing/overflow so controls remain reachable without changing game behavior.
+ */
+
+html,
+body,
+#root {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  overflow-x: hidden;
+}
+
+.cleanroom-join-shell {
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.cleanroom-join-content,
+.cleanroom-join-card {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.guandan-table {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Compact desktop/laptop heights so the whole join form is immediately usable. */
+@media (min-width: 901px) and (max-height: 900px) {
+  .cleanroom-join-shell {
+    padding-top: 12px;
+    padding-bottom: 18px;
+  }
+
+  .cleanroom-brand {
+    margin: 0 auto 10px;
+  }
+
+  .cleanroom-emblem {
+    width: 180px;
+    height: 138px;
+    transform: scale(0.82);
+    transform-origin: center top;
+    margin-bottom: -24px;
+  }
+
+  .cleanroom-game-title {
+    font-size: 38px;
+    line-height: 1;
+  }
+
+  .cleanroom-game-title-en,
+  .cleanroom-game-tagline {
+    margin-top: 4px;
+  }
+
+  .cleanroom-join-card {
+    padding: 20px 26px 18px;
+  }
+
+  .cleanroom-join-card h2 {
+    font-size: 26px;
+  }
+
+  .cleanroom-room-label {
+    margin: 6px 0 12px;
+  }
+
+  .cleanroom-join-card label {
+    margin-top: 10px;
+  }
+
+  .cleanroom-join-card input,
+  .cleanroom-join-card select {
+    min-height: 46px;
+  }
+
+  .cleanroom-join-card button {
+    min-height: 56px;
+    margin-top: 14px;
+  }
+
+  .cleanroom-hint {
+    margin-top: 10px;
+    line-height: 1.45;
+  }
+}
+
+/* iPad/tablet landscape: preserve the approved table while giving controls more room. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .guandan-table-stage,
+  .guandan-hand-section {
+    width: 72% !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions {
+    left: 72% !important;
+    width: 28% !important;
+    min-width: 28% !important;
+    max-width: 28% !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+}
+
+/* iPad/tablet portrait. */
+@media (min-width: 641px) and (max-width: 900px) {
+  .cleanroom-join-shell {
+    padding: 18px 14px 28px;
+  }
+
+  .cleanroom-brand {
+    margin-bottom: 14px;
+  }
+
+  .cleanroom-emblem {
+    transform: scale(0.88);
+    transform-origin: center top;
+    margin-bottom: -18px;
+  }
+
+  .cleanroom-join-card {
+    width: min(100%, 540px);
+    padding: 24px 22px 22px;
+  }
+
+  .guandan-table {
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .guandan-table-stage,
+  .guandan-hand-section {
+    width: 68% !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions {
+    left: 68% !important;
+    width: 32% !important;
+    min-width: 32% !important;
+    max-width: 32% !important;
+    padding: 82px 9px 10px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions::before {
+    left: 8px;
+    right: 8px;
+    font-size: 15px;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button {
+    top: 48px !important;
+    width: calc(50% - 14px) !important;
+    height: 50px !important;
+    padding: 4px !important;
+    font-size: 16px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:nth-last-child(2) {
+    left: 7px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:last-child {
+    right: 7px !important;
+  }
+
+  .guandan-public-player-backs {
+    max-width: 64% !important;
+  }
+}
+
+/* Phone: entry page remains one-column; the review/actions area moves below the hand
+ * instead of becoming an unusably narrow right column. */
+@media (max-width: 640px) {
+  .cleanroom-join-shell {
+    padding: 10px 8px 20px;
+  }
+
+  .cleanroom-join-shell::before {
+    inset: 6px;
+  }
+
+  .cleanroom-brand {
+    margin: 0 auto 8px;
+  }
+
+  .cleanroom-emblem {
+    width: 170px;
+    height: 132px;
+    transform: scale(0.78);
+    transform-origin: center top;
+    margin-bottom: -34px;
+  }
+
+  .cleanroom-game-title {
+    font-size: 32px;
+    letter-spacing: 5px;
+    text-indent: 5px;
+  }
+
+  .cleanroom-game-title-en {
+    margin-top: 4px;
+    gap: 8px;
+    font-size: 15px;
+  }
+
+  .cleanroom-game-title-en::before,
+  .cleanroom-game-title-en::after {
+    width: 34px;
+  }
+
+  .cleanroom-game-tagline {
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  .cleanroom-join-card {
+    width: 100%;
+    padding: 20px 14px 18px;
+    border-radius: 16px;
+  }
+
+  .cleanroom-join-card h2 {
+    font-size: 24px;
+  }
+
+  .cleanroom-room-label {
+    margin: 6px 0 12px;
+  }
+
+  .cleanroom-join-card label {
+    margin: 10px 0 6px;
+  }
+
+  .cleanroom-join-card input,
+  .cleanroom-join-card select {
+    min-height: 48px;
+    font-size: 16px;
+  }
+
+  .cleanroom-join-card button {
+    min-height: 56px;
+    margin-top: 14px;
+  }
+
+  .cleanroom-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .guandan-table {
+    min-height: 100dvh;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 3px 4px 6px;
+  }
+
+  .guandan-status-bar {
+    padding-left: 54px;
+    padding-right: 54px;
+  }
+
+  .guandan-status-bar::after {
+    font-size: 18px;
+    letter-spacing: 1px;
+  }
+
+  .guandan-public-zone,
+  .guandan-private-zone {
+    min-height: 260px;
+  }
+
+  .guandan-table-stage,
+  .guandan-hand-section {
+    width: 100% !important;
+    border-radius: 10px !important;
+  }
+
+  .guandan-private-zone {
+    padding-bottom: 150px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: 142px !important;
+    min-height: 142px !important;
+    padding: 48px 8px 8px !important;
+    border-radius: 10px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions::before {
+    top: 6px;
+    left: 8px;
+    right: 8px;
+    height: 28px;
+    font-size: 14px;
+    line-height: 28px;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions::after {
+    display: none;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button {
+    top: 40px !important;
+    width: calc(50% - 12px) !important;
+    height: 46px !important;
+    padding: 4px !important;
+    font-size: 16px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:nth-last-child(2) {
+    left: 6px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:last-child {
+    right: 6px !important;
+  }
+
+  .guandan-public-player-backs {
+    max-width: 60% !important;
+  }
+}
