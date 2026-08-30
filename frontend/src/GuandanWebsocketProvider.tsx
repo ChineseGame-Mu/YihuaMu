@@ -108,6 +108,14 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   React.useEffect(() => {
     mountedRef.current = true;
 
+    const clearQueuedMessages = (): void => {
+      if (messageDrainTimerRef.current !== null) {
+        window.clearTimeout(messageDrainTimerRef.current);
+        messageDrainTimerRef.current = null;
+      }
+      messageQueueRef.current = [];
+    };
+
     const drainMessages = (): void => {
       messageDrainTimerRef.current = null;
       if (!mountedRef.current) return;
@@ -148,11 +156,13 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     const connect = (): void => {
       if (!mountedRef.current) return;
 
+      clearQueuedMessages();
       setStatus("connecting");
       const ws = new WebSocket(websocketUri());
       websocketRef.current = ws;
 
       ws.addEventListener("open", () => {
+        if (websocketRef.current !== ws) return;
         reconnectAttemptRef.current = 0;
         // Keep the UI in "connecting" until the Guandan server itself confirms
         // protocol readiness. Sending join immediately on the transport-level
@@ -160,7 +170,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
-        if (typeof event.data !== "string") return;
+        if (websocketRef.current !== ws || typeof event.data !== "string") return;
 
         try {
           const message = JSON.parse(event.data) as GuandanServerMessage;
@@ -174,12 +184,15 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       });
 
       ws.addEventListener("close", () => {
-        if (websocketRef.current === ws) websocketRef.current = null;
+        if (websocketRef.current !== ws) return;
+        websocketRef.current = null;
+        clearQueuedMessages();
         setStatus("disconnected");
         scheduleReconnect();
       });
 
       ws.addEventListener("error", () => {
+        if (websocketRef.current !== ws) return;
         if (ws.readyState === WebSocket.OPEN) ws.close();
       });
     };
@@ -191,10 +204,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
-      if (messageDrainTimerRef.current !== null) {
-        window.clearTimeout(messageDrainTimerRef.current);
-      }
-      messageQueueRef.current = [];
+      clearQueuedMessages();
       websocketRef.current?.close();
       websocketRef.current = null;
     };
