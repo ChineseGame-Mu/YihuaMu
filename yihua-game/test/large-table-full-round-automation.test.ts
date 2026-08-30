@@ -7,6 +7,7 @@ import {
   type RandomSource,
 } from "../src/core/deck.js";
 import {
+  FIRST_ROUND_LEVEL_RANK,
   passGameTurn,
   playGameCards,
   startNextRound,
@@ -14,7 +15,7 @@ import {
   type RoundCompleteState,
 } from "../src/core/game-state.js";
 import {
-  canHandBeat,
+  canHandBeatWithLevel,
   classifyHand,
   type ClassifiedHand,
 } from "../src/core/hand.js";
@@ -81,7 +82,11 @@ const playToCompletion = (
       leadingHand === null
         ? hand[0]
         : hand.find((deckCard: DeckCard) =>
-            canHandBeat(classifyHand([deckCard.card]), leadingHand),
+            canHandBeatWithLevel(
+              classifyHand([deckCard.card]),
+              leadingHand,
+              FIRST_ROUND_LEVEL_RANK,
+            ),
           );
 
     state =
