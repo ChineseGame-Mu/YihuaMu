@@ -1,5 +1,6 @@
 import type {
   GuandanCard,
+  GuandanClientMessage,
   GuandanRank,
   GuandanServerMessage,
   GuandanTeam,
@@ -158,4 +159,38 @@ export const adaptGuandanServerMessage = (
     case "error":
       return { ...state, error: message.message };
   }
+};
+
+export type GuandanWireClientMessage =
+  | GuandanClientMessage
+  | {
+      type: "join";
+      room: string;
+      name: string;
+      player_count: number;
+    };
+
+interface GuandanClientAdapterOptions {
+  cleanroom: boolean;
+  room: string | null;
+  playerCount: number | null;
+}
+
+const supportedPlayerCounts = [4, 6, 8, 10, 12, 14];
+
+export const adaptGuandanClientMessage = (
+  message: GuandanClientMessage,
+  options: GuandanClientAdapterOptions,
+): GuandanWireClientMessage => {
+  if (!options.cleanroom || message.type !== "join") return message;
+
+  const requested = options.playerCount ?? 4;
+  const playerCount = supportedPlayerCounts.includes(requested) ? requested : 4;
+  const room = options.room?.trim();
+
+  return {
+    ...message,
+    room: room || message.room,
+    player_count: playerCount,
+  };
 };
