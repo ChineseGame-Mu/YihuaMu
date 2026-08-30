@@ -1,5 +1,6 @@
 import type { Card } from "./cards.js";
 import type { RandomSource } from "./deck.js";
+import { playGameCardIds } from "./game-actions.js";
 import {
   availableGameMachineActions,
   transitionGame,
@@ -25,6 +26,11 @@ export type InteractiveGameMachineAction =
   | { readonly type: "complete-interactive-opening" }
   | { readonly type: "deal-after-interactive-opening" }
   | { readonly type: "complete-opening-and-deal" }
+  | {
+      readonly type: "play-card-ids";
+      readonly seat: number;
+      readonly cardIds: readonly string[];
+    }
   | GameMachineAction;
 
 export type InteractiveGameMachineActionType =
@@ -53,6 +59,9 @@ export const availableInteractiveGameActions = (
       "start-interactive-first-round",
       ...availableGameMachineActions(state),
     ];
+  }
+  if (state.phase === "playing") {
+    return [...availableGameMachineActions(state), "play-card-ids"];
   }
   return availableGameMachineActions(state);
 };
@@ -108,6 +117,7 @@ const asLegacyAction = (
     case "complete-interactive-opening":
     case "deal-after-interactive-opening":
     case "complete-opening-and-deal":
+    case "play-card-ids":
       return null;
   }
 };
@@ -150,6 +160,10 @@ export const transitionInteractiveGame = (
           : completeInteractiveOpeningDraw(state),
         random,
       );
+    case "play-card-ids":
+      return state.phase === "playing"
+        ? playGameCardIds(state, action.seat, action.cardIds)
+        : phaseError(state, action);
     default: {
       if (state.phase === "interactive-opening-draw") {
         return phaseError(state, action);
