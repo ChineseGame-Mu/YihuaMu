@@ -56,18 +56,32 @@ export const buildGuandanRoundDisplayModel = (
   };
 };
 
+const RoundScoreBadge = (): React.JSX.Element => (
+  <div className="guandan-level-hud guandan-round-score-hud" data-testid="guandan-round-score">
+    <div className="guandan-level-badge">
+      <span>本轮计分</span>
+      <strong>—</strong>
+    </div>
+  </div>
+);
+
+const CurrentLevelBadge = ({ level }: { level: GuandanRank }): React.JSX.Element => (
+  <div className="guandan-level-hud" data-testid="guandan-current-level">
+    <div className="guandan-level-badge">
+      <span>本局打</span>
+      <strong>{rankLabel[level]}</strong>
+    </div>
+  </div>
+);
+
 export const GuandanRoundResultContent = ({
   model,
 }: {
   model: GuandanRoundDisplayModel;
 }): React.JSX.Element => (
   <>
-    <div className="guandan-level-hud" data-testid="guandan-current-level">
-      <div className="guandan-level-badge">
-        <span>本局打</span>
-        <strong>{rankLabel[model.level]}</strong>
-      </div>
-    </div>
+    <RoundScoreBadge />
+    <CurrentLevelBadge level={model.level} />
     {model.finishOrder.length > 0 && (
       <section
         className="guandan-notice-panel guandan-round-result-acceptance"
@@ -121,12 +135,10 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     <>
       {statusTarget !== null &&
         createPortal(
-          <div className="guandan-level-hud" data-testid="guandan-current-level">
-            <div className="guandan-level-badge">
-              <span>本局打</span>
-              <strong>{rankLabel[model.level]}</strong>
-            </div>
-          </div>,
+          <>
+            <RoundScoreBadge />
+            <CurrentLevelBadge level={model.level} />
+          </>,
           statusTarget,
         )}
       {tableTarget !== null && model.finishOrder.length > 0 &&
