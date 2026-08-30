@@ -396,7 +396,9 @@ export const attachLegacyGuandanConnection = async (
           pending !== undefined &&
           active.adapter.compat.seat !== pending.winner
         ) {
-          throw new Error("only the completed trick winner may clear the table");
+          throw new Error(
+            "only the completed trick winner may clear the table",
+          );
         }
         pendingLegacyTricks.delete(active.roomId);
         await runtime.websocket.broadcastGameState(
