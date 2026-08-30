@@ -23,7 +23,8 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(transport).toContain('url.pathname = "/api/guandan"');
     expect(transport).toContain("adaptGuandanClientMessage");
-    expect(adapter).toContain("room: cleanroomRoom || message.room");
+    expect(adapter).toContain("const room = options.room?.trim()");
+    expect(adapter).toContain("room: room || message.room");
     expect(adapter).toContain("player_count: playerCount");
 
     expect(gateway).toContain("toCleanroomCommand");
