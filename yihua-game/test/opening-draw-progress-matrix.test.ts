@@ -42,9 +42,9 @@ describe("opening draw progress matrix", () => {
         ordinaryCardCount(playerCount) - playerCount,
       );
       expect(advancedProgress.lastAttempt?.cards).toHaveLength(playerCount);
-      expect(advancedProgress.lastAttempt?.seatDraws.map(({ seat }) => seat)).toEqual(
-        Array.from({ length: playerCount }, (_, seat) => seat),
-      );
+      expect(
+        advancedProgress.lastAttempt?.seatDraws.map(({ seat }) => seat),
+      ).toEqual(Array.from({ length: playerCount }, (_, seat) => seat));
       expect(advancedProgress.winnerSeat).toBe(advanced.session.winnerSeat);
       expect(advancedProgress.phase).toBe(advanced.phase);
 
