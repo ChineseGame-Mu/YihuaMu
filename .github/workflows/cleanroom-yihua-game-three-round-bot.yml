@@ -8,6 +8,7 @@ on:
       - ".github/workflows/cleanroom-yihua-game-three-round-bot.yml"
       - "yihua-game/src/core/**"
       - "yihua-game/test/**"
+      - "backend/src/guandan_handler.rs"
       - "frontend/src/GuandanRoundResultHud.tsx"
       - "frontend/src/GuandanRoundResultHud.test.tsx"
       - "frontend/src/CleanroomEntry.tsx"
@@ -16,7 +17,7 @@ on:
 jobs:
   three-round-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: yihua-game
@@ -28,6 +29,8 @@ jobs:
       - run: npm install
       - name: Build standalone server
         run: npm run build
+      - name: State-machine acceptance - final player auto-place through next round
+        run: npm test -- last-place-auto-finish-next-round-matrix.test.ts
       - name: Bot verification for all supported table sizes
         env:
           SOAK_DURATION_MS: "10000"
