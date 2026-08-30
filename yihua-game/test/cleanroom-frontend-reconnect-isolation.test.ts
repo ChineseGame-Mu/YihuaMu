@@ -17,9 +17,11 @@ describe("clean-room frontend reconnect isolation", () => {
   it("clears queued old-socket messages before reconnect snapshots", () => {
     expect(provider).toContain("const clearQueuedMessages = (): void =>");
     expect(provider).toContain("messageQueueRef.current = []");
-    expect(provider).toContain("clearQueuedMessages();\n      setStatus(\"connecting\")");
     expect(provider).toContain(
-      "websocketRef.current = null;\n        clearQueuedMessages();\n        setStatus(\"disconnected\")",
+      'clearQueuedMessages();\n      setStatus("connecting")',
+    );
+    expect(provider).toContain(
+      'websocketRef.current = null;\n        clearQueuedMessages();\n        setStatus("disconnected")',
     );
   });
 });
