@@ -135,9 +135,13 @@ describe("opening draw -> complete hand families -> table state", () => {
         expect(afterPlay.phase).toBe("playing");
         expect(afterPlay.trick?.leadingPlay?.seat).toBe(winnerSeat);
         expect(afterPlay.trick?.leadingPlay?.hand.kind).toBe(handCase.kind);
-        expect(afterPlay.trick?.leadingPlay?.hand.size).toBe(handCase.cards.length);
+        expect(afterPlay.trick?.leadingPlay?.hand.size).toBe(
+          handCase.cards.length,
+        );
         expect(afterPlay.trick?.passedSeats).toEqual([]);
-        expect(afterPlay.trick?.currentTurn).toBe((winnerSeat + 1) % playerCount);
+        expect(afterPlay.trick?.currentTurn).toBe(
+          (winnerSeat + 1) % playerCount,
+        );
       });
     }
   }
