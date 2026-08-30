@@ -125,14 +125,17 @@ export const adaptGuandanServerMessage = (
       };
     case "hand":
       return { ...state, hand: message.cards, error: null };
-    case "state": {
-      const ownHandFinished = shouldClearOwnHand(state.seat, message.finish_order);
+    case "state":
       return {
         ...state,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,
-        hand: ownHandFinished ? [] : state.hand,
+        // Public state must never erase this browser's private hand. The
+        // clean-room server sends an authoritative private_hand after plays,
+        // starts, next rounds, and reconnect snapshots; that message alone
+        // owns the hand contents.
+        hand: state.hand,
         turn: message.turn,
         handCounts: message.hand_counts,
         lastPlay: message.last_play,
@@ -155,7 +158,6 @@ export const adaptGuandanServerMessage = (
         nextRoundPhase: message.next_round_phase,
         error: null,
       };
-    }
     case "error":
       return { ...state, error: message.message };
   }
