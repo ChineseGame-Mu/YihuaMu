@@ -1,4 +1,6 @@
-import { canHandBeat, classifyHand } from "../dist/core/hand.js";
+import { canHandBeatWithLevel } from "../dist/core/hand.js";
+import { FIRST_ROUND_LEVEL_RANK } from "../dist/core/game-state.js";
+import { classifyHandWithLevel } from "../dist/core/level-hand.js";
 import { createServerRuntime } from "../dist/core/server-runtime.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../dist/core/table.js";
 import { attachUpgradedConnection } from "../dist/core/websocket-upgrade.js";
@@ -335,7 +337,11 @@ const sendGameCommand = async (table) => {
     leadingHand === null
       ? hand[0]
       : hand.find((deckCard) =>
-          canHandBeat(classifyHand([deckCard.card]), leadingHand),
+          canHandBeatWithLevel(
+            classifyHandWithLevel([deckCard.card], FIRST_ROUND_LEVEL_RANK),
+            leadingHand,
+            FIRST_ROUND_LEVEL_RANK,
+          ),
         );
   table.commandSequence += 1;
   const revision = managed.revision;
