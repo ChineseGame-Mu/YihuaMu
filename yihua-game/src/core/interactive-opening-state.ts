@@ -9,7 +9,11 @@ import {
   advanceOpeningDrawMachine,
   completeOpeningDrawMachine,
   createOpeningDrawMachine,
+  openingDrawMachineProgress,
+  openingDrawMachinePrompt,
   openingDrawMachineResult,
+  type OpeningDrawMachineProgress,
+  type OpeningDrawMachinePrompt,
   type OpeningDrawMachineState,
 } from "./opening-draw-machine.js";
 
@@ -17,6 +21,14 @@ export interface InteractiveOpeningState {
   readonly phase: "interactive-opening-draw";
   readonly lobby: LobbyState;
   readonly draw: OpeningDrawMachineState;
+}
+
+export interface InteractiveOpeningSnapshot {
+  readonly phase: "interactive-opening-draw";
+  readonly playerCount: LobbyState["config"]["playerCount"];
+  readonly progress: OpeningDrawMachineProgress;
+  readonly prompt: OpeningDrawMachinePrompt;
+  readonly readyToDeal: boolean;
 }
 
 export const beginInteractiveOpeningDraw = (
@@ -30,6 +42,16 @@ export const beginInteractiveOpeningDraw = (
     lobby.config.playerCount,
     random,
   ),
+});
+
+export const interactiveOpeningSnapshot = (
+  state: InteractiveOpeningState,
+): InteractiveOpeningSnapshot => ({
+  phase: state.phase,
+  playerCount: state.lobby.config.playerCount,
+  progress: openingDrawMachineProgress(state.draw),
+  prompt: openingDrawMachinePrompt(state.draw),
+  readyToDeal: openingDrawMachineResult(state.draw) !== null,
 });
 
 export const advanceInteractiveOpeningDraw = (
