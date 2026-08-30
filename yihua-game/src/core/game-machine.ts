@@ -21,6 +21,11 @@ export type GameMachineAction =
       readonly seat: number;
       readonly cards: readonly Card[];
     }
+  | {
+      readonly type: "play-card-ids";
+      readonly seat: number;
+      readonly cardIds: readonly string[];
+    }
   | { readonly type: "pass-turn"; readonly seat: number }
   | { readonly type: "next-round" };
 
@@ -35,7 +40,7 @@ export const availableGameMachineActions = (
     case "opening-draw":
       return ["deal-after-opening-draw"];
     case "playing":
-      return ["play-cards", "pass-turn"];
+      return ["play-cards", "play-card-ids", "pass-turn"];
     case "round-complete":
       return ["next-round"];
   }
@@ -66,6 +71,10 @@ export const transitionGame = (
     case "play-cards":
       return state.phase === "playing"
         ? playGameCards(state, action.seat, action.cards)
+        : phaseError(state, action);
+    case "play-card-ids":
+      return state.phase === "playing"
+        ? playGameCardIds(state, action.seat, action.cardIds)
         : phaseError(state, action);
     case "pass-turn":
       return state.phase === "playing"
