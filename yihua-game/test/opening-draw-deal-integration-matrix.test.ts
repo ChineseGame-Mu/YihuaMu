@@ -10,7 +10,10 @@ import {
   dealAfterOpeningDraw,
   type OpeningDrawState,
 } from "../src/core/game-state.js";
-import type { SupportedPlayerCount } from "../src/core/table.js";
+import {
+  createTableConfig,
+  type SupportedPlayerCount,
+} from "../src/core/table.js";
 
 const supportedCounts: readonly SupportedPlayerCount[] = [4, 6, 8, 10, 12, 14];
 const deterministicRandom = (): number => 0.3141592653589793;
@@ -41,7 +44,7 @@ describe("independent opening draw to deal integration", () => {
 
       const opening: OpeningDrawState = {
         phase: "opening-draw",
-        config: { playerCount },
+        config: createTableConfig(playerCount, 0),
         openingDraw: result!,
       };
       const playing = dealAfterOpeningDraw(opening, deterministicRandom);
