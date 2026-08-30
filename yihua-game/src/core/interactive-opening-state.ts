@@ -7,6 +7,7 @@ import {
 } from "./game-state.js";
 import {
   advanceOpeningDrawMachine,
+  completeOpeningDrawMachine,
   createOpeningDrawMachine,
   openingDrawMachineResult,
   type OpeningDrawMachineState,
@@ -36,6 +37,13 @@ export const advanceInteractiveOpeningDraw = (
 ): InteractiveOpeningState => ({
   ...state,
   draw: advanceOpeningDrawMachine(state.draw),
+});
+
+export const completeInteractiveOpeningDraw = (
+  state: InteractiveOpeningState,
+): InteractiveOpeningState => ({
+  ...state,
+  draw: completeOpeningDrawMachine(state.draw),
 });
 
 export const finishInteractiveOpeningDraw = (
