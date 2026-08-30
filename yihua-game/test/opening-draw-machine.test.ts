@@ -52,9 +52,9 @@ describe("stepwise opening draw machine", () => {
     state = advanceOpeningDrawMachine(state);
     expect(state.phase).toBe("complete");
     expect(state.session.attempts).toHaveLength(2);
-    expect(state.session.attempts[1]!.seatDraws.map(({ seat }) => seat)).toEqual([
-      0, 1,
-    ]);
+    expect(
+      state.session.attempts[1]!.seatDraws.map(({ seat }) => seat),
+    ).toEqual([0, 1]);
     expect(openingDrawMachineResult(state)).toMatchObject({ winnerSeat: 1 });
     expect(() => advanceOpeningDrawMachine(state)).toThrow(
       "opening draw machine is already complete",
