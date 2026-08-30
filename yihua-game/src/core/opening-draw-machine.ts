@@ -2,6 +2,7 @@ import type { DeckCard, RandomSource } from "./deck.js";
 import {
   createOpeningDrawSession,
   drawOpeningAttempt,
+  nextOpeningDrawSeats,
   type OpeningDrawAttempt,
   type OpeningDrawResult,
   type OpeningDrawSession,
@@ -92,6 +93,9 @@ export const openingDrawMachinePrompt = (
   const canDraw = state.phase === "drawing";
   const attemptsCompleted = state.session.attempts.length;
   const lastAttempt = state.session.attempts[attemptsCompleted - 1] ?? null;
+  const seatsToDraw = canDraw
+    ? nextOpeningDrawSeats(state.session, state.playerCount)
+    : [];
 
   return {
     phase: state.phase,
@@ -99,10 +103,8 @@ export const openingDrawMachinePrompt = (
     attemptNumber: canDraw ? attemptsCompleted + 1 : null,
     isRedraw:
       canDraw && lastAttempt !== null && lastAttempt.winnerSeat === null,
-    seatsToDraw: canDraw
-      ? Array.from({ length: state.playerCount }, (_, seat) => seat)
-      : [],
-    cardsRequired: canDraw ? state.playerCount : 0,
+    seatsToDraw,
+    cardsRequired: seatsToDraw.length,
   };
 };
 
