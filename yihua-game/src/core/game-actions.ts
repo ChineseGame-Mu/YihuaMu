@@ -6,6 +6,7 @@ import {
   type PlayingState,
   type RoundCompleteState,
 } from "./game-state.js";
+import { classifyHand, type ClassifiedHand } from "./hand.js";
 
 const selectedCards = (
   state: PlayingState,
@@ -32,6 +33,13 @@ const selectedCards = (
     return card;
   });
 };
+
+export const classifyGameCardIds = (
+  state: PlayingState,
+  seat: number,
+  cardIds: readonly string[],
+): ClassifiedHand =>
+  classifyHand(selectedCards(state, seat, cardIds).map(({ card }) => card));
 
 export const playGameCardIds = (
   state: PlayingState,
