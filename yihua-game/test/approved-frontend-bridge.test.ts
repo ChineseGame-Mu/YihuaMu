@@ -43,8 +43,8 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(entry).toContain("<GuandanWebsocketProvider>");
     expect(entry).toContain("<GuandanStateProvider>");
     expect(entry).toContain("<GuandanTable />");
-    expect(transport).toContain('url.pathname = "/api/guandan"');
     expect(transport).toContain("adaptGuandanClientMessage");
+    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
     expect(adapter).toContain("player_count: playerCount");
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(table).toContain(
@@ -71,9 +71,15 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
     expect(transport).toContain(
+      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+    );
+    expect(transport).toContain(
       'if (query.get("cleanroom") !== "1") return null',
     );
-    expect(transport).toContain('url.pathname = "/api/guandan"');
+    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
+    expect(transport).not.toContain(
+      'query.get("backend") ?? (window as any)._CLEANROOM_BACKEND',
+    );
   });
 
   it("preserves an arbitrary clean-room room id behind the approved UI room alias", () => {
