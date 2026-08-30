@@ -64,9 +64,14 @@ const phaseError = (
   throw new Error(`cannot ${action.type} while game is ${state.phase}`);
 };
 
-const assertOpeningWinnerOwnsFirstLead = (state: PlayingState): PlayingState => {
+const assertOpeningWinnerOwnsFirstLead = (
+  state: PlayingState,
+): PlayingState => {
   const winnerSeat = state.openingDraw.winnerSeat;
-  if (state.currentTurn !== winnerSeat || state.trick.leaderSeat !== winnerSeat) {
+  if (
+    state.currentTurn !== winnerSeat ||
+    state.trick.leaderSeat !== winnerSeat
+  ) {
     throw new Error("opening draw winner must own the first table lead");
   }
   return state;
@@ -76,7 +81,9 @@ const dealInteractiveOpening = (
   state: InteractiveOpeningState,
   random: RandomSource,
 ): PlayingState =>
-  assertOpeningWinnerOwnsFirstLead(dealAfterInteractiveOpeningDraw(state, random));
+  assertOpeningWinnerOwnsFirstLead(
+    dealAfterInteractiveOpeningDraw(state, random),
+  );
 
 const asLegacyAction = (
   action: InteractiveGameMachineAction,
@@ -117,7 +124,9 @@ export const transitionInteractiveGame = (
         : phaseError(state, action);
     case "start-interactive-first-round":
       return state.phase === "lobby"
-        ? assertOpeningWinnerOwnsFirstLead(startInteractiveFirstRound(state, random))
+        ? assertOpeningWinnerOwnsFirstLead(
+            startInteractiveFirstRound(state, random),
+          )
         : phaseError(state, action);
     case "draw-opening-attempt":
       return state.phase === "interactive-opening-draw"
