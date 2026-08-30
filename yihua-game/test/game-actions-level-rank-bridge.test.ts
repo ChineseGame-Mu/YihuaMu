@@ -31,15 +31,13 @@ const responseState = (): PlayingState => {
   const ace = deckCard("lead-ace", suited("A"));
   const five = deckCard("response-five", suited("5", "spades"));
   const filler = (seat: number): DeckCard =>
-    deckCard(`filler-${seat}`, suited("3", seat % 2 === 0 ? "clubs" : "diamonds"));
+    deckCard(
+      `filler-${seat}`,
+      suited("3", seat % 2 === 0 ? "clubs" : "diamonds"),
+    );
   const state: PlayingState = {
     ...base,
-    hands: [
-      [ace, filler(0)],
-      [five, filler(1)],
-      [filler(2)],
-      [filler(3)],
-    ],
+    hands: [[ace, filler(0)], [five, filler(1)], [filler(2)], [filler(3)]],
     currentTurn: 0,
     trick: createTrickState(4, 0),
     finishedSeats: [],

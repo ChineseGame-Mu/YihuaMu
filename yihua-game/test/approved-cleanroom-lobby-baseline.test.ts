@@ -4,7 +4,10 @@ import { describe, expect, it } from "vitest";
 
 const repositoryRoot = resolve(process.cwd(), "..");
 const entry = (): string =>
-  readFileSync(resolve(repositoryRoot, "frontend/src/CleanroomEntry.tsx"), "utf8");
+  readFileSync(
+    resolve(repositoryRoot, "frontend/src/CleanroomEntry.tsx"),
+    "utf8",
+  );
 
 describe("approved clean-room join-room homepage", () => {
   it("keeps the existing join-room form and supported player counts", () => {
@@ -14,7 +17,9 @@ describe("approved clean-room join-room homepage", () => {
     expect(source).toContain("房间：");
     expect(source).toContain('htmlFor="cleanroom-player-count"');
     expect(source).toContain("开始人数：4–14 人");
-    expect(source).toContain("const supportedCounts = [4, 6, 8, 10, 12, 14] as const");
+    expect(source).toContain(
+      "const supportedCounts = [4, 6, 8, 10, 12, 14] as const",
+    );
     expect(source).toContain('htmlFor="cleanroom-player-name"');
     expect(source).toContain('placeholder="请输入姓名"');
     expect(source).toContain("<span>进入牌室</span>");
