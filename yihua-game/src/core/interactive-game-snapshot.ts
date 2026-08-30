@@ -15,7 +15,10 @@ export interface InteractiveGameSnapshot {
   readonly openingDraw: OpeningDrawMachineProgress | null;
   readonly currentTurn: number | null;
   readonly handCounts: readonly number[];
-  readonly leadingPlay: { readonly seat: number; readonly cards: readonly Card[] } | null;
+  readonly leadingPlay: {
+    readonly seat: number;
+    readonly cards: readonly Card[];
+  } | null;
   readonly passedSeats: readonly number[];
   readonly completedTricks: number;
   readonly finishedSeats: readonly number[];
@@ -39,7 +42,8 @@ export const interactiveGameSnapshot = (
     };
   }
 
-  const tableActive = state.phase === "playing" || state.phase === "round-complete";
+  const tableActive =
+    state.phase === "playing" || state.phase === "round-complete";
 
   return {
     phase: state.phase,
