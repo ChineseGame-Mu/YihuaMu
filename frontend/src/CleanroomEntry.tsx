@@ -10,6 +10,7 @@ import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import ExitGameButton from "./ExitGameButton";
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
+import "./cleanroom-lobby-artwork.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
@@ -38,7 +39,6 @@ const GuandanJoinBrand = (): JSX.Element => (
         <span className="cleanroom-fan-card cleanroom-fan-card-k">K♠</span>
       </div>
       <div className="cleanroom-emblem-title">掼蛋</div>
-      <div className="cleanroom-emblem-seal">囍</div>
     </div>
     <h1 className="cleanroom-game-title">掼蛋游戏</h1>
     <div className="cleanroom-game-title-en">GUANDAN GAME</div>
@@ -120,7 +120,7 @@ const CleanroomEntry = (): JSX.Element => {
   };
 
   return (
-    <main className="cleanroom-join-shell">
+    <main className="cleanroom-join-shell cleanroom-join-shell-artwork">
       <div className="cleanroom-bamboo" aria-hidden="true" />
       <div className="cleanroom-plum" aria-hidden="true" />
       <div className="cleanroom-lantern" aria-hidden="true" />
