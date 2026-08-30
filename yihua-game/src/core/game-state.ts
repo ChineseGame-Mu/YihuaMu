@@ -48,6 +48,7 @@ export interface PlayingState {
   readonly hands: readonly (readonly DeckCard[])[];
   readonly currentTurn: number;
   readonly trick: TrickState;
+  readonly levelRank?: Rank;
   readonly finishedSeats?: readonly number[];
 }
 
@@ -104,6 +105,7 @@ export const dealAfterOpeningDraw = (
     hands,
     currentTurn: trick.currentTurn,
     trick,
+    levelRank: FIRST_ROUND_LEVEL_RANK,
     finishedSeats: [],
   };
 };
@@ -133,6 +135,7 @@ export const startNextRound = (
     hands,
     currentTurn: trick.currentTurn,
     trick,
+    levelRank: completed.levelRank ?? FIRST_ROUND_LEVEL_RANK,
     finishedSeats: [],
   };
 };
@@ -214,7 +217,7 @@ export const playGameCards = (
   state: PlayingState,
   seat: number,
   cards: readonly Card[],
-  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
+  levelRank: Rank = state.levelRank ?? FIRST_ROUND_LEVEL_RANK,
 ): PlayingState | RoundCompleteState => {
   const priorFinishedSeats = finishedSeatsOf(state);
   if (priorFinishedSeats.includes(seat)) {
