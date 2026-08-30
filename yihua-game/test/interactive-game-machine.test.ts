@@ -19,6 +19,9 @@ describe("interactive game machine", () => {
       expect(availableInteractiveGameActions(state)).toContain(
         "begin-interactive-opening",
       );
+      expect(availableInteractiveGameActions(state)).toContain(
+        "start-interactive-first-round",
+      );
       state = transitionInteractiveGame(
         state,
         { type: "begin-interactive-opening" },
@@ -62,6 +65,26 @@ describe("interactive game machine", () => {
       expect(state.phase).toBe("playing");
       if (state.phase !== "playing") return;
       expect(state.currentTurn).toBe(winnerSeat);
+      expect(state.hands).toHaveLength(playerCount);
+      expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
+    },
+  );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "atomically starts a %i-player interactive first round from the lobby",
+    (playerCount) => {
+      let state: InteractiveGameState = createLobbyState(playerCount, 0);
+      state = transitionInteractiveGame(
+        state,
+        { type: "start-interactive-first-round" },
+        fixedRandom,
+      );
+
+      expect(state.phase).toBe("playing");
+      if (state.phase !== "playing") return;
+      expect(state.openingDraw.winnerSeat).not.toBeNull();
+      expect(state.currentTurn).toBe(state.openingDraw.winnerSeat);
+      expect(state.trick.leaderSeat).toBe(state.openingDraw.winnerSeat);
       expect(state.hands).toHaveLength(playerCount);
       expect(state.hands.every((hand) => hand.length === 27)).toBe(true);
     },
