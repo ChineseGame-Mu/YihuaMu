@@ -20,6 +20,20 @@ import type { UpgradedConnection } from "./websocket-upgrade.js";
 
 const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
 
+type LegacyStateMessage = Extract<
+  LegacyServerMessage,
+  { readonly type: "state" }
+>;
+
+interface PendingLegacyTrick {
+  readonly completedTricks: number;
+  readonly winner: number;
+  readonly lastPlay: LegacyStateMessage["last_play"];
+  readonly tablePlays: LegacyStateMessage["table_plays"];
+}
+
+const pendingLegacyTricks = new Map<string, PendingLegacyTrick>();
+
 const sendLegacy = async (
   socket: TextSocket,
   message: LegacyServerMessage,
@@ -54,10 +68,7 @@ class LegacyAdapterSocket implements TextSocket {
     | undefined;
   private startedRevision: number | undefined;
   private completedTricks = 0;
-  private tablePlays: Extract<
-    LegacyServerMessage,
-    { readonly type: "state" }
-  >["table_plays"] = [];
+  private tablePlays: LegacyStateMessage["table_plays"] = [];
   readonly compat: {
     roomId: string;
     playerId: string;
@@ -81,9 +92,15 @@ class LegacyAdapterSocket implements TextSocket {
     if (this.roomState === undefined || this.gameState === undefined) return;
     const legacyState = gameStateToLegacy(this.roomState, this.gameState);
     if (legacyState.type !== "state") return;
+    const pending = pendingLegacyTricks.get(this.compat.roomId);
     await sendLegacy(this.socket, {
       ...legacyState,
-      table_plays: this.tablePlays,
+      last_play: pending?.lastPlay ?? legacyState.last_play,
+      last_player: pending?.winner ?? legacyState.last_player,
+      table_plays: pending?.tablePlays ?? this.tablePlays,
+      passes: pending === undefined ? legacyState.passes : 0,
+      trick_complete: pending !== undefined,
+      last_trick_winner: pending?.winner ?? null,
     });
   }
 
@@ -106,6 +123,7 @@ class LegacyAdapterSocket implements TextSocket {
         await sendLegacy(this.socket, privateHandToLegacy(message));
         return;
       case "game_state": {
+        const previousGameState = this.gameState;
         this.gameState = message;
         if (this.roomState === undefined) return;
         if (this.startedRevision === undefined) {
@@ -117,27 +135,60 @@ class LegacyAdapterSocket implements TextSocket {
           });
         }
 
-        if (message.completedTricks !== this.completedTricks) {
-          this.completedTricks = message.completedTricks;
+        if (
+          previousGameState !== undefined &&
+          message.phase === "playing" &&
+          message.completedTricks > this.completedTricks
+        ) {
+          const previousLegacy = gameStateToLegacy(
+            this.roomState,
+            previousGameState,
+          );
+          if (
+            previousLegacy.type === "state" &&
+            previousLegacy.last_player !== null &&
+            previousLegacy.last_play.length > 0 &&
+            this.tablePlays.length > 0 &&
+            !pendingLegacyTricks.has(this.compat.roomId)
+          ) {
+            pendingLegacyTricks.set(this.compat.roomId, {
+              completedTricks: message.completedTricks,
+              winner: previousLegacy.last_player,
+              lastPlay: previousLegacy.last_play,
+              tablePlays: this.tablePlays,
+            });
+          }
+        }
+
+        if (
+          message.phase === "round-complete" ||
+          message.completedTricks < this.completedTricks
+        ) {
+          pendingLegacyTricks.delete(this.compat.roomId);
           this.tablePlays = [];
         }
+        this.completedTricks = message.completedTricks;
 
         const legacyState = gameStateToLegacy(this.roomState, message);
         if (legacyState.type !== "state") return;
+        const pending = pendingLegacyTricks.get(this.compat.roomId);
         const currentPlay = legacyState.table_plays[0];
-        if (currentPlay !== undefined) {
+        if (pending === undefined && currentPlay !== undefined) {
           this.tablePlays = [
             ...this.tablePlays.filter(
               ({ player }) => player !== currentPlay.player,
             ),
             currentPlay,
           ];
+        } else if (
+          pending === undefined &&
+          currentPlay === undefined &&
+          message.phase === "playing"
+        ) {
+          this.tablePlays = [];
         }
 
-        await sendLegacy(this.socket, {
-          ...legacyState,
-          table_plays: this.tablePlays,
-        });
+        await this.sendCurrentLegacyState();
         return;
       }
       case "error":
@@ -338,6 +389,20 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+      if (message.type === "end_round") {
+        const pending = pendingLegacyTricks.get(active.roomId);
+        if (
+          pending !== undefined &&
+          active.adapter.compat.seat !== pending.winner
+        ) {
+          throw new Error("only the completed trick winner may clear the table");
+        }
+        pendingLegacyTricks.delete(active.roomId);
+        await runtime.websocket.broadcastGameState(
+          runtime.rooms.get(active.roomId),
+        );
+        return;
       }
       if (
         message.type === "shuffle_next_round" ||
