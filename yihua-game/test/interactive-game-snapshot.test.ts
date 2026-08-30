@@ -21,6 +21,7 @@ describe("interactive game snapshot", () => {
         currentTurn: null,
         handCounts: [],
         leadingPlay: null,
+        leadingHand: null,
         passedSeats: [],
         completedTricks: 0,
       });
@@ -42,6 +43,7 @@ describe("interactive game snapshot", () => {
         },
         handCounts: [],
         leadingPlay: null,
+        leadingHand: null,
       });
 
       state = transitionInteractiveGame(
@@ -75,6 +77,7 @@ describe("interactive game snapshot", () => {
         currentTurn: winnerSeat,
         handCounts: Array(playerCount).fill(27),
         leadingPlay: null,
+        leadingHand: null,
         passedSeats: [],
         completedTricks: 0,
         finishedSeats: [],
@@ -97,6 +100,10 @@ describe("interactive game snapshot", () => {
       expect(afterPlay.leadingPlay).toEqual({
         seat: winnerSeat,
         cards: [firstCard],
+      });
+      expect(afterPlay.leadingHand).toMatchObject({
+        kind: "single",
+        size: 1,
       });
       expect(afterPlay.currentTurn).not.toBe(winnerSeat);
       expect(afterPlay.finishedSeats).toEqual([]);
