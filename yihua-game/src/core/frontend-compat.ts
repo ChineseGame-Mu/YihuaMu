@@ -173,9 +173,7 @@ export const toCleanroomCommand = (
     case "start":
       return { type: "start_game" };
     case "shuffle_next_round":
-      throw new Error(
-        "clean-room backend does not expose a separate shuffle step yet",
-      );
+      return { type: "set_next_round_ready", ready: true };
     case "deal_next_round":
       return { type: "next_round" };
     case "play": {
@@ -229,6 +227,15 @@ export const gameStateToLegacy = (
 ): LegacyServerMessage => {
   const participants = [...room.participants].sort((a, b) => a.seat - b.seat);
   const lastPlay = game.leadingPlay?.cards.map(legacyCard) ?? [];
+  const lastGameWinner =
+    game.phase === "round-complete" ? (game.finishedSeats[0] ?? null) : null;
+  const losingTeamShuffleReady =
+    lastGameWinner !== null &&
+    participants.some(
+      ({ seat, readyForNextRound }) =>
+        seat % 2 !== lastGameWinner % 2 && readyForNextRound === true,
+    );
+
   return {
     type: "state",
     players: participants.map(({ name }) => name),
@@ -250,13 +257,18 @@ export const gameStateToLegacy = (
     level: "Two",
     team_levels: null,
     finish_order: game.finishedSeats,
-    last_game_winner: null,
+    last_game_winner: lastGameWinner,
     last_game_winner_team: null,
     last_promotion_steps: null,
     pending_tribute: null,
     tribute_resisted: false,
     match_winner: null,
-    next_round_phase: game.phase === "round-complete" ? "awaiting_deal" : null,
+    next_round_phase:
+      game.phase === "round-complete"
+        ? losingTeamShuffleReady
+          ? "awaiting_deal"
+          : "awaiting_shuffle"
+        : null,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
   };
 };
