@@ -347,6 +347,8 @@ export const attachLegacyGuandanConnection = async (
         if (managed.game.phase !== "round-complete") {
           throw new Error("round is not complete");
         }
+        const finalDraw = managed.game.openingDraw.attempts.at(-1);
+        if (finalDraw === undefined) throw new Error("opening draw is missing");
         assertLegacyNextRoundRole(message, active.adapter.compat.seat, {
           type: "game_state",
           roomId: active.roomId,
@@ -354,12 +356,18 @@ export const attachLegacyGuandanConnection = async (
           phase: "round-complete",
           currentTurn: managed.game.currentTurn,
           handCounts: managed.game.hands.map((hand) => hand.length),
-          openingDraw: managed.game.openingDraw,
-          openingDrawWinner: managed.game.openingDrawWinner,
-          leadingPlay: managed.game.leadingPlay,
-          passedSeats: managed.game.passedSeats,
+          openingDraw: finalDraw.cards.map(({ card }) => card),
+          openingDrawWinner: managed.game.openingDraw.winnerSeat,
+          leadingPlay:
+            managed.game.trick.leadingPlay === null
+              ? null
+              : {
+                  seat: managed.game.trick.leadingPlay.seat,
+                  cards: managed.game.trick.leadingPlay.cards,
+                },
+          passedSeats: managed.game.trick.passedSeats,
           finishedSeats: managed.game.finishedSeats,
-          completedTricks: managed.game.completedTricks,
+          completedTricks: managed.game.trick.completedTricks,
         });
       }
       const clean = toCleanroomCommand(message, active.adapter.compat);
