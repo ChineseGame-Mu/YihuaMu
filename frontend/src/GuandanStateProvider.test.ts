@@ -1,4 +1,5 @@
 import {
+  adaptGuandanClientMessage,
   adaptGuandanServerMessage,
   initialGuandanTableState,
   shouldClearOwnHand,
@@ -31,5 +32,30 @@ describe("Guandan compatibility adapter", () => {
     expect(next.onlinePlayers).toEqual([true, true, true, false]);
     expect(next.minimumPlayers).toBe(4);
     expect(next.maximumPlayers).toBe(14);
+  });
+
+  test("maps the legacy join alias to the cleanroom room and player count", () => {
+    expect(
+      adaptGuandanClientMessage(
+        { type: "join", room: "0001", name: "A" },
+        { cleanroom: true, room: "family-room", playerCount: 10 },
+      ),
+    ).toEqual({
+      type: "join",
+      room: "family-room",
+      name: "A",
+      player_count: 10,
+    });
+  });
+
+  test("keeps legacy messages unchanged outside cleanroom mode", () => {
+    const message = { type: "pass" } as const;
+    expect(
+      adaptGuandanClientMessage(message, {
+        cleanroom: false,
+        room: null,
+        playerCount: null,
+      }),
+    ).toBe(message);
   });
 });
