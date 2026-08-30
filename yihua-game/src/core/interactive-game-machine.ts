@@ -61,9 +61,6 @@ export const availableInteractiveGameActions = (
       ...availableGameMachineActions(state),
     ];
   }
-  if (state.phase === "playing") {
-    return [...availableGameMachineActions(state), "play-card-ids"];
-  }
   return availableGameMachineActions(state);
 };
 
