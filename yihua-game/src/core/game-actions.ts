@@ -1,4 +1,6 @@
+import type { Rank } from "./cards.js";
 import {
+  FIRST_ROUND_LEVEL_RANK,
   passGameTurn,
   playGameCards,
   type PlayingState,
@@ -35,12 +37,14 @@ export const playGameCardIds = (
   state: PlayingState,
   seat: number,
   cardIds: readonly string[],
+  levelRank: Rank = FIRST_ROUND_LEVEL_RANK,
 ): PlayingState | RoundCompleteState => {
   const selected = selectedCards(state, seat, cardIds);
   const next = playGameCards(
     state,
     seat,
     selected.map(({ card }) => card),
+    levelRank,
   );
   const selectedIds = new Set(cardIds);
   const exactRemainingHand = state.hands[seat]!.filter(
