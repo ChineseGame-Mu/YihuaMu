@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DeckCard } from "../src/core/deck.js";
 import {
   advanceOpeningDrawMachine,
+  completeOpeningDrawMachine,
   createOpeningDrawMachine,
   openingDrawMachineResult,
 } from "../src/core/opening-draw-machine.js";
@@ -50,6 +51,31 @@ describe("stepwise opening draw machine", () => {
     expect(() => advanceOpeningDrawMachine(state)).toThrow(
       "opening draw machine is already complete",
     );
+  });
+
+  it("can finish a tied opening draw without hiding redraw attempts", () => {
+    const deck: DeckCard[] = [
+      suited("0:a", 0, "hearts", "A"),
+      suited("1:a", 1, "hearts", "A"),
+      suited("0:7", 0, "clubs", "7"),
+      suited("0:8", 0, "clubs", "8"),
+      suited("1:7", 1, "clubs", "7"),
+      suited("1:8", 1, "diamonds", "8"),
+      suited("1:a2", 1, "spades", "A"),
+      suited("1:9", 1, "hearts", "9"),
+    ];
+
+    const complete = completeOpeningDrawMachine(
+      createOpeningDrawMachine(deck, 4, () => 0.999999),
+    );
+    const result = openingDrawMachineResult(complete);
+
+    expect(complete.phase).toBe("complete");
+    expect(result?.attempts).toHaveLength(2);
+    expect(result?.attempts[0]!.winnerSeat).toBeNull();
+    expect(result?.attempts[1]!.winnerSeat).toBe(2);
+    expect(result?.winnerSeat).toBe(2);
+    expect(completeOpeningDrawMachine(complete)).toBe(complete);
   });
 
   it.each([4, 6, 8, 10, 12, 14] as const)(
