@@ -40,7 +40,9 @@ describe("interactive opening snapshot history", () => {
       expect(afterOneSnapshot.progress.lastAttempt).toEqual(
         afterOneSnapshot.attempts[0],
       );
-      expect(afterOneSnapshot.winnerSeat).toBe(afterOneDraw.draw.session.winnerSeat);
+      expect(afterOneSnapshot.winnerSeat).toBe(
+        afterOneDraw.draw.session.winnerSeat,
+      );
       expect(afterOneSnapshot.readyToDeal).toBe(
         afterOneSnapshot.winnerSeat !== null,
       );
