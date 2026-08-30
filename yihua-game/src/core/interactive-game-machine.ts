@@ -103,7 +103,9 @@ export const transitionInteractiveGame = (
     case "start-interactive-first-round":
       if (state.phase !== "lobby") return phaseError(state, action);
       return dealAfterInteractiveOpeningDraw(
-        completeInteractiveOpeningDraw(beginInteractiveOpeningDraw(state, random)),
+        completeInteractiveOpeningDraw(
+          beginInteractiveOpeningDraw(state, random),
+        ),
         random,
       );
     case "draw-opening-attempt":
