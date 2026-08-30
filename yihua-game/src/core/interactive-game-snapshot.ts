@@ -1,5 +1,11 @@
-import { availableInteractiveGameActions, type InteractiveGameState } from "./interactive-game-machine.js";
-import { openingDrawMachineProgress, type OpeningDrawMachineProgress } from "./opening-draw-machine.js";
+import {
+  availableInteractiveGameActions,
+  type InteractiveGameState,
+} from "./interactive-game-machine.js";
+import {
+  openingDrawMachineProgress,
+  type OpeningDrawMachineProgress,
+} from "./opening-draw-machine.js";
 
 export interface InteractiveGameSnapshot {
   readonly phase: InteractiveGameState["phase"];
