@@ -25,7 +25,10 @@ describe("multiple heart-level wildcards across complete hand judgement and tabl
     const w2 = wild(level);
 
     expect(
-      classifyHandWithLevel([suited("9"), suited("9", "spades"), w1, w2], level),
+      classifyHandWithLevel(
+        [suited("9"), suited("9", "spades"), w1, w2],
+        level,
+      ),
     ).toEqual({ kind: "bomb", size: 4, rank: "9" });
 
     expect(
