@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import type { JSX } from "react";
+import { adaptGuandanClientMessage } from "./guandanCompatibilityAdapter";
 import type {
   GuandanClientMessage,
   GuandanServerMessage,
@@ -203,26 +204,15 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     const ws = websocketRef.current;
     if (ws === null || ws.readyState !== WebSocket.OPEN) return false;
 
-    if (message.type === "join") {
-      const query = new URLSearchParams(window.location.search);
-      if (query.get("cleanroom") === "1") {
-        const requested = Number(query.get("players") ?? "4");
-        const playerCount = [4, 6, 8, 10, 12, 14].includes(requested)
-          ? requested
-          : 4;
-        const cleanroomRoom = query.get("cleanroomRoom")?.trim();
-        ws.send(
-          JSON.stringify({
-            ...message,
-            room: cleanroomRoom || message.room,
-            player_count: playerCount,
-          }),
-        );
-        return true;
-      }
-    }
+    const query = new URLSearchParams(window.location.search);
+    const playerCount = Number(query.get("players") ?? "4");
+    const adapted = adaptGuandanClientMessage(message, {
+      cleanroom: query.get("cleanroom") === "1",
+      room: query.get("cleanroomRoom"),
+      playerCount: Number.isFinite(playerCount) ? playerCount : 4,
+    });
 
-    ws.send(JSON.stringify(message));
+    ws.send(JSON.stringify(adapted));
     return true;
   }, []);
 
