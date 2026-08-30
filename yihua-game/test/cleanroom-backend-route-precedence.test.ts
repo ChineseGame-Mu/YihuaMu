@@ -27,7 +27,9 @@ describe("clean-room backend route precedence", () => {
     expect(transport).toContain(
       'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
-    expect(transport).toContain('if (query.get("cleanroom") !== "1") return null;');
+    expect(transport).toContain(
+      'if (query.get("cleanroom") !== "1") return null;',
+    );
     expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
     expect(transport).not.toContain(
       'query.get("backend") ?? (window as any)._CLEANROOM_BACKEND',
