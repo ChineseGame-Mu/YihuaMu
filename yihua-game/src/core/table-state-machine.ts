@@ -107,6 +107,18 @@ export const advanceTableOpeningDraw = (
     trick: createTrickState(state.playerCount, openingDraw.winnerSeat),
   };
 };
+export const completeTableOpeningDraw = (
+  state: TableRoundState,
+): TableRoundState => {
+  if (state.phase !== "opening-draw")
+    throw new Error("opening draw is already complete");
+
+  let current = state;
+  while (current.phase === "opening-draw") {
+    current = advanceTableOpeningDraw(current);
+  }
+  return current;
+};
 const finishTablePlay = (
   state: TableRoundState,
   seat: number,
