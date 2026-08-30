@@ -1,3 +1,12 @@
 node_modules
 dist/
 pkg/
+
+# Frontend/local environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
