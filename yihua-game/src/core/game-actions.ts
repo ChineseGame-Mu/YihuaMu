@@ -56,11 +56,12 @@ export const playGameCardIds = (
   levelRank?: Rank,
 ): PlayingState | RoundCompleteState => {
   const selected = selectedCards(state, seat, cardIds);
+  const resolvedLevelRank = currentLevelRank(state, levelRank);
   const next = playGameCards(
     state,
     seat,
     selected.map(({ card }) => card),
-    currentLevelRank(state, levelRank),
+    resolvedLevelRank,
   );
   const selectedIds = new Set(cardIds);
   const exactRemainingHand = state.hands[seat]!.filter(
@@ -69,6 +70,7 @@ export const playGameCardIds = (
 
   return {
     ...next,
+    levelRank: resolvedLevelRank,
     hands: next.hands.map((hand, currentSeat) =>
       currentSeat === seat ? exactRemainingHand : hand,
     ),
