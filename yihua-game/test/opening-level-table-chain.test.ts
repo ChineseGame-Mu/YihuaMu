@@ -3,7 +3,10 @@ import type { Card, Rank, Suit } from "../src/core/cards.js";
 import type { DeckCard } from "../src/core/deck.js";
 import { transitionGame } from "../src/core/game-machine.js";
 import { createLobbyState, type PlayingState } from "../src/core/game-state.js";
+import type { SupportedPlayerCount } from "../src/core/table.js";
 import { createTrickState } from "../src/core/trick-state.js";
+
+const PLAYER_COUNTS: readonly SupportedPlayerCount[] = [4, 6, 8, 10, 12, 14];
 
 const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
   kind: "suited",
@@ -22,7 +25,7 @@ const seededRandom = (seed: number): (() => number) => {
 };
 
 describe("opening draw, level hand judgment, and table state chain", () => {
-  it.each([4, 6, 8, 10, 12, 14])(
+  it.each(PLAYER_COUNTS)(
     "keeps the opening winner as leader and uses the persisted level rank for %i players",
     (playerCount) => {
       const started = transitionGame(
