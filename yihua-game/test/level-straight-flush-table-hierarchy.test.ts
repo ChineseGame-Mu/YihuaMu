@@ -31,6 +31,7 @@ const bomb = (rank: Rank, size: number): Card[] =>
 
 const playingState = (): TableRoundState => ({
   playerCount: 4,
+  levelRank,
   phase: "playing",
   openingDraw: { remainingCards: [], attempts: [], winnerSeat: 0 },
   trick: createTrickState(4, 0),
