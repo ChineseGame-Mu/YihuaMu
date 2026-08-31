@@ -13,12 +13,13 @@ import {
 import {
   createTrickState,
   passTurn,
-  playCards,
   playCardsWithLevel,
   type TrickState,
 } from "./trick-state.js";
 
 export type TableRoundPhase = "opening-draw" | "playing" | "round-complete";
+export const FIRST_TABLE_LEVEL_RANK: Rank = "2";
+
 export interface TableRoundState {
   readonly playerCount: SupportedPlayerCount;
   readonly phase: TableRoundPhase;
@@ -26,6 +27,7 @@ export interface TableRoundState {
   readonly trick: TrickState | null;
   readonly activeSeats: readonly number[];
   readonly finishingOrder: readonly number[];
+  readonly levelRank: Rank;
 }
 export interface TablePlayOptions {
   readonly finishesHand?: boolean;
@@ -85,6 +87,7 @@ export const createTableRoundState = (
   deck: readonly DeckCard[],
   playerCount: SupportedPlayerCount,
   random: RandomSource = Math.random,
+  levelRank: Rank = FIRST_TABLE_LEVEL_RANK,
 ): TableRoundState => ({
   playerCount,
   phase: "opening-draw",
@@ -92,6 +95,7 @@ export const createTableRoundState = (
   trick: null,
   activeSeats: allSeats(playerCount),
   finishingOrder: [],
+  levelRank,
 });
 export const advanceTableOpeningDraw = (
   state: TableRoundState,
@@ -178,23 +182,9 @@ export const playTableCards = (
   seat: number,
   cards: readonly Card[],
   options: TablePlayOptions = {},
-): TableRoundState => {
-  const { trick, activeSeats, rotationSeats, finishesHand } = tablePlayContext(
-    state,
-    seat,
-    options,
-  );
-  const playedTrick = playCards(trick, seat, cards, rotationSeats);
-  const nextTrick = adjustFinishedLeaderAfterPlay(
-    state,
-    seat,
-    activeSeats,
-    rotationSeats,
-    finishesHand,
-    playedTrick,
-  );
-  return finishTablePlay(state, seat, nextTrick, activeSeats, finishesHand);
-};
+): TableRoundState =>
+  playTableCardsWithLevel(state, seat, cards, state.levelRank, options);
+
 export const playTableCardsWithLevel = (
   state: TableRoundState,
   seat: number,
