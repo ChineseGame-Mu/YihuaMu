@@ -251,6 +251,7 @@ export const passTableTurn = (
 };
 export const startNextTableRound = (
   state: TableRoundState,
+  levelRank: Rank = state.levelRank,
 ): TableRoundState => {
   if (state.phase !== "round-complete")
     throw new Error("current round is not complete");
@@ -263,5 +264,6 @@ export const startNextTableRound = (
     trick: createTrickState(state.playerCount, winnerSeat),
     activeSeats: allSeats(state.playerCount),
     finishingOrder: [],
+    levelRank,
   };
 };
