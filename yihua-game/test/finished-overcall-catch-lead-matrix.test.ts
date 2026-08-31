@@ -16,6 +16,7 @@ const card = (rank: "3" | "4"): Card => ({
 
 const playingState = (playerCount: SupportedPlayerCount): TableRoundState => ({
   playerCount,
+  levelRank: "2",
   phase: "playing",
   openingDraw: { remainingCards: [], attempts: [], winnerSeat: 0 },
   trick: createTrickState(playerCount, 0),
