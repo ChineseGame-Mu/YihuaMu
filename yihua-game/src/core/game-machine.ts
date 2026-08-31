@@ -1,4 +1,4 @@
-import type { Card } from "./cards.js";
+import type { Card, Rank } from "./cards.js";
 import type { RandomSource } from "./deck.js";
 import { playGameCardIds } from "./game-actions.js";
 import {
@@ -25,6 +25,7 @@ export type GameMachineAction =
       readonly type: "play-card-ids";
       readonly seat: number;
       readonly cardIds: readonly string[];
+      readonly levelRank?: Rank;
     }
   | { readonly type: "pass-turn"; readonly seat: number }
   | { readonly type: "next-round" };
@@ -74,7 +75,12 @@ export const transitionGame = (
         : phaseError(state, action);
     case "play-card-ids":
       return state.phase === "playing"
-        ? playGameCardIds(state, action.seat, action.cardIds)
+        ? playGameCardIds(
+            state,
+            action.seat,
+            action.cardIds,
+            action.levelRank,
+          )
         : phaseError(state, action);
     case "pass-turn":
       return state.phase === "playing"
@@ -91,4 +97,6 @@ export const transitionGameCardIds = (
   state: PlayingState,
   seat: number,
   cardIds: readonly string[],
-): PlayingState | RoundCompleteState => playGameCardIds(state, seat, cardIds);
+  levelRank?: Rank,
+): PlayingState | RoundCompleteState =>
+  playGameCardIds(state, seat, cardIds, levelRank);
