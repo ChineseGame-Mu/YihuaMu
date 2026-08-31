@@ -59,7 +59,9 @@ describe("opening redraw to wildcard finished-leader catch matrix", () => {
       expect(state.openingDraw.winnerSeat).toBe(0);
       expect(state.trick?.leaderSeat).toBe(0);
       expect(state.trick?.currentTurn).toBe(0);
-      expect(classifyHandWithLevel(wildcardStraightFlush, LEVEL_RANK)).toMatchObject({
+      expect(
+        classifyHandWithLevel(wildcardStraightFlush, LEVEL_RANK),
+      ).toMatchObject({
         kind: "straight-flush",
         size: 5,
       });
