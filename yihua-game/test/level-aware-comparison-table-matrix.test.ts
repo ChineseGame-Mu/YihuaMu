@@ -24,6 +24,7 @@ const classify = (cards: readonly Card[]): ClassifiedHand =>
 
 const playingState = (playerCount: SupportedPlayerCount): TableRoundState => ({
   playerCount,
+  levelRank,
   phase: "playing",
   openingDraw: { remainingCards: [], attempts: [], winnerSeat: 0 },
   trick: createTrickState(playerCount, 0),
