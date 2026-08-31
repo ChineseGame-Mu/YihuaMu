@@ -30,7 +30,11 @@ describe("table level rank survives a completed pass cycle", () => {
     "%i players keeps an explicit later-round level after the trick resets",
     (playerCount) => {
       let state = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
 
       state = playTableCardsWithLevel(state, 0, [card("A")], "7");
