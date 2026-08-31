@@ -192,8 +192,9 @@ export const playTableCardsWithLevel = (
   levelRank: Rank,
   options: TablePlayOptions = {},
 ): TableRoundState => {
+  const levelState = { ...state, levelRank };
   const { trick, activeSeats, rotationSeats, finishesHand } = tablePlayContext(
-    state,
+    levelState,
     seat,
     options,
   );
@@ -205,14 +206,20 @@ export const playTableCardsWithLevel = (
     rotationSeats,
   );
   const nextTrick = adjustFinishedLeaderAfterPlay(
-    state,
+    levelState,
     seat,
     activeSeats,
     rotationSeats,
     finishesHand,
     playedTrick,
   );
-  return finishTablePlay(state, seat, nextTrick, activeSeats, finishesHand);
+  return finishTablePlay(
+    levelState,
+    seat,
+    nextTrick,
+    activeSeats,
+    finishesHand,
+  );
 };
 export const passTableTurn = (
   state: TableRoundState,
