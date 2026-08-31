@@ -75,7 +75,11 @@ describe("opening draw -> complete hand -> table state integration", () => {
     (playerCount) => {
       for (const [kind, cards] of legalHands) {
         let state = completeTableOpeningDraw(
-          createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+          createTableRoundState(
+            openingDeck(playerCount),
+            playerCount,
+            KEEP_ORDER,
+          ),
         );
 
         expect(state.phase).toBe("playing");
