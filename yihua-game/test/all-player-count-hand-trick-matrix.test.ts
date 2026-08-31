@@ -192,4 +192,49 @@ describe("complete hand and trick matrix across every supported table size", () 
       expect(state.trick?.currentTurn).toBe(1);
     },
   );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "carries a second overcall winner into a third trick for %i players",
+    (playerCount) => {
+      const openingWinner = playerCount - 1;
+      let state = completeTableOpeningDraw(
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
+      );
+
+      state = playTableCards(state, openingWinner, [suited("7")]);
+      state = playTableCards(state, 0, [suited("8")]);
+      for (let seat = 1; seat < playerCount; seat += 1) {
+        state = passTableTurn(state, seat);
+      }
+
+      expect(state.trick?.completedTricks).toBe(1);
+      expect(state.trick?.currentTurn).toBe(0);
+
+      state = playTableCards(state, 0, repeated("9", 2));
+      state = playTableCards(state, 1, repeated("10", 2));
+      expect(state.trick?.leadingPlay?.seat).toBe(1);
+      expect(state.trick?.leadingPlay?.hand.kind).toBe("pair");
+      expect(state.trick?.currentTurn).toBe(2 % playerCount);
+
+      for (let seat = 2; seat < playerCount; seat += 1) {
+        state = passTableTurn(state, seat);
+      }
+      state = passTableTurn(state, 0);
+
+      expect(state.trick?.completedTricks).toBe(2);
+      expect(state.trick?.leadingPlay).toBeNull();
+      expect(state.trick?.leaderSeat).toBe(1);
+      expect(state.trick?.currentTurn).toBe(1);
+      expect(state.trick?.passedSeats).toEqual([]);
+
+      state = playTableCards(state, 1, repeated("J", 3));
+      expect(state.trick?.leadingPlay?.seat).toBe(1);
+      expect(state.trick?.leadingPlay?.hand.kind).toBe("triple");
+      expect(state.trick?.currentTurn).toBe(2 % playerCount);
+    },
+  );
 });
