@@ -104,7 +104,9 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       const winnerSeat = opening.winnerSeat!;
       const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
       const firstCard = playing.hands[winnerSeat]![0]!;
-      let state = playGameCardIds(playing, winnerSeat, [firstCard.id]) as PlayingState;
+      let state = playGameCardIds(playing, winnerSeat, [
+        firstCard.id,
+      ]) as PlayingState;
 
       for (let offset = 1; offset < playerCount; offset += 1) {
         state = passGameSeat(state, (winnerSeat + offset) % playerCount);
