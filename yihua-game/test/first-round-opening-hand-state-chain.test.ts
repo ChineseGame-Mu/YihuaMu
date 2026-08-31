@@ -30,10 +30,7 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       expect(opening.winnerSeat).not.toBeNull();
       expect(opening.attempts.length).toBeGreaterThan(0);
 
-      const playing = dealAfterInteractiveOpeningDraw(
-        completed,
-        keepDeckOrder,
-      );
+      const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
       const winnerSeat = opening.winnerSeat!;
 
       expect(playing.phase).toBe("playing");
