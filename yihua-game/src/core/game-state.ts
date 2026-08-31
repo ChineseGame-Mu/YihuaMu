@@ -119,6 +119,7 @@ export const startGame = (
 export const startNextRound = (
   completed: RoundCompleteState,
   random: RandomSource = Math.random,
+  nextLevelRank: Rank = completed.levelRank ?? FIRST_ROUND_LEVEL_RANK,
 ): PlayingState => {
   const dealDeck = shuffleDeck(
     createDeck(completed.config.playerCount),
@@ -135,7 +136,7 @@ export const startNextRound = (
     hands,
     currentTurn: trick.currentTurn,
     trick,
-    levelRank: completed.levelRank ?? FIRST_ROUND_LEVEL_RANK,
+    levelRank: nextLevelRank,
     finishedSeats: [],
   };
 };
