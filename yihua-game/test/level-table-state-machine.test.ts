@@ -25,6 +25,7 @@ const playingState = (
   finishingOrder: readonly number[] = [],
 ): TableRoundState => ({
   playerCount,
+  levelRank: "6",
   phase: "playing",
   openingDraw: { remainingCards: [], attempts: [], winnerSeat: 0 },
   trick: createTrickState(playerCount, 0),
