@@ -62,7 +62,8 @@ describe("game machine level-rank persistence", () => {
       levelRank: "5",
     });
     expect(levelBeat.phase).toBe("playing");
-    if (levelBeat.phase !== "playing") throw new Error("playing phase expected");
+    if (levelBeat.phase !== "playing")
+      throw new Error("playing phase expected");
 
     expect(levelBeat.levelRank).toBe("5");
     expect(levelBeat.trick.leadingPlay).toMatchObject({

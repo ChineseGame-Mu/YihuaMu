@@ -75,12 +75,7 @@ export const transitionGame = (
         : phaseError(state, action);
     case "play-card-ids":
       return state.phase === "playing"
-        ? playGameCardIds(
-            state,
-            action.seat,
-            action.cardIds,
-            action.levelRank,
-          )
+        ? playGameCardIds(state, action.seat, action.cardIds, action.levelRank)
         : phaseError(state, action);
     case "pass-turn":
       return state.phase === "playing"
