@@ -69,11 +69,9 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       const winnerSeat = opening.winnerSeat!;
       const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
       const openingCard = playing.hands[winnerSeat]![0]!;
-      let state = playGameCardIds(
-        playing,
-        winnerSeat,
-        [openingCard.id],
-      ) as PlayingState;
+      let state = playGameCardIds(playing, winnerSeat, [
+        openingCard.id,
+      ]) as PlayingState;
 
       expect(state.trick.completedTricks).toBe(0);
       expect(state.trick.leadingPlay?.seat).toBe(winnerSeat);
