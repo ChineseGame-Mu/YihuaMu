@@ -28,7 +28,11 @@ describe("opening draw is first-round-only", () => {
     "keeps the original draw record but starts the next round from the prior winner at %i players",
     (playerCount) => {
       const firstRound = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
       expect(firstRound.openingDraw.winnerSeat).toBe(0);
 
