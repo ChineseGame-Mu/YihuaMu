@@ -22,7 +22,7 @@ const keepDeckOrder = (): number => 0.999999;
 
 describe("first-round accepted response chain", () => {
   it.each(SUPPORTED_PLAYER_COUNTS)(
-    "accepts the first legal beating response and resets prior passes for %i players",
+    "accepts the first legal beating response, resets prior passes, and closes the trick for %i players",
     (playerCount) => {
       const completed = completeInteractiveOpeningDraw(
         beginInteractiveOpeningDraw(
@@ -73,17 +73,30 @@ describe("first-round accepted response chain", () => {
       expect(state.trick.passedSeats).toHaveLength(responseOffset - 1);
       const responseHandSize = state.hands[responseSeat!]!.length;
 
-      const next = playGameCardIds(state, responseSeat!, [
+      state = playGameCardIds(state, responseSeat!, [
         responseCardId!,
       ]) as PlayingState;
 
-      expect(next.trick.leadingPlay?.seat).toBe(responseSeat);
-      expect(next.trick.leadingPlay?.hand.kind).toBe("single");
-      expect(next.hands[responseSeat!]).toHaveLength(responseHandSize - 1);
-      expect(next.trick.passedSeats).toEqual([]);
-      expect(next.currentTurn).toBe((responseSeat! + 1) % playerCount);
-      expect(next.trick.completedTricks).toBe(0);
-      expect(next.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
+      expect(state.trick.leadingPlay?.seat).toBe(responseSeat);
+      expect(state.trick.leadingPlay?.hand.kind).toBe("single");
+      expect(state.hands[responseSeat!]).toHaveLength(responseHandSize - 1);
+      expect(state.trick.passedSeats).toEqual([]);
+      expect(state.currentTurn).toBe((responseSeat! + 1) % playerCount);
+      expect(state.trick.completedTricks).toBe(0);
+      expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
+
+      for (let offset = 1; offset < playerCount; offset += 1) {
+        const seat = (responseSeat! + offset) % playerCount;
+        expect(state.currentTurn).toBe(seat);
+        state = passGameSeat(state, seat);
+      }
+
+      expect(state.currentTurn).toBe(responseSeat);
+      expect(state.trick.leaderSeat).toBe(responseSeat);
+      expect(state.trick.leadingPlay).toBeNull();
+      expect(state.trick.passedSeats).toEqual([]);
+      expect(state.trick.completedTricks).toBe(1);
+      expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
     },
   );
 });
