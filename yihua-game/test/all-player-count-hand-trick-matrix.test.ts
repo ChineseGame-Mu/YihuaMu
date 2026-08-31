@@ -5,13 +5,9 @@ import { classifyHand } from "../src/core/hand.js";
 import {
   completeTableOpeningDraw,
   createTableRoundState,
+  passTableTurn,
   playTableCards,
 } from "../src/core/table-state-machine.js";
-import {
-  createTrickState,
-  passTurn,
-  playCards,
-} from "../src/core/trick-state.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
 
 const KEEP_ORDER = (): number => 0.999999;
@@ -100,26 +96,29 @@ describe("complete hand and trick matrix across every supported table size", () 
   );
 
   it.each(SUPPORTED_PLAYER_COUNTS)(
-    "closes a trick correctly for %i players",
+    "closes a trick through table state for %i players",
     (playerCount) => {
-      let state = playCards(
-        createTrickState(playerCount, playerCount - 1),
-        playerCount - 1,
-        [suited("7")],
+      let state = completeTableOpeningDraw(
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
+      state = playTableCards(state, playerCount - 1, [suited("7")]);
 
-      expect(state.currentTurn).toBe(0);
-      expect(state.leaderSeat).toBe(playerCount - 1);
+      expect(state.trick?.currentTurn).toBe(0);
+      expect(state.trick?.leaderSeat).toBe(playerCount - 1);
 
       for (let seat = 0; seat < playerCount - 1; seat += 1) {
-        state = passTurn(state, seat);
+        state = passTableTurn(state, seat);
       }
 
-      expect(state.leadingPlay).toBeNull();
-      expect(state.currentTurn).toBe(playerCount - 1);
-      expect(state.leaderSeat).toBe(playerCount - 1);
-      expect(state.completedTricks).toBe(1);
-      expect(state.passedSeats).toEqual([]);
+      expect(state.trick?.leadingPlay).toBeNull();
+      expect(state.trick?.currentTurn).toBe(playerCount - 1);
+      expect(state.trick?.leaderSeat).toBe(playerCount - 1);
+      expect(state.trick?.completedTricks).toBe(1);
+      expect(state.trick?.passedSeats).toEqual([]);
     },
   );
 });
