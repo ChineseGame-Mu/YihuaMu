@@ -29,7 +29,12 @@ const completedTable = (
   levelRank: Rank,
 ): TableRoundState => {
   const playing = completeTableOpeningDraw(
-    createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER, levelRank),
+    createTableRoundState(
+      openingDeck(playerCount),
+      playerCount,
+      KEEP_ORDER,
+      levelRank,
+    ),
   );
   return {
     ...playing,
