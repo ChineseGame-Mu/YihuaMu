@@ -44,7 +44,11 @@ describe("opening draw to wildcard bomb table matrix", () => {
     "keeps opening winner, classifies the level wildcard straight flush, and closes the trick at %i players",
     (playerCount) => {
       let state = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
 
       expect(state.openingDraw.winnerSeat).toBe(0);
