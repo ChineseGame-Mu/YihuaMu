@@ -109,8 +109,8 @@ const nearestTeammate = (
   activeSeats: readonly number[],
 ): number => {
   const active = new Set(activeSeats);
-  const teammates = teammateSeatsForSeat(playerCount, seat).filter((candidate) =>
-    active.has(candidate),
+  const teammates = teammateSeatsForSeat(playerCount, seat).filter(
+    (candidate) => active.has(candidate),
   );
   if (teammates.length === 0) throw new Error("active teammate expected");
   return teammates.reduce((nearest, candidate) => {
