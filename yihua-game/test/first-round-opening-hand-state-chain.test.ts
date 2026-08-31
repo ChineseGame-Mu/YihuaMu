@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyGameCardIds,
+  passGameSeat,
   playGameCardIds,
 } from "../src/core/game-actions.js";
 import {
   createLobbyState,
   FIRST_ROUND_LEVEL_RANK,
+  type PlayingState,
 } from "../src/core/game-state.js";
 import {
   beginInteractiveOpeningDraw,
@@ -51,6 +53,43 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       expect(next.trick.leadingPlay?.cards).toHaveLength(1);
       expect(next.currentTurn).toBe((winnerSeat + 1) % playerCount);
       expect(next.finishedSeats).toEqual([]);
+    },
+  );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "closes the first trick and returns the next lead to the opening winner for %i players",
+    (playerCount) => {
+      const completed = completeInteractiveOpeningDraw(
+        beginInteractiveOpeningDraw(
+          createLobbyState(playerCount, 0),
+          keepDeckOrder,
+        ),
+      );
+      const opening = interactiveOpeningSnapshot(completed);
+      const winnerSeat = opening.winnerSeat!;
+      const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
+      const openingCard = playing.hands[winnerSeat]![0]!;
+      let state = playGameCardIds(
+        playing,
+        winnerSeat,
+        [openingCard.id],
+      ) as PlayingState;
+
+      expect(state.trick.completedTricks).toBe(0);
+      expect(state.trick.leadingPlay?.seat).toBe(winnerSeat);
+
+      for (let offset = 1; offset < playerCount; offset += 1) {
+        const seat = (winnerSeat + offset) % playerCount;
+        expect(state.currentTurn).toBe(seat);
+        state = passGameSeat(state, seat);
+      }
+
+      expect(state.trick.leadingPlay).toBeNull();
+      expect(state.trick.passedSeats).toEqual([]);
+      expect(state.trick.completedTricks).toBe(1);
+      expect(state.trick.leaderSeat).toBe(winnerSeat);
+      expect(state.currentTurn).toBe(winnerSeat);
+      expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
     },
   );
 });
