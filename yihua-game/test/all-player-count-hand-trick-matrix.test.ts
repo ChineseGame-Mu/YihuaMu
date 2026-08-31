@@ -121,4 +121,40 @@ describe("complete hand and trick matrix across every supported table size", () 
       expect(state.trick?.passedSeats).toEqual([]);
     },
   );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "continues the winning lead into a second validated trick for %i players",
+    (playerCount) => {
+      let state = completeTableOpeningDraw(
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
+      );
+      const winnerSeat = playerCount - 1;
+
+      state = playTableCards(state, winnerSeat, [suited("7")]);
+      for (let seat = 0; seat < winnerSeat; seat += 1) {
+        state = passTableTurn(state, seat);
+      }
+
+      expect(state.trick?.completedTricks).toBe(1);
+      expect(state.trick?.currentTurn).toBe(winnerSeat);
+
+      state = playTableCards(state, winnerSeat, repeated("8", 2));
+      expect(state.trick?.leadingPlay?.seat).toBe(winnerSeat);
+      expect(state.trick?.leadingPlay?.hand.kind).toBe("pair");
+      expect(state.trick?.currentTurn).toBe(0);
+
+      for (let seat = 0; seat < winnerSeat; seat += 1) {
+        state = passTableTurn(state, seat);
+      }
+
+      expect(state.trick?.completedTricks).toBe(2);
+      expect(state.trick?.leadingPlay).toBeNull();
+      expect(state.trick?.currentTurn).toBe(winnerSeat);
+      expect(state.trick?.leaderSeat).toBe(winnerSeat);
+    },
+  );
 });
