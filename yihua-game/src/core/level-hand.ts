@@ -153,9 +153,11 @@ export const classifyHandWithLevel = (
     if (fullHouse !== null) {
       if (natural.kind !== "full-house") return fullHouse;
       const naturalRank = natural.rank;
+      const fullHouseRank = fullHouse.rank;
       if (
         naturalRank === undefined ||
-        rankIndex(fullHouse.rank) > rankIndex(naturalRank)
+        (fullHouseRank !== undefined &&
+          rankIndex(fullHouseRank) > rankIndex(naturalRank))
       ) {
         return fullHouse;
       }
