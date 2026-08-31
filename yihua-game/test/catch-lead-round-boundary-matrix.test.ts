@@ -30,6 +30,7 @@ const makeState = (playerCount: SupportedPlayerCount): PlayingState => ({
   ),
   currentTurn: 1,
   trick: createTrickState(playerCount, 1),
+  levelRank: "2",
   finishedSeats: [],
 });
 
@@ -63,13 +64,26 @@ describe("catch lead across the round boundary", () => {
       );
       expect(completed.outcome?.firstPlaceSeat).toBe(1);
 
-      const next = startNextRound(completed, fixedRandom);
+      const next = startNextRound(completed, fixedRandom, "7");
       expect(next.currentTurn).toBe(1);
       expect(next.trick.leaderSeat).toBe(1);
       expect(next.trick.leadingPlay).toBeNull();
       expect(next.finishedSeats).toEqual([]);
       expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
       expect(next.openingDraw).toEqual(completed.openingDraw);
+      expect(next.levelRank).toBe("7");
     },
   );
+
+  it("keeps the prior level when the caller does not advance it", () => {
+    const state = makeState(4);
+    const finishOrder = [1, 2, 3, 0];
+    const completed = completeRound(
+      { ...state, levelRank: "9", finishedSeats: finishOrder },
+      1,
+    );
+
+    const next = startNextRound(completed, fixedRandom);
+    expect(next.levelRank).toBe("9");
+  });
 });
