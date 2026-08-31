@@ -34,7 +34,8 @@ describe("first-round opening → hand → table state integration", () => {
 
       const firstCard = playing.hands[winnerSeat]?.[0]?.card;
       expect(firstCard).toBeDefined();
-      if (firstCard === undefined) throw new Error("opening winner has no card");
+      if (firstCard === undefined)
+        throw new Error("opening winner has no card");
 
       expect(classifyHand([firstCard]).kind).toBe("single");
 
