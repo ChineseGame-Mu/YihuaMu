@@ -31,12 +31,16 @@ describe("opening draw, level hand judgment, and table state chain", () => {
         seededRandom(7000 + playerCount),
       );
       expect(started.phase).toBe("playing");
-      if (started.phase !== "playing") throw new Error("playing phase expected");
+      if (started.phase !== "playing")
+        throw new Error("playing phase expected");
 
       const leader = started.openingDraw.winnerSeat;
       const responder = (leader + 1) % playerCount;
       const hands = Array.from({ length: playerCount }, (_, seat) => [
-        deckCard(`filler-${seat}`, suited("3", seat % 2 === 0 ? "clubs" : "diamonds")),
+        deckCard(
+          `filler-${seat}`,
+          suited("3", seat % 2 === 0 ? "clubs" : "diamonds"),
+        ),
       ]);
       hands[leader] = [
         deckCard("opening-lead-ace", suited("A", "spades")),
