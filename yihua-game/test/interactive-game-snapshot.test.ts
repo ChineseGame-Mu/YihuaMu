@@ -92,7 +92,7 @@ describe("interactive game snapshot", () => {
         passedSeats: [],
         completedTricks: 0,
         finishedSeats: [],
-        availableActions: ["play-cards", "pass-turn", "play-card-ids"],
+        availableActions: ["play-cards", "play-card-ids", "pass-turn"],
       });
 
       expect(state.phase).toBe("playing");
