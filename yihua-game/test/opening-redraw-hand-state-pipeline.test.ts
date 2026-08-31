@@ -21,10 +21,11 @@ const suitedDeckCard = (
   card: { kind: "suited", rank, suit },
 });
 
-const suited = (
-  rank: "3" | "4",
-  suit: "clubs" | "hearts",
-): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: "3" | "4", suit: "clubs" | "hearts"): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 
 const redrawDeck = (playerCount: SupportedPlayerCount): DeckCard[] => {
   const tiedAttempt = Array.from({ length: playerCount }, (_, seat) =>
