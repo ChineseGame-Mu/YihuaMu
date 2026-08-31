@@ -1,9 +1,7 @@
 name: Yihua Game Prettier 3.4.1 Autoformat
 
 on:
-  push:
-    branches:
-      - cleanroom/yihua-game-20260826
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,7 +9,6 @@ permissions:
 
 jobs:
   autoformat:
-    if: ${{ !contains(github.event.head_commit.message, '[prettier-autoformat]') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
