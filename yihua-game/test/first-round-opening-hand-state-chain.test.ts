@@ -9,6 +9,7 @@ import {
   FIRST_ROUND_LEVEL_RANK,
   type PlayingState,
 } from "../src/core/game-state.js";
+import { canHandBeatWithLevel } from "../src/core/hand.js";
 import {
   beginInteractiveOpeningDraw,
   completeInteractiveOpeningDraw,
@@ -174,6 +175,51 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
 
       expect(state.hands[responseSeat]!.map(({ id }) => id)).toEqual(
         handIdsBefore,
+      );
+      expect(state.trick.leadingPlay).toEqual(leadingPlayBefore);
+      expect(state.currentTurn).toBe(turnBefore);
+      expect(state.trick.passedSeats).toEqual([]);
+      expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
+    },
+  );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "rejects a valid but non-beating first response without mutating state for %i players",
+    (playerCount) => {
+      const completed = completeInteractiveOpeningDraw(
+        beginInteractiveOpeningDraw(
+          createLobbyState(playerCount, 0),
+          keepDeckOrder,
+        ),
+      );
+      const opening = interactiveOpeningSnapshot(completed);
+      const winnerSeat = opening.winnerSeat!;
+      const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
+      const openingCard = playing.hands[winnerSeat]![0]!;
+      const state = playGameCardIds(playing, winnerSeat, [
+        openingCard.id,
+      ]) as PlayingState;
+      const responseSeat = state.currentTurn;
+      const leadingHand = state.trick.leadingPlay!.hand;
+      const nonBeating = state.hands[responseSeat]!.find(({ id }) => {
+        const candidate = classifyGameCardIds(state, responseSeat, [id]);
+        return (
+          candidate.kind !== "invalid" &&
+          !canHandBeatWithLevel(candidate, leadingHand, FIRST_ROUND_LEVEL_RANK)
+        );
+      });
+
+      expect(nonBeating).toBeDefined();
+      const responseHandBefore = state.hands[responseSeat]!.map(({ id }) => id);
+      const leadingPlayBefore = state.trick.leadingPlay;
+      const turnBefore = state.currentTurn;
+
+      expect(() =>
+        playGameCardIds(state, responseSeat, [nonBeating!.id]),
+      ).toThrow("played hand does not beat the current hand");
+
+      expect(state.hands[responseSeat]!.map(({ id }) => id)).toEqual(
+        responseHandBefore,
       );
       expect(state.trick.leadingPlay).toEqual(leadingPlayBefore);
       expect(state.currentTurn).toBe(turnBefore);
