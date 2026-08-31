@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
+import type { DeckCard } from "../src/core/deck.js";
 import { classifyHand } from "../src/core/hand.js";
+import {
+  completeTableOpeningDraw,
+  createTableRoundState,
+  playTableCards,
+} from "../src/core/table-state-machine.js";
 import {
   createTrickState,
   passTurn,
   playCards,
 } from "../src/core/trick-state.js";
 import { SUPPORTED_PLAYER_COUNTS } from "../src/core/table.js";
+
+const KEEP_ORDER = (): number => 0.999999;
 
 const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
   kind: "suited",
@@ -16,6 +24,13 @@ const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
 
 const repeated = (rank: Rank, count: number): Card[] =>
   Array.from({ length: count }, () => suited(rank));
+
+const openingDeck = (playerCount: number): DeckCard[] =>
+  Array.from({ length: playerCount }, (_, seat) => ({
+    id: `opening:${seat}`,
+    copy: 0,
+    card: suited(seat === playerCount - 1 ? "A" : "3"),
+  }));
 
 const legalHands: readonly [string, readonly Card[]][] = [
   ["single", [suited("7")]],
@@ -61,12 +76,28 @@ const legalHands: readonly [string, readonly Card[]][] = [
 
 describe("complete hand and trick matrix across every supported table size", () => {
   it.each(SUPPORTED_PLAYER_COUNTS)(
-    "accepts every supported hand kind and closes a trick correctly for %i players",
+    "routes every supported hand kind through opening draw and table state for %i players",
     (playerCount) => {
       for (const [kind, cards] of legalHands) {
         expect(classifyHand(cards).kind).toBe(kind);
-      }
 
+        const playing = completeTableOpeningDraw(
+          createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        );
+        expect(playing.openingDraw.winnerSeat).toBe(playerCount - 1);
+        expect(playing.trick?.currentTurn).toBe(playerCount - 1);
+
+        const played = playTableCards(playing, playerCount - 1, cards);
+        expect(played.trick?.leadingPlay?.seat).toBe(playerCount - 1);
+        expect(played.trick?.leadingPlay?.hand.kind).toBe(kind);
+        expect(played.trick?.currentTurn).toBe(0);
+      }
+    },
+  );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "closes a trick correctly for %i players",
+    (playerCount) => {
       let state = playCards(
         createTrickState(playerCount, playerCount - 1),
         playerCount - 1,
