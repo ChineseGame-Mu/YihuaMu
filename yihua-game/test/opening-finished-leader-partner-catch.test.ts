@@ -30,19 +30,19 @@ describe("opening winner finish hands lead to the nearest teammate", () => {
     "%i players preserves the level and gives the catch lead to seat 2",
     (playerCount) => {
       let state = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
 
       expect(state.openingDraw.winnerSeat).toBe(0);
       expect(state.trick?.currentTurn).toBe(0);
 
-      state = playTableCardsWithLevel(
-        state,
-        0,
-        [card("A")],
-        "7",
-        { finishesHand: true },
-      );
+      state = playTableCardsWithLevel(state, 0, [card("A")], "7", {
+        finishesHand: true,
+      });
 
       expect(state.finishingOrder).toEqual([0]);
       expect(state.activeSeats).not.toContain(0);
