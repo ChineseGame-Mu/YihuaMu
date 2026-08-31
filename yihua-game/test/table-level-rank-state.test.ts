@@ -7,6 +7,7 @@ import {
   FIRST_TABLE_LEVEL_RANK,
   playTableCards,
   playTableCardsWithLevel,
+  startNextTableRound,
 } from "../src/core/table-state-machine.js";
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
@@ -93,4 +94,36 @@ describe("table state carries level-rank hand judgment", () => {
       rank: "7",
     });
   });
+
+  it.each(PLAYER_COUNTS)(
+    "%i players carries the active level rank and winner into the next round",
+    (playerCount) => {
+      const playing = completeTableOpeningDraw(
+        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER, "9"),
+      );
+      const finishingOrder = Array.from(
+        { length: playerCount },
+        (_, seat) => seat,
+      );
+      const completed = {
+        ...playing,
+        phase: "round-complete" as const,
+        activeSeats: [playerCount - 1],
+        finishingOrder,
+      };
+
+      const nextRound = startNextTableRound(completed);
+
+      expect(nextRound.phase).toBe("playing");
+      expect(nextRound.levelRank).toBe("9");
+      expect(nextRound.finishingOrder).toEqual([]);
+      expect(nextRound.activeSeats).toEqual(finishingOrder);
+      expect(nextRound.trick?.leaderSeat).toBe(0);
+      expect(nextRound.trick?.currentTurn).toBe(0);
+
+      const aceLead = playTableCards(nextRound, 0, [card("A", "clubs")]);
+      const levelBeat = playTableCards(aceLead, 1, [card("9", "diamonds")]);
+      expect(levelBeat.trick?.leadingPlay?.seat).toBe(1);
+    },
+  );
 });
