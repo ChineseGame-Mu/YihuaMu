@@ -25,7 +25,9 @@ const openingDeck = (playerCount: number): DeckCard[] =>
     card: suited(seat === 0 ? "A" : "3", seat === 0 ? "hearts" : "clubs"),
   }));
 
-const completedRound = (playerCount: (typeof SUPPORTED_PLAYER_COUNTS)[number]): TableRoundState => {
+const completedRound = (
+  playerCount: (typeof SUPPORTED_PLAYER_COUNTS)[number],
+): TableRoundState => {
   const playing = completeTableOpeningDraw(
     createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
   );
