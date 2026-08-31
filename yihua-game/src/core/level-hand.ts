@@ -148,6 +148,15 @@ export const classifyHandWithLevel = (
   if (cards.length === 5) {
     const straightFlush = classifySequence(fixed, wildcardCount, true);
     if (straightFlush !== null) return straightFlush;
+
+    const fullHouse = classifyFullHouse(fixed, wildcardCount);
+    if (
+      fullHouse !== null &&
+      (natural.kind !== "full-house" ||
+        rankIndex(fullHouse.rank) > rankIndex(natural.rank))
+    ) {
+      return fullHouse;
+    }
   }
 
   if (natural.kind !== "invalid") return natural;
