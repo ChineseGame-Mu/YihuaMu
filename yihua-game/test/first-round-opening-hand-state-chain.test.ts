@@ -127,4 +127,58 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       expect(secondTrick.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
     },
   );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "rejects an invalid first response without mutating table state for %i players",
+    (playerCount) => {
+      const completed = completeInteractiveOpeningDraw(
+        beginInteractiveOpeningDraw(
+          createLobbyState(playerCount, 0),
+          keepDeckOrder,
+        ),
+      );
+      const opening = interactiveOpeningSnapshot(completed);
+      const winnerSeat = opening.winnerSeat!;
+      const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
+      const openingCard = playing.hands[winnerSeat]![0]!;
+      const state = playGameCardIds(playing, winnerSeat, [
+        openingCard.id,
+      ]) as PlayingState;
+      const responseSeat = state.currentTurn;
+      const responseHand = state.hands[responseSeat]!;
+      const first = responseHand[0]!;
+      const second = responseHand.find(({ card }) => {
+        if (card.kind !== first.card.kind) return true;
+        if (card.kind === "joker" && first.card.kind === "joker") {
+          return card.size !== first.card.size;
+        }
+        return (
+          card.kind === "suited" &&
+          first.card.kind === "suited" &&
+          card.rank !== first.card.rank
+        );
+      });
+
+      expect(second).toBeDefined();
+      expect(
+        classifyGameCardIds(state, responseSeat, [first.id, second!.id]),
+      ).toMatchObject({ kind: "invalid" });
+
+      const handIdsBefore = state.hands[responseSeat]!.map(({ id }) => id);
+      const leadingPlayBefore = state.trick.leadingPlay;
+      const turnBefore = state.currentTurn;
+
+      expect(() =>
+        playGameCardIds(state, responseSeat, [first.id, second!.id]),
+      ).toThrow();
+
+      expect(state.hands[responseSeat]!.map(({ id }) => id)).toEqual(
+        handIdsBefore,
+      );
+      expect(state.trick.leadingPlay).toEqual(leadingPlayBefore);
+      expect(state.currentTurn).toBe(turnBefore);
+      expect(state.trick.passedSeats).toEqual([]);
+      expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
+    },
+  );
 });
