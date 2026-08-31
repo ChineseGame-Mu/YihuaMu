@@ -58,7 +58,9 @@ describe("clean-room frontend wiring", () => {
     expect(adapter).toContain(
       'if (!options.cleanroom || message.type !== "join") return message;',
     );
-    expect(adapter).toContain("const supportedPlayerCounts = [4, 6, 8, 10, 12, 14]");
+    expect(adapter).toContain(
+      "const supportedPlayerCounts = [4, 6, 8, 10, 12, 14]",
+    );
     expect(adapter).toContain("player_count: playerCount");
   });
 });
