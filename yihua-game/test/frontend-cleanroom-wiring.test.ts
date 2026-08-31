@@ -6,11 +6,13 @@ const source = (relativePath: string): string =>
   readFileSync(resolve(process.cwd(), "..", relativePath), "utf8");
 
 describe("clean-room frontend wiring", () => {
-  it("keeps clean-room opt-in while preserving the default app entry", () => {
+  it("keeps the clean-room entry isolated while preserving the classic root path", () => {
     const index = source("frontend/src/index.tsx");
 
-    expect(index).toContain('get("cleanroom") === "1"');
-    expect(index).toContain("cleanroomEnabled ? <CleanroomEntry /> : <App />");
+    expect(index).toContain('params.get("cleanroom") === "1"');
+    expect(index).toContain("if (cleanroom) {");
+    expect(index).toContain("<CleanroomEntry />");
+    expect(index).toContain("<Root />");
   });
 
   it("renders the original GuandanTable through the clean-room provider", () => {
