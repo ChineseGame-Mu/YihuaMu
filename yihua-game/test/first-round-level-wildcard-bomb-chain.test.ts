@@ -27,7 +27,10 @@ const openingDeck = (playerCount: number): DeckCard[] =>
   }));
 
 const fiveCardBomb: readonly Card[] = Array.from({ length: 5 }, (_, index) =>
-  suited("9", (["clubs", "diamonds", "hearts", "spades", "clubs"] as const)[index]!),
+  suited(
+    "9",
+    (["clubs", "diamonds", "hearts", "spades", "clubs"] as const)[index]!,
+  ),
 );
 
 const wildcardStraightFlush: readonly Card[] = [
