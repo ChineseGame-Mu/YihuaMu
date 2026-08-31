@@ -12,7 +12,10 @@ import type { SupportedPlayerCount } from "../src/core/table.js";
 const PLAYER_COUNTS: readonly SupportedPlayerCount[] = [4, 6, 8, 10, 12, 14];
 const KEEP_ORDER = (): number => 0.999999;
 
-const card = (rank: Rank, suit: "clubs" | "diamonds" | "hearts" | "spades"): Card => ({
+const card = (
+  rank: Rank,
+  suit: "clubs" | "diamonds" | "hearts" | "spades",
+): Card => ({
   kind: "suited",
   rank,
   suit,
