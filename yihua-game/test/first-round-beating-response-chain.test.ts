@@ -49,11 +49,7 @@ describe("first-round accepted response chain", () => {
           const candidate = classifyGameCardIds(state, seat, [id]);
           return (
             candidate.kind !== "invalid" &&
-            canHandBeatWithLevel(
-              candidate,
-              openingHand,
-              FIRST_ROUND_LEVEL_RANK,
-            )
+            canHandBeatWithLevel(candidate, openingHand, FIRST_ROUND_LEVEL_RANK)
           );
         });
         if (card !== undefined) {
@@ -77,11 +73,9 @@ describe("first-round accepted response chain", () => {
       expect(state.trick.passedSeats).toHaveLength(responseOffset - 1);
       const responseHandSize = state.hands[responseSeat!]!.length;
 
-      const next = playGameCardIds(
-        state,
-        responseSeat!,
-        [responseCardId!],
-      ) as PlayingState;
+      const next = playGameCardIds(state, responseSeat!, [
+        responseCardId!,
+      ]) as PlayingState;
 
       expect(next.trick.leadingPlay?.seat).toBe(responseSeat);
       expect(next.trick.leadingPlay?.hand.kind).toBe("single");
