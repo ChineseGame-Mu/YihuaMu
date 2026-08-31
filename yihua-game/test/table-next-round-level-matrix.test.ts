@@ -31,7 +31,12 @@ const openingDeck = (playerCount: SupportedPlayerCount): DeckCard[] =>
 
 const completedRound = (playerCount: SupportedPlayerCount): TableRoundState => {
   const playing = completeTableOpeningDraw(
-    createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER, "5"),
+    createTableRoundState(
+      openingDeck(playerCount),
+      playerCount,
+      KEEP_ORDER,
+      "5",
+    ),
   );
   const finishingOrder = Array.from({ length: playerCount }, (_, seat) => seat);
 
