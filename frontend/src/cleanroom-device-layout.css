@@ -49,6 +49,16 @@ body,
   text-shadow: none !important;
 }
 
+/* Player names may use the full clean-room ten-character limit without changing
+ * the approved card-back or table geometry. */
+.guandan-table .guandan-public-player-back strong[title] {
+  display: inline-block !important;
+  max-width: 10ch !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
 /* Only active seats belong on the public table. Stale/later room members stay hidden
  * until the server promotes the active table size. */
 html[data-guandan-player-count="4"] .guandan-public-player-back:nth-child(n + 5),
@@ -125,4 +135,5 @@ html[data-guandan-player-count="14"] .guandan-public-player-back:nth-child(n + 1
   .guandan-private-zone > section.guandan-play-actions > button:nth-last-child(2) { left: 6px !important; }
   .guandan-private-zone > section.guandan-play-actions > button:last-child { right: 6px !important; }
   .guandan-public-player-backs { max-width: 60% !important; }
+  .guandan-table .guandan-public-player-back strong[title] { font-size: clamp(10px, 2.6vw, 14px) !important; }
 }
