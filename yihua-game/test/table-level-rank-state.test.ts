@@ -99,7 +99,12 @@ describe("table state carries level-rank hand judgment", () => {
     "%i players carries the active level rank and winner into the next round",
     (playerCount) => {
       const playing = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER, "9"),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+          "9",
+        ),
       );
       const finishingOrder = Array.from(
         { length: playerCount },
