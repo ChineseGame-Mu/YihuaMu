@@ -33,7 +33,12 @@ describe("finished leader teammate catch matrix", () => {
     "%i players gives the next trick to the nearest active teammate after opponents pass",
     (playerCount) => {
       const playing = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER, "2"),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+          "2",
+        ),
       );
 
       expect(playing.trick?.currentTurn).toBe(0);
