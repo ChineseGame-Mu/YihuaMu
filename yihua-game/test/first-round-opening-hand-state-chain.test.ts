@@ -90,4 +90,39 @@ describe("first-round opening draw -> hand judgment -> table state chain", () =>
       expect(state.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
     },
   );
+
+  it.each(SUPPORTED_PLAYER_COUNTS)(
+    "continues the opening winner into a validated second trick for %i players",
+    (playerCount) => {
+      const completed = completeInteractiveOpeningDraw(
+        beginInteractiveOpeningDraw(
+          createLobbyState(playerCount, 0),
+          keepDeckOrder,
+        ),
+      );
+      const opening = interactiveOpeningSnapshot(completed);
+      const winnerSeat = opening.winnerSeat!;
+      const playing = dealAfterInteractiveOpeningDraw(completed, keepDeckOrder);
+      const firstCard = playing.hands[winnerSeat]![0]!;
+      let state = playGameCardIds(playing, winnerSeat, [firstCard.id]) as PlayingState;
+
+      for (let offset = 1; offset < playerCount; offset += 1) {
+        state = passGameSeat(state, (winnerSeat + offset) % playerCount);
+      }
+
+      const secondCard = state.hands[winnerSeat]![0]!;
+      expect(
+        classifyGameCardIds(state, winnerSeat, [secondCard.id]),
+      ).toMatchObject({ kind: "single", size: 1 });
+
+      const secondTrick = playGameCardIds(state, winnerSeat, [secondCard.id]);
+      expect(secondTrick.phase).toBe("playing");
+      expect(secondTrick.hands[winnerSeat]).toHaveLength(25);
+      expect(secondTrick.trick.completedTricks).toBe(1);
+      expect(secondTrick.trick.leadingPlay?.seat).toBe(winnerSeat);
+      expect(secondTrick.trick.leadingPlay?.cards).toHaveLength(1);
+      expect(secondTrick.currentTurn).toBe((winnerSeat + 1) % playerCount);
+      expect(secondTrick.levelRank).toBe(FIRST_ROUND_LEVEL_RANK);
+    },
+  );
 });
