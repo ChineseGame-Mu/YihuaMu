@@ -6,6 +6,7 @@ import {
   createTableRoundState,
   FIRST_TABLE_LEVEL_RANK,
   playTableCards,
+  playTableCardsWithLevel,
 } from "../src/core/table-state-machine.js";
 import type { SupportedPlayerCount } from "../src/core/table.js";
 
@@ -69,5 +70,27 @@ describe("table state carries level-rank hand judgment", () => {
     expect(playing.levelRank).toBe("7");
     expect(levelBeat.trick?.leadingPlay?.seat).toBe(1);
     expect(levelBeat.trick?.leadingPlay?.hand.kind).toBe("single");
+  });
+
+  it("persists an explicit level-rank change for subsequent table plays", () => {
+    const playing = completeTableOpeningDraw(
+      createTableRoundState(openingDeck(4), 4, KEEP_ORDER),
+    );
+    const aceLead = playTableCardsWithLevel(
+      playing,
+      0,
+      [card("A", "clubs")],
+      "7",
+    );
+
+    expect(aceLead.levelRank).toBe("7");
+
+    const levelBeat = playTableCards(aceLead, 1, [card("7", "spades")]);
+    expect(levelBeat.levelRank).toBe("7");
+    expect(levelBeat.trick?.leadingPlay?.seat).toBe(1);
+    expect(levelBeat.trick?.leadingPlay?.hand).toMatchObject({
+      kind: "single",
+      rank: "7",
+    });
   });
 });
