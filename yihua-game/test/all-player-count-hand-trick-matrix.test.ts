@@ -82,7 +82,11 @@ describe("complete hand and trick matrix across every supported table size", () 
         expect(classifyHand(cards).kind).toBe(kind);
 
         const playing = completeTableOpeningDraw(
-          createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+          createTableRoundState(
+            openingDeck(playerCount),
+            playerCount,
+            KEEP_ORDER,
+          ),
         );
         expect(playing.openingDraw.winnerSeat).toBe(playerCount - 1);
         expect(playing.trick?.currentTurn).toBe(playerCount - 1);
