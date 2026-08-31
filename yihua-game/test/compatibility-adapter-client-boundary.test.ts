@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { adaptGuandanClientMessage } from "../../frontend/src/guandanCompatibilityAdapter";
-import type { GuandanClientMessage } from "../../frontend/src/guandanProtocol";
+import { adaptGuandanClientMessage } from "../../frontend/src/guandanCompatibilityAdapter.js";
+import type { GuandanClientMessage } from "../../frontend/src/guandanProtocol.js";
 
 describe("Guandan compatibility adapter client boundary", () => {
   it.each([4, 6, 8, 10, 12, 14])(
