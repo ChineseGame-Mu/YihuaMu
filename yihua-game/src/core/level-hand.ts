@@ -150,12 +150,15 @@ export const classifyHandWithLevel = (
     if (straightFlush !== null) return straightFlush;
 
     const fullHouse = classifyFullHouse(fixed, wildcardCount);
-    if (
-      fullHouse !== null &&
-      (natural.kind !== "full-house" ||
-        rankIndex(fullHouse.rank) > rankIndex(natural.rank))
-    ) {
-      return fullHouse;
+    if (fullHouse !== null) {
+      if (natural.kind !== "full-house") return fullHouse;
+      const naturalRank = natural.rank;
+      if (
+        naturalRank === undefined ||
+        rankIndex(fullHouse.rank) > rankIndex(naturalRank)
+      ) {
+        return fullHouse;
+      }
     }
   }
 
