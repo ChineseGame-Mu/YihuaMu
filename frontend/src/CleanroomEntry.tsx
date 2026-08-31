@@ -175,7 +175,7 @@ const CleanroomEntry = (): JSX.Element => {
             <input
               id="cleanroom-player-name"
               value={name}
-              maxLength={16}
+              maxLength={10}
               placeholder="请输入姓名"
               autoFocus
               onChange={(event) => setName(event.target.value)}
