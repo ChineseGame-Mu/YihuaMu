@@ -31,7 +31,11 @@ describe("next-round table leader and level state", () => {
     "%i players carries the new level rank and first-place lead into the next round",
     (playerCount) => {
       const playing = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
       const firstPlaceSeat = Math.min(2, playerCount - 1);
       const finishingOrder = [
@@ -58,7 +62,9 @@ describe("next-round table leader and level state", () => {
 
       const aceLead = playTableCards(nextRound, firstPlaceSeat, [suited("A")]);
       const responder = (firstPlaceSeat + 1) % playerCount;
-      const levelBeat = playTableCards(aceLead, responder, [suited("7", "spades")]);
+      const levelBeat = playTableCards(aceLead, responder, [
+        suited("7", "spades"),
+      ]);
 
       expect(levelBeat.levelRank).toBe("7");
       expect(levelBeat.trick?.leadingPlay).toMatchObject({
