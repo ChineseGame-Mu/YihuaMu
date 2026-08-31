@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { adaptGuandanClientMessage } from "../../frontend/src/guandanCompatibilityAdapter";
-import type { GuandanClientMessage } from "../../frontend/src/guandanProtocol";
+import { adaptGuandanClientMessage } from "../../frontend/src/guandanCompatibilityAdapter.js";
+import type { GuandanClientMessage } from "../../frontend/src/guandanProtocol.js";
 
 const joinMessage: GuandanClientMessage = {
   type: "join",
