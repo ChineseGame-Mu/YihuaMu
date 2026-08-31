@@ -30,7 +30,11 @@ describe("next table round level transition", () => {
     "%i players keeps the first opening draw while accepting the promoted level",
     (playerCount) => {
       const firstRound = completeTableOpeningDraw(
-        createTableRoundState(openingDeck(playerCount), playerCount, KEEP_ORDER),
+        createTableRoundState(
+          openingDeck(playerCount),
+          playerCount,
+          KEEP_ORDER,
+        ),
       );
       const winnerSeat = 1;
       const finishingOrder = [
