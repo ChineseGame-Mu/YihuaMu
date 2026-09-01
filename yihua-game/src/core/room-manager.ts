@@ -63,7 +63,6 @@ const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
 
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
-  private readonly restoredRoomsAwaitingReconnect = new Set<string>();
 
   create(roomId: string, playerCount: SupportedPlayerCount): ManagedRoom {
     if (this.rooms.has(roomId)) {
@@ -85,21 +84,31 @@ export class RoomManager {
     if (!managed) {
       throw new Error(`room ${roomId} does not exist`);
     }
+    return managed;
+  }
 
+  resetAbandonedActiveRoom(
+    roomId: string,
+    preservePlayerId?: string,
+  ): ManagedRoom {
+    const managed = this.get(roomId);
     if (
-      isAbandonedActiveRoom(managed) &&
-      !this.restoredRoomsAwaitingReconnect.has(roomId)
+      !isAbandonedActiveRoom(managed) ||
+      (preservePlayerId !== undefined &&
+        managed.room.participants.some(
+          ({ id, kind }) => id === preservePlayerId && kind === "human",
+        ))
     ) {
-      const reset = {
-        room: createRoom(roomId, managed.room.config.playerCount),
-        game: createLobbyState(managed.room.config.playerCount, 0),
-        revision: managed.revision + 1,
-      } satisfies ManagedRoom;
-      this.rooms.set(roomId, reset);
-      return reset;
+      return managed;
     }
 
-    return managed;
+    const reset = {
+      room: createRoom(roomId, managed.room.config.playerCount),
+      game: createLobbyState(managed.room.config.playerCount, 0),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, reset);
+    return reset;
   }
 
   set(roomId: string, managed: ManagedRoom): ManagedRoom {
@@ -108,7 +117,6 @@ export class RoomManager {
     }
     const current = this.get(roomId);
     const next = { ...managed, revision: current.revision + 1 };
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
     return next;
   }
@@ -122,14 +130,10 @@ export class RoomManager {
       throw new Error("room revision must be a non-negative integer");
     }
     this.rooms.set(roomId, managed);
-    if (isAbandonedActiveRoom(managed)) {
-      this.restoredRoomsAwaitingReconnect.add(roomId);
-    }
     return managed;
   }
 
   delete(roomId: string): boolean {
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     return this.rooms.delete(roomId);
   }
 
@@ -175,7 +179,6 @@ export class RoomManager {
       game: startGame(createLobbyState(participantCount, botCount), random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
     return next;
   }
@@ -199,7 +202,6 @@ export class RoomManager {
       game: startNextRound(completed, random),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
     return next;
   }
@@ -215,7 +217,6 @@ export class RoomManager {
       game: playGameCardIds(managed.game, seat, cardIds),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
     return next;
   }
@@ -231,7 +232,6 @@ export class RoomManager {
       game: passGameSeat(managed.game, seat),
       revision: managed.revision + 1,
     } satisfies ManagedRoom;
-    this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
     return next;
   }
