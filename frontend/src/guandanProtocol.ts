@@ -83,7 +83,7 @@ export type GuandanServerMessage =
       tribute_resisted: boolean;
       match_winner: GuandanTeam | null;
       next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
-      hook_to_bottom: boolean;
+      hook_to_bottom?: boolean;
     }
   | { type: "error"; message: string };
 
