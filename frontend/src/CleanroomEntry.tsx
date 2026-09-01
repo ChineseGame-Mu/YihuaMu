@@ -19,7 +19,7 @@ const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
 type SelectableRoom = (typeof selectableRooms)[number];
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
-const legacyUiRoom = "0001";
+const defaultCleanroomRoom: SelectableRoom = "0004";
 
 const isSelectableRoom = (value: string | null): value is SelectableRoom =>
   value !== null && selectableRooms.includes(value as SelectableRoom);
@@ -35,7 +35,7 @@ const roomFromLocation = (): SelectableRoom => {
   }
   const fromQuery = query.get("room");
   if (isSelectableRoom(fromQuery)) return fromQuery;
-  return "0001";
+  return defaultCleanroomRoom;
 };
 
 const GuandanJoinBrand = (): JSX.Element => (
@@ -85,7 +85,7 @@ const CleanroomTable = (): JSX.Element => {
     if (isSelectableRoom(actualRoom)) {
       url.searchParams.set("cleanroomRoom", actualRoom);
     } else {
-      url.searchParams.set("cleanroomRoom", "0001");
+      url.searchParams.set("cleanroomRoom", defaultCleanroomRoom);
     }
     window.location.href = url.toString();
   };
@@ -136,7 +136,7 @@ const CleanroomEntry = (): JSX.Element => {
     url.searchParams.set("cleanroom", "1");
     url.searchParams.set("game", "guandan");
     url.searchParams.set("cleanroomRoom", roomId);
-    url.searchParams.set("room", legacyUiRoom);
+    url.searchParams.set("room", roomId);
     url.searchParams.set("name", cleanName);
     url.searchParams.set("players", String(playerCount));
     url.searchParams.set("test", "1");
@@ -181,7 +181,7 @@ const CleanroomEntry = (): JSX.Element => {
             <select
               id="cleanroom-player-count"
               value={playerCount}
-              onChange={(event) => setPlayerCount(Number(event.target.value))}
+              onChange={(event) => setPlayerCount(Number(event.target.value))
             >
               {supportedCounts.map((count) => (
                 <option key={count} value={count}>
