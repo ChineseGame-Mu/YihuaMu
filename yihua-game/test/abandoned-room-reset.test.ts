@@ -18,7 +18,11 @@ describe("abandoned active room reset", () => {
       });
     }
 
-    managed = rooms.start("0004", () => 0.25, () => 1_000);
+    managed = rooms.start(
+      "0004",
+      () => 0.25,
+      () => 1_000,
+    );
     expect(managed.game.phase).not.toBe("lobby");
 
     for (let seat = 0; seat < 4; seat += 1) {

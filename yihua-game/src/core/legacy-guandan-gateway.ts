@@ -407,7 +407,10 @@ export const attachLegacyGuandanConnection = async (
                 .filter(({ kind }) => kind === "robot")
                 .sort((a, b) => a.seat - b.seat)[0]?.seat;
         const seat =
-          existing?.seat ?? desiredSeat ?? robotSeat ?? firstAvailableSeat(managed);
+          existing?.seat ??
+          desiredSeat ??
+          robotSeat ??
+          firstAvailableSeat(managed);
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
@@ -526,11 +529,15 @@ export const attachLegacyGuandanConnection = async (
         }
       }
 
-      if (message.type === "tribute_card" || message.type === "return_tribute") {
+      if (
+        message.type === "tribute_card" ||
+        message.type === "return_tribute"
+      ) {
         const seat = active.adapter.compat.seat;
         if (seat === null) throw new Error("a seated player is required");
         const cardId = active.adapter.compat.privateCardIds[message.card_index];
-        if (cardId === undefined) throw new Error("selected tribute card is out of range");
+        if (cardId === undefined)
+          throw new Error("selected tribute card is out of range");
         await applyLegacyTributeSelection(
           runtime,
           active.roomId,

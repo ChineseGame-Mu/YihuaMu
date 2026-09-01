@@ -142,7 +142,9 @@ export const applyLegacyTributeSelection = async (
   }
 
   if (!allTributesReceived(session)) {
-    throw new Error("all tribute cards must be submitted before return tribute");
+    throw new Error(
+      "all tribute cards must be submitted before return tribute",
+    );
   }
   const pair = session.pairs.find(({ receiver }) => receiver === seat);
   if (pair === undefined) {
