@@ -207,10 +207,13 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
     const query = new URLSearchParams(window.location.search);
     const playerCount = Number(query.get("players") ?? "4");
+    const desiredSeat = Number(query.get("seat"));
     const adapted = adaptGuandanClientMessage(message, {
       cleanroom: query.get("cleanroom") === "1",
       room: query.get("cleanroomRoom"),
       playerCount: Number.isFinite(playerCount) ? playerCount : 4,
+      desiredSeat:
+        query.has("seat") && Number.isInteger(desiredSeat) ? desiredSeat : null,
     });
 
     ws.send(JSON.stringify(adapted));
