@@ -11,7 +11,10 @@ export type LegacyTributePlan =
       };
     };
 
-type LegacyStateMessage = Extract<LegacyServerMessage, { readonly type: "state" }>;
+type LegacyStateMessage = Extract<
+  LegacyServerMessage,
+  { readonly type: "state" }
+>;
 
 interface TributePair {
   readonly giver: number;
@@ -82,7 +85,9 @@ const moveCard = (
     throw new Error("tribute seat is outside the table");
   }
   const card = fromHand.find(({ id }) => id === cardId);
-  if (card === undefined) throw new Error("selected tribute card is not in hand");
+  if (card === undefined) {
+    throw new Error("selected tribute card is not in hand");
+  }
 
   return hands.map((hand, seat) => {
     if (seat === fromSeat) return hand.filter(({ id }) => id !== cardId);
@@ -105,7 +110,9 @@ export const applyLegacyTributeSelection = async (
   kind: "tribute_card" | "return_tribute",
 ): Promise<void> => {
   const session = sessions.get(roomId);
-  if (session === undefined) throw new Error("no tribute exchange is pending");
+  if (session === undefined) {
+    throw new Error("no tribute exchange is pending");
+  }
 
   const managed = runtime.rooms.get(roomId);
   if (managed.game.phase !== "playing") {
@@ -114,8 +121,12 @@ export const applyLegacyTributeSelection = async (
 
   if (kind === "tribute_card") {
     const pair = session.pairs.find(({ giver }) => giver === seat);
-    if (pair === undefined) throw new Error("this player does not owe tribute");
-    if (pair.tributeCardId !== undefined) throw new Error("tribute already submitted");
+    if (pair === undefined) {
+      throw new Error("this player does not owe tribute");
+    }
+    if (pair.tributeCardId !== undefined) {
+      throw new Error("tribute already submitted");
+    }
 
     const next = runtime.rooms.set(roomId, {
       ...managed,
@@ -134,8 +145,12 @@ export const applyLegacyTributeSelection = async (
     throw new Error("all tribute cards must be submitted before return tribute");
   }
   const pair = session.pairs.find(({ receiver }) => receiver === seat);
-  if (pair === undefined) throw new Error("this player does not owe return tribute");
-  if (pair.returnCardId !== undefined) throw new Error("return tribute already submitted");
+  if (pair === undefined) {
+    throw new Error("this player does not owe return tribute");
+  }
+  if (pair.returnCardId !== undefined) {
+    throw new Error("return tribute already submitted");
+  }
 
   const next = runtime.rooms.set(roomId, {
     ...managed,
@@ -153,7 +168,8 @@ export const applyLegacyTributeSelection = async (
 export const decorateLegacyTributeState = (
   roomId: string,
   state: LegacyStateMessage,
-): LegacyStateMessage => ({
-  ...state,
-  pending_tribute: legacyTributePlan(roomId),
-});
+): LegacyStateMessage =>
+  ({
+    ...state,
+    pending_tribute: legacyTributePlan(roomId),
+  }) as unknown as LegacyStateMessage;
