@@ -32,6 +32,8 @@ lazy_static::lazy_static! {
         Mutex::new(HashMap::new());
     static ref GUANDAN_CONNECTIONS: Mutex<HashMap<Vec<u8>, HashMap<String, usize>>> =
         Mutex::new(HashMap::new());
+    static ref GUANDAN_HOOK_TO_BOTTOM: Mutex<HashMap<Vec<u8>, bool>> =
+        Mutex::new(HashMap::new());
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -49,6 +51,9 @@ pub enum GuandanClientMessage {
     },
     SetBots {
         count: usize,
+    },
+    SetHookToBottom {
+        enabled: bool,
     },
     Start {
         player_count: usize,
@@ -119,6 +124,7 @@ pub enum GuandanServerMessage {
         tribute_resisted: bool,
         match_winner: Option<Team>,
         next_round_phase: Option<GuandanNextRoundPhase>,
+        hook_to_bottom: bool,
     },
     Error {
         message: String,
@@ -169,6 +175,13 @@ fn observers_for(key: &[u8]) -> Vec<String> {
         .ok()
         .and_then(|observers| observers.get(key).cloned())
         .unwrap_or_default()
+}
+fn hook_to_bottom_for(key: &[u8]) -> bool {
+    GUANDAN_HOOK_TO_BOTTOM
+        .lock()
+        .ok()
+        .and_then(|settings| settings.get(key).copied())
+        .unwrap_or(false)
 }
 fn set_connected(key: &[u8], name: &str, connected: bool) {
     let Ok(mut rooms) = GUANDAN_CONNECTIONS.lock() else {
@@ -247,6 +260,7 @@ fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
         tribute_resisted: game.tribute_resisted,
         match_winner: game.match_winner,
         next_round_phase: game.next_round_phase,
+        hook_to_bottom: hook_to_bottom_for(key),
     }
 }
 fn advance_turn(game: &mut GuandanGameState) {
@@ -262,6 +276,18 @@ fn advance_turn(game: &mut GuandanGameState) {
 }
 fn is_robot_name(name: &str) -> bool {
     name.starts_with("机器人")
+}
+fn other_team(team: Team) -> Team {
+    match team {
+        Team::A => Team::B,
+        Team::B => Team::A,
+    }
+}
+fn reset_team_to_two(levels: &mut TeamLevels, team: Team) {
+    match team {
+        Team::A => levels.team_a = Rank::Two,
+        Team::B => levels.team_b = Rank::Two,
+    }
 }
 
 fn initial_draw_value(card: CardFace) -> usize {
@@ -354,7 +380,10 @@ fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &
     Ok(true)
 }
 
-fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
+fn settle_and_redeal_if_complete(
+    game: &mut GuandanGameState,
+    hook_to_bottom: bool,
+) -> Result<bool, &'static str> {
     let player_count = game.hands.len();
     if player_count != GUANDAN_CLASSIC_PLAYER_COUNT {
         return settle_multiplayer_if_complete(game);
@@ -410,6 +439,14 @@ fn settle_and_redeal_if_complete(game: &mut GuandanGameState) -> Result<bool, &'
         _ => return Err("invalid partner finishing place"),
     };
     game.last_promotion_steps = Some(promotion_steps);
+
+    if hook_to_bottom && promotion_steps == 3 {
+        let losing_team = other_team(winner_team);
+        if game.team_levels.level_for(losing_team) == Rank::Jack {
+            reset_team_to_two(&mut game.team_levels, losing_team);
+        }
+    }
+
     if winner_level == Rank::Ace && promotion_steps >= 2 {
         game.match_winner = Some(winner_team);
         game.trick_complete = true;
@@ -465,7 +502,7 @@ fn validate_play_against_table(
     }
 }
 
-fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
+fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<(), &'static str> {
     for _ in 0..1 {
         if game.normal_play_blocked() || !game.started || game.trick_complete {
             break;
@@ -501,7 +538,7 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
                 game.finish_order.push(seat);
             }
-            let settled = settle_and_redeal_if_complete(game)?;
+            let settled = settle_and_redeal_if_complete(game, hook_to_bottom)?;
             if !settled {
                 advance_turn(game);
             }
@@ -852,6 +889,39 @@ pub async fn websocket(
                     );
                 }
             }
+            GuandanClientMessage::SetHookToBottom { enabled } => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => continue,
+                };
+                if current_seat(&storage, &key, &name).await.is_none() {
+                    continue;
+                }
+                let setting_key = key.clone();
+                let result = storage
+                    .clone()
+                    .execute_operation_with_messages(key, move |mut state| {
+                        if state.game.started {
+                            return Err(());
+                        }
+                        GUANDAN_HOOK_TO_BOTTOM
+                            .lock()
+                            .map_err(|_| ())?
+                            .insert(setting_key, enabled);
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if result.is_err() {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "hook-to-bottom can only be changed before the game starts"
+                                .to_string(),
+                        },
+                    );
+                }
+            }
             GuandanClientMessage::ReorderPlayers { order } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
                     (Some(key), Some(name)) => (key, name),
@@ -922,6 +992,7 @@ pub async fn websocket(
                         continue;
                     }
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
@@ -961,7 +1032,7 @@ pub async fn websocket(
                         state.game.match_winner = None;
                         state.game.next_round_phase = None;
                         state.game.next_round_finish_order.clear();
-                        run_robot_turns(&mut state.game).map_err(|_| ())?;
+                        run_robot_turns(&mut state.game, hook_to_bottom).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1125,6 +1196,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 card_indexes.sort_unstable();
                 card_indexes.dedup();
                 let indexes = card_indexes;
@@ -1171,12 +1243,12 @@ pub async fn websocket(
                         {
                             state.game.finish_order.push(seat);
                         }
-                        let settled = settle_and_redeal_if_complete(&mut state.game)
+                        let settled = settle_and_redeal_if_complete(&mut state.game, hook_to_bottom)
                             .map_err(PlayError::Invalid)?;
                         if !settled {
                             advance_turn(&mut state.game);
                         }
-                        run_robot_turns(&mut state.game).map_err(PlayError::Invalid)?;
+                        run_robot_turns(&mut state.game, hook_to_bottom).map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1269,6 +1341,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1303,7 +1376,7 @@ pub async fn websocket(
                         } else {
                             advance_turn(&mut state.game);
                         }
-                        run_robot_turns(&mut state.game).map_err(|_| ())?;
+                        run_robot_turns(&mut state.game, hook_to_bottom).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1445,6 +1518,15 @@ mod tests {
         ));
     }
     #[test]
+    fn hook_to_bottom_command_deserializes() {
+        let command: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"set_hook_to_bottom","enabled":true}"#).unwrap();
+        assert!(matches!(
+            command,
+            GuandanClientMessage::SetHookToBottom { enabled: true }
+        ));
+    }
+    #[test]
     fn tribute_commands_deserialize() {
         let tribute: GuandanClientMessage =
             serde_json::from_str(r#"{"type":"tribute_card","card_index":3}"#).unwrap();
@@ -1488,10 +1570,13 @@ mod tests {
         assert!(matches!(deal, GuandanClientMessage::DealNextRound));
     }
     #[test]
-    fn state_message_exposes_observers_tribute_and_promotion() {
+    fn state_message_exposes_observers_tribute_promotion_and_hook_setting() {
         let key = b"test-room";
         if let Ok(mut observers) = GUANDAN_OBSERVERS.lock() {
             observers.insert(key.to_vec(), vec!["Watcher".into()]);
+        }
+        if let Ok(mut settings) = GUANDAN_HOOK_TO_BOTTOM.lock() {
+            settings.insert(key.to_vec(), true);
         }
         let mut game = GuandanGameState::default();
         game.pending_tribute = Some(TributePlan::Single {
@@ -1504,6 +1589,7 @@ mod tests {
         assert!(json.contains("Watcher"));
         assert!(json.contains("pending_tribute"));
         assert!(json.contains("last_promotion_steps"));
+        assert!(json.contains("\"hook_to_bottom\":true"));
     }
     #[test]
     fn normalizes_room_names_for_reconnect() {
@@ -1517,7 +1603,7 @@ mod tests {
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 2, 1];
-        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
         assert!(game.hands[3].is_empty());
         assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
         assert_eq!(game.team_levels.team_a, Rank::Five);
@@ -1536,7 +1622,7 @@ mod tests {
         game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![vec![], vec![], vec![], vec![card(Suit::Clubs, Rank::Two)]];
         game.finish_order = vec![0, 1, 2];
-        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
         assert!(game.hands[3].is_empty());
         assert_eq!(game.finish_order, vec![0, 1, 2, 3]);
         assert_eq!(game.team_levels.team_a, Rank::Four);
@@ -1560,7 +1646,7 @@ mod tests {
             vec![card(Suit::Spades, Rank::King)],
         ];
         game.finish_order = vec![0, 2];
-        assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
         assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
         assert!(game.hands[1].is_empty());
         assert!(game.hands[3].is_empty());
@@ -1571,6 +1657,39 @@ mod tests {
         );
         assert!(game.last_play.is_empty());
         assert!(game.table_plays.is_empty());
+    }
+    #[test]
+    fn hook_to_bottom_resets_jack_team_when_double_down() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.team_levels.team_b = Rank::Jack;
+        game.hands = vec![
+            vec![],
+            vec![card(Suit::Clubs, Rank::Ten)],
+            vec![],
+            vec![card(Suit::Spades, Rank::King)],
+        ];
+        game.finish_order = vec![0, 2];
+        assert!(settle_and_redeal_if_complete(&mut game, true).unwrap());
+        assert_eq!(game.team_levels.team_b, Rank::Two);
+        assert_eq!(game.last_promotion_steps, Some(3));
+    }
+    #[test]
+    fn hook_to_bottom_disabled_keeps_jack_team() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.team_levels.team_b = Rank::Jack;
+        game.hands = vec![
+            vec![],
+            vec![card(Suit::Clubs, Rank::Ten)],
+            vec![],
+            vec![card(Suit::Spades, Rank::King)],
+        ];
+        game.finish_order = vec![0, 2];
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.team_levels.team_b, Rank::Jack);
     }
     #[test]
     fn current_level_single_beats_ace() {
