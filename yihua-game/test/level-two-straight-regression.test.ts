@@ -3,7 +3,11 @@ import type { Card, Rank, Suit } from "../src/core/cards.js";
 import { canHandBeatWithLevel, classifyHand } from "../src/core/hand.js";
 import { classifyHandWithLevel } from "../src/core/level-hand.js";
 
-const suited = (rank: Rank, suit: Suit): Card => ({ kind: "suited", rank, suit });
+const suited = (rank: Rank, suit: Suit): Card => ({
+  kind: "suited",
+  rank,
+  suit,
+});
 
 describe("level two straight regression", () => {
   it("accepts 23456 as a straight while 2 remains above A as an ordinary level card", () => {
