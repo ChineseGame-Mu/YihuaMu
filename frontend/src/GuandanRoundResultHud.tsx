@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { GuandanStateContext } from "./GuandanStateProvider";
-import type { GuandanRank } from "./guandanProtocol";
+import type { GuandanRank, GuandanTeam } from "./guandanProtocol";
 
 const rankLabel: Record<string, string> = {
   Two: "2",
@@ -19,11 +19,16 @@ const rankLabel: Record<string, string> = {
   Ace: "A",
 };
 
+const teamLabel = (team: GuandanTeam | null): string =>
+  team === "TeamA" ? "A-C队" : team === "TeamB" ? "B-D队" : "—";
+
 export interface GuandanRoundDisplayModel {
   level: GuandanRank;
   finishOrder: number[];
   winner: number | null;
   winnerName: string | null;
+  winnerTeam: GuandanTeam | null;
+  promotionSteps: number;
   rankingText: string;
 }
 
@@ -32,6 +37,8 @@ export const buildGuandanRoundDisplayModel = (
   players: string[],
   finishOrder: number[],
   lastGameWinner: number | null,
+  lastGameWinnerTeam: GuandanTeam | null = null,
+  lastPromotionSteps: number | null = null,
 ): GuandanRoundDisplayModel => {
   const completeFinishOrder =
     players.length >= 4 && finishOrder.length === players.length
@@ -40,6 +47,20 @@ export const buildGuandanRoundDisplayModel = (
   const winner = lastGameWinner ?? completeFinishOrder[0] ?? null;
   const winnerName =
     winner === null ? null : (players[winner] ?? `玩家${winner + 1}`);
+  const inferredTeam: GuandanTeam | null =
+    winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
+  const winnerTeam = lastGameWinnerTeam ?? inferredTeam;
+
+  let inferredPromotion = 0;
+  if (completeFinishOrder.length === 4 && winner !== null) {
+    const partner = (winner + 2) % 4;
+    const partnerPlace = completeFinishOrder.indexOf(partner) + 1;
+    inferredPromotion = partnerPlace === 2 ? 3 : partnerPlace === 3 ? 2 : partnerPlace === 4 ? 1 : 0;
+  } else if (completeFinishOrder.length >= 4) {
+    inferredPromotion = 1;
+  }
+  const promotionSteps = lastPromotionSteps ?? inferredPromotion;
+
   const rankingText = completeFinishOrder
     .map(
       (seat, index) =>
@@ -52,15 +73,17 @@ export const buildGuandanRoundDisplayModel = (
     finishOrder: completeFinishOrder,
     winner,
     winnerName,
+    winnerTeam,
+    promotionSteps,
     rankingText,
   };
 };
 
-const RoundScoreBadge = (): React.JSX.Element => (
+const RoundScoreBadge = ({ score }: { score: number }): React.JSX.Element => (
   <div className="guandan-level-hud guandan-round-score-hud" data-testid="guandan-round-score">
     <div className="guandan-level-badge">
       <span>本轮计分</span>
-      <strong>—</strong>
+      <strong>+{score}</strong>
     </div>
   </div>
 );
@@ -80,7 +103,7 @@ export const GuandanRoundResultContent = ({
   model: GuandanRoundDisplayModel;
 }): React.JSX.Element => (
   <>
-    <RoundScoreBadge />
+    <RoundScoreBadge score={model.finishOrder.length > 0 ? model.promotionSteps : 0} />
     <CurrentLevelBadge level={model.level} />
     {model.finishOrder.length > 0 && (
       <section
@@ -90,7 +113,7 @@ export const GuandanRoundResultContent = ({
         data-testid="guandan-final-ranking"
       >
         <strong>
-          本局赢家：{model.winnerName ?? "—"} ｜ 赢家排列：
+          本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 升级 +{model.promotionSteps} ｜ 赢家排列：
         </strong>
         {model.rankingText}
       </section>
@@ -127,20 +150,17 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     state.players,
     effectiveFinishOrder,
     state.lastGameWinner,
+    state.lastGameWinnerTeam,
+    state.lastPromotionSteps,
   );
+  const roundStillComplete = state.finishOrder.length === state.players.length && state.players.length >= 4;
+  const liveScore = roundStillComplete ? model.promotionSteps : 0;
 
   if (statusTarget === null && tableTarget === null) return null;
 
   return (
     <>
-      {statusTarget !== null &&
-        createPortal(
-          <>
-            <RoundScoreBadge />
-            <CurrentLevelBadge level={model.level} />
-          </>,
-          statusTarget,
-        )}
+      {statusTarget !== null && createPortal(<RoundScoreBadge score={liveScore} />, statusTarget)}
       {tableTarget !== null && model.finishOrder.length > 0 &&
         createPortal(
           <section
@@ -150,7 +170,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
             data-testid="guandan-final-ranking"
           >
             <strong>
-              本局赢家：{model.winnerName ?? "—"} ｜ 赢家排列：
+              本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 升级 +{model.promotionSteps} ｜ 赢家排列：
             </strong>
             {model.rankingText}
           </section>,
