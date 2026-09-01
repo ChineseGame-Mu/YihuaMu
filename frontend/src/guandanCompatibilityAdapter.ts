@@ -93,6 +93,28 @@ const inferPromotionSteps = (finishOrder: number[]): number | null => {
   return null;
 };
 
+const rankSequence: GuandanRank[] = [
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Jack",
+  "Queen",
+  "King",
+  "Ace",
+];
+
+const advanceRank = (level: GuandanRank, steps: number): GuandanRank => {
+  const index = rankSequence.indexOf(level);
+  if (index < 0) return level;
+  return rankSequence[Math.min(rankSequence.length - 1, index + steps)] ?? level;
+};
+
 export const adaptGuandanServerMessage = (
   state: GuandanTableState,
   message: GuandanServerMessage,
@@ -142,25 +164,32 @@ export const adaptGuandanServerMessage = (
       return { ...state, hand: message.cards, error: null };
     case "state": {
       const roundComplete =
-        message.hand_counts.length > 0 &&
-        message.hand_counts.every((count) => count === 0) &&
-        message.finish_order.length > 0;
+        message.players.length >= 4 &&
+        message.finish_order.length === message.players.length;
       const inferredWinner = roundComplete ? (message.finish_order[0] ?? null) : null;
       const winner = message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
+      const inferredTeam: GuandanTeam | null =
+        winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
       const promotionSteps =
         message.last_promotion_steps ??
         (roundComplete ? inferPromotionSteps(message.finish_order) : null) ??
         state.lastPromotionSteps;
+      const serverLevel = message.level ?? state.level ?? "Two";
+      const shouldInferNextLevel =
+        roundComplete &&
+        message.last_promotion_steps === null &&
+        promotionSteps !== null &&
+        state.level !== null &&
+        serverLevel === state.level;
+      const effectiveLevel = shouldInferNextLevel
+        ? advanceRank(serverLevel, promotionSteps)
+        : serverLevel;
 
       return {
         ...state,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,
-        // Public state must never erase this browser's private hand. The
-        // clean-room server sends an authoritative private_hand after plays,
-        // starts, next rounds, and reconnect snapshots; that message alone
-        // owns the hand contents.
         hand: state.hand,
         turn: message.turn,
         handCounts: message.hand_counts,
@@ -172,11 +201,11 @@ export const adaptGuandanServerMessage = (
         lastTrickWinner: message.last_trick_winner,
         initialDraw: message.initial_draw,
         initialDrawWinner: message.initial_draw_winner,
-        level: message.level ?? state.level ?? "Two",
+        level: effectiveLevel,
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,
         lastGameWinner: winner,
-        lastGameWinnerTeam: message.last_game_winner_team,
+        lastGameWinnerTeam: message.last_game_winner_team ?? inferredTeam ?? state.lastGameWinnerTeam,
         lastPromotionSteps: promotionSteps,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
