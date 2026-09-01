@@ -17,3 +17,23 @@ html body .guandan-table:has(.guandan-public-zone)
   > button:first-child {
   margin-top: 0 !important;
 }
+
+/* Public table: every card in a multi-card play must stay individually visible.
+ * GuandanTable historically used a negative right margin on table cards. On
+ * narrower layouts this can collapse a long play until only the last one or
+ * two faces are readable. Override that overlap only in the shared table play
+ * area and allow wrapping when space is tight.
+ */
+html body .guandan-table:has(.guandan-public-zone) .guandan-table-play {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+  max-width: 100% !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-table-play > span {
+  margin-right: 0 !important;
+  flex: 0 0 auto !important;
+  position: relative !important;
+}
