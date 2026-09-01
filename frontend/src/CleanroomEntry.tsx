@@ -183,7 +183,7 @@ const CleanroomEntry = (): JSX.Element => {
             <select
               id="cleanroom-player-count"
               value={playerCount}
-              onChange={(event) => setPlayerCount(Number(event.target.value))
+              onChange={(event) => setPlayerCount(Number(event.target.value))}
             >
               {supportedCounts.map((count) => (
                 <option key={count} value={count}>
