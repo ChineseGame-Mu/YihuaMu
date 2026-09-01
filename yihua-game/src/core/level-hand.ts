@@ -15,7 +15,10 @@ const sequenceCandidates = (length: number): readonly Rank[][] => {
   for (let start = 0; start + length <= regular.length; start += 1) {
     result.push(regular.slice(start, start + length));
   }
-  if (length === 5) result.push(["A", "2", "3", "4", "5"]);
+  if (length === 5) {
+    result.push(["A", "2", "3", "4", "5"]);
+    result.push(["2", "3", "4", "5", "6"]);
+  }
   return result;
 };
 
@@ -93,7 +96,7 @@ const classifySequence = (
       new Map(candidate.map((rank) => [rank, 1] as const)),
     );
     if (missing !== wildcardCount) continue;
-    const highRank = candidate.includes("2") ? "5" : candidate.at(-1)!;
+    const highRank = candidate.includes("A") && candidate.includes("2") ? "5" : candidate.at(-1)!;
     if (best === null || rankIndex(highRank) > rankIndex(best)) best = highRank;
   }
 
