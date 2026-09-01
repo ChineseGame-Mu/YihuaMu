@@ -8,6 +8,7 @@ import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import GuandanRoundResultHud from "./GuandanRoundResultHud";
+import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
@@ -99,6 +100,7 @@ const CleanroomTable = (): JSX.Element => {
         <GuandanCustomSortControls />
         <GuandanTable />
         <GuandanRoundResultHud />
+        <GuandanHookToBottomSetting />
         <GuandanNoBeatHint />
         <GuandanNoBeatControls />
       </GuandanStateProvider>
@@ -181,7 +183,7 @@ const CleanroomEntry = (): JSX.Element => {
             <select
               id="cleanroom-player-count"
               value={playerCount}
-              onChange={(event) => setPlayerCount(Number(event.target.value))}
+              onChange={(event) => setPlayerCount(Number(event.target.value))
             >
               {supportedCounts.map((count) => (
                 <option key={count} value={count}>
