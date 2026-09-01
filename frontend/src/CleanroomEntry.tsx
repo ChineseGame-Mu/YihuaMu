@@ -13,6 +13,7 @@ import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
 import "./cleanroom-device-layout.css";
+import "./cleanroom-public-player-names.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
