@@ -103,8 +103,7 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
 
     expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
-    expect(entry).toContain('const legacyUiRoom = "0001"');
-    expect(entry).toContain('url.searchParams.set("room", legacyUiRoom)');
+    expect(entry).toContain('url.searchParams.set("room", roomId)');
     expect(transport).toContain('room: query.get("cleanroomRoom")');
     expect(adapter).toContain("const room = options.room?.trim()");
     expect(adapter).toContain("room: room || message.room");

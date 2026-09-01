@@ -22,11 +22,11 @@ describe("sequence boundaries", () => {
 
     expect(
       classifyHand([
+        suited("J", "clubs"),
+        suited("Q", "diamonds"),
+        suited("K", "spades"),
+        suited("A", "hearts"),
         suited("2", "clubs"),
-        suited("3", "diamonds"),
-        suited("4", "spades"),
-        suited("5", "hearts"),
-        suited("6", "clubs"),
       ]).kind,
     ).toBe("invalid");
   });

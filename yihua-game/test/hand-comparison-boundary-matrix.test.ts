@@ -30,11 +30,11 @@ describe("hand comparison boundary matrix", () => {
       suited("5", "clubs"),
     );
     const sixHigh = hand(
+      suited("J", "clubs"),
+      suited("Q", "diamonds"),
+      suited("K", "hearts"),
+      suited("A", "spades"),
       suited("2", "clubs"),
-      suited("3", "diamonds"),
-      suited("4", "hearts"),
-      suited("5", "spades"),
-      suited("6", "clubs"),
     );
     const sixHighWithoutTwo = hand(
       suited("3", "clubs"),

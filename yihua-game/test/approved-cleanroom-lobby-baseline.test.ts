@@ -14,7 +14,7 @@ describe("approved clean-room join-room homepage", () => {
     const source = entry();
 
     expect(source).toContain("<h2>加入牌室</h2>");
-    expect(source).toContain("房间：");
+    expect(source).toContain('htmlFor="cleanroom-room"');
     expect(source).toContain('htmlFor="cleanroom-player-count"');
     expect(source).toContain("开始人数：4–14 人");
     expect(source).toContain(
@@ -35,7 +35,7 @@ describe("approved clean-room join-room homepage", () => {
     expect(source).toContain('url.searchParams.set("cleanroom", "1")');
     expect(source).toContain('url.searchParams.set("game", "guandan")');
     expect(source).toContain('url.searchParams.set("cleanroomRoom", roomId)');
-    expect(source).toContain('url.searchParams.set("room", legacyUiRoom)');
+    expect(source).toContain('url.searchParams.set("room", roomId)');
     expect(source).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
   });
 });

@@ -27,11 +27,11 @@ describe("complete hand classification boundaries", () => {
   it("rejects straights that otherwise contain 2", () => {
     expect(
       classify([
+        suited("J", "clubs"),
+        suited("Q", "diamonds"),
+        suited("K", "hearts"),
+        suited("A", "spades"),
         suited("2", "clubs"),
-        suited("3", "diamonds"),
-        suited("4", "hearts"),
-        suited("5", "spades"),
-        suited("6", "clubs"),
       ]).kind,
     ).toBe("invalid");
   });

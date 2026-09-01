@@ -76,11 +76,11 @@ describe("complete hand classification matrix", () => {
     ).toMatchObject({ kind: "straight", highRank: "5" });
     expect(
       classifyHand([
+        suited("J"),
+        suited("Q", "hearts"),
+        suited("K"),
+        suited("A", "spades"),
         suited("2"),
-        suited("3", "hearts"),
-        suited("4"),
-        suited("5", "spades"),
-        suited("6"),
       ]).kind,
     ).toBe("invalid");
   });

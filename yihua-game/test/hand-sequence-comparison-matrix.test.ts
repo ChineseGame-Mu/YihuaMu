@@ -22,11 +22,11 @@ describe("sequence comparison matrix", () => {
       suited("5", "clubs"),
     ]);
     const sixHigh = hand([
+      suited("J", "clubs"),
+      suited("Q", "diamonds"),
+      suited("K", "hearts"),
+      suited("A", "spades"),
       suited("2", "clubs"),
-      suited("3", "diamonds"),
-      suited("4", "hearts"),
-      suited("5", "spades"),
-      suited("6", "clubs"),
     ]);
     const sevenHigh = hand([
       suited("3", "clubs"),
@@ -45,11 +45,11 @@ describe("sequence comparison matrix", () => {
 
   it("compares straight flushes within their bomb tier by high rank", () => {
     const sixHigh = hand([
+      suited("J", "hearts"),
+      suited("Q", "hearts"),
+      suited("K", "hearts"),
+      suited("A", "hearts"),
       suited("2", "hearts"),
-      suited("3", "hearts"),
-      suited("4", "hearts"),
-      suited("5", "hearts"),
-      suited("6", "hearts"),
     ]);
     const nineHigh = hand([
       suited("5", "spades"),
