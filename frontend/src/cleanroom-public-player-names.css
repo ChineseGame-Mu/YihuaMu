@@ -1,8 +1,11 @@
-.guandan-public-player-back > strong,
-.guandan-player-card > strong,
-.guandan-round-winner-mini > strong,
-.guandan-initial-draw-mini-cards > div > span,
-.guandan-initial-draw-mini-winner > strong {
-  color: #b00020 !important;
-  font-weight: 800;
+.guandan-table .guandan-public-player-backs .guandan-public-player-back > strong[title],
+.guandan-table .guandan-player-card > strong,
+.guandan-table .guandan-round-winner-mini > strong,
+.guandan-table .guandan-initial-draw-mini-cards > div > span,
+.guandan-table .guandan-initial-draw-mini-winner > strong {
+  color: #c00000 !important;
+  -webkit-text-fill-color: #c00000 !important;
+  font-weight: 900 !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
 }
