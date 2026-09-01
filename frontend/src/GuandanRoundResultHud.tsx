@@ -86,32 +86,49 @@ export const buildGuandanRoundDisplayModel = (
   };
 };
 
-const TeamScoreBadge = ({
-  winnerTeam,
-  score,
-}: {
-  winnerTeam: GuandanTeam | null;
-  score: number;
-}): React.JSX.Element => {
-  const aScore = winnerTeam === "TeamA" ? score : 0;
-  const bScore = winnerTeam === "TeamB" ? score : 0;
-  return (
-    <div
-      className="guandan-level-hud guandan-round-score-hud"
-      data-testid="guandan-round-score"
-      aria-label={`A队计分 +${aScore}，B队计分 +${bScore}`}
-    >
-      <div className="guandan-level-badge">
-        <span>A队计分</span>
-        <strong>+{aScore}</strong>
-      </div>
-      <div className="guandan-level-badge">
-        <span>B队计分</span>
-        <strong>+{bScore}</strong>
-      </div>
-    </div>
-  );
+interface TeamScores {
+  a: number;
+  b: number;
+}
+
+const emptyScores: TeamScores = { a: 0, b: 0 };
+
+const scoreStorageKey = (room: string | null): string =>
+  `guandan_team_scores_${room ?? "unknown"}`;
+
+const scoreSignatureKey = (room: string | null): string =>
+  `guandan_team_score_signature_${room ?? "unknown"}`;
+
+const loadScores = (room: string | null): TeamScores => {
+  try {
+    const raw = window.localStorage.getItem(scoreStorageKey(room));
+    if (raw === null) return emptyScores;
+    const parsed = JSON.parse(raw) as Partial<TeamScores>;
+    return {
+      a: Number.isFinite(parsed.a) ? Number(parsed.a) : 0,
+      b: Number.isFinite(parsed.b) ? Number(parsed.b) : 0,
+    };
+  } catch {
+    return emptyScores;
+  }
 };
+
+const TeamScoreBadge = ({ scores }: { scores: TeamScores }): React.JSX.Element => (
+  <div
+    className="guandan-level-hud guandan-round-score-hud"
+    data-testid="guandan-round-score"
+    aria-label={`A队计分 ${scores.a}，B队计分 ${scores.b}`}
+  >
+    <div className="guandan-level-badge">
+      <span>A队计分</span>
+      <strong>{scores.a}</strong>
+    </div>
+    <div className="guandan-level-badge">
+      <span>B队计分</span>
+      <strong>{scores.b}</strong>
+    </div>
+  </div>
+);
 
 const CurrentLevelBadge = ({ level }: { level: GuandanRank }): React.JSX.Element => (
   <div className="guandan-level-hud" data-testid="guandan-current-level">
@@ -129,8 +146,13 @@ export const GuandanRoundResultContent = ({
 }): React.JSX.Element => (
   <>
     <TeamScoreBadge
-      winnerTeam={model.finishOrder.length > 0 ? model.winnerTeam : null}
-      score={model.finishOrder.length > 0 ? model.promotionSteps : 0}
+      scores={
+        model.winnerTeam === "TeamA"
+          ? { a: model.promotionSteps, b: 0 }
+          : model.winnerTeam === "TeamB"
+            ? { a: 0, b: model.promotionSteps }
+            : emptyScores
+      }
     />
     <CurrentLevelBadge level={model.level} />
     {model.finishOrder.length > 0 && (
@@ -141,7 +163,7 @@ export const GuandanRoundResultContent = ({
         data-testid="guandan-final-ranking"
       >
         <strong>
-          本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 升级 +
+          本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
           {model.promotionSteps} ｜ 赢家排列：
         </strong>
         {model.rankingText}
@@ -154,6 +176,9 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
   const { state } = React.useContext(GuandanStateContext);
   const [statusTarget, setStatusTarget] = React.useState<Element | null>(null);
   const [tableTarget, setTableTarget] = React.useState<Element | null>(null);
+  const [teamScores, setTeamScores] = React.useState<TeamScores>(() =>
+    loadScores(state.room),
+  );
   const lastCompleteFinishOrder = React.useRef<number[]>([]);
 
   const playerCount = state.playerCount ?? state.players.length;
@@ -170,6 +195,10 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     setTableTarget(document.querySelector(".guandan-public-zone"));
   });
 
+  React.useEffect(() => {
+    setTeamScores(loadScores(state.room));
+  }, [state.room]);
+
   const effectiveFinishOrder =
     state.finishOrder.length === state.players.length && state.players.length >= 4
       ? state.finishOrder
@@ -184,18 +213,36 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
   );
   const roundStillComplete =
     state.finishOrder.length === state.players.length && state.players.length >= 4;
-  const liveScore = roundStillComplete ? model.promotionSteps : 0;
-  const liveWinnerTeam = roundStillComplete ? model.winnerTeam : null;
+
+  React.useEffect(() => {
+    if (!roundStillComplete || model.winnerTeam === null || model.promotionSteps <= 0) return;
+    const signature = `${state.players.join("|")}::${state.finishOrder.join(",")}::${model.winnerTeam}::${model.promotionSteps}`;
+    const signatureKey = scoreSignatureKey(state.room);
+    if (window.localStorage.getItem(signatureKey) === signature) return;
+
+    setTeamScores((current) => {
+      const next =
+        model.winnerTeam === "TeamA"
+          ? { a: current.a + model.promotionSteps, b: current.b }
+          : { a: current.a, b: current.b + model.promotionSteps };
+      window.localStorage.setItem(scoreStorageKey(state.room), JSON.stringify(next));
+      window.localStorage.setItem(signatureKey, signature);
+      return next;
+    });
+  }, [
+    roundStillComplete,
+    model.winnerTeam,
+    model.promotionSteps,
+    state.finishOrder,
+    state.players,
+    state.room,
+  ]);
 
   if (statusTarget === null && tableTarget === null) return null;
 
   return (
     <>
-      {statusTarget !== null &&
-        createPortal(
-          <TeamScoreBadge winnerTeam={liveWinnerTeam} score={liveScore} />,
-          statusTarget,
-        )}
+      {statusTarget !== null && createPortal(<TeamScoreBadge scores={teamScores} />, statusTarget)}
       {tableTarget !== null && model.finishOrder.length > 0 &&
         createPortal(
           <section
@@ -205,7 +252,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
             data-testid="guandan-final-ranking"
           >
             <strong>
-              本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 升级 +
+              本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
               {model.promotionSteps} ｜ 赢家排列：
             </strong>
             {model.rankingText}
