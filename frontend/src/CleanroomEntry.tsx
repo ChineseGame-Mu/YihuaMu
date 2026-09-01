@@ -15,20 +15,26 @@ import "./cleanroom-lobby-artwork.css";
 import "./cleanroom-device-layout.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
+const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
+type SelectableRoom = (typeof selectableRooms)[number];
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
 const legacyUiRoom = "0001";
 
-const roomFromLocation = (): string => {
+const isSelectableRoom = (value: string | null): value is SelectableRoom =>
+  value !== null && selectableRooms.includes(value as SelectableRoom);
+
+const roomFromLocation = (): SelectableRoom => {
   const query = new URLSearchParams(window.location.search);
   const cleanroomRoom = query.get("cleanroomRoom");
-  if (cleanroomRoom !== null && cleanroomRoom.trim() !== "") {
-    return cleanroomRoom.trim();
-  }
+  if (isSelectableRoom(cleanroomRoom)) return cleanroomRoom;
   const pathMatch = window.location.pathname.match(/^\/room\/([^/]+)/);
-  if (pathMatch !== null) return decodeURIComponent(pathMatch[1]!);
+  if (pathMatch !== null) {
+    const fromPath = decodeURIComponent(pathMatch[1]!);
+    if (isSelectableRoom(fromPath)) return fromPath;
+  }
   const fromQuery = query.get("room");
-  if (fromQuery !== null && fromQuery.trim() !== "") return fromQuery.trim();
-  return "manual-test";
+  if (isSelectableRoom(fromQuery)) return fromQuery;
+  return "0001";
 };
 
 const GuandanJoinBrand = (): JSX.Element => (
@@ -75,7 +81,11 @@ const CleanroomTable = (): JSX.Element => {
     url.searchParams.delete("test");
     url.searchParams.delete("ws");
     url.searchParams.delete("room");
-    if (actualRoom !== null) url.searchParams.set("cleanroomRoom", actualRoom);
+    if (isSelectableRoom(actualRoom)) {
+      url.searchParams.set("cleanroomRoom", actualRoom);
+    } else {
+      url.searchParams.set("cleanroomRoom", "0001");
+    }
     window.location.href = url.toString();
   };
 
@@ -100,7 +110,7 @@ const CleanroomEntry = (): JSX.Element => {
     () => new URLSearchParams(window.location.search),
     [],
   );
-  const roomId = React.useMemo(roomFromLocation, []);
+  const initialRoom = React.useMemo(roomFromLocation, []);
   const requested = Number(
     initial.get("playerCount") ?? initial.get("players") ?? "4",
   );
@@ -109,6 +119,7 @@ const CleanroomEntry = (): JSX.Element => {
   )
     ? requested
     : 4;
+  const [roomId, setRoomId] = React.useState<SelectableRoom>(initialRoom);
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
   const [name, setName] = React.useState(initial.get("playerName") ?? "");
   const [joined, setJoined] = React.useState(false);
@@ -152,10 +163,19 @@ const CleanroomEntry = (): JSX.Element => {
           <div className="cleanroom-card-corner cleanroom-card-corner-bl" />
           <div className="cleanroom-card-corner cleanroom-card-corner-br" />
           <h2>加入牌室</h2>
-          <p className="cleanroom-room-label">
-            房间： <strong>{roomId}</strong>
-          </p>
           <form onSubmit={submit}>
+            <label htmlFor="cleanroom-room">牌室</label>
+            <select
+              id="cleanroom-room"
+              value={roomId}
+              onChange={(event) => setRoomId(event.target.value as SelectableRoom)}
+            >
+              {selectableRooms.map((room) => (
+                <option key={room} value={room}>
+                  {room}
+                </option>
+              ))}
+            </select>
             <label htmlFor="cleanroom-player-count">开始人数：4–14 人</label>
             <select
               id="cleanroom-player-count"
@@ -186,8 +206,9 @@ const CleanroomEntry = (): JSX.Element => {
             </button>
           </form>
           <p className="cleanroom-hint">
-            全部使用真人。游戏开始后 3 小时内可继续加入；人数按
-            6→8→10→12→14 逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
+            最多四个牌室：0001、0002、0003、0004。全部使用真人。游戏开始后 3
+            小时内可继续加入；人数按 6→8→10→12→14
+            逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
           </p>
         </section>
       </div>
