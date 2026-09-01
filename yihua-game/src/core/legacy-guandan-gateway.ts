@@ -243,6 +243,21 @@ const firstAvailableSeat = (
   return managed.room.participants.length;
 };
 
+const requestedLegacySeat = (
+  message: LegacyClientMessage,
+  playerCount: number,
+): number | undefined => {
+  const raw = (
+    message as LegacyClientMessage & { readonly desired_seat?: unknown }
+  ).desired_seat;
+  if (raw === undefined) return undefined;
+  const seat = Number(raw);
+  if (!Number.isInteger(seat) || seat < 0 || seat >= playerCount) {
+    throw new Error("requested player seat is out of range");
+  }
+  return seat;
+};
+
 const reclaimStaleLobbyHumans = (
   runtime: ServerRuntime,
   roomId: string,
@@ -358,10 +373,31 @@ export const attachLegacyGuandanConnection = async (
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
-        const robotSeat = [...managed.room.participants]
-          .filter(({ kind }) => kind === "robot")
-          .sort((a, b) => a.seat - b.seat)[0]?.seat;
-        const seat = existing?.seat ?? robotSeat ?? firstAvailableSeat(managed);
+        const desiredSeat = requestedLegacySeat(
+          message,
+          managed.room.config.playerCount,
+        );
+        const desiredOccupant =
+          desiredSeat === undefined
+            ? undefined
+            : managed.room.participants.find(
+                ({ seat }) => seat === desiredSeat,
+              );
+        if (
+          existing === undefined &&
+          desiredOccupant !== undefined &&
+          desiredOccupant.kind === "human"
+        ) {
+          throw new Error("requested player seat is already occupied");
+        }
+        const robotSeat =
+          desiredSeat !== undefined && desiredOccupant?.kind === "robot"
+            ? desiredSeat
+            : [...managed.room.participants]
+                .filter(({ kind }) => kind === "robot")
+                .sort((a, b) => a.seat - b.seat)[0]?.seat;
+        const seat =
+          existing?.seat ?? desiredSeat ?? robotSeat ?? firstAvailableSeat(managed);
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
@@ -379,7 +415,7 @@ export const attachLegacyGuandanConnection = async (
               });
               await runtime.websocket.broadcastRoomState(managed);
             }
-          } else if (robotSeat !== undefined) {
+          } else if (robotSeat !== undefined && robotSeat === seat) {
             managed = runtime.rooms.set(roomId, {
               ...managed,
               room: replaceRobotWithHuman(managed.room, {
