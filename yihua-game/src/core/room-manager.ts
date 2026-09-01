@@ -53,6 +53,14 @@ const activeCountForNextRound = (
   return eligible.at(-1) ?? currentCount;
 };
 
+const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
+  if (managed.game.phase === "lobby") return false;
+  const humans = managed.room.participants.filter(
+    ({ kind }) => kind === "human",
+  );
+  return humans.length > 0 && humans.every(({ connected }) => !connected);
+};
+
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
 
@@ -76,6 +84,17 @@ export class RoomManager {
     if (!managed) {
       throw new Error(`room ${roomId} does not exist`);
     }
+
+    if (isAbandonedActiveRoom(managed)) {
+      const reset = {
+        room: createRoom(roomId, managed.room.config.playerCount),
+        game: createLobbyState(managed.room.config.playerCount, 0),
+        revision: managed.revision + 1,
+      } satisfies ManagedRoom;
+      this.rooms.set(roomId, reset);
+      return reset;
+    }
+
     return managed;
   }
 
