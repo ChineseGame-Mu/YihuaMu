@@ -12,6 +12,7 @@ import {
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
+  resolveLegacyTributeResistance,
 } from "./legacy-tribute.js";
 import type { ServerMessage } from "./protocol.js";
 import {
@@ -561,6 +562,12 @@ export const attachLegacyGuandanConnection = async (
         { roomId: active.roomId, playerId: active.playerId },
         JSON.stringify(clean),
       );
+      if (message.type === "deal_next_round") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (resolveLegacyTributeResistance(active.roomId, managed)) {
+          await runtime.websocket.broadcastGameState(managed);
+        }
+      }
     } catch (error) {
       await sendLegacy(connection.socket, {
         type: "error",
