@@ -57,6 +57,15 @@ const consecutiveHighRank = (ranks: readonly Rank[]): Rank | null => {
     unique.includes("5")
   )
     return "5";
+  if (
+    unique.length === 5 &&
+    unique.includes("2") &&
+    unique.includes("3") &&
+    unique.includes("4") &&
+    unique.includes("5") &&
+    unique.includes("6")
+  )
+    return "6";
   if (unique.includes("2")) return null;
   const indexes = unique.map(rankIndex);
   const consecutive = indexes.every(
