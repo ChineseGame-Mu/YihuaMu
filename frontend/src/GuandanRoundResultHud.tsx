@@ -19,6 +19,25 @@ const rankLabel: Record<string, string> = {
   Ace: "A",
 };
 
+const rankSequence: GuandanRank[] = [
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Jack",
+  "Queen",
+  "King",
+  "Ace",
+];
+
+const rankFromCumulativeScore = (score: number): GuandanRank =>
+  rankSequence[Math.min(rankSequence.length - 1, Math.max(0, score))] ?? "Two";
+
 const teamLabel = (team: GuandanTeam | null): string =>
   team === "TeamA" ? "A队" : team === "TeamB" ? "B队" : "—";
 
@@ -238,11 +257,25 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     state.room,
   ]);
 
+  const synchronizedLevel =
+    model.winnerTeam === "TeamA"
+      ? rankFromCumulativeScore(teamScores.a)
+      : model.winnerTeam === "TeamB"
+        ? rankFromCumulativeScore(teamScores.b)
+        : state.level ?? "Two";
+
   if (statusTarget === null && tableTarget === null) return null;
 
   return (
     <>
-      {statusTarget !== null && createPortal(<TeamScoreBadge scores={teamScores} />, statusTarget)}
+      {statusTarget !== null &&
+        createPortal(
+          <>
+            <TeamScoreBadge scores={teamScores} />
+            <CurrentLevelBadge level={synchronizedLevel} />
+          </>,
+          statusTarget,
+        )}
       {tableTarget !== null && model.finishOrder.length > 0 &&
         createPortal(
           <section
@@ -253,7 +286,9 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
           >
             <strong>
               本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
-              {model.promotionSteps} ｜ 赢家排列：
+              {model.promotionSteps} ｜ 赢家累计积分：
+              {model.winnerTeam === "TeamA" ? teamScores.a : teamScores.b} ｜ 本局打：
+              {rankLabel[synchronizedLevel]} ｜ 赢家排列：
             </strong>
             {model.rankingText}
           </section>,
