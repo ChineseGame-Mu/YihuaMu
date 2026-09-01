@@ -96,7 +96,10 @@ const classifySequence = (
       new Map(candidate.map((rank) => [rank, 1] as const)),
     );
     if (missing !== wildcardCount) continue;
-    const highRank = candidate.includes("A") && candidate.includes("2") ? "5" : candidate.at(-1)!;
+    const highRank =
+      candidate.includes("A") && candidate.includes("2")
+        ? "5"
+        : candidate.at(-1)!;
     if (best === null || rankIndex(highRank) > rankIndex(best)) best = highRank;
   }
 
