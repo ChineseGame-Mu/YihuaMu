@@ -207,7 +207,8 @@ export const adaptGuandanServerMessage = (
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,
         lastGameWinner: winner,
-        lastGameWinnerTeam: message.last_game_winner_team ?? inferredTeam ?? state.lastGameWinnerTeam,
+        lastGameWinnerTeam:
+          message.last_game_winner_team ?? inferredTeam ?? state.lastGameWinnerTeam,
         lastPromotionSteps: promotionSteps,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
@@ -229,12 +230,14 @@ export type GuandanWireClientMessage =
       room: string;
       name: string;
       player_count: number;
+      desired_seat?: number;
     };
 
 interface GuandanClientAdapterOptions {
   cleanroom: boolean;
   room: string | null;
   playerCount: number | null;
+  desiredSeat?: number | null;
 }
 
 const supportedPlayerCounts = [4, 6, 8, 10, 12, 14];
@@ -248,10 +251,19 @@ export const adaptGuandanClientMessage = (
   const requested = options.playerCount ?? 4;
   const playerCount = supportedPlayerCounts.includes(requested) ? requested : 4;
   const room = options.room?.trim();
+  const desiredSeat =
+    Number.isInteger(options.desiredSeat) &&
+    options.desiredSeat !== null &&
+    options.desiredSeat !== undefined &&
+    options.desiredSeat >= 0 &&
+    options.desiredSeat < playerCount
+      ? options.desiredSeat
+      : undefined;
 
   return {
     ...message,
     room: room || message.room,
     player_count: playerCount,
+    ...(desiredSeat === undefined ? {} : { desired_seat: desiredSeat }),
   };
 };
