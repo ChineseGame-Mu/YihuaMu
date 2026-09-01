@@ -11,6 +11,7 @@ import type { ServerMessage } from "./protocol.js";
 import {
   disconnectHuman,
   reconnectHuman,
+  removeParticipant,
   replaceRobotWithHuman,
 } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
@@ -232,6 +233,42 @@ const ensureLegacyRoom = (
   }
 };
 
+const firstAvailableSeat = (
+  managed: ReturnType<ServerRuntime["rooms"]["get"]>,
+): number => {
+  const occupied = new Set(managed.room.participants.map(({ seat }) => seat));
+  for (let seat = 0; seat < managed.room.config.playerCount; seat += 1) {
+    if (!occupied.has(seat)) return seat;
+  }
+  return managed.room.participants.length;
+};
+
+const reclaimStaleLobbyHumans = (
+  runtime: ServerRuntime,
+  roomId: string,
+  preservePlayerId: string,
+): ReturnType<ServerRuntime["rooms"]["get"]> => {
+  let managed = runtime.rooms.get(roomId);
+  if (managed.game.phase !== "lobby") return managed;
+
+  const staleIds = managed.room.participants
+    .filter(
+      ({ id, kind, connected }) =>
+        kind === "human" &&
+        id !== preservePlayerId &&
+        !connected &&
+        runtime.sockets.playerConnectionCount(roomId, id) === 0,
+    )
+    .map(({ id }) => id);
+
+  if (staleIds.length === 0) return managed;
+
+  let room = managed.room;
+  for (const id of staleIds) room = removeParticipant(room, id);
+  managed = runtime.rooms.set(roomId, { ...managed, room });
+  return managed;
+};
+
 export const assertLegacyNextRoundRole = (
   message: LegacyClientMessage,
   seat: number | null,
@@ -287,7 +324,10 @@ export const attachLegacyGuandanConnection = async (
       const managed = runtime.rooms.get(active.roomId);
       const next = runtime.rooms.set(active.roomId, {
         ...managed,
-        room: disconnectHuman(managed.room, active.playerId),
+        room:
+          managed.game.phase === "lobby"
+            ? removeParticipant(managed.room, active.playerId)
+            : disconnectHuman(managed.room, active.playerId),
       });
       await runtime.websocket.broadcastRoomState(next);
     } catch {
@@ -314,15 +354,14 @@ export const attachLegacyGuandanConnection = async (
         ).player_count;
         ensureLegacyRoom(runtime, roomId, requestedPlayerCount);
 
-        let managed = runtime.rooms.get(roomId);
+        let managed = reclaimStaleLobbyHumans(runtime, roomId, playerId);
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
         const robotSeat = [...managed.room.participants]
           .filter(({ kind }) => kind === "robot")
           .sort((a, b) => a.seat - b.seat)[0]?.seat;
-        const seat =
-          existing?.seat ?? robotSeat ?? managed.room.participants.length;
+        const seat = existing?.seat ?? robotSeat ?? firstAvailableSeat(managed);
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
