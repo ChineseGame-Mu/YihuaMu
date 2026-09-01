@@ -213,7 +213,7 @@ export const adaptGuandanServerMessage = (
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
-        hookToBottom: message.hook_to_bottom,
+        hookToBottom: message.hook_to_bottom ?? state.hookToBottom,
         error: null,
       };
     }
