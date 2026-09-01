@@ -86,7 +86,7 @@ describe("complete hand and table-state matrix", () => {
     expect(classifyHand(cards).kind).toBe(kind);
   });
 
-  it("covers wheel straights and rejects straights containing rank 2", () => {
+  it("covers wheel straights, approved 23456, and rejects high-wrap 2 straights", () => {
     expect(
       classifyHand([
         card("A", "clubs"),
@@ -106,6 +106,15 @@ describe("complete hand and table-state matrix", () => {
         card("4", "spades"),
         card("5", "diamonds"),
         card("6", "clubs"),
+      ]),
+    ).toMatchObject({ kind: "straight", highRank: "6" });
+    expect(
+      classifyHand([
+        card("J", "clubs"),
+        card("Q", "hearts"),
+        card("K", "spades"),
+        card("A", "diamonds"),
+        card("2", "clubs"),
       ]).kind,
     ).toBe("invalid");
   });
