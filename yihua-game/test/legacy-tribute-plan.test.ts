@@ -23,4 +23,11 @@ describe("legacy tribute mapping", () => {
       },
     });
   });
+
+  it("clears tribute when the previous result is not a four-player finish", () => {
+    prepareLegacyTribute("clear-tribute", [0, 1, 2, 3]);
+    prepareLegacyTribute("clear-tribute", [0, 1, 2]);
+
+    expect(legacyTributePlan("clear-tribute")).toBeNull();
+  });
 });
