@@ -25,6 +25,7 @@ export type GuandanClientMessage =
   | { type: "reorder_players"; order: [number, number] }
   | { type: "set_participation"; active: boolean }
   | { type: "set_bots"; count: 1 | 2 | 3 }
+  | { type: "set_hook_to_bottom"; enabled: boolean }
   | { type: "start"; player_count: number }
   | {
       type: "shuffle_next_round";
@@ -82,6 +83,7 @@ export type GuandanServerMessage =
       tribute_resisted: boolean;
       match_winner: GuandanTeam | null;
       next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
+      hook_to_bottom: boolean;
     }
   | { type: "error"; message: string };
 
