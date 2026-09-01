@@ -7,6 +7,12 @@ import {
   type LegacyClientMessage,
   type LegacyServerMessage,
 } from "./frontend-compat.js";
+import {
+  applyLegacyTributeSelection,
+  decorateLegacyTributeState,
+  hasPendingLegacyTribute,
+  prepareLegacyTribute,
+} from "./legacy-tribute.js";
 import type { ServerMessage } from "./protocol.js";
 import {
   disconnectHuman,
@@ -93,13 +99,17 @@ class LegacyAdapterSocket implements TextSocket {
     if (this.roomState === undefined || this.gameState === undefined) return;
     const legacyState = gameStateToLegacy(this.roomState, this.gameState);
     if (legacyState.type !== "state") return;
+    const decoratedState = decorateLegacyTributeState(
+      this.compat.roomId,
+      legacyState,
+    );
     const pending = pendingLegacyTricks.get(this.compat.roomId);
     await sendLegacy(this.socket, {
-      ...legacyState,
-      last_play: pending?.lastPlay ?? legacyState.last_play,
-      last_player: pending?.winner ?? legacyState.last_player,
+      ...decoratedState,
+      last_play: pending?.lastPlay ?? decoratedState.last_play,
+      last_player: pending?.winner ?? decoratedState.last_player,
       table_plays: pending?.tablePlays ?? this.tablePlays,
-      passes: pending === undefined ? legacyState.passes : 0,
+      passes: pending === undefined ? decoratedState.passes : 0,
       trick_complete: pending !== undefined,
       last_trick_winner: pending?.winner ?? null,
     });
@@ -511,7 +521,33 @@ export const attachLegacyGuandanConnection = async (
           finishedSeats: managed.game.finishedSeats,
           completedTricks: managed.game.trick.completedTricks,
         });
+        if (message.type === "deal_next_round") {
+          prepareLegacyTribute(active.roomId, managed.game.finishedSeats);
+        }
       }
+
+      if (message.type === "tribute_card" || message.type === "return_tribute") {
+        const seat = active.adapter.compat.seat;
+        if (seat === null) throw new Error("a seated player is required");
+        const cardId = active.adapter.compat.privateCardIds[message.card_index];
+        if (cardId === undefined) throw new Error("selected tribute card is out of range");
+        await applyLegacyTributeSelection(
+          runtime,
+          active.roomId,
+          seat,
+          cardId,
+          message.type,
+        );
+        return;
+      }
+
+      if (
+        hasPendingLegacyTribute(active.roomId) &&
+        (message.type === "play" || message.type === "pass")
+      ) {
+        throw new Error("complete tribute and return tribute before playing");
+      }
+
       const clean = toCleanroomCommand(message, active.adapter.compat);
       await runtime.websocket.handleText(
         active.adapter,
