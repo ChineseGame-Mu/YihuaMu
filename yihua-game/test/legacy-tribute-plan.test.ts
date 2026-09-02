@@ -17,7 +17,7 @@ const resistanceRoom = (
     },
   }) as unknown as ManagedRoom;
 
-describe("legacy tribute mapping", () => {
+describe("approved legacy tribute mapping", () => {
   it("makes fourth place tribute first place after a normal result", () => {
     prepareLegacyTribute("single-tribute", [0, 1, 2, 3]);
 
