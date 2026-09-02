@@ -93,10 +93,11 @@ export const resolveLegacyTributeResistance = (
   managed: ManagedRoom,
 ): boolean => {
   const session = sessions.get(roomId);
-  if (session === undefined || managed.game.phase !== "playing") return false;
+  const game = managed.game;
+  if (session === undefined || game.phase !== "playing") return false;
   const givers = tributeGivers(session.plan);
   const bigJokers = givers.reduce(
-    (total, seat) => total + countBigJokers(managed.game.hands[seat] ?? []),
+    (total, seat) => total + countBigJokers(game.hands[seat] ?? []),
     0,
   );
   if (bigJokers < 2) return false;
