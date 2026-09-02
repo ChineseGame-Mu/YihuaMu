@@ -85,9 +85,8 @@ const tributeReceivers = (plan: LegacyTributePlan): readonly number[] =>
   "Single" in plan ? [plan.Single.receiver] : plan.Double.receivers;
 
 const countBigJokers = (hand: readonly DeckCard[]): number =>
-  hand.filter(
-    ({ card }) => card.kind === "joker" && card.size === "big",
-  ).length;
+  hand.filter(({ card }) => card.kind === "joker" && card.size === "big")
+    .length;
 
 export const resolveLegacyTributeResistance = (
   roomId: string,
@@ -183,7 +182,8 @@ const selectionFor = (
   player: number,
 ): TributeSelection => {
   const found = selections.find((selection) => selection.player === player);
-  if (found === undefined) throw new Error("tribute exchange selection is missing");
+  if (found === undefined)
+    throw new Error("tribute exchange selection is missing");
   return found;
 };
 
@@ -265,7 +265,11 @@ export const applyLegacyTributeSelection = async (
     if (session.tributeCards.some(({ player }) => player === seat)) {
       throw new Error("this player has already submitted a tribute card");
     }
-    const card = legalTributeCard(managed.game.hands[seat] ?? [], cardId, level);
+    const card = legalTributeCard(
+      managed.game.hands[seat] ?? [],
+      cardId,
+      level,
+    );
     session.tributeCards.push({ player: seat, card });
     const next = runtime.rooms.set(
       roomId,
@@ -287,9 +291,12 @@ export const applyLegacyTributeSelection = async (
   }
   const hand = managed.game.hands[seat] ?? [];
   const selected = hand.find(({ id }) => id === cardId);
-  if (selected === undefined) throw new Error("selected return card is not in hand");
+  if (selected === undefined)
+    throw new Error("selected return card is not in hand");
   if (!legalReturnCard(selected.card, level)) {
-    throw new Error("return card must be a non-level suited card ranked 2 through 10");
+    throw new Error(
+      "return card must be a non-level suited card ranked 2 through 10",
+    );
   }
 
   session.returnCards.push({ player: seat, card: selected });
