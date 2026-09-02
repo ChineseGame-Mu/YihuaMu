@@ -8,7 +8,9 @@ import {
 } from "../src/core/legacy-tribute.js";
 
 const resistanceRoom = (
-  hands: Array<Array<{ id: string; card: { kind: "joker"; size: "big" } }>>,
+  hands: Array<
+    Array<{ id: string; card: { kind: "joker"; size: "big" } }>
+  >,
 ): ManagedRoom =>
   ({
     game: {
