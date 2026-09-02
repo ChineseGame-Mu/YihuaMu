@@ -208,8 +208,14 @@ const finalizeExchange = (
     const { givers, receivers } = session.plan.Double;
     const first = selectionFor(session.tributeCards, givers[0]);
     const second = selectionFor(session.tributeCards, givers[1]);
-    const firstStrength = singleStrength(first.card.card, managed.game.levelRank ?? "2");
-    const secondStrength = singleStrength(second.card.card, managed.game.levelRank ?? "2");
+    const firstStrength = singleStrength(
+      first.card.card,
+      managed.game.levelRank ?? "2",
+    );
+    const secondStrength = singleStrength(
+      second.card.card,
+      managed.game.levelRank ?? "2",
+    );
     const [high, low] =
       secondStrength > firstStrength ? [second, first] : [first, second];
     const firstReturn = selectionFor(session.returnCards, receivers[0]).card;
@@ -287,7 +293,10 @@ export const applyLegacyTributeSelection = async (
   }
 
   session.returnCards.push({ player: seat, card: selected });
-  let nextManaged = withHands(managed, removeCard(managed.game.hands, seat, cardId));
+  let nextManaged = withHands(
+    managed,
+    removeCard(managed.game.hands, seat, cardId),
+  );
   if (allReturnsReceived(session)) {
     nextManaged = finalizeExchange(nextManaged, session);
     sessions.delete(roomId);
