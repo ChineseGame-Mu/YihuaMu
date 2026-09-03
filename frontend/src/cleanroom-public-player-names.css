@@ -1,4 +1,7 @@
-.guandan-table .guandan-public-player-backs .guandan-public-player-back > strong[title],
+.guandan-table
+  .guandan-public-player-backs
+  .guandan-public-player-back
+  > strong[title],
 .guandan-table .guandan-player-card > strong,
 .guandan-table .guandan-round-winner-mini > strong,
 .guandan-table .guandan-initial-draw-mini-cards > div > span,
