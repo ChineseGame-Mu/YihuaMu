@@ -12,7 +12,9 @@ const base = {
 
 describe("deriveGuandanTablePhase", () => {
   test("waits until a playable table exists", () => {
-    expect(deriveGuandanTablePhase({ ...base, playerCount: 2 })).toBe("waiting");
+    expect(deriveGuandanTablePhase({ ...base, playerCount: 2 })).toBe(
+      "waiting",
+    );
   });
 
   test("keeps first-game draw independent from dealing", () => {
@@ -23,7 +25,9 @@ describe("deriveGuandanTablePhase", () => {
 
   test("enters play only after draw and complete hand counts", () => {
     expect(deriveGuandanTablePhase(base)).toBe("playing");
-    expect(deriveGuandanTablePhase({ ...base, handCounts: [] })).toBe("dealing");
+    expect(deriveGuandanTablePhase({ ...base, handCounts: [] })).toBe(
+      "dealing",
+    );
   });
 
   test("models round and next-round gates explicitly", () => {
