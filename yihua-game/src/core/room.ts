@@ -5,6 +5,7 @@ import {
   type TableConfig,
 } from "./table.js";
 
+// Kept as a compatibility export for older tests/imports. Public rooms no longer expire.
 export const LATE_JOIN_WINDOW_MS = 3 * 60 * 60 * 1000;
 
 export type ParticipantKind = "human" | "robot";
@@ -62,22 +63,20 @@ const normalizeHuman = (input: {
 };
 
 export const roomAcceptsLateJoin = (
-  room: RoomState,
-  now: number = Date.now(),
-): boolean => room.joinClosesAt === undefined || now <= room.joinClosesAt;
+  _room: RoomState,
+  _now: number = Date.now(),
+): boolean => true;
 
 export const openLateJoinWindow = (
   room: RoomState,
-  startedAt: number = Date.now(),
+  _startedAt: number = Date.now(),
 ): RoomState => ({
   ...room,
-  joinClosesAt: startedAt + LATE_JOIN_WINDOW_MS,
+  joinClosesAt: undefined,
 });
 
-const ensureJoinWindowOpen = (room: RoomState, now: number): void => {
-  if (!roomAcceptsLateJoin(room, now)) {
-    throw new Error("three-hour join window has closed");
-  }
+const ensureJoinWindowOpen = (_room: RoomState, _now: number): void => {
+  // Fixed public rooms 0001-0004 are permanent and never expire by time.
 };
 
 const expandRoomForSeat = (room: RoomState, seat: number): RoomState => {
