@@ -30,6 +30,13 @@ interface GuandanWebsocketProviderProps {
 
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
+const COALESCIBLE_MESSAGE_TYPES = new Set<GuandanServerMessage["type"]>([
+  "waiting",
+  "started",
+  "state",
+  "hand",
+]);
+const MAX_PENDING_MESSAGES = 32;
 
 const cleanroomWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
@@ -93,6 +100,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const reconnectAttemptRef = React.useRef(0);
   const mountedRef = React.useRef(true);
   const messageQueueRef = React.useRef<GuandanServerMessage[]>([]);
+  const messageQueueIndexRef = React.useRef(0);
   const messageDrainTimerRef = React.useRef<number | null>(null);
   const sequenceRef = React.useRef(0);
 
@@ -105,25 +113,63 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         messageDrainTimerRef.current = null;
       }
       messageQueueRef.current = [];
+      messageQueueIndexRef.current = 0;
     };
 
     const drainMessages = (): void => {
       messageDrainTimerRef.current = null;
       if (!mountedRef.current) return;
 
-      const next = messageQueueRef.current.shift();
+      const queue = messageQueueRef.current;
+      const queueIndex = messageQueueIndexRef.current;
+      const next = queue[queueIndex];
       if (next === undefined) return;
 
+      messageQueueIndexRef.current = queueIndex + 1;
       sequenceRef.current += 1;
       setDelivery({ message: next, sequence: sequenceRef.current });
 
-      if (messageQueueRef.current.length > 0) {
+      if (messageQueueIndexRef.current < queue.length) {
         messageDrainTimerRef.current = window.setTimeout(drainMessages, 8);
+        return;
       }
+
+      messageQueueRef.current = [];
+      messageQueueIndexRef.current = 0;
     };
 
     const enqueueMessage = (message: GuandanServerMessage): void => {
-      messageQueueRef.current.push(message);
+      const queue = messageQueueRef.current;
+      const queueIndex = messageQueueIndexRef.current;
+
+      // State-like messages supersede older pending messages of the same type.
+      // This keeps the UI current instead of replaying stale snapshots when a
+      // busy table produces updates faster than a browser can render them.
+      if (COALESCIBLE_MESSAGE_TYPES.has(message.type)) {
+        let replacement = -1;
+        for (let index = queue.length - 1; index >= queueIndex; index -= 1) {
+          if (queue[index].type === message.type) {
+            replacement = index;
+            break;
+          }
+        }
+        if (replacement >= 0) {
+          queue[replacement] = message;
+        } else {
+          queue.push(message);
+        }
+      } else {
+        queue.push(message);
+      }
+
+      while (queue.length - queueIndex > MAX_PENDING_MESSAGES) {
+        const staleIndex = queue.findIndex(
+          (queued, index) =>
+            index >= queueIndex && COALESCIBLE_MESSAGE_TYPES.has(queued.type),
+        );
+        if (staleIndex < 0) break;
+        queue.splice(staleIndex, 1);
+      }
       if (messageDrainTimerRef.current === null) {
         messageDrainTimerRef.current = window.setTimeout(drainMessages, 0);
       }
