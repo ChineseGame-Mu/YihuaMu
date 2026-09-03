@@ -8,6 +8,33 @@ import type { UpgradedConnection } from "./core/websocket-upgrade.js";
 
 const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME_BYTES = 1024 * 1024;
+const MAX_PENDING_FRAMES = 64;
+const MAX_PENDING_BYTES = 2 * 1024 * 1024;
+
+interface PendingServerFrame {
+  readonly frame: Buffer;
+  readonly coalesceKey?: string;
+}
+
+const coalesceKeyFor = (text: string): string | undefined => {
+  try {
+    const parsed = JSON.parse(text) as { readonly type?: unknown };
+    if (typeof parsed.type !== "string") return undefined;
+    return [
+      "room_state",
+      "game_state",
+      "private_hand",
+      "waiting",
+      "started",
+      "state",
+      "hand",
+    ].includes(parsed.type)
+      ? parsed.type
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 export const websocketAcceptKey = (clientKey: string): string =>
   createHash("sha1").update(`${clientKey}${WEBSOCKET_GUID}`).digest("base64");
@@ -103,12 +130,19 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   private buffer = Buffer.alloc(0);
   private textHandler: ((text: string) => void | Promise<void>) | undefined;
   private readonly closeHandlers = new Set<() => void | Promise<void>>();
+  private textHandling = Promise.resolve();
+  private writeBlocked = false;
+  private pendingBytes = 0;
+  private pendingFrames: PendingServerFrame[] = [];
 
   constructor(
     private readonly rawSocket: Duplex,
     readonly context: ConnectionContext,
   ) {
+    rawSocket.on("drain", () => this.flushPendingFrames());
     rawSocket.once("close", () => {
+      this.pendingFrames = [];
+      this.pendingBytes = 0;
       for (const handler of this.closeHandlers) {
         void handler();
       }
@@ -122,7 +156,50 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
 
   send(text: string): void {
     if (!this.canWrite()) return;
-    this.rawSocket.write(encodeServerFrame(0x1, Buffer.from(text, "utf8")));
+    const frame = encodeServerFrame(0x1, Buffer.from(text, "utf8"));
+    if (!this.writeBlocked) {
+      this.writeBlocked = !this.rawSocket.write(frame);
+      return;
+    }
+
+    const coalesceKey = coalesceKeyFor(text);
+    if (coalesceKey !== undefined) {
+      const existing = this.pendingFrames.findIndex(
+        (pending) => pending.coalesceKey === coalesceKey,
+      );
+      if (existing !== -1) {
+        this.pendingBytes -= this.pendingFrames[existing]!.frame.length;
+        this.pendingFrames.splice(existing, 1);
+      }
+    }
+
+    if (
+      this.pendingFrames.length >= MAX_PENDING_FRAMES ||
+      this.pendingBytes + frame.length > MAX_PENDING_BYTES
+    ) {
+      this.pendingFrames = [];
+      this.pendingBytes = 0;
+      this.close(1013, "client is too slow");
+      return;
+    }
+
+    this.pendingFrames.push(
+      coalesceKey === undefined ? { frame } : { frame, coalesceKey },
+    );
+    this.pendingBytes += frame.length;
+  }
+
+  private flushPendingFrames(): void {
+    if (!this.canWrite()) return;
+    this.writeBlocked = false;
+    while (this.pendingFrames.length > 0) {
+      const pending = this.pendingFrames.shift()!;
+      this.pendingBytes -= pending.frame.length;
+      if (!this.rawSocket.write(pending.frame)) {
+        this.writeBlocked = true;
+        return;
+      }
+    }
   }
 
   close(code = 1000, reason = ""): void {
@@ -161,9 +238,17 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
 
   private handleFrame(opcode: number, payload: Buffer): void {
     if (opcode === 0x1) {
-      if (this.textHandler) {
-        void this.textHandler(payload.toString("utf8"));
-      }
+      const text = payload.toString("utf8");
+      this.textHandling = this.textHandling
+        .then(async () => {
+          if (this.textHandler) await this.textHandler(text);
+        })
+        .catch((error: unknown) => {
+          this.close(
+            1011,
+            error instanceof Error ? error.message : "message handler failed",
+          );
+        });
       return;
     }
     if (opcode === 0x8) {
