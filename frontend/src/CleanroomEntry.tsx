@@ -1,7 +1,9 @@
 import * as React from "react";
 import type { JSX } from "react";
 import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
-import GuandanStateProvider, { GuandanStateContext } from "./GuandanStateProvider";
+import GuandanStateProvider, {
+  GuandanStateContext,
+} from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
@@ -154,8 +156,14 @@ const CleanroomEntry = (): JSX.Element => {
       <div className="cleanroom-bamboo" aria-hidden="true" />
       <div className="cleanroom-plum" aria-hidden="true" />
       <div className="cleanroom-lantern" aria-hidden="true" />
-      <div className="cleanroom-mountains cleanroom-mountains-left" aria-hidden="true" />
-      <div className="cleanroom-mountains cleanroom-mountains-right" aria-hidden="true" />
+      <div
+        className="cleanroom-mountains cleanroom-mountains-left"
+        aria-hidden="true"
+      />
+      <div
+        className="cleanroom-mountains cleanroom-mountains-right"
+        aria-hidden="true"
+      />
       <div className="cleanroom-waves" aria-hidden="true" />
 
       <div className="cleanroom-join-content">
@@ -171,7 +179,9 @@ const CleanroomEntry = (): JSX.Element => {
             <select
               id="cleanroom-room"
               value={roomId}
-              onChange={(event) => setRoomId(event.target.value as SelectableRoom)}
+              onChange={(event) =>
+                setRoomId(event.target.value as SelectableRoom)
+              }
             >
               {selectableRooms.map((room) => (
                 <option key={room} value={room}>

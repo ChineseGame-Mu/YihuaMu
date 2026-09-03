@@ -93,6 +93,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const reconnectAttemptRef = React.useRef(0);
   const mountedRef = React.useRef(true);
   const messageQueueRef = React.useRef<GuandanServerMessage[]>([]);
+  const messageQueueIndexRef = React.useRef(0);
   const messageDrainTimerRef = React.useRef<number | null>(null);
   const sequenceRef = React.useRef(0);
 
@@ -105,24 +106,48 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         messageDrainTimerRef.current = null;
       }
       messageQueueRef.current = [];
+      messageQueueIndexRef.current = 0;
     };
 
     const drainMessages = (): void => {
       messageDrainTimerRef.current = null;
       if (!mountedRef.current) return;
 
-      const next = messageQueueRef.current.shift();
+      const next = messageQueueRef.current[messageQueueIndexRef.current];
       if (next === undefined) return;
+      messageQueueIndexRef.current += 1;
 
       sequenceRef.current += 1;
       setDelivery({ message: next, sequence: sequenceRef.current });
 
-      if (messageQueueRef.current.length > 0) {
+      if (messageQueueIndexRef.current < messageQueueRef.current.length) {
         messageDrainTimerRef.current = window.setTimeout(drainMessages, 8);
+      } else {
+        messageQueueRef.current = [];
+        messageQueueIndexRef.current = 0;
       }
     };
 
     const enqueueMessage = (message: GuandanServerMessage): void => {
+      const coalescible = ["waiting", "started", "state", "hand"].includes(
+        message.type,
+      );
+      if (coalescible) {
+        const pendingStart = messageQueueIndexRef.current;
+        const existing = messageQueueRef.current.findIndex(
+          (queued, index) =>
+            index >= pendingStart && queued.type === message.type,
+        );
+        if (existing !== -1) messageQueueRef.current.splice(existing, 1);
+      }
+
+      if (messageQueueRef.current.length - messageQueueIndexRef.current >= 32) {
+        messageQueueRef.current = messageQueueRef.current.filter(
+          (queued, index) =>
+            index < messageQueueIndexRef.current ||
+            !["waiting", "started", "state", "hand"].includes(queued.type),
+        );
+      }
       messageQueueRef.current.push(message);
       if (messageDrainTimerRef.current === null) {
         messageDrainTimerRef.current = window.setTimeout(drainMessages, 0);
@@ -161,7 +186,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
-        if (websocketRef.current !== ws || typeof event.data !== "string") return;
+        if (websocketRef.current !== ws || typeof event.data !== "string")
+          return;
 
         try {
           const message = JSON.parse(event.data) as GuandanServerMessage;

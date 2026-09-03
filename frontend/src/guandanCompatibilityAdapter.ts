@@ -114,7 +114,9 @@ const rankSequence: GuandanRank[] = [
 const advanceRank = (level: GuandanRank, steps: number): GuandanRank => {
   const index = rankSequence.indexOf(level);
   if (index < 0) return level;
-  return rankSequence[Math.min(rankSequence.length - 1, index + steps)] ?? level;
+  return (
+    rankSequence[Math.min(rankSequence.length - 1, index + steps)] ?? level
+  );
 };
 
 export const adaptGuandanServerMessage = (
@@ -168,8 +170,11 @@ export const adaptGuandanServerMessage = (
       const roundComplete =
         message.players.length >= 4 &&
         message.finish_order.length === message.players.length;
-      const inferredWinner = roundComplete ? (message.finish_order[0] ?? null) : null;
-      const winner = message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
+      const inferredWinner = roundComplete
+        ? (message.finish_order[0] ?? null)
+        : null;
+      const winner =
+        message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
       const inferredTeam: GuandanTeam | null =
         winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
       const promotionSteps =
@@ -208,7 +213,9 @@ export const adaptGuandanServerMessage = (
         finishOrder: message.finish_order,
         lastGameWinner: winner,
         lastGameWinnerTeam:
-          message.last_game_winner_team ?? inferredTeam ?? state.lastGameWinnerTeam,
+          message.last_game_winner_team ??
+          inferredTeam ??
+          state.lastGameWinnerTeam,
         lastPromotionSteps: promotionSteps,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,

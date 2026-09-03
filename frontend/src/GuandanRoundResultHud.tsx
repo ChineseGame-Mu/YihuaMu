@@ -89,8 +89,7 @@ export const buildGuandanRoundDisplayModel = (
 
   const rankingText = completeFinishOrder
     .map(
-      (seat, index) =>
-        `第${index + 1}名 ${players[seat] ?? `玩家${seat + 1}`}`,
+      (seat, index) => `第${index + 1}名 ${players[seat] ?? `玩家${seat + 1}`}`,
     )
     .join(" ｜ ");
 
@@ -132,7 +131,11 @@ const loadScores = (room: string | null): TeamScores => {
   }
 };
 
-const TeamScoreBadge = ({ scores }: { scores: TeamScores }): React.JSX.Element => (
+const TeamScoreBadge = ({
+  scores,
+}: {
+  scores: TeamScores;
+}): React.JSX.Element => (
   <div
     className="guandan-level-hud guandan-round-score-hud"
     data-testid="guandan-round-score"
@@ -149,7 +152,11 @@ const TeamScoreBadge = ({ scores }: { scores: TeamScores }): React.JSX.Element =
   </div>
 );
 
-const CurrentLevelBadge = ({ level }: { level: GuandanRank }): React.JSX.Element => (
+const CurrentLevelBadge = ({
+  level,
+}: {
+  level: GuandanRank;
+}): React.JSX.Element => (
   <div className="guandan-level-hud" data-testid="guandan-current-level">
     <div className="guandan-level-badge">
       <span>本局打</span>
@@ -182,8 +189,8 @@ export const GuandanRoundResultContent = ({
         data-testid="guandan-final-ranking"
       >
         <strong>
-          本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
-          {model.promotionSteps} ｜ 赢家排列：
+          本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}
+          获胜 ｜ 本局计分 +{model.promotionSteps} ｜ 赢家排列：
         </strong>
         {model.rankingText}
       </section>
@@ -219,7 +226,8 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
   }, [state.room]);
 
   const effectiveFinishOrder =
-    state.finishOrder.length === state.players.length && state.players.length >= 4
+    state.finishOrder.length === state.players.length &&
+    state.players.length >= 4
       ? state.finishOrder
       : lastCompleteFinishOrder.current;
   const model = buildGuandanRoundDisplayModel(
@@ -231,10 +239,16 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     state.lastPromotionSteps,
   );
   const roundStillComplete =
-    state.finishOrder.length === state.players.length && state.players.length >= 4;
+    state.finishOrder.length === state.players.length &&
+    state.players.length >= 4;
 
   React.useEffect(() => {
-    if (!roundStillComplete || model.winnerTeam === null || model.promotionSteps <= 0) return;
+    if (
+      !roundStillComplete ||
+      model.winnerTeam === null ||
+      model.promotionSteps <= 0
+    )
+      return;
     const signature = `${state.players.join("|")}::${state.finishOrder.join(",")}::${model.winnerTeam}::${model.promotionSteps}`;
     const signatureKey = scoreSignatureKey(state.room);
     if (window.localStorage.getItem(signatureKey) === signature) return;
@@ -244,7 +258,10 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
         model.winnerTeam === "TeamA"
           ? { a: current.a + model.promotionSteps, b: current.b }
           : { a: current.a, b: current.b + model.promotionSteps };
-      window.localStorage.setItem(scoreStorageKey(state.room), JSON.stringify(next));
+      window.localStorage.setItem(
+        scoreStorageKey(state.room),
+        JSON.stringify(next),
+      );
       window.localStorage.setItem(signatureKey, signature);
       return next;
     });
@@ -262,7 +279,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
       ? rankFromCumulativeScore(teamScores.a)
       : model.winnerTeam === "TeamB"
         ? rankFromCumulativeScore(teamScores.b)
-        : state.level ?? "Two";
+        : (state.level ?? "Two");
 
   if (statusTarget === null && tableTarget === null) return null;
 
@@ -276,7 +293,8 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
           </>,
           statusTarget,
         )}
-      {tableTarget !== null && model.finishOrder.length > 0 &&
+      {tableTarget !== null &&
+        model.finishOrder.length > 0 &&
         createPortal(
           <section
             className="guandan-notice-panel guandan-round-result-acceptance"
@@ -285,9 +303,12 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
             data-testid="guandan-final-ranking"
           >
             <strong>
-              本局赢家：{model.winnerName ?? "—"} ｜ {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
+              本局赢家：{model.winnerName ?? "—"} ｜{" "}
+              {teamLabel(model.winnerTeam)}获胜 ｜ 本局计分 +
               {model.promotionSteps} ｜ 赢家累计积分：
-              {model.winnerTeam === "TeamA" ? teamScores.a : teamScores.b} ｜ 本局打：
+              {model.winnerTeam === "TeamA"
+                ? teamScores.a
+                : teamScores.b} ｜ 本局打：
               {rankLabel[synchronizedLevel]} ｜ 赢家排列：
             </strong>
             {model.rankingText}

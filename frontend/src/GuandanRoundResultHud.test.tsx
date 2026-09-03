@@ -12,7 +12,10 @@ describe("GuandanRoundResultHud acceptance", () => {
         { length: playerCount },
         (_, index) => `玩家${index + 1}`,
       );
-      const finishOrder = Array.from({ length: playerCount }, (_, index) => index);
+      const finishOrder = Array.from(
+        { length: playerCount },
+        (_, index) => index,
+      );
       const model = buildGuandanRoundDisplayModel(
         "Three",
         players,

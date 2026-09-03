@@ -79,6 +79,13 @@ describe("websocket play and pass commands", () => {
       playerId: leader.id,
     });
     await attachUpgradedConnection(runtime, leaderConnection);
+    const bystander = started.room.participants.find(
+      ({ id, kind }) => kind === "human" && id !== leader.id,
+    );
+    expect(bystander?.kind).toBe("human");
+    if (!bystander || bystander.kind !== "human") return;
+    const bystanderSocket = new RecordingSocket();
+    runtime.sockets.register("live-play", bystanderSocket, bystander.id);
 
     const selected = started.game.hands[leaderSeat]?.[0];
     expect(selected).toBeDefined();
@@ -93,6 +100,9 @@ describe("websocket play and pass commands", () => {
       commandId: "play-once",
     });
 
+    const leaderPrivateHandsBefore = leaderConnection.socket.sent.filter(
+      (text) => JSON.parse(text).type === "private_hand",
+    ).length;
     await leaderConnection.receive(playCommand);
     const afterPlay = runtime.rooms.get("live-play");
     expect(afterPlay.revision).toBe(revisionBeforePlay + 1);
@@ -108,6 +118,17 @@ describe("websocket play and pass commands", () => {
       seat: leaderSeat,
       cards: [selected.card],
     });
+    expect(
+      leaderConnection.socket.sent.filter(
+        (text) => JSON.parse(text).type === "private_hand",
+      ),
+    ).toHaveLength(leaderPrivateHandsBefore + 1);
+    expect(bystanderSocket.sent.map((text) => JSON.parse(text).type)).toContain(
+      "game_state",
+    );
+    expect(
+      bystanderSocket.sent.map((text) => JSON.parse(text).type),
+    ).not.toContain("private_hand");
 
     await leaderConnection.receive(playCommand);
     const afterPlayRetry = runtime.rooms.get("live-play");

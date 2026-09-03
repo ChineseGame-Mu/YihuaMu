@@ -32,6 +32,7 @@ export const deriveGuandanTablePhase = (
 
   const activeHands = state.handCounts.filter((count) => count > 0).length;
   if (state.finishOrder.length > 0 && activeHands <= 1) return "round_complete";
-  if (state.turn !== null && state.handCounts.length === playerCount) return "playing";
+  if (state.turn !== null && state.handCounts.length === playerCount)
+    return "playing";
   return "dealing";
 };
