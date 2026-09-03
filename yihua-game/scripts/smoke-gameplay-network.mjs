@@ -160,10 +160,11 @@ try {
   ) {
     throw new Error(`play did not synchronize: ${JSON.stringify(afterPlay)}`);
   }
-  const afterPlayHands = await nextBatch(clients);
+  const afterPlayHand = await clients[leaderSeat].next();
   if (
-    afterPlayHands[leaderSeat].cards.length !== 26 ||
-    afterPlayHands[leaderSeat].cards.some(({ id }) => id === selected.id)
+    afterPlayHand.type !== "private_hand" ||
+    afterPlayHand.cards.length !== 26 ||
+    afterPlayHand.cards.some(({ id }) => id === selected.id)
   ) {
     throw new Error("leader private hand did not remove exact physical card");
   }
