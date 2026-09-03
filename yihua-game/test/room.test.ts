@@ -94,9 +94,9 @@ describe("independent room state", () => {
     expect(roomAcceptsLateJoin(room, startedAt + LATE_JOIN_WINDOW_MS)).toBe(
       true,
     );
-    expect(roomAcceptsLateJoin(room, startedAt + 100 * LATE_JOIN_WINDOW_MS)).toBe(
-      true,
-    );
+    expect(
+      roomAcceptsLateJoin(room, startedAt + 100 * LATE_JOIN_WINDOW_MS),
+    ).toBe(true);
     expect(() =>
       addHuman(
         room,
