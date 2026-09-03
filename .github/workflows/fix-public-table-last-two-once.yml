@@ -1,0 +1,44 @@
+name: Fix four-player public table history once
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - ".github/workflows/fix-public-table-last-two-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+      - name: Keep only latest two public plays after first finisher in four-player games
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("frontend/src/GuandanTable.tsx")
+          text = path.read_text()
+          anchor = '''  const canShuffleNextRound =\n    state.seat !== null &&\n    state.lastGameWinner !== null &&\n    state.seat % 2 !== state.lastGameWinner % 2;\n'''
+          replacement = anchor + '''  const visibleTablePlays =\n    playerCount === 4 && state.finishOrder.length > 0\n      ? state.tablePlays.slice(-2)\n      : state.tablePlays;\n'''
+          if anchor not in text:
+              raise SystemExit("anchor not found")
+          text = text.replace(anchor, replacement, 1)
+          text = text.replace('''              {state.tablePlays.length === 0 ? (\n                <div>暂无出牌</div>\n              ) : (\n                <div className="guandan-trick-plays">\n                  {state.tablePlays.map((play, playIndex) => (\n''', '''              {visibleTablePlays.length === 0 ? (\n                <div>暂无出牌</div>\n              ) : (\n                <div className="guandan-trick-plays">\n                  {visibleTablePlays.map((play, playIndex) => (\n''', 1)
+          path.write_text(text)
+          PY
+      - name: Format frontend file
+        run: npx prettier@3.4.1 --write frontend/src/GuandanTable.tsx
+      - name: Commit fix and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-public-table-last-two-once.yml
+          git add frontend/src/GuandanTable.tsx
+          git commit -m "fix(cleanroom): limit four-player public table to latest two plays after finish"
+          git push origin HEAD:cleanroom/yihua-game-20260826
