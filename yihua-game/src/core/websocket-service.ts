@@ -287,7 +287,7 @@ export class WebSocketService {
         const next = this.rooms.play(context.roomId, seat, message.cardIds);
         this.rememberCommand(context.roomId, message);
         await this.broadcastGameState(next);
-        await this.sendPrivateHands(next);
+        await this.sendPrivateHand(next, context.playerId!);
         return next;
       }
 
@@ -363,15 +363,20 @@ export class WebSocketService {
   }
 
   async sendPrivateHands(managed: ManagedRoom): Promise<void> {
-    for (const participant of managed.room.participants) {
-      if (participant.kind !== "human") continue;
-      const message = privateHandMessage(managed, participant.id);
-      if (!message) continue;
-      await this.sockets.sendToPlayer(
-        managed.room.roomId,
-        participant.id,
-        encodeServerMessage(message),
-      );
-    }
+    await Promise.all(
+      managed.room.participants
+        .filter((participant) => participant.kind === "human")
+        .map((participant) => this.sendPrivateHand(managed, participant.id)),
+    );
+  }
+
+  async sendPrivateHand(managed: ManagedRoom, playerId: string): Promise<void> {
+    const message = privateHandMessage(managed, playerId);
+    if (!message) return;
+    await this.sockets.sendToPlayer(
+      managed.room.roomId,
+      playerId,
+      encodeServerMessage(message),
+    );
   }
 }
