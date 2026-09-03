@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { Duplex, PassThrough, type TransformCallback } from "node:stream";
 import {
   decodeClientFrame,
+  NodeWebSocketConnection,
   websocketAcceptKey,
 } from "../src/node-websocket.js";
 
@@ -20,6 +22,30 @@ const maskedTextFrame = (text: string): Buffer => {
   }
   return frame;
 };
+
+class BackpressuredSocket extends Duplex {
+  readonly writes: Buffer[] = [];
+  private readonly callbacks: TransformCallback[] = [];
+
+  constructor() {
+    super({ writableHighWaterMark: 1 });
+  }
+
+  _read(): void {}
+
+  _write(
+    chunk: Buffer,
+    _encoding: BufferEncoding,
+    callback: TransformCallback,
+  ): void {
+    this.writes.push(Buffer.from(chunk));
+    this.callbacks.push(callback);
+  }
+
+  releaseWrite(): void {
+    this.callbacks.shift()?.();
+  }
+}
 
 describe("native websocket transport", () => {
   it("computes the RFC 6455 handshake accept key", () => {
@@ -48,5 +74,57 @@ describe("native websocket transport", () => {
     expect(() => decodeClientFrame(Buffer.from([0x81, 0x01, 0x41]))).toThrow(
       "client websocket frames must be masked",
     );
+  });
+
+  it("processes messages from one connection in arrival order", async () => {
+    const rawSocket = new PassThrough();
+    const connection = new NodeWebSocketConnection(rawSocket, {
+      roomId: "ordered-room",
+    });
+    const events: string[] = [];
+    let releaseFirst!: () => void;
+    const firstFinished = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+
+    connection.onText(async (text) => {
+      events.push(`start:${text}`);
+      if (text === "first") await firstFinished;
+      events.push(`end:${text}`);
+    });
+
+    connection.feed(
+      Buffer.concat([maskedTextFrame("first"), maskedTextFrame("second")]),
+    );
+    await Promise.resolve();
+    expect(events).toEqual(["start:first"]);
+
+    releaseFirst();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(events).toEqual([
+      "start:first",
+      "end:first",
+      "start:second",
+      "end:second",
+    ]);
+    rawSocket.destroy();
+  });
+
+  it("coalesces snapshots while a slow client applies backpressure", async () => {
+    const rawSocket = new BackpressuredSocket();
+    const connection = new NodeWebSocketConnection(rawSocket, {
+      roomId: "slow-room",
+    });
+
+    connection.send(JSON.stringify({ type: "state", revision: 1 }));
+    connection.send(JSON.stringify({ type: "state", revision: 2 }));
+    connection.send(JSON.stringify({ type: "state", revision: 3 }));
+    expect(rawSocket.writes).toHaveLength(1);
+
+    rawSocket.releaseWrite();
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(rawSocket.writes).toHaveLength(2);
+    expect(rawSocket.writes[1]!.toString("utf8")).toContain('"revision":3');
+    rawSocket.destroy();
   });
 });
