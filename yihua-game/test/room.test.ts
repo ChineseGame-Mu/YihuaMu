@@ -81,7 +81,7 @@ describe("independent room state", () => {
     expect(roomIsReady(room)).toBe(false);
   });
 
-  it("starts the three-hour late-join clock when play begins", () => {
+  it("keeps late join permanently open after play begins", () => {
     const startedAt = 1_000_000;
     const lobbyRoom = createRoom("late-room", 4);
     expect(lobbyRoom.joinClosesAt).toBeUndefined();
@@ -90,20 +90,20 @@ describe("independent room state", () => {
     ).toBe(true);
 
     const room = openLateJoinWindow(lobbyRoom, startedAt);
-    expect(room.joinClosesAt).toBe(startedAt + LATE_JOIN_WINDOW_MS);
+    expect(room.joinClosesAt).toBeUndefined();
     expect(roomAcceptsLateJoin(room, startedAt + LATE_JOIN_WINDOW_MS)).toBe(
       true,
     );
-    expect(roomAcceptsLateJoin(room, startedAt + LATE_JOIN_WINDOW_MS + 1)).toBe(
-      false,
+    expect(roomAcceptsLateJoin(room, startedAt + 100 * LATE_JOIN_WINDOW_MS)).toBe(
+      true,
     );
     expect(() =>
       addHuman(
         room,
         { id: "late", name: "后到玩家", seat: 0 },
-        startedAt + LATE_JOIN_WINDOW_MS + 1,
+        startedAt + 100 * LATE_JOIN_WINDOW_MS,
       ),
-    ).toThrow(/three-hour join window/);
+    ).not.toThrow();
   });
 
   it("lets a six-player room grow to eight and then twelve as humans arrive", () => {
