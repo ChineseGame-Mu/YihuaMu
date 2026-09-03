@@ -1,11 +1,11 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
+use std::{collections::HashMap, fmt, sync::Mutex};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
@@ -478,8 +478,6 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
         {
             break;
         }
-        let delay_ms = thread_rng().gen_range(800..=1800);
-        thread::sleep(Duration::from_millis(delay_ms));
         let chosen = game.hands[seat]
             .iter()
             .enumerate()
@@ -711,7 +709,13 @@ pub async fn websocket(
                 let name_sub = name;
                 let key_sub = key.clone();
                 subscription_task = Some(tokio::spawn(async move {
+                    let mut last_started: Option<(usize, usize)> = None;
+                    let mut last_hand: Option<Vec<CardFace>> = None;
                     while sub.recv().await.is_some() {
+                        // A burst of mutations only needs one snapshot: every notification
+                        // points at the same latest room state. Draining stale notifications
+                        // prevents slow clients from amplifying work for every player.
+                        while sub.try_recv().is_ok() {}
                         if let Ok(state) = storage_sub.clone().get(key_sub.clone()).await {
                             let seat_sub = state
                                 .game
@@ -719,33 +723,41 @@ pub async fn websocket(
                                 .iter()
                                 .position(|player_name| player_name == &name_sub);
                             if state.game.started {
-                                send(
-                                    &tx_sub,
-                                    &GuandanServerMessage::Started {
-                                        player_count: state.game.hands.len(),
-                                        cards_per_player: CARDS_PER_PLAYER,
-                                    },
-                                );
+                                let started = (state.game.hands.len(), CARDS_PER_PLAYER);
+                                if last_started != Some(started) {
+                                    send(
+                                        &tx_sub,
+                                        &GuandanServerMessage::Started {
+                                            player_count: started.0,
+                                            cards_per_player: started.1,
+                                        },
+                                    );
+                                    last_started = Some(started);
+                                }
                                 send(&tx_sub, &state_message(&key_sub, &state.game));
-                                match state.game.next_round_phase {
+                                let next_hand = match state.game.next_round_phase {
                                     None => {
-                                        if let Some(seat_sub) = seat_sub {
-                                            if let Some(hand) = state.game.private_hand(seat_sub) {
-                                                send(
-                                                    &tx_sub,
-                                                    &GuandanServerMessage::Hand {
-                                                        cards: hand.to_vec(),
-                                                    },
-                                                );
-                                            }
-                                        }
+                                        seat_sub
+                                            .and_then(|seat| state.game.private_hand(seat))
+                                            .map(|hand| hand.to_vec())
                                     }
-                                    Some(GuandanNextRoundPhase::AwaitingShuffle) => {
-                                        send(&tx_sub, &GuandanServerMessage::Hand { cards: vec![] })
+                                    Some(GuandanNextRoundPhase::AwaitingShuffle) => Some(vec![]),
+                                    Some(GuandanNextRoundPhase::AwaitingDeal) => None,
+                                };
+                                if let Some(next_hand) = next_hand {
+                                    if last_hand.as_ref() != Some(&next_hand) {
+                                        send(
+                                            &tx_sub,
+                                            &GuandanServerMessage::Hand {
+                                                cards: next_hand.clone(),
+                                            },
+                                        );
+                                        last_hand = Some(next_hand);
                                     }
-                                    Some(GuandanNextRoundPhase::AwaitingDeal) => {}
                                 }
                             } else {
+                                last_started = None;
+                                last_hand = None;
                                 send(&tx_sub, &waiting_message(&key_sub, &state.game));
                             }
                         }
