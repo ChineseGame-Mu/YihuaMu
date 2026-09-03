@@ -1243,12 +1243,14 @@ pub async fn websocket(
                         {
                             state.game.finish_order.push(seat);
                         }
-                        let settled = settle_and_redeal_if_complete(&mut state.game, hook_to_bottom)
-                            .map_err(PlayError::Invalid)?;
+                        let settled =
+                            settle_and_redeal_if_complete(&mut state.game, hook_to_bottom)
+                                .map_err(PlayError::Invalid)?;
                         if !settled {
                             advance_turn(&mut state.game);
                         }
-                        run_robot_turns(&mut state.game, hook_to_bottom).map_err(PlayError::Invalid)?;
+                        run_robot_turns(&mut state.game, hook_to_bottom)
+                            .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
