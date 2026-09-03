@@ -4,14 +4,18 @@
  * hand section clips the earliest cards. Compress only those unusually tall
  * stacks; ordinary 1-5 card stacks keep the approved spacing unchanged.
  */
-html body .guandan-table:has(.guandan-public-zone)
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
   .guandan-hand
   .guandan-card-stack:has(> button:nth-child(6))
   > button {
   margin-top: -106px !important;
 }
 
-html body .guandan-table:has(.guandan-public-zone)
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
   .guandan-hand
   .guandan-card-stack:has(> button:nth-child(6))
   > button:first-child {
