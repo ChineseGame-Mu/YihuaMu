@@ -70,10 +70,10 @@ export const roomAcceptsLateJoin = (
 export const openLateJoinWindow = (
   room: RoomState,
   _startedAt: number = Date.now(),
-): RoomState => ({
-  ...room,
-  joinClosesAt: undefined,
-});
+): RoomState => {
+  const { joinClosesAt: _joinClosesAt, ...permanentRoom } = room;
+  return permanentRoom;
+};
 
 const ensureJoinWindowOpen = (_room: RoomState, _now: number): void => {
   // Fixed public rooms 0001-0004 are permanent and never expire by time.
