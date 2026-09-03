@@ -241,6 +241,12 @@ interface GuandanClientAdapterOptions {
 }
 
 const supportedPlayerCounts = [4, 6, 8, 10, 12, 14];
+const EVERGREEN_ROOM_BUCKET_MS = 2 * 60 * 60 * 1000;
+
+const evergreenBackendRoom = (logicalRoom: string): string => {
+  const bucket = Math.floor(Date.now() / EVERGREEN_ROOM_BUCKET_MS);
+  return `${logicalRoom}-evergreen-${bucket}`;
+};
 
 export const adaptGuandanClientMessage = (
   message: GuandanClientMessage,
@@ -251,6 +257,7 @@ export const adaptGuandanClientMessage = (
   const requested = options.playerCount ?? 4;
   const playerCount = supportedPlayerCounts.includes(requested) ? requested : 4;
   const room = options.room?.trim();
+  const logicalRoom = room || message.room;
   const desiredSeat =
     Number.isInteger(options.desiredSeat) &&
     options.desiredSeat !== null &&
@@ -262,7 +269,7 @@ export const adaptGuandanClientMessage = (
 
   return {
     ...message,
-    room: room || message.room,
+    room: evergreenBackendRoom(logicalRoom),
     player_count: playerCount,
     ...(desiredSeat === undefined ? {} : { desired_seat: desiredSeat }),
   };
