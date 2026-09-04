@@ -15,7 +15,7 @@ jobs:
       - name: Verify formatting
         run: cargo fmt --all -- --check
       - name: Run Guandan backend tests
-        run: cargo test -p shengji guandan --lib
+        run: cargo test -p shengji guandan
       - name: Verify trick collection invariant
         run: |
           python - <<'PY'
