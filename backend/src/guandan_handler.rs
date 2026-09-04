@@ -561,11 +561,9 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
             if game.hands[winner].is_empty() {
                 advance_turn(game);
             }
-            game.last_play.clear();
-            game.last_player = None;
-            game.table_plays.clear();
+            // Keep completed trick visible until EndRound collects it.
             game.passes = 0;
-            game.trick_complete = false;
+            game.trick_complete = true;
         } else {
             advance_turn(game);
         }
@@ -1370,11 +1368,9 @@ pub async fn websocket(
                             if state.game.hands[winner].is_empty() {
                                 advance_turn(&mut state.game);
                             }
-                            state.game.last_play.clear();
-                            state.game.last_player = None;
-                            state.game.table_plays.clear();
+                            // Keep completed trick visible until EndRound collects it.
                             state.game.passes = 0;
-                            state.game.trick_complete = false;
+                            state.game.trick_complete = true;
                         } else {
                             advance_turn(&mut state.game);
                         }
