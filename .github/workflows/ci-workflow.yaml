@@ -9,7 +9,7 @@ concurrency:
 
 jobs:
   build-and-test:
-    name: "Build and test the code"
+    name: "Yihua Game Clean-room CI"
     runs-on: ubuntu-latest
     services:
       redis:
