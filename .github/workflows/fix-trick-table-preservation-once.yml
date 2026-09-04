@@ -1,0 +1,81 @@
+name: Fix trick table preservation once
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - ".github/workflows/fix-trick-table-preservation-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+      - name: Preserve public table until explicit end round
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("backend/src/guandan_handler.rs")
+          text = path.read_text()
+          old = '''            game.last_play.clear();
+            game.last_player = None;
+            game.table_plays.clear();
+            game.passes = 0;
+            game.trick_complete = false;
+'''
+          new = '''            // Keep the completed trick visible on the shared public table until
+            // EndRound collects it. This is especially important after one player
+            // has finished and the remaining players continue the same four-player game.
+            game.passes = 0;
+            game.trick_complete = true;
+'''
+          count = text.count(old)
+          if count < 1:
+              raise SystemExit(f"robot pass completion block not found: {count}")
+          text = text.replace(old, new, 1)
+
+          old_human = '''                            state.game.last_play.clear();
+                            state.game.last_player = None;
+                            state.game.table_plays.clear();
+                            state.game.passes = 0;
+                            state.game.trick_complete = false;
+'''
+          new_human = '''                            // Preserve every play from this completed trick until
+                            // EndRound performs the actual collection/clear operation.
+                            state.game.passes = 0;
+                            state.game.trick_complete = true;
+'''
+          count_human = text.count(old_human)
+          if count_human < 1:
+              raise SystemExit(f"human pass completion block not found: {count_human}")
+          text = text.replace(old_human, new_human, 1)
+          path.write_text(text)
+          PY
+      - name: Verify clear remains in EndRound
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path("backend/src/guandan_handler.rs").read_text()
+          marker = 'GuandanClientMessage::EndRound => {'
+          tail = text.split(marker, 1)[1]
+          assert 'state.game.table_plays.clear();' in tail, 'EndRound must still clear public table'
+          assert 'state.game.trick_complete = true;' in text, 'pass completion must mark trick complete'
+          PY
+      - name: Format and test backend
+        run: |
+          cargo fmt --all -- --check
+          cargo test -p backend guandan --lib
+      - name: Commit fix and remove one-shot workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/fix-trick-table-preservation-once.yml
+          git add backend/src/guandan_handler.rs
+          git commit -m "fix(cleanroom): keep completed trick visible until collection"
+          git push origin HEAD:cleanroom/yihua-game-20260826
