@@ -14,6 +14,8 @@ jobs:
           ref: cleanroom/yihua-game-20260826
       - name: Verify formatting
         run: cargo fmt --all -- --check
+      - name: Prepare embedded frontend fixture
+        run: mkdir -p frontend/dist && printf '<!doctype html>' > frontend/dist/index.html
       - name: Run Guandan backend tests
         run: cargo test -p shengji guandan
       - name: Verify trick collection invariant
