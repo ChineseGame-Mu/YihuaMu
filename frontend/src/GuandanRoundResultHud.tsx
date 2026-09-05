@@ -159,7 +159,7 @@ const CurrentLevelBadge = ({
 }): React.JSX.Element => (
   <div className="guandan-level-hud" data-testid="guandan-current-level">
     <div className="guandan-level-badge">
-      <span>本局打</span>
+      <span>本轮打</span>
       <strong>{rankLabel[level]}</strong>
     </div>
   </div>
@@ -308,8 +308,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
               {model.promotionSteps} ｜ 赢家累计积分：
               {model.winnerTeam === "TeamA"
                 ? teamScores.a
-                : teamScores.b} ｜ 本局打：
-              {rankLabel[synchronizedLevel]} ｜ 赢家排列：
+                : teamScores.b} ｜ 赢家排列：
             </strong>
             {model.rankingText}
           </section>,
