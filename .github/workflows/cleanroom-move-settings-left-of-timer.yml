@@ -1,0 +1,54 @@
+name: Cleanroom Move Settings Left Of Timer
+on:
+  push:
+    branches: [cleanroom/yihua-game-20260826]
+    paths: [.github/workflows/cleanroom-move-settings-left-of-timer.yml]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+      - name: Position settings button immediately left of timer
+        shell: bash
+        run: |
+          cat >> frontend/src/cleanroom-device-layout.css <<'EOF'
+
+/* Header settings control: immediately left of the clock/timer on desktop. */
+@media (min-width: 641px) {
+  .guandan-status-bar > button.normal {
+    position: fixed !important;
+    top: 17px !important;
+    right: 168px !important;
+    left: auto !important;
+    z-index: 1301 !important;
+    width: auto !important;
+    min-width: 86px !important;
+    height: 42px !important;
+    margin: 0 !important;
+    padding: 0 14px !important;
+    white-space: nowrap !important;
+  }
+}
+@media (max-width: 640px) {
+  .guandan-status-bar > button.normal {
+    position: fixed !important;
+    top: 10px !important;
+    right: 132px !important;
+    left: auto !important;
+    z-index: 1301 !important;
+    min-width: 70px !important;
+    height: 38px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+  }
+}
+EOF
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/cleanroom-device-layout.css
+          git commit -m 'ui(cleanroom): put settings left of timer'
+          git push origin HEAD:cleanroom/yihua-game-20260826
