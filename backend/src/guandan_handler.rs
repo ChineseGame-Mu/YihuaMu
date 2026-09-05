@@ -12,7 +12,7 @@ use shengji_core::guandan::{
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
     team::{team_for_seat, Team, TeamLevels},
-    tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
+    tribute::{can_resist_tribute, tribute_plan, TributePlan},
     CardFace, Joker, Rank, Suit, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
@@ -1154,20 +1154,12 @@ pub async fn websocket(
                         }
                         let table = validate_start(state.game.player_names.len())
                             .map_err(PlayError::Invalid)?;
-                        if table.player_count == GUANDAN_CLASSIC_PLAYER_COUNT {
-                            let plan = four_player_tribute_plan(
-                                table,
-                                &state.game.next_round_finish_order,
-                            )
+                        let plan = tribute_plan(table, &state.game.next_round_finish_order)
                             .map_err(PlayError::Invalid)?;
-                            if can_resist_tribute(&plan, &state.game.hands) {
-                                state.game.tribute_resisted = true;
-                            } else {
-                                state.game.pending_tribute = Some(plan);
-                            }
+                        if can_resist_tribute(&plan, &state.game.hands) {
+                            state.game.tribute_resisted = true;
                         } else {
-                            state.game.pending_tribute = None;
-                            state.game.tribute_resisted = false;
+                            state.game.pending_tribute = Some(plan);
                         }
                         state.game.finish_order.clear();
                         state.game.next_round_finish_order.clear();
