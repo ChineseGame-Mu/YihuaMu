@@ -874,12 +874,6 @@ const GuandanTable: React.FunctionComponent = () => {
                   </div>
                 </aside>
               )}
-            <aside className="guandan-scoreboard" aria-label="当前级数">
-              <span>当前级数</span>
-              <strong>
-                {state.level === null ? "—" : rankLabel[state.level]}
-              </strong>
-            </aside>
             <section className="guandan-player-section">
               <h2>玩家</h2>
               <div className="guandan-players">
