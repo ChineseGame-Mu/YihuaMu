@@ -83,6 +83,10 @@ jobs:
         run: cargo fmt --all
       - name: Test tribute mechanics
         run: cargo test -p shengji-core tribute --lib
+      - name: Prepare backend build fixture
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html><title>QA fixture</title>' > frontend/dist/index.html
       - name: Check backend
         run: cargo check -p shengji
       - name: Commit patch
