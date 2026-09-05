@@ -36,7 +36,6 @@ jobs:
           if start < 0:
               raise SystemExit('could not locate classic-only tribute wrapper')
 
-          # Find the matching closing brace for the classic-only if block.
           brace = s.find('{', start)
           depth = 0
           end_if = None
@@ -70,7 +69,6 @@ jobs:
           if end_else is None:
               raise SystemExit('could not find end of classic-only tribute else')
 
-          # Keep the inside of the original if block and remove one indentation level.
           body = s[brace + 1:end_if]
           lines = body.splitlines()
           nonblank = [line for line in lines if line.strip()]
@@ -86,7 +84,7 @@ jobs:
       - name: Test tribute mechanics
         run: cargo test -p shengji-core tribute --lib
       - name: Check backend
-        run: cargo check -p shengji-backend
+        run: cargo check -p shengji
       - name: Commit patch
         run: |
           git config user.name github-actions[bot]
