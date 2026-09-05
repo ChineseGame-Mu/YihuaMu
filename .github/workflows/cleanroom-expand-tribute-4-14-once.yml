@@ -1,0 +1,62 @@
+name: Cleanroom expand tribute 4-14 once
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - .github/workflows/cleanroom-expand-tribute-4-14-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+          fetch-depth: 0
+      - name: Wire generalized tribute into next-round deal
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+          s = s.replace(
+              'tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},',
+              'tribute::{can_resist_tribute, tribute_plan, TributePlan},'
+          )
+          s = s.replace('let plan = four_player_tribute_plan(', 'let plan = tribute_plan(')
+
+          pattern = re.compile(r'''\n(?P<indent>\s*)if table\.player_count == GUANDAN_CLASSIC_PLAYER_COUNT \{\n(?P<body>.*?let plan = tribute_plan\(.*?state\.game\.tribute_resisted = false;\n(?P=indent)\}) else \{\n(?P=indent)    state\.game\.pending_tribute = None;\n(?P=indent)    state\.game\.tribute_resisted = false;\n(?P=indent)\}''', re.S)
+          m = pattern.search(s)
+          if not m:
+              raise SystemExit('could not locate classic-only tribute block')
+          body = m.group('body')
+          # body already includes the closing brace of the can_resist if/else;
+          # dedent one level because the classic-only wrapper is removed.
+          lines = body.splitlines()
+          dedented = []
+          for line in lines:
+              dedented.append(line[4:] if line.startswith('    ') else line)
+          replacement = '\n' + '\n'.join(dedented)
+          s = s[:m.start()] + replacement + s[m.end():]
+          p.write_text(s)
+          PY
+      - name: Format
+        run: cargo fmt --all
+      - name: Test tribute mechanics
+        run: cargo test -p shengji-core tribute --lib
+      - name: Check backend
+        run: cargo check -p shengji-backend
+      - name: Commit patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add core/src/guandan/tribute.rs backend/src/guandan_handler.rs
+          git commit -m "feat(cleanroom): enable tribute and return for 4-14 players" || true
+          git push origin HEAD:cleanroom/yihua-game-20260826
