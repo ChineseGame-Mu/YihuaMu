@@ -31,10 +31,10 @@ jobs:
         run: npm run build
       - name: State-machine acceptance - final player auto-place through next round
         run: npm test -- last-place-auto-finish-next-round-matrix.test.ts
-      - name: Real 6-player bot full-game verification
+      - name: Real 8-player bot full-game verification
         env:
           SOAK_DURATION_MS: "60000"
-          SOAK_PLAYER_COUNTS: "6"
+          SOAK_PLAYER_COUNTS: "8"
           SOAK_RECONNECT_EVERY: "1000000"
           SOAK_ACTION_LIMIT: "100000"
         run: |
@@ -47,14 +47,14 @@ jobs:
             try { return JSON.parse(line); } catch { return null; }
           }).find((value) => value?.tables);
           if (!result) throw new Error("bot result JSON missing");
-          const table = result.tables.find((item) => item.playerCount === 6);
-          if (!table) throw new Error("missing 6-player bot table");
-          if (table.rounds < 3) throw new Error(`6-player table completed only ${table.rounds} full rounds`);
+          const table = result.tables.find((item) => item.playerCount === 8);
+          if (!table) throw new Error("missing 8-player bot table");
+          if (table.rounds < 3) throw new Error(`8-player table completed only ${table.rounds} full rounds`);
           if (table.deadlocks || table.stateErrors || table.crashes) {
-            throw new Error(`6-player table has integrity failures: ${JSON.stringify(table)}`);
+            throw new Error(`8-player table has integrity failures: ${JSON.stringify(table)}`);
           }
-          if (!table.plays || table.plays < 1) throw new Error(`6-player run produced no actual plays: ${JSON.stringify(table)}`);
-          console.log(JSON.stringify({type:"real_six_player_full_game_pass", playerCount:6, validatedRounds:3, observedRounds:table.rounds, actions:table.actions, plays:table.plays, passes:table.passes, reconnects:table.reconnects}));
+          if (!table.plays || table.plays < 1) throw new Error(`8-player run produced no actual plays: ${JSON.stringify(table)}`);
+          console.log(JSON.stringify({type:"real_eight_player_full_game_pass", playerCount:8, validatedRounds:3, observedRounds:table.rounds, actions:table.actions, plays:table.plays, passes:table.passes, reconnects:table.reconnects}));
           NODE
       - name: Frontend acceptance - current level and final winner ranking
         working-directory: frontend
