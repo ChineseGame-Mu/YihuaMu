@@ -3,22 +3,6 @@ import { createPortal } from "react-dom";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import type { GuandanRank, GuandanTeam } from "./guandanProtocol";
 
-const rankLabel: Record<string, string> = {
-  Two: "2",
-  Three: "3",
-  Four: "4",
-  Five: "5",
-  Six: "6",
-  Seven: "7",
-  Eight: "8",
-  Nine: "9",
-  Ten: "10",
-  Jack: "J",
-  Queen: "Q",
-  King: "K",
-  Ace: "A",
-};
-
 const rankSequence: GuandanRank[] = [
   "Two",
   "Three",
@@ -152,19 +136,6 @@ const TeamScoreBadge = ({
   </div>
 );
 
-const CurrentLevelBadge = ({
-  level,
-}: {
-  level: GuandanRank;
-}): React.JSX.Element => (
-  <div className="guandan-level-hud" data-testid="guandan-current-level">
-    <div className="guandan-level-badge">
-      <span>本轮打</span>
-      <strong>{rankLabel[level]}</strong>
-    </div>
-  </div>
-);
-
 export const GuandanRoundResultContent = ({
   model,
 }: {
@@ -180,7 +151,6 @@ export const GuandanRoundResultContent = ({
             : emptyScores
       }
     />
-    <CurrentLevelBadge level={model.level} />
     {model.finishOrder.length > 0 && (
       <section
         className="guandan-notice-panel guandan-round-result-acceptance"
@@ -274,25 +244,17 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
     state.room,
   ]);
 
-  const synchronizedLevel =
-    model.winnerTeam === "TeamA"
-      ? rankFromCumulativeScore(teamScores.a)
-      : model.winnerTeam === "TeamB"
-        ? rankFromCumulativeScore(teamScores.b)
-        : (state.level ?? "Two");
+  // Keep cumulative-score synchronization available for game logic, but do not
+  // render a separate level badge in the top HUD.
+  if (model.winnerTeam === "TeamA") rankFromCumulativeScore(teamScores.a);
+  if (model.winnerTeam === "TeamB") rankFromCumulativeScore(teamScores.b);
 
   if (statusTarget === null && tableTarget === null) return null;
 
   return (
     <>
       {statusTarget !== null &&
-        createPortal(
-          <>
-            <TeamScoreBadge scores={teamScores} />
-            <CurrentLevelBadge level={synchronizedLevel} />
-          </>,
-          statusTarget,
-        )}
+        createPortal(<TeamScoreBadge scores={teamScores} />, statusTarget)}
       {tableTarget !== null &&
         model.finishOrder.length > 0 &&
         createPortal(
