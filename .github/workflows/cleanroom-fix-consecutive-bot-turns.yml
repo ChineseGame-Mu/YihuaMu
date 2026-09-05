@@ -1,0 +1,44 @@
+name: Cleanroom Fix Consecutive Robot Turns
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - .github/workflows/cleanroom-fix-consecutive-bot-turns.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+          fetch-depth: 0
+      - name: Patch robot turn loop
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+          old = 'fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<(), &\'static str> {\n    for _ in 0..1 {'
+          new = 'fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<(), &\'static str> {\n    // Continue through consecutive robot seats in the same server mutation.\n    // The previous one-step loop stalled whenever robot A handed the turn to robot B.\n    for _ in 0..GUANDAN_MAX_PLAYER_COUNT {'
+          if old not in s:
+              raise SystemExit('expected robot loop not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
+          grep -n -A6 'fn run_robot_turns' backend/src/guandan_handler.rs
+      - name: Commit backend fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add backend/src/guandan_handler.rs
+          git commit -m 'fix(cleanroom): auto-run consecutive robot turns'
+          git push origin HEAD:cleanroom/yihua-game-20260826
