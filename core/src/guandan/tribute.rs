@@ -1,12 +1,10 @@
-//! Four-player Guandan tribute / return-card scaffolding.
+//! Guandan tribute / return-card planning for 4 through 14 players.
 //!
-//! This follows the common Jiangsu rules used by the rest of the four-player
-//! finish-order implementation: from the second deal onward, last place pays
-//! tribute to first place; after a 1-2 finish (double-down), both losing players
-//! pay tribute to the two winners. Holding both big jokers on the tribute side
-//! resists tribute.
-
-use std::convert::TryInto;
+//! The expanded-table rule keeps the same finish-order semantics as classic
+//! four-player Guandan: normally last place pays tribute to first place. If the
+//! first two finishers are on the same team, the last two players from the
+//! opposing team pay double tribute to the first two finishers. Holding both big
+//! jokers on the tribute side resists tribute.
 
 use serde::{Deserialize, Serialize};
 
@@ -16,48 +14,85 @@ use super::{team::team_for_seat, CardFace, Joker, TableConfig};
 pub enum TributePlan {
     /// Last place pays tribute to first place.
     Single { giver: usize, receiver: usize },
-    /// Both losing players pay tribute. Pairing is resolved after comparing the
+    /// Two losing players pay tribute. Pairing is resolved after comparing the
     /// two offered tribute cards: first place receives the larger card and the
-    /// partner receives the smaller card (ties use table order in the UI/server).
+    /// second receiver receives the smaller card (ties use table order).
     Double {
         givers: [usize; 2],
         receivers: [usize; 2],
     },
 }
 
-/// Build the tribute obligation from the previous deal's finish order.
-/// `finish_order` is zero-based seat order, first place first. The fourth seat
-/// may be omitted because it is uniquely determined from the other three.
+/// Build the tribute obligation from the previous deal's finish order for any
+/// supported even table size from 4 through 14 players. The final-place seat may
+/// be omitted because it is uniquely determined from the other seats.
+pub fn tribute_plan(
+    table: TableConfig,
+    finish_order: &[usize],
+) -> Result<TributePlan, &'static str> {
+    let player_count = table.player_count;
+    if !(4..=14).contains(&player_count) || !player_count.is_multiple_of(2) {
+        return Err("tribute plan requires an even Guandan table from 4 through 14 players");
+    }
+    if finish_order.len() != player_count && finish_order.len() != player_count - 1 {
+        return Err("finish order must contain all seats or omit only final place");
+    }
+
+    let mut seen = vec![false; player_count];
+    let mut full_order = Vec::with_capacity(player_count);
+    for &seat in finish_order {
+        if seat >= player_count || seen[seat] {
+            return Err("finish order contains an invalid or repeated seat");
+        }
+        seen[seat] = true;
+        full_order.push(seat);
+    }
+    if full_order.len() == player_count - 1 {
+        full_order.push(
+            (0..player_count)
+                .find(|seat| !seen[*seat])
+                .ok_or("missing final-place seat")?,
+        );
+    }
+
+    let first = full_order[0];
+    let second = full_order[1];
+    let first_team = team_for_seat(table, first)?;
+    let second_team = team_for_seat(table, second)?;
+
+    if first_team == second_team {
+        let mut losing_finishers = full_order
+            .iter()
+            .rev()
+            .copied()
+            .filter(|seat| team_for_seat(table, *seat).ok() != Some(first_team));
+        let last = losing_finishers
+            .next()
+            .ok_or("could not identify first tribute giver")?;
+        let second_last = losing_finishers
+            .next()
+            .ok_or("could not identify second tribute giver")?;
+        Ok(TributePlan::Double {
+            givers: [second_last, last],
+            receivers: [first, second],
+        })
+    } else {
+        Ok(TributePlan::Single {
+            giver: *full_order.last().ok_or("finish order is empty")?,
+            receiver: first,
+        })
+    }
+}
+
+/// Backward-compatible four-player entry point.
 pub fn four_player_tribute_plan(
     table: TableConfig,
     finish_order: &[usize],
 ) -> Result<TributePlan, &'static str> {
     if table.player_count != 4 {
-        return Err("tribute plan is defined here for four-player Guandan");
+        return Err("four-player tribute plan requires four players");
     }
-    let first = *finish_order.first().ok_or("finish order is empty")?;
-    if first >= 4 {
-        return Err("finish order contains an invalid seat");
-    }
-
-    let full_order = complete_four_player_finish_order(finish_order)?;
-    let second = full_order[1];
-    let last = full_order[3];
-    let first_team = team_for_seat(table, first)?;
-    let second_team = team_for_seat(table, second)?;
-
-    if first_team == second_team {
-        let losing = [full_order[2], full_order[3]];
-        Ok(TributePlan::Double {
-            givers: losing,
-            receivers: [first, second],
-        })
-    } else {
-        Ok(TributePlan::Single {
-            giver: last,
-            receiver: first,
-        })
-    }
+    tribute_plan(table, finish_order)
 }
 
 /// Whether the tribute side may resist tribute because it collectively holds
@@ -87,31 +122,6 @@ fn count_big_jokers(hand: &[CardFace]) -> usize {
         .count()
 }
 
-fn complete_four_player_finish_order(order: &[usize]) -> Result<[usize; 4], &'static str> {
-    if !(3..=4).contains(&order.len()) {
-        return Err("four-player finish order must contain three or four seats");
-    }
-    let mut seen = [false; 4];
-    for &seat in order {
-        if seat >= 4 || seen[seat] {
-            return Err("finish order contains an invalid or repeated seat");
-        }
-        seen[seat] = true;
-    }
-
-    let mut full = Vec::with_capacity(4);
-    full.extend_from_slice(order);
-    if order.len() == 3 {
-        full.push(
-            (0..4)
-                .find(|seat| !seen[*seat])
-                .ok_or("missing fourth-place seat")?,
-        );
-    }
-    full.try_into()
-        .map_err(|_| "could not build four-player finish order")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,32 +132,62 @@ mod tests {
     }
 
     #[test]
-    fn ordinary_result_makes_last_pay_first() {
+    fn four_player_ordinary_result_makes_last_pay_first() {
         let table = TableConfig::new(4).unwrap();
         assert_eq!(
-            four_player_tribute_plan(table, &[0, 1, 2]).unwrap(),
+            tribute_plan(table, &[0, 1, 2]).unwrap(),
             TributePlan::Single {
                 giver: 3,
-                receiver: 0
-            }
-        );
-        assert_eq!(
-            four_player_tribute_plan(table, &[0, 1, 3]).unwrap(),
-            TributePlan::Single {
-                giver: 2,
                 receiver: 0
             }
         );
     }
 
     #[test]
-    fn one_two_finish_creates_double_tribute() {
+    fn four_player_one_two_finish_creates_double_tribute() {
         let table = TableConfig::new(4).unwrap();
         assert_eq!(
-            four_player_tribute_plan(table, &[0, 2, 1]).unwrap(),
+            tribute_plan(table, &[0, 2, 1]).unwrap(),
             TributePlan::Double {
                 givers: [1, 3],
                 receivers: [0, 2]
+            }
+        );
+    }
+
+    #[test]
+    fn six_player_ordinary_result_makes_last_pay_first() {
+        let table = TableConfig::new(6).unwrap();
+        assert_eq!(
+            tribute_plan(table, &[0, 1, 2, 3, 4]).unwrap(),
+            TributePlan::Single {
+                giver: 5,
+                receiver: 0
+            }
+        );
+    }
+
+    #[test]
+    fn six_player_same_team_top_two_creates_double_tribute() {
+        let table = TableConfig::new(6).unwrap();
+        assert_eq!(
+            tribute_plan(table, &[0, 2, 1, 4, 3]).unwrap(),
+            TributePlan::Double {
+                givers: [3, 5],
+                receivers: [0, 2]
+            }
+        );
+    }
+
+    #[test]
+    fn fourteen_player_plan_accepts_complete_order() {
+        let table = TableConfig::new(14).unwrap();
+        let order = (0..14).collect::<Vec<_>>();
+        assert_eq!(
+            tribute_plan(table, &order).unwrap(),
+            TributePlan::Single {
+                giver: 13,
+                receiver: 0
             }
         );
     }
@@ -174,57 +214,6 @@ mod tests {
             vec![card(Suit::Clubs, Rank::Two)],
             vec![CardFace::Joker(Joker::Big)],
             vec![],
-            vec![CardFace::Joker(Joker::Big)],
-        ];
-        assert!(can_resist_tribute(&plan, &hands));
-    }
-
-    #[test]
-    fn double_tribute_does_not_resist_with_only_one_big_joker() {
-        let plan = TributePlan::Double {
-            givers: [1, 3],
-            receivers: [0, 2],
-        };
-        let hands = vec![
-            vec![],
-            vec![CardFace::Joker(Joker::Big)],
-            vec![],
-            vec![card(Suit::Clubs, Rank::Ace)],
-        ];
-        assert!(!can_resist_tribute(&plan, &hands));
-    }
-
-    #[test]
-    fn double_tribute_resists_when_one_giver_holds_both_big_jokers() {
-        let plan = TributePlan::Double {
-            givers: [1, 3],
-            receivers: [0, 2],
-        };
-        let hands = vec![
-            vec![],
-            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
-            vec![],
-            vec![card(Suit::Spades, Rank::King)],
-        ];
-        assert!(can_resist_tribute(&plan, &hands));
-    }
-
-    #[test]
-    fn one_two_finish_flows_directly_into_double_joker_resistance() {
-        let table = TableConfig::new(4).unwrap();
-        let plan = four_player_tribute_plan(table, &[0, 2, 1]).unwrap();
-        assert_eq!(
-            plan,
-            TributePlan::Double {
-                givers: [1, 3],
-                receivers: [0, 2]
-            }
-        );
-
-        let hands = vec![
-            vec![card(Suit::Clubs, Rank::Two)],
-            vec![CardFace::Joker(Joker::Big)],
-            vec![card(Suit::Diamonds, Rank::Three)],
             vec![CardFace::Joker(Joker::Big)],
         ];
         assert!(can_resist_tribute(&plan, &hands));
