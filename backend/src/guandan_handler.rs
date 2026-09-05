@@ -503,7 +503,9 @@ fn validate_play_against_table(
 }
 
 fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<(), &'static str> {
-    for _ in 0..1 {
+    // Continue through consecutive robot seats in the same server mutation.
+    // The previous one-step loop stalled whenever robot A handed the turn to robot B.
+    for _ in 0..GUANDAN_MAX_PLAYER_COUNT {
         if game.normal_play_blocked() || !game.started || game.trick_complete {
             break;
         }
