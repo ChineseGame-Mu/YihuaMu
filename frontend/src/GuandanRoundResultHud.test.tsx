@@ -7,7 +7,7 @@ import {
 
 describe("GuandanRoundResultHud acceptance", () => {
   for (const playerCount of [4, 6, 8, 10, 12, 14]) {
-    test(`${playerCount} players show current level, winner and complete ranking`, () => {
+    test(`${playerCount} players show winner and complete ranking without duplicate level badge`, () => {
       const players = Array.from(
         { length: playerCount },
         (_, index) => `玩家${index + 1}`,
@@ -26,8 +26,7 @@ describe("GuandanRoundResultHud acceptance", () => {
         <GuandanRoundResultContent model={model} />,
       );
 
-      expect(html).toContain("本局打");
-      expect(html).toContain(">3<");
+      expect(html).not.toContain("本局打");
       expect(html).toContain("本局赢家：玩家1");
       expect(html).toContain("赢家排列：");
       expect(html).toContain("第1名 玩家1");
@@ -37,7 +36,7 @@ describe("GuandanRoundResultHud acceptance", () => {
     });
   }
 
-  test("a missing level is displayed as the opening level 2", () => {
+  test("a missing level does not reintroduce the removed level badge", () => {
     const model = buildGuandanRoundDisplayModel(
       null,
       ["a", "b", "c", "d"],
@@ -48,8 +47,7 @@ describe("GuandanRoundResultHud acceptance", () => {
       <GuandanRoundResultContent model={model} />,
     );
 
-    expect(html).toContain("本局打");
-    expect(html).toContain(">2<");
+    expect(html).not.toContain("本局打");
     expect(html).toContain("本局赢家：c");
     expect(html).toContain("第1名 c");
     expect(html).toContain("第4名 b");
@@ -66,7 +64,7 @@ describe("GuandanRoundResultHud acceptance", () => {
       <GuandanRoundResultContent model={model} />,
     );
 
-    expect(html).toContain("本局打");
+    expect(html).not.toContain("本局打");
     expect(html).not.toContain("赢家排列：");
   });
 });
