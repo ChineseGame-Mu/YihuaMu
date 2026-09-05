@@ -22,7 +22,6 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import re
 
           p = Path('backend/src/guandan_handler.rs')
           s = p.read_text()
@@ -32,19 +31,54 @@ jobs:
           )
           s = s.replace('let plan = four_player_tribute_plan(', 'let plan = tribute_plan(')
 
-          pattern = re.compile(r'''\n(?P<indent>\s*)if table\.player_count == GUANDAN_CLASSIC_PLAYER_COUNT \{\n(?P<body>.*?let plan = tribute_plan\(.*?state\.game\.tribute_resisted = false;\n(?P=indent)\}) else \{\n(?P=indent)    state\.game\.pending_tribute = None;\n(?P=indent)    state\.game\.tribute_resisted = false;\n(?P=indent)\}''', re.S)
-          m = pattern.search(s)
-          if not m:
-              raise SystemExit('could not locate classic-only tribute block')
-          body = m.group('body')
-          # body already includes the closing brace of the can_resist if/else;
-          # dedent one level because the classic-only wrapper is removed.
+          needle = 'if table.player_count == GUANDAN_CLASSIC_PLAYER_COUNT {'
+          start = s.find(needle)
+          if start < 0:
+              raise SystemExit('could not locate classic-only tribute wrapper')
+
+          # Find the matching closing brace for the classic-only if block.
+          brace = s.find('{', start)
+          depth = 0
+          end_if = None
+          for i in range(brace, len(s)):
+              if s[i] == '{':
+                  depth += 1
+              elif s[i] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end_if = i
+                      break
+          if end_if is None:
+              raise SystemExit('could not find end of classic-only tribute block')
+
+          j = end_if + 1
+          while j < len(s) and s[j].isspace():
+              j += 1
+          if not s.startswith('else {', j):
+              raise SystemExit('classic-only tribute block has no expected else')
+          else_brace = s.find('{', j)
+          depth = 0
+          end_else = None
+          for i in range(else_brace, len(s)):
+              if s[i] == '{':
+                  depth += 1
+              elif s[i] == '}':
+                  depth -= 1
+                  if depth == 0:
+                      end_else = i
+                      break
+          if end_else is None:
+              raise SystemExit('could not find end of classic-only tribute else')
+
+          # Keep the inside of the original if block and remove one indentation level.
+          body = s[brace + 1:end_if]
           lines = body.splitlines()
-          dedented = []
-          for line in lines:
-              dedented.append(line[4:] if line.startswith('    ') else line)
-          replacement = '\n' + '\n'.join(dedented)
-          s = s[:m.start()] + replacement + s[m.end():]
+          nonblank = [line for line in lines if line.strip()]
+          if not nonblank:
+              raise SystemExit('tribute block unexpectedly empty')
+          common = min(len(line) - len(line.lstrip()) for line in nonblank)
+          body = '\n'.join(line[common:] if line.strip() else '' for line in lines)
+          s = s[:start] + body.strip('\n') + s[end_else + 1:]
           p.write_text(s)
           PY
       - name: Format
