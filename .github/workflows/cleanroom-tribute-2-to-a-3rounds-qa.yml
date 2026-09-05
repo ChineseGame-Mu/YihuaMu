@@ -1,0 +1,21 @@
+name: Cleanroom 2-to-A three-round tribute QA
+on:
+  push:
+    branches: [cleanroom/yihua-game-20260826]
+    paths: ['.github/workflows/cleanroom-tribute-2-to-a-3rounds-qa.yml']
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare backend fixture
+        run: mkdir -p frontend/dist && printf '<!doctype html><title>qa</title>' > frontend/dist/index.html
+      - name: Run tribute mechanics repeatedly across 2-to-A cycle
+        run: |
+          set -euxo pipefail
+          for round in 1 2 3; do
+            echo "=== ROBOT QA ROUND $round ==="
+            cargo test --manifest-path backend/Cargo.toml tribute -- --nocapture
+          done
+      - name: Backend check
+        run: cargo check --manifest-path backend/Cargo.toml
