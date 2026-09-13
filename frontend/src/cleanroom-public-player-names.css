@@ -14,6 +14,15 @@
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
 }
 
+/* Guandan four-color deck standard: diamonds use the dedicated orange. */
+.guandan-table svg[class*="D_svg__card"] [fill="#00f"] {
+  fill: #ff7900 !important;
+}
+
+.guandan-table svg[class*="D_svg__card"] [stroke="#00f"] {
+  stroke: #ff7900 !important;
+}
+
 /* Public-table play visibility invariant:
  * every card actually played in this turn must remain individually visible.
  * This overrides any legacy inline negative overlap from GuandanTable.tsx.
