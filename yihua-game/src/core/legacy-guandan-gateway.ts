@@ -27,6 +27,7 @@ import type { ServerRuntime } from "./server-runtime.js";
 import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
 import type { UpgradedConnection } from "./websocket-upgrade.js";
+import { robotPatternPriority } from "./robot-strategy.js";
 
 const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
 const ROBOT_TURN_DELAY_MS = 900;
@@ -196,32 +197,13 @@ const robotCandidatePriority = (
 ): number => {
   const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);
   const strength = robotNormalStrength(hand, game.levelRank ?? "2");
-  switch (hand.kind) {
-    case "single":
-      return 0 + strength;
-    case "pair":
-      return 100 + strength;
-    case "triple":
-      return 200 + strength;
-    case "full-house":
-      return 300 + strength;
-    case "straight":
-      return 400 + strength;
-    case "consecutive-pairs":
-      return 500 + strength;
-    case "consecutive-triples":
-      return 600 + strength;
-    case "bomb":
-      if (hand.size >= 6) return 8000 + hand.size * 100 + strength;
-      if (hand.size == 5) return 6000 + strength;
-      return 5000 + strength;
-    case "straight-flush":
-      return 7000 + strength;
-    case "joker-bomb":
-      return 10000;
-    case "invalid":
-      return 20000;
-  }
+  return robotPatternPriority({
+    kind: hand.kind,
+    strength,
+    size: "size" in hand ? hand.size : undefined,
+    leading: game.trick.leadingPlay === null,
+    leadCycle: game.trick.completedTricks + seat,
+  });
 };
 
 const clearRobotWonTrick = async (
