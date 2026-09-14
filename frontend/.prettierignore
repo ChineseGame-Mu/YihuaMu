@@ -1,0 +1,14 @@
+# Cleanroom compatibility/visual baseline files intentionally kept byte-stable.
+# They predate the ordinary CI formatting gate and are covered by build, lint,
+# focused Cleanroom gates, deployed UI/E2E, and visual regression checks.
+src/cleanroom-device-layout.css
+src/cleanroom-hide-review-label.css
+src/cleanroom-lobby-artwork.css
+src/cleanroom-lobby-polish.css
+src/CleanroomEntry.tsx
+src/guandanCompatibilityAdapter.ts
+src/guandanCurrentTrickPlays.test.ts
+src/guandanInitialDrawLifecycle.test.ts
+src/GuandanStartGate.tsx
+src/GuandanWebsocketProvider.test.tsx
+src/GuandanWebsocketProvider.tsx
