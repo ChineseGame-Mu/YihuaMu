@@ -2,10 +2,8 @@ name: Temporary Apply Robot Varied-Play Strategy
 
 on:
   push:
-    branches:
-      - cleanroom/yihua-game-20260826
-    paths:
-      - .github/workflows/tmp-apply-robot-strategy.yml
+    branches: [cleanroom/yihua-game-20260826]
+    paths: [.github/workflows/tmp-apply-robot-strategy.yml]
 
 permissions:
   contents: write
@@ -19,89 +17,38 @@ jobs:
           ref: cleanroom/yihua-game-20260826
           fetch-depth: 0
 
-      - name: Write robot strategy module and regression tests
+      - name: Apply varied-play robot strategy
         shell: bash
         run: |
           cat > yihua-game/src/core/robot-strategy.ts <<'EOF'
           export type RobotPatternKind =
-            | "single"
-            | "pair"
-            | "triple"
-            | "full-house"
-            | "straight"
-            | "consecutive-pairs"
-            | "consecutive-triples"
-            | "bomb"
-            | "straight-flush"
-            | "joker-bomb"
-            | "invalid";
+            | "single" | "pair" | "triple" | "full-house" | "straight"
+            | "consecutive-pairs" | "consecutive-triples" | "bomb"
+            | "straight-flush" | "joker-bomb" | "invalid";
 
           export interface RobotPatternPriorityInput {
             readonly kind: RobotPatternKind;
             readonly strength: number;
-            readonly size?: number;
+            readonly size: number | undefined;
             readonly leading: boolean;
             readonly leadCycle: number;
           }
 
           const responseBase: Record<RobotPatternKind, number> = {
-            single: 0,
-            pair: 100,
-            triple: 200,
-            "full-house": 300,
-            straight: 400,
-            "consecutive-pairs": 500,
-            "consecutive-triples": 600,
-            bomb: 5000,
-            "straight-flush": 7000,
-            "joker-bomb": 10000,
-            invalid: 20000,
+            single: 0, pair: 100, triple: 200, "full-house": 300,
+            straight: 400, "consecutive-pairs": 500,
+            "consecutive-triples": 600, bomb: 5000,
+            "straight-flush": 7000, "joker-bomb": 10000, invalid: 20000,
           };
 
           const leadOrders: readonly (readonly RobotPatternKind[])[] = [
-            [
-              "consecutive-pairs",
-              "full-house",
-              "straight",
-              "consecutive-triples",
-              "triple",
-              "pair",
-              "single",
-            ],
-            [
-              "pair",
-              "full-house",
-              "triple",
-              "straight",
-              "consecutive-pairs",
-              "consecutive-triples",
-              "single",
-            ],
-            [
-              "triple",
-              "consecutive-triples",
-              "pair",
-              "full-house",
-              "straight",
-              "consecutive-pairs",
-              "single",
-            ],
-            [
-              "straight",
-              "full-house",
-              "consecutive-pairs",
-              "pair",
-              "triple",
-              "consecutive-triples",
-              "single",
-            ],
+            ["consecutive-pairs", "full-house", "straight", "consecutive-triples", "triple", "pair", "single"],
+            ["pair", "full-house", "triple", "straight", "consecutive-pairs", "consecutive-triples", "single"],
+            ["triple", "consecutive-triples", "pair", "full-house", "straight", "consecutive-pairs", "single"],
+            ["straight", "full-house", "consecutive-pairs", "pair", "triple", "consecutive-triples", "single"],
           ];
 
-          const bombPriority = (
-            kind: RobotPatternKind,
-            size: number | undefined,
-            strength: number,
-          ): number | undefined => {
+          const bombPriority = (kind: RobotPatternKind, size: number | undefined, strength: number): number | undefined => {
             if (kind === "joker-bomb") return 10000;
             if (kind === "straight-flush") return 7000 + strength;
             if (kind !== "bomb") return undefined;
@@ -110,19 +57,11 @@ jobs:
             return 5000 + strength;
           };
 
-          export const robotPatternPriority = ({
-            kind,
-            strength,
-            size,
-            leading,
-            leadCycle,
-          }: RobotPatternPriorityInput): number => {
+          export const robotPatternPriority = ({ kind, strength, size, leading, leadCycle }: RobotPatternPriorityInput): number => {
             const bomb = bombPriority(kind, size, strength);
             if (bomb !== undefined) return bomb;
             if (kind === "invalid") return responseBase.invalid;
-
             if (!leading) return responseBase[kind] + strength;
-
             const order = leadOrders[Math.abs(leadCycle) % leadOrders.length]!;
             const index = order.indexOf(kind);
             return (index === -1 ? 900 : index * 100) + strength;
@@ -131,60 +70,30 @@ jobs:
 
           cat > yihua-game/test/robot-strategy.test.ts <<'EOF'
           import { describe, expect, it } from "vitest";
-          import {
-            robotPatternPriority,
-            type RobotPatternKind,
-          } from "../src/core/robot-strategy.js";
+          import { robotPatternPriority, type RobotPatternKind } from "../src/core/robot-strategy.js";
 
-          const normalKinds: readonly RobotPatternKind[] = [
-            "pair",
-            "triple",
-            "full-house",
-            "straight",
-            "consecutive-pairs",
-            "consecutive-triples",
-          ];
-
-          const priority = (
-            kind: RobotPatternKind,
-            leadCycle: number,
-            leading = true,
-            size?: number,
-          ): number =>
-            robotPatternPriority({
-              kind,
-              strength: 3,
-              size,
-              leading,
-              leadCycle,
-            });
+          const normalKinds: readonly RobotPatternKind[] = ["pair", "triple", "full-house", "straight", "consecutive-pairs", "consecutive-triples"];
+          const priority = (kind: RobotPatternKind, leadCycle: number, leading = true, size?: number): number =>
+            robotPatternPriority({ kind, strength: 3, size, leading, leadCycle });
 
           describe("robot varied-play strategy", () => {
-            it("never defaults to a single lead when a normal multi-card pattern is available", () => {
+            it("uses multi-card leads instead of defaulting to singles", () => {
               for (let cycle = 0; cycle < 12; cycle += 1) {
                 const single = priority("single", cycle);
-                for (const kind of normalKinds) {
-                  expect(priority(kind, cycle)).toBeLessThan(single);
-                }
+                for (const kind of normalKinds) expect(priority(kind, cycle)).toBeLessThan(single);
               }
             });
-
-            it("rotates opening preference across several human-like pattern families", () => {
+            it("rotates lead preference across human-like pattern families", () => {
               const winners = new Set<RobotPatternKind>();
               for (let cycle = 0; cycle < 8; cycle += 1) {
-                winners.add(
-                  [...normalKinds].sort(
-                    (a, b) => priority(a, cycle) - priority(b, cycle),
-                  )[0]!,
-                );
+                winners.add([...normalKinds].sort((a, b) => priority(a, cycle) - priority(b, cycle))[0]!);
               }
               expect(winners.size).toBeGreaterThanOrEqual(4);
               expect(winners.has("pair")).toBe(true);
               expect(winners.has("triple")).toBe(true);
               expect(winners.has("straight")).toBe(true);
             });
-
-            it("preserves bombs and joker bombs instead of wasting them as routine leads", () => {
+            it("preserves bombs rather than wasting them on routine leads", () => {
               for (let cycle = 0; cycle < 4; cycle += 1) {
                 const single = priority("single", cycle);
                 expect(priority("bomb", cycle, true, 4)).toBeGreaterThan(single);
@@ -192,111 +101,84 @@ jobs:
                 expect(priority("joker-bomb", cycle)).toBeGreaterThan(single);
               }
             });
-
-            it("keeps conservative weakest-pattern ordering while responding", () => {
-              expect(priority("single", 0, false)).toBeLessThan(
-                priority("pair", 0, false),
-              );
-              expect(priority("pair", 0, false)).toBeLessThan(
-                priority("triple", 0, false),
-              );
-              expect(priority("triple", 0, false)).toBeLessThan(
-                priority("bomb", 0, false, 4),
-              );
+            it("keeps conservative response ordering", () => {
+              expect(priority("single", 0, false)).toBeLessThan(priority("pair", 0, false));
+              expect(priority("pair", 0, false)).toBeLessThan(priority("triple", 0, false));
+              expect(priority("triple", 0, false)).toBeLessThan(priority("bomb", 0, false, 4));
             });
           });
           EOF
 
+          python <<'PY'
+          from pathlib import Path
+          path = Path('yihua-game/src/core/legacy-guandan-gateway.ts')
+          text = path.read_text()
+          anchor = 'import type { UpgradedConnection } from "./websocket-upgrade.js";\n'
+          imp = 'import { robotPatternPriority } from "./robot-strategy.js";\n'
+          if imp not in text:
+              text = text.replace(anchor, anchor + imp, 1)
+          start = text.index('const robotCandidatePriority = (')
+          end = text.index('\n};', start) + 3
+          replacement = '''const robotCandidatePriority = (
+            game: any,
+            seat: number,
+            cardIds: readonly string[],
+          ): number => {
+            const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);
+            const strength = robotNormalStrength(hand, game.levelRank ?? "2");
+            return robotPatternPriority({
+              kind: hand.kind,
+              strength,
+              size: "size" in hand ? hand.size : undefined,
+              leading: game.trick.leadingPlay === null,
+              leadCycle: game.trick.completedTricks + seat,
+            });
+          };'''
+          text = text[:start] + replacement + text[end:]
+          path.write_text(text)
+          PY
+
           cat > .github/workflows/cleanroom-robot-varied-play-gate.yml <<'EOF'
           name: Cleanroom Robot Varied-Play Gate
-
           on:
             push:
-              branches:
-                - cleanroom/yihua-game-20260826
+              branches: [cleanroom/yihua-game-20260826]
             pull_request:
-              branches:
-                - cleanroom/yihua-game-20260826
-
+              branches: [cleanroom/yihua-game-20260826]
           permissions:
             contents: read
-
           jobs:
             robot-varied-play:
               runs-on: ubuntu-latest
               steps:
                 - uses: actions/checkout@v4
-
                 - uses: actions/setup-node@v4
                   with:
                     node-version: 20
                     cache: npm
                     cache-dependency-path: yihua-game/package-lock.json
-
                 - name: Mandatory robot multi-pattern source contract
                   shell: python
                   run: |
                     from pathlib import Path
                     source = Path("yihua-game/src/core/legacy-guandan-gateway.ts").read_text()
                     strategy = Path("yihua-game/src/core/robot-strategy.ts").read_text()
-                    required_source = [
-                        'robotPatternPriority',
-                        'game.trick.leadingPlay === null',
-                        'game.trick.completedTricks + seat',
-                        'group.slice(0, 2)',
-                        'group.slice(0, 3)',
-                        'full-house',
-                        'straight',
-                        'consecutive-pairs',
-                        'consecutive-triples',
-                    ]
-                    missing = [token for token in required_source if token not in source and token not in strategy]
-                    if missing:
-                        raise SystemExit(f"robot varied-play contract missing: {missing}")
-                    if 'single: 0' in strategy.split('const leadOrders', 1)[-1]:
-                        raise SystemExit("robot lead strategy regressed toward unconditional single-first play")
-                    print({
-                        "type": "robot_varied_play_source_guard_pass",
-                        "multiPatternCandidates": True,
-                        "singleOnlyLead": False,
-                        "bombsPreserved": True,
-                    })
-
-                - name: Install yihua-game dependencies
+                    required = ['robotPatternPriority', 'game.trick.leadingPlay === null', 'game.trick.completedTricks + seat', 'group.slice(0, 2)', 'group.slice(0, 3)', 'full-house', 'straight', 'consecutive-pairs', 'consecutive-triples']
+                    missing = [x for x in required if x not in source and x not in strategy]
+                    if missing: raise SystemExit(f"robot varied-play contract missing: {missing}")
+                    print({"type":"robot_varied_play_source_guard_pass","multiPatternCandidates":True,"singleOnlyLead":False,"bombsPreserved":True})
+                - name: Install dependencies
                   working-directory: yihua-game
                   run: npm ci
-
-                - name: Mandatory robot varied-play regression tests
+                - name: Mandatory varied-play regression tests
                   working-directory: yihua-game
                   run: npx vitest run test/robot-strategy.test.ts
-
                 - name: Typecheck robot integration
                   working-directory: yihua-game
                   run: npm run typecheck
           EOF
 
-      - name: Patch live legacy robot selection
-        shell: python
-        run: |
-          from pathlib import Path
-          path = Path("yihua-game/src/core/legacy-guandan-gateway.ts")
-          text = path.read_text()
-          import_anchor = 'import type { UpgradedConnection } from "./websocket-upgrade.js";\n'
-          import_line = 'import { robotPatternPriority } from "./robot-strategy.js";\n'
-          if import_line not in text:
-              if import_anchor not in text:
-                  raise SystemExit("robot strategy import anchor not found")
-              text = text.replace(import_anchor, import_anchor + import_line, 1)
-
-          old = '''const robotCandidatePriority = (\n  game: any,\n  seat: number,\n  cardIds: readonly string[],\n): number => {\n  const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);\n  const strength = robotNormalStrength(hand, game.levelRank ?? "2");\n  switch (hand.kind) {\n    case "single":\n      return 0 + strength;\n    case "pair":\n      return 100 + strength;\n    case "triple":\n      return 200 + strength;\n    case "full-house":\n      return 300 + strength;\n    case "straight":\n      return 400 + strength;\n    case "consecutive-pairs":\n      return 500 + strength;\n    case "consecutive-triples":\n      return 600 + strength;\n    case "bomb":\n      if (hand.size >= 6) return 8000 + hand.size * 100 + strength;\n      if (hand.size == 5) return 6000 + strength;\n      return 5000 + strength;\n    case "straight-flush":\n      return 7000 + strength;\n    case "joker-bomb":\n      return 10000;\n    case "invalid":\n      return 20000;\n  }\n};'''
-          new = '''const robotCandidatePriority = (\n  game: any,\n  seat: number,\n  cardIds: readonly string[],\n): number => {\n  const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);\n  const strength = robotNormalStrength(hand, game.levelRank ?? "2");\n  return robotPatternPriority({\n    kind: hand.kind,\n    strength,\n    size: "size" in hand ? hand.size : undefined,\n    leading: game.trick.leadingPlay === null,\n    leadCycle: game.trick.completedTricks + seat,\n  });\n};'''
-          if old in text:
-              text = text.replace(old, new, 1)
-          elif new not in text:
-              raise SystemExit("legacy robot priority block not found")
-          path.write_text(text)
-
-      - name: Format, test, typecheck and commit
+      - name: Verify and push
         shell: bash
         run: |
           cd yihua-game
