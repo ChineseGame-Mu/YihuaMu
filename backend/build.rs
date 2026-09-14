@@ -4,7 +4,9 @@ fn main() {
     println!("cargo:rerun-if-changed=src/guandan_handler.rs");
 
     let path = Path::new("src/guandan_handler.rs");
-    let Ok(mut source) = fs::read_to_string(path) else { return };
+    let Ok(mut source) = fs::read_to_string(path) else {
+        return;
+    };
 
     // Cleanroom hotfix: when a trick winner has already played the last card in
     // their hand, classic four-player Guandan gives the next lead to that
@@ -91,7 +93,8 @@ fn assign_next_trick_leader(game: &mut GuandanGameState, winner: usize) {
         source.replace_range(start..start + end_round.len(), end_round_fixed);
     }
 
-    let Some(end_round_start) = source.find("            GuandanClientMessage::EndRound => {") else {
+    let Some(end_round_start) = source.find("            GuandanClientMessage::EndRound => {")
+    else {
         panic!("Guandan EndRound patch anchor missing");
     };
     let reset = "                        state.game.passes = 0;\n                        state.game.trick_complete = false;\n                        state.bump_version();\n";
