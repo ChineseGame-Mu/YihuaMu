@@ -2,7 +2,6 @@ name: CI
 on:
   push:
     branches-ignore:
-      - cleanroom/yihua-game-20260826
       - 'backup/**'
   pull_request:
 
