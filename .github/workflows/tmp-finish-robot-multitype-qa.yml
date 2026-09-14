@@ -1,0 +1,54 @@
+name: Temporary Finish Robot Multitype QA
+
+on:
+  push:
+    branches:
+      - cleanroom/yihua-game-20260826
+    paths:
+      - .github/workflows/tmp-finish-robot-multitype-qa.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/yihua-game-20260826
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Reapply multitype patch and fix regression typing
+        shell: bash
+        run: |
+          set -euo pipefail
+          awk '/cat > \/tmp\/patch.b64/{capture=1; next} capture && /^[[:space:]]*EOF$/{exit} capture {sub(/^[[:space:]]+/, ""); print}' .github/workflows/tmp-strengthen-robot-multitype-qa.yml > /tmp/patch.b64
+          tr -d '[:space:]' < /tmp/patch.b64 | base64 -d > /tmp/patch.py
+          python /tmp/patch.py
+          sed -i 's/const kinds = new Set(/const kinds = new Set<string>(/' yihua-game/test/robot-candidate-generation.test.ts
+
+      - name: Validate real multitype QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd yihua-game
+          npm ci
+          npx prettier --write src/core/legacy-guandan-gateway.ts test/robot-candidate-generation.test.ts ../.github/workflows/cleanroom-robot-varied-play-gate.yml ../.github/workflows/cleanroom-yihua-game-expert-multiplayer-4to14.yml ../.github/workflows/cleanroom-preuse-release-gate.yml
+          npx vitest run test/robot-strategy.test.ts test/robot-candidate-generation.test.ts
+          npm run typecheck
+
+      - name: Commit validated multitype QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'ChineseGame-Mu'
+          git config user.email 'muyihua@gmail.com'
+          git rm .github/workflows/tmp-strengthen-robot-multitype-qa.yml .github/workflows/tmp-finish-robot-multitype-qa.yml
+          git add yihua-game/src/core/legacy-guandan-gateway.ts yihua-game/scripts/soak-websocket.mjs yihua-game/test/robot-candidate-generation.test.ts .github/workflows/cleanroom-robot-varied-play-gate.yml .github/workflows/cleanroom-yihua-game-expert-multiplayer-4to14.yml .github/workflows/cleanroom-preuse-release-gate.yml
+          git commit -m 'test(bot): enforce real multitype candidates across QA'
+          git push origin HEAD:cleanroom/yihua-game-20260826
