@@ -31,9 +31,7 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
     const next = queue.shift();
     if (next !== undefined) {
       next.handler(fr.result as ArrayBuffer);
-      if (queue.length > 0) {
-        fr.readAsArrayBuffer(queue[0].blob);
-      }
+      if (queue.length > 0) fr.readAsArrayBuffer(queue[0].blob);
     }
   };
   return {
@@ -41,8 +39,7 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
       queue.push({ blob, handler });
       if (
         queue.length > 0 &&
-        (fr.readyState === FileReader.EMPTY ||
-          fr.readyState === FileReader.DONE)
+        (fr.readyState === FileReader.EMPTY || fr.readyState === FileReader.DONE)
       ) {
         fr.readAsArrayBuffer(queue[0].blob);
       }
@@ -166,8 +163,7 @@ const WebsocketProvider: React.FunctionComponent<
       });
 
       ws.addEventListener("message", (event: MessageEvent) => {
-        if (timerRef.current !== null)
-          clearTimeoutRef.current(timerRef.current);
+        if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
         setTimerRef.current(null);
 
         const handleMessage = (message: GameMessage): void => {
@@ -179,8 +175,7 @@ const WebsocketProvider: React.FunctionComponent<
             connected: true,
             everConnected: true,
             ...websocketHandler(stateRef.current, message, (msg) => {
-              if (ws.readyState === WebSocket.OPEN)
-                ws.send(JSON.stringify(msg));
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
             }),
           });
         };
@@ -207,8 +202,7 @@ const WebsocketProvider: React.FunctionComponent<
     connect();
     return () => {
       mountedRef.current = false;
-      if (timerRef.current !== null)
-        clearTimeoutRef.current(timerRef.current);
+      if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
