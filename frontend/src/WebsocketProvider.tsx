@@ -31,7 +31,9 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
     const next = queue.shift();
     if (next !== undefined) {
       next.handler(fr.result as ArrayBuffer);
-      if (queue.length > 0) fr.readAsArrayBuffer(queue[0].blob);
+      if (queue.length > 0) {
+        fr.readAsArrayBuffer(queue[0].blob);
+      }
     }
   };
   return {
@@ -39,7 +41,8 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
       queue.push({ blob, handler });
       if (
         queue.length > 0 &&
-        (fr.readyState === FileReader.EMPTY || fr.readyState === FileReader.DONE)
+        (fr.readyState === FileReader.EMPTY ||
+          fr.readyState === FileReader.DONE)
       ) {
         fr.readAsArrayBuffer(queue[0].blob);
       }
