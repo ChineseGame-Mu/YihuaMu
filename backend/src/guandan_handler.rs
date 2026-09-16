@@ -275,6 +275,14 @@ fn is_robot_name(name: &str) -> bool {
     name.starts_with("机器人")
 }
 
+/// Team identity is a first-layer robot decision. If the current trick leader
+/// is the robot's teammate, the robot yields instead of searching for a
+/// beating play. This prevents wasteful teammate-overcalls, including bombs.
+fn robot_should_yield_to_teammate(game: &GuandanGameState, seat: usize) -> bool {
+    game.last_player
+        .is_some_and(|leader| leader != seat && leader % 2 == seat % 2)
+}
+
 fn initial_draw_value(card: CardFace) -> usize {
     match card {
         CardFace::Joker(Joker::Big) => 1000,
@@ -493,14 +501,21 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
         }
         let delay_ms = thread_rng().gen_range(800..=1800);
         thread::sleep(Duration::from_millis(delay_ms));
-        let chosen = game.hands[seat]
-            .iter()
-            .enumerate()
-            .find_map(|(index, card)| {
-                validate_play_against_table(&[*card], &game.last_play, game.level)
-                    .is_ok()
-                    .then_some(index)
-            });
+        // Strategic gate BEFORE card-strength evaluation: never compete with
+        // a teammate who currently owns the trick. Only when an opponent leads
+        // (or the table is empty) do we search for a legal beating play.
+        let chosen = if robot_should_yield_to_teammate(game, seat) {
+            None
+        } else {
+            game.hands[seat]
+                .iter()
+                .enumerate()
+                .find_map(|(index, card)| {
+                    validate_play_against_table(&[*card], &game.last_play, game.level)
+                        .is_ok()
+                        .then_some(index)
+                })
+        };
         if let Some(index) = chosen {
             let card = game.hands[seat].remove(index);
             let cards = vec![card];
@@ -1729,6 +1744,27 @@ mod tests {
         assert!(game.last_play.is_empty());
         assert!(game.table_plays.is_empty());
     }
+    #[test]
+    fn robot_team_identity_is_a_first_layer_decision() {
+        let mut game = GuandanGameState::default();
+        game.player_names = vec![
+            "机器人1".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+            "机器人4".into(),
+        ];
+
+        game.last_player = Some(2);
+        assert!(robot_should_yield_to_teammate(&game, 0));
+        assert!(!robot_should_yield_to_teammate(&game, 1));
+
+        game.last_player = Some(1);
+        assert!(!robot_should_yield_to_teammate(&game, 0));
+
+        game.last_player = None;
+        assert!(!robot_should_yield_to_teammate(&game, 0));
+    }
+
     #[test]
     fn current_level_single_beats_ace() {
         assert!(validate_play_against_table(
