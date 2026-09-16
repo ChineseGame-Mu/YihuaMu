@@ -16,6 +16,7 @@ import "./guandan-statusbar-restore.css";
 import "./guandan-topbar-final.css";
 import "./guandan-button-3d.css";
 import "./guandan-public-player-position.css";
+import "./guandan-play-author-hotfix.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
