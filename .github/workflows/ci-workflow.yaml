@@ -54,6 +54,33 @@ jobs:
           test "$(yarn --silent prettier --version)" = "3.4.1"
           yarn prettier --check
         working-directory: ./frontend
+
+      - name: Guandan forced regression QA
+        run: |
+          set -euo pipefail
+
+          echo "[1/3] teammate-aware robot decision must stay at the first decision layer"
+          grep -q 'fn robot_should_yield_to_teammate' backend/src/guandan_handler.rs
+          grep -q 'robot_should_yield_to_teammate(game, seat)' backend/src/guandan_handler.rs
+          cargo test robot_team_identity_is_a_first_layer_decision -- --nocapture
+
+          echo "[2/3] all Guandan diamonds must remain orange-yellow, never blue"
+          for f in 2D 3D 4D 5D 6D 7D 8D 9D Td Jd Qd Kd Ad; do
+            card="frontend/src/generated/playing-cards-4color/${f}.tsx"
+            grep -q '#f5a623' "$card"
+            if grep -q '#00f' "$card"; then
+              echo "ERROR: blue diamond regression in $card"
+              exit 1
+            fi
+          done
+
+          echo "[3/3] play author must be explicitly visible on every table play"
+          grep -q 'guandan-play-author-hotfix.css' frontend/src/index.tsx
+          grep -q 'content: "出牌人："' frontend/src/guandan-play-author-hotfix.css
+          grep -q 'state.players\[play.player\]' frontend/src/GuandanTable.tsx
+
+          echo "Guandan forced regression QA: PASS"
+
       - name: Lint Rust code
         run: cargo clippy
 
