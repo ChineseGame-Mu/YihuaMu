@@ -1,0 +1,215 @@
+name: Three-Game Render Cleanroom Gate
+
+on:
+  push:
+    branches:
+      - fix/unified-websocket-reconnect-20260915
+  workflow_dispatch:
+
+jobs:
+  render-cleanroom-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FRONTEND_URL: https://chinesegame-yihua.onrender.com/
+      SHENGJI_WS_URL: wss://chinesegame-yihua.onrender.com/api
+      GUANDAN_WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install proven Cleanroom browser runtime
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Render-only frontend origin contract
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          const response = await page.goto(process.env.FRONTEND_URL, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000,
+          });
+          if (!response || !response.ok()) {
+            throw new Error(`Render frontend HTTP ${response?.status()}`);
+          }
+          const finalUrl = new URL(page.url());
+          if (finalUrl.hostname.endsWith('.vercel.app')) {
+            throw new Error(`Render-only QA escaped to Vercel: ${finalUrl.href}`);
+          }
+          if (finalUrl.hostname !== 'chinesegame-yihua.onrender.com') {
+            throw new Error(`unexpected frontend origin: ${finalUrl.href}`);
+          }
+          console.log(JSON.stringify({
+            type: 'render_origin_gate_pass',
+            requested: process.env.FRONTEND_URL,
+            finalUrl: finalUrl.href,
+            expectedCommit: process.env.EXPECTED_COMMIT,
+          }));
+          await browser.close();
+          NODE
+
+      - name: Shared Shengji/Finding Friends reconnect implementation contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'frontend/src/WebsocketProvider.tsx';
+          const source = fs.readFileSync(path, 'utf8');
+          const required = [
+            'Math.min(1000 * 2 ** reconnectAttemptRef.current, 10000)',
+            'reconnectAttemptRef.current = 0',
+            'ws.readyState === WebSocket.OPEN',
+            '}, 5000)',
+            'scheduleReconnect()',
+          ];
+          for (const needle of required) {
+            if (!source.includes(needle)) throw new Error(`missing reconnect contract: ${needle}`);
+          }
+          if (!source.includes('chinesegame-yihua.onrender.com/api')) {
+            throw new Error('shared Shengji/Finding Friends Render WebSocket target missing');
+          }
+          console.log(JSON.stringify({
+            type: 'shared_reconnect_contract_pass',
+            games: ['shengji','finding-friends'],
+            backoffCapMs: 10000,
+            responseTimeoutMs: 5000,
+          }));
+          NODE
+
+      - name: Proven Guandan 4-client live WebSocket E2E on Render
+        run: |
+          node --input-type=module <<'NODE'
+          const WS_URL = process.env.GUANDAN_WS_URL;
+          const room = `render-cleanroom-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+          const timeout = (ms, label) => new Promise((_, rej) => setTimeout(() => rej(new Error(`timeout: ${label}`)), ms));
+
+          class Client {
+            constructor(name) {
+              this.name = name;
+              this.ws = null;
+              this.messages = [];
+              this.waiters = [];
+              this.seat = null;
+            }
+            async connect() {
+              this.ws = new WebSocket(WS_URL);
+              this.ws.addEventListener('message', e => {
+                const m = JSON.parse(String(e.data));
+                this.messages.push(m);
+                for (const w of [...this.waiters]) {
+                  if (this.messages.length > w.after && w.pred(m)) {
+                    this.waiters.splice(this.waiters.indexOf(w), 1);
+                    w.resolve(m);
+                  }
+                }
+              });
+              await Promise.race([
+                new Promise((resolve, reject) => {
+                  this.ws.addEventListener('open', resolve, { once: true });
+                  this.ws.addEventListener('error', () => reject(new Error('websocket open error')), { once: true });
+                }),
+                timeout(15000, 'websocket open'),
+              ]);
+              return this.waitNew(m => m.type === 'connected', 0, 15000);
+            }
+            send(m) {
+              if (!this.ws || this.ws.readyState !== WebSocket.OPEN) throw new Error(`${this.name}: socket not open`);
+              this.ws.send(JSON.stringify(m));
+            }
+            waitNew(pred, after = this.messages.length, ms = 15000) {
+              for (let i = after; i < this.messages.length; i++) {
+                if (pred(this.messages[i])) return Promise.resolve(this.messages[i]);
+              }
+              return Promise.race([
+                new Promise(resolve => this.waiters.push({ pred, resolve, after })),
+                timeout(ms, `${this.name} message`),
+              ]);
+            }
+            close() { try { this.ws?.close(); } catch {} }
+          }
+
+          const clients = Array.from({ length: 4 }, (_, i) => new Client(`RENDER-QA-${i + 1}`));
+          const protocols = [];
+          for (const c of clients) protocols.push((await c.connect()).protocol);
+          if (new Set(protocols).size !== 1 || !protocols[0]) throw new Error(`protocol mismatch ${protocols}`);
+
+          for (let i = 0; i < 4; i++) {
+            const c = clients[i];
+            const mark = c.messages.length;
+            c.send({ type: 'join', room, name: c.name, player_count: 4, desired_seat: i });
+            const joined = await c.waitNew(m => m.type === 'joined', mark, 15000);
+            c.seat = joined.seat;
+            if (joined.room !== room || joined.seat !== i) throw new Error(`join mismatch ${JSON.stringify(joined)}`);
+          }
+
+          const marks = clients.map(c => c.messages.length);
+          clients[0].send({ type: 'start', player_count: 4 });
+          for (let i = 0; i < 4; i++) {
+            const started = await clients[i].waitNew(m => m.type === 'started' && m.player_count === 4, marks[i], 20000);
+            if (started.cards_per_player !== 27) throw new Error(`cards_per_player ${started.cards_per_player}`);
+            const hand = await clients[i].waitNew(m => m.type === 'hand', marks[i], 20000);
+            if (!Array.isArray(hand.cards) || hand.cards.length !== 27) throw new Error(`hand count ${hand.cards?.length}`);
+          }
+
+          const trickMarks = clients.map(c => c.messages.length);
+          clients[0].send({ type: 'start_trick' });
+          for (let i = 0; i < 4; i++) {
+            await clients[i].waitNew(m => m.type === 'state' && Number.isInteger(m.turn), trickMarks[i], 15000);
+          }
+          let state = clients.flatMap(c => c.messages).filter(m => m.type === 'state').at(-1);
+          const seatToClient = new Map(clients.map(c => [c.seat, c]));
+          const leader = seatToClient.get(state.turn);
+          let mark = leader.messages.length;
+          leader.send({ type: 'play', card_indexes: [0] });
+          state = await leader.waitNew(m => m.type === 'state' && m.hand_counts?.[leader.seat] === 26, mark, 20000);
+
+          let passes = 0;
+          while (passes < 3 && !state.trick_complete) {
+            const active = seatToClient.get(state.turn);
+            mark = active.messages.length;
+            active.send({ type: 'pass' });
+            state = await active.waitNew(m => m.type === 'state' && (m.trick_complete === true || m.turn !== active.seat), mark, 20000);
+            passes++;
+          }
+          if (!state.trick_complete) throw new Error('trick did not complete');
+
+          const target = clients[2];
+          target.close();
+          await new Promise(r => setTimeout(r, 700));
+          const replacement = new Client(target.name);
+          const connected = await replacement.connect();
+          mark = replacement.messages.length;
+          replacement.send({ type: 'join', room, name: replacement.name, player_count: 4, desired_seat: target.seat });
+          const rejoined = await replacement.waitNew(m => m.type === 'joined', mark, 20000);
+          const rehand = await replacement.waitNew(m => m.type === 'hand', mark, 20000);
+          const restate = await replacement.waitNew(m => m.type === 'state', mark, 20000);
+          if (rejoined.seat !== target.seat) throw new Error('reconnect seat changed');
+          if (!Array.isArray(rehand.cards)) throw new Error('reconnect private hand missing');
+          if (!Array.isArray(restate.hand_counts) || restate.hand_counts.length !== 4) throw new Error('reconnect state invalid');
+
+          console.log(JSON.stringify({
+            type: 'guandan_render_cleanroom_pass',
+            room,
+            protocol: connected.protocol,
+            players: 4,
+            reconnect: true,
+            reconnectSeat: rejoined.seat,
+            reconnectHandCount: rehand.cards.length,
+            trickComplete: true,
+            vercelTouched: false,
+          }));
+
+          for (const c of clients) c.close();
+          replacement.close();
+          NODE
+
+      - name: Mandatory remaining three-game QA is not yet waived
+        run: |
+          echo 'Foundation gate complete. Shengji/Finding Friends real-browser 4+ client gameplay, in-progress state recovery, repeated reconnect, abnormal-close, latency/timeout, message loss/duplicate delivery remain mandatory before merge.'
