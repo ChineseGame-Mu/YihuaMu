@@ -57,8 +57,8 @@ jobs:
 
       - name: Format and run Guandan tests
         run: |
-          mkdir -p backend/frontend/dist
-          touch backend/frontend/dist/.qa-placeholder
+          mkdir -p frontend/dist backend/frontend/dist
+          touch frontend/dist/.qa-placeholder backend/frontend/dist/.qa-placeholder
           cargo fmt --all
           cargo test guandan_handler --no-fail-fast
 
