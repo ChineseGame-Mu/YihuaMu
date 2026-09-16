@@ -18,7 +18,7 @@ function SvgKd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-285-460h200m-100 0v920m-100 0h200M85-460h200m-100 20l-355 595M85 460h200m-100-20L-10-70"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}
@@ -32,7 +32,7 @@ function SvgKd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <symbol id="KD_svg__b" preserveAspectRatio="none" viewBox="0 0 1300 2000">
