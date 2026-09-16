@@ -1,0 +1,34 @@
+{
+  "name": "yihua-game",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "node scripts/install-hooks.mjs",
+    "check": "npm run prettier:version && npm run format:check && npm run typecheck && npm test",
+    "prettier:version": "node scripts/check-prettier-version.mjs",
+    "format": "prettier --write .",
+    "format:staged": "node scripts/format-staged.mjs",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "build:server": "npm run build",
+    "start": "node dist/main.js",
+    "smoke": "node scripts/smoke-server.mjs",
+    "smoke:live": "npm run smoke",
+    "smoke:gameplay": "node scripts/smoke-gameplay-network.mjs",
+    "smoke:restart": "node scripts/smoke-restart-recovery.mjs",
+    "smoke:crash": "node scripts/smoke-crash-recovery.mjs",
+    "smoke:hard-crash": "npm run smoke:crash",
+    "smoke:soak": "node scripts/soak-websocket-bounded.mjs",
+    "soak:core": "npm run build && node scripts/soak-core.mjs",
+    "soak:websocket": "npm run build && node scripts/soak-websocket.mjs",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "3.4.1",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,0 +1,86 @@
+import { RANKS } from "../dist/core/cards.js";
+import { applyPromotion, initialTeamLevels, mandatoryTributeCard, promotionForPlacements, tributePlanForPlacements } from "../dist/core/competition.js";
+import { createDeck, dealHands } from "../dist/core/deck.js";
+import { createLobbyState, passGameTurn, playGameCards, startGame } from "../dist/core/game-state.js";
+import { canHandBeat, canHandBeatWithLevel, classifyHand } from "../dist/core/hand.js";
+import { classifyHandWithLevel } from "../dist/core/level-hand.js";
+import { isLegalReturnTributeCard, prepareNativeTribute, submitNativeReturnTribute, submitNativeTribute } from "../dist/core/native-tribute.js";
+import { buildRoundPlacements } from "../dist/core/round-result.js";
+import { partnerSeatForFourPlayerTable, teamForSeat } from "../dist/core/table.js";
+import { createTrickState, passTurn, playCards } from "../dist/core/trick-state.js";
+
+const suited = (rank, suit = "clubs") => ({ kind: "suited", rank, suit });
+const wild = (level) => suited(level, "hearts");
+const joker = (size) => ({ kind: "joker", size });
+const deckCard = (id, card) => ({ id, copy: 0, card });
+const ok = (fn) => { try { return Boolean(fn()); } catch { return false; } };
+const kind = (cards, expected) => classifyHand(cards).kind === expected;
+const levelKind = (cards, level, expected) => classifyHandWithLevel(cards, level).kind === expected;
+
+export const runAssociationDeterministicQa = () => {
+  const r = {};
+  r.fourPlayerTwoTeamsOppositePartners = ok(() => teamForSeat(0) === teamForSeat(2) && teamForSeat(1) === teamForSeat(3) && teamForSeat(0) !== teamForSeat(1) && partnerSeatForFourPlayerTable(0) === 2 && partnerSeatForFourPlayerTable(1) === 3);
+  r.twoDeck108Cards = createDeck(4).length === 108;
+  r.twentySevenCardsEach = dealHands(createDeck(4), 4).every((h) => h.length === 27);
+  r.levelRankOrdering = ok(() => {
+    const a = classifyHand([suited("A")]);
+    const level = classifyHand([suited("6")]);
+    const small = classifyHand([joker("small")]);
+    const big = classifyHand([joker("big")]);
+    return canHandBeatWithLevel(level, a, "6") && canHandBeatWithLevel(small, level, "6") && canHandBeatWithLevel(big, small, "6");
+  });
+  r.levelRankNaturalSequenceBehavior = classifyHandWithLevel([suited("6","clubs"), suited("7","diamonds"), suited("8","spades"), suited("9","clubs"), suited("10","diamonds")], "6").kind === "straight";
+  r.heartLevelWildcardSingleBehavior = classifyHandWithLevel([wild("6")], "6").kind === "single";
+  r.heartLevelWildcardPair = levelKind([suited("9"), wild("6")], "6", "pair");
+  r.heartLevelWildcardTriple = levelKind([suited("9"), suited("9", "spades"), wild("6")], "6", "triple");
+  r.heartLevelWildcardFullHouse = levelKind([suited("Q"), suited("Q", "spades"), suited("8"), suited("8", "diamonds"), wild("6")], "6", "full-house");
+  r.heartLevelWildcardStraight = levelKind([suited("7","clubs"), suited("8","diamonds"), suited("9","spades"), suited("J","clubs"), wild("6")], "6", "straight");
+  r.heartLevelWildcardConsecutivePairs = levelKind([suited("7"), suited("7", "spades"), suited("8"), suited("8", "diamonds"), suited("9"), wild("6")], "6", "consecutive-pairs");
+  r.heartLevelWildcardConsecutiveTriples = levelKind([suited("10"), suited("10", "spades"), suited("10", "diamonds"), suited("J"), suited("J", "spades"), wild("6")], "6", "consecutive-triples");
+  r.heartLevelWildcardStraightFlush = levelKind([suited("7", "spades"), suited("8", "spades"), suited("9", "spades"), suited("J", "spades"), wild("6")], "6", "straight-flush");
+  r.heartLevelWildcardBomb = levelKind([suited("9"), suited("9", "spades"), suited("9", "diamonds"), wild("6")], "6", "bomb");
+  r.heartLevelWildcardDoubleUse = levelKind([suited("9"), suited("9", "spades"), wild("6"), wild("6")], "6", "bomb");
+  r.heartLevelWildcardCannotRepresentJoker = classifyHandWithLevel([suited("9"), joker("small")], "6").kind === "invalid";
+  r.heartLevelWildcardDeterministicInterpretation = JSON.stringify(classifyHandWithLevel([suited("Q"), suited("Q", "spades"), suited("8"), suited("8", "diamonds"), wild("6")], "6")) === JSON.stringify({ kind: "full-house", size: 5, rank: "Q" });
+  r.straightAceLow = kind([suited("A","clubs"), suited("2","diamonds"), suited("3","spades"), suited("4","clubs"), suited("5","diamonds")], "straight");
+  r.straightAceHigh = kind([suited("10","clubs"), suited("J","diamonds"), suited("Q","spades"), suited("K","clubs"), suited("A","diamonds")], "straight");
+  r.rejectKingAceTwoWrap = classifyHand([suited("J"), suited("Q"), suited("K"), suited("A"), suited("2")]).kind === "invalid";
+  const bomb = (rank, n) => classifyHand(Array.from({ length: n }, (_, i) => suited(rank, ["clubs","diamonds","hearts","spades"][i % 4])));
+  const b4 = bomb("A", 4), b5 = bomb("3", 5), b6 = bomb("4", 6), b7 = bomb("5", 7), b8 = bomb("6", 8);
+  const sf = classifyHand([suited("5","hearts"),suited("6","hearts"),suited("7","hearts"),suited("8","hearts"),suited("9","hearts")]);
+  const jb = classifyHand([joker("small"),joker("small"),joker("big"),joker("big")]);
+  r.bomb4Hierarchy = b4.kind === "bomb" && canHandBeat(b5,b4);
+  r.bomb5Hierarchy = b5.kind === "bomb" && canHandBeat(sf,b5);
+  r.bomb6Hierarchy = b6.kind === "bomb" && canHandBeat(b6,sf);
+  r.bomb7Hierarchy = b7.kind === "bomb" && canHandBeat(b7,b6);
+  r.bomb8Hierarchy = b8.kind === "bomb" && canHandBeat(b8,b7);
+  r.straightFlushBombHierarchy = sf.kind === "straight-flush" && canHandBeat(sf,b5) && canHandBeat(b6,sf);
+  r.jokerBombHighest = jb.kind === "joker-bomb" && canHandBeat(jb,b8);
+  r.sameTypeSameSizeComparison = canHandBeat(classifyHand([suited("9"),suited("9","hearts")]), classifyHand([suited("8"),suited("8","hearts")]));
+  r.fullHouseTripleControlsComparison = canHandBeat(classifyHand([suited("8"),suited("8","hearts"),suited("8","spades"),suited("3"),suited("3","spades")]), classifyHand([suited("7"),suited("7","hearts"),suited("7","spades"),suited("A"),suited("A","spades")]));
+  r.passAndLeadReset = ok(() => { let t=createTrickState(4,0); t=playCards(t,0,[suited("7")]); t=passTurn(t,1); t=passTurn(t,2); t=passTurn(t,3); return t.leadingPlay===null && t.currentTurn===0 && t.completedTricks===1; });
+  r.finishOrderAndAutoLastPlace = ok(() => buildRoundPlacements(4,[0,2,1,3]).map(x=>x.place).join(",") === "1,2,3,4");
+  r.partnerCatchLead = ok(() => {
+    const game={...startGame(createLobbyState(4,0),()=>0.5),hands:[[deckCard("a",suited("3"))],[deckCard("b",suited("4")),deckCard("b2",suited("4"))],[deckCard("c",suited("5")),deckCard("c2",suited("5"))],[deckCard("d",suited("6")),deckCard("d2",suited("6"))]],currentTurn:0,trick:createTrickState(4,0)};
+    let n=playGameCards(game,0,[suited("3")]); if(n.phase!=="playing") return false; n=passGameTurn(n,1); n=passGameTurn(n,3); return n.currentTurn===2 && n.trick.leaderSeat===2;
+  });
+  const hands = [[deckCard("a","3")],[deckCard("b","3")],[deckCard("c","3")],[deckCard("d","A")]].map(h=>h.map(x=>typeof x.card==="string"?{...x,card:suited(x.card)}:x));
+  r.singleTribute = tributePlanForPlacements(buildRoundPlacements(4,[0,1,2,3]),hands).kind === "single";
+  r.doubleTribute = tributePlanForPlacements(buildRoundPlacements(4,[0,2,1,3]),hands).kind === "double";
+  r.returnTribute = isLegalReturnTributeCard(suited("10"),"6") && !isLegalReturnTributeCard(suited("J"),"6");
+  const antiHands=[[deckCard("a",suited("3"))],[deckCard("b",joker("big"))],[deckCard("c",suited("4"))],[deckCard("d",joker("big"))]];
+  r.antiTribute = tributePlanForPlacements(buildRoundPlacements(4,[0,2,1,3]),antiHands).kind === "anti-tribute";
+  r.heartLevelExcludedFromMandatoryTribute = mandatoryTributeCard([deckCard("wild",wild("10")),deckCard("ace",suited("A"))],"10").id === "ace";
+  r.cardConservationAcrossTribute = ok(() => {
+    const game={...startGame(createLobbyState(4,0),()=>0.5),levelRank:"10",hands:[[deckCard("r","3")],[deckCard("b","5")],[deckCard("c","6")],[deckCard("low","K"),deckCard("high","A")]].map(h=>h.map(x=>typeof x.card==="string"?{...x,card:suited(x.card)}:x))};
+    const before=game.hands.flat().map(x=>x.id).sort().join(","); const p=prepareNativeTribute(buildRoundPlacements(4,[0,1,2,3]),game); const paid=submitNativeTribute(game,p,3,"high"); const done=submitNativeReturnTribute(paid.game,paid.tribute,0,"r"); return done.game.hands.flat().map(x=>x.id).sort().join(",")===before;
+  });
+  r.promotionByPlacements = promotionForPlacements(buildRoundPlacements(4,[0,2,1,3]),initialTeamLevels()).steps === 3;
+  r.levelKToA = promotionForPlacements(buildRoundPlacements(4,[0,1,3,2]),{A:"K",B:"2"}).after === "A";
+  r.passAEndCondition = ok(() => { const toA=promotionForPlacements(buildRoundPlacements(4,[0,1,3,2]),{A:"K",B:"2"}); const atA=applyPromotion({A:"K",B:"2"},toA); return promotionForPlacements(buildRoundPlacements(4,[0,1,3,2]),atA).passedA===true; });
+  r.illegalPlayStateAtomicity = ok(() => { const t=createTrickState(4,0); const before=JSON.stringify(t); try { playCards(t,0,[suited("3"),suited("4")]); } catch {} return JSON.stringify(t)===before; });
+  r.allRequiredRulesPassed = Object.values(r).every(Boolean);
+  return r;
+};
+
+if (import.meta.url === `file://${process.argv[1]}`) console.log(JSON.stringify(runAssociationDeterministicQa()));
