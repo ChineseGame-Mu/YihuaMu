@@ -1,0 +1,70 @@
+name: Patch Guandan teammate-aware robot AI
+
+on:
+  push:
+    branches:
+      - fix/guandan-teammate-aware-ai-20260916
+    paths:
+      - .github/workflows/fix-guandan-teammate-aware-bots-20260916.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/guandan-teammate-aware-ai-20260916
+          fetch-depth: 0
+
+      - name: Put teammate/opponent identity above card selection
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path('backend/src/guandan_handler.rs')
+          s = p.read_text()
+
+          def once(old, new, label):
+              global s
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected one anchor, found {count}')
+              s = s.replace(old, new, 1)
+
+          once(
+              '''fn is_robot_name(name: &str) -> bool {\n    name.starts_with("机器人")\n}\n''',
+              '''fn is_robot_name(name: &str) -> bool {\n    name.starts_with("机器人")\n}\n\n/// Team identity is a first-layer robot decision. If the current trick leader\n/// is the robot's teammate, the robot yields instead of searching for a\n/// beating play. This prevents wasteful teammate-overcalls, including bombs.\nfn robot_should_yield_to_teammate(game: &GuandanGameState, seat: usize) -> bool {\n    game.last_player\n        .is_some_and(|leader| leader != seat && leader % 2 == seat % 2)\n}\n''',
+              'teammate decision helper',
+          )
+
+          once(
+              '''        let chosen = game.hands[seat]\n            .iter()\n            .enumerate()\n            .find_map(|(index, card)| {\n                validate_play_against_table(&[*card], &game.last_play, game.level)\n                    .is_ok()\n                    .then_some(index)\n            });''',
+              '''        // Strategic gate BEFORE card-strength evaluation: never compete with\n        // a teammate who currently owns the trick. Only when an opponent leads\n        // (or the table is empty) do we search for a legal beating play.\n        let chosen = if robot_should_yield_to_teammate(game, seat) {\n            None\n        } else {\n            game.hands[seat]\n                .iter()\n                .enumerate()\n                .find_map(|(index, card)| {\n                    validate_play_against_table(&[*card], &game.last_play, game.level)\n                        .is_ok()\n                        .then_some(index)\n                })\n        };''',
+              'robot selection gate',
+          )
+
+          once(
+              '''    #[test]\n    fn current_level_single_beats_ace() {''',
+              '''    #[test]\n    fn robot_team_identity_is_a_first_layer_decision() {\n        let mut game = GuandanGameState::default();\n        game.player_names = vec![\n            "机器人1".into(),\n            "机器人2".into(),\n            "机器人3".into(),\n            "机器人4".into(),\n        ];\n\n        game.last_player = Some(2);\n        assert!(robot_should_yield_to_teammate(&game, 0));\n        assert!(!robot_should_yield_to_teammate(&game, 1));\n\n        game.last_player = Some(1);\n        assert!(!robot_should_yield_to_teammate(&game, 0));\n\n        game.last_player = None;\n        assert!(!robot_should_yield_to_teammate(&game, 0));\n    }\n\n    #[test]\n    fn current_level_single_beats_ace() {''',
+              'robot teammate regression test',
+          )
+
+          p.write_text(s)
+          PY
+
+      - name: Format and run Guandan tests
+        run: |
+          cargo fmt --all
+          cargo test guandan_handler --no-fail-fast
+
+      - name: Commit tested backend fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add backend/src/guandan_handler.rs
+          git diff --cached --quiet && exit 0
+          git commit -m "fix: prioritize teammate awareness in Guandan robot AI"
+          git push origin HEAD:fix/guandan-teammate-aware-ai-20260916
