@@ -46,7 +46,9 @@ const waitForCheckpoint = async (predicate) => {
   for (let i = 0; i < 160; i += 1) {
     try {
       const snapshot = JSON.parse(await readFile(snapshotPath, "utf8"));
-      const room = snapshot.rooms?.find(({ roomId: saved }) => saved === roomId);
+      const room = snapshot.rooms?.find(
+        ({ roomId: saved }) => saved === roomId,
+      );
       if (room && predicate(room)) return room;
     } catch {}
     await sleep(50);
@@ -245,9 +247,7 @@ try {
           gameState.revision !== privateHand.revision,
       )
     ) {
-      throw new Error(
-        "reconnect snapshot revisions disagree after hard crash",
-      );
+      throw new Error("reconnect snapshot revisions disagree after hard crash");
     }
 
     const restoredGame = snapshots.at(-1)?.gameState;
@@ -272,7 +272,8 @@ try {
     const activeSnapshot = snapshots[restoredGame.currentTurn];
     if (restoredGame.leadingPlay === null) {
       const nextCard = activeSnapshot.privateHand.cards[0];
-      if (!nextCard) throw new Error("active player has no card after recovery");
+      if (!nextCard)
+        throw new Error("active player has no card after recovery");
       active.socket.send(
         JSON.stringify({
           type: "play_cards",

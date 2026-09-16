@@ -13,14 +13,29 @@ export type ClientMessage =
       readonly name: string;
       readonly seat: number;
     } & CommandMetadata)
-  | ({ readonly type: "leave_room"; readonly playerId: string } & CommandMetadata)
+  | ({
+      readonly type: "leave_room";
+      readonly playerId: string;
+    } & CommandMetadata)
   | ({ readonly type: "set_robots"; readonly count: number } & CommandMetadata)
-  | ({ readonly type: "set_next_round_ready"; readonly ready: boolean } & CommandMetadata)
+  | ({
+      readonly type: "set_next_round_ready";
+      readonly ready: boolean;
+    } & CommandMetadata)
   | ({ readonly type: "start_game" } & CommandMetadata)
   | ({ readonly type: "next_round" } & CommandMetadata)
-  | ({ readonly type: "tribute_card"; readonly cardId: string } & CommandMetadata)
-  | ({ readonly type: "return_tribute"; readonly cardId: string } & CommandMetadata)
-  | ({ readonly type: "play_cards"; readonly cardIds: readonly string[] } & CommandMetadata)
+  | ({
+      readonly type: "tribute_card";
+      readonly cardId: string;
+    } & CommandMetadata)
+  | ({
+      readonly type: "return_tribute";
+      readonly cardId: string;
+    } & CommandMetadata)
+  | ({
+      readonly type: "play_cards";
+      readonly cardIds: readonly string[];
+    } & CommandMetadata)
   | ({ readonly type: "pass_turn" } & CommandMetadata)
   | { readonly type: "ping"; readonly nonce: string };
 
@@ -50,11 +65,19 @@ export type ServerMessage =
       readonly handCounts: readonly number[];
       readonly openingDraw: readonly Card[];
       readonly openingDrawWinner: number;
-      readonly leadingPlay: { readonly seat: number; readonly cards: readonly Card[] } | null;
+      readonly leadingPlay: {
+        readonly seat: number;
+        readonly cards: readonly Card[];
+      } | null;
       readonly passedSeats: readonly number[];
       readonly finishedSeats: readonly number[];
       readonly completedTricks: number;
-      readonly tributeKind?: "none" | "single" | "double" | "anti-tribute" | undefined;
+      readonly tributeKind?:
+        | "none"
+        | "single"
+        | "double"
+        | "anti-tribute"
+        | undefined;
       readonly pendingTributeSeats?: readonly number[] | undefined;
       readonly pendingReturnSeats?: readonly number[] | undefined;
       readonly antiTribute?: boolean | undefined;
@@ -79,11 +102,15 @@ const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
       typeof parsed.expectedRevision !== "number" ||
       !Number.isInteger(parsed.expectedRevision) ||
       parsed.expectedRevision < 0
-    ) throw new Error("expectedRevision must be a non-negative integer");
+    )
+      throw new Error("expectedRevision must be a non-negative integer");
     metadata.expectedRevision = parsed.expectedRevision;
   }
   if (parsed.commandId !== undefined) {
-    if (typeof parsed.commandId !== "string" || parsed.commandId.trim().length === 0) {
+    if (
+      typeof parsed.commandId !== "string" ||
+      parsed.commandId.trim().length === 0
+    ) {
       throw new Error("commandId must be a non-empty string");
     }
     metadata.commandId = parsed.commandId.trim();
@@ -115,16 +142,27 @@ export const parseClientMessage = (raw: string): ClientMessage => {
         typeof parsed.playerId !== "string" ||
         typeof parsed.name !== "string" ||
         typeof parsed.seat !== "number"
-      ) throw new Error("invalid join_room message");
-      return { type: "join_room", roomId: parsed.roomId, playerId: parsed.playerId, name: parsed.name, seat: parsed.seat, ...metadata };
+      )
+        throw new Error("invalid join_room message");
+      return {
+        type: "join_room",
+        roomId: parsed.roomId,
+        playerId: parsed.playerId,
+        name: parsed.name,
+        seat: parsed.seat,
+        ...metadata,
+      };
     case "leave_room":
-      if (typeof parsed.playerId !== "string") throw new Error("invalid leave_room message");
+      if (typeof parsed.playerId !== "string")
+        throw new Error("invalid leave_room message");
       return { type: "leave_room", playerId: parsed.playerId, ...metadata };
     case "set_robots":
-      if (typeof parsed.count !== "number") throw new Error("invalid set_robots message");
+      if (typeof parsed.count !== "number")
+        throw new Error("invalid set_robots message");
       return { type: "set_robots", count: parsed.count, ...metadata };
     case "set_next_round_ready":
-      if (typeof parsed.ready !== "boolean") throw new Error("set_next_round_ready requires a boolean ready value");
+      if (typeof parsed.ready !== "boolean")
+        throw new Error("set_next_round_ready requires a boolean ready value");
       return { type: "set_next_round_ready", ready: parsed.ready, ...metadata };
     case "start_game":
       return { type: "start_game", ...metadata };
@@ -138,17 +176,26 @@ export const parseClientMessage = (raw: string): ClientMessage => {
       if (
         !Array.isArray(parsed.cardIds) ||
         parsed.cardIds.length === 0 ||
-        parsed.cardIds.some((cardId) => typeof cardId !== "string" || cardId.length === 0)
-      ) throw new Error("play_cards requires non-empty cardIds");
-      return { type: "play_cards", cardIds: parsed.cardIds as string[], ...metadata };
+        parsed.cardIds.some(
+          (cardId) => typeof cardId !== "string" || cardId.length === 0,
+        )
+      )
+        throw new Error("play_cards requires non-empty cardIds");
+      return {
+        type: "play_cards",
+        cardIds: parsed.cardIds as string[],
+        ...metadata,
+      };
     case "pass_turn":
       return { type: "pass_turn", ...metadata };
     case "ping":
-      if (typeof parsed.nonce !== "string") throw new Error("invalid ping message");
+      if (typeof parsed.nonce !== "string")
+        throw new Error("invalid ping message");
       return { type: "ping", nonce: parsed.nonce };
     default:
       throw new Error(`unsupported message type: ${parsed.type}`);
   }
 };
 
-export const encodeServerMessage = (message: ServerMessage): string => JSON.stringify(message);
+export const encodeServerMessage = (message: ServerMessage): string =>
+  JSON.stringify(message);

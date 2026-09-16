@@ -49,9 +49,9 @@ describe("native competitive tribute state machine", () => {
     expect(prepared.status).toBe("tribute");
     expect(prepared.pendingTributeSeats).toEqual([3]);
 
-    expect(() =>
-      submitNativeTribute(game, prepared, 3, "p3-low"),
-    ).toThrow(/highest eligible/);
+    expect(() => submitNativeTribute(game, prepared, 3, "p3-low")).toThrow(
+      /highest eligible/,
+    );
 
     const paid = submitNativeTribute(game, prepared, 3, "p3-high");
     expect(paid.tribute.status).toBe("return");
@@ -116,7 +116,11 @@ describe("native competitive tribute state machine", () => {
           expectedRevision: 7,
         }),
       ),
-    ).toMatchObject({ type: "tribute_card", cardId: "c1", expectedRevision: 7 });
+    ).toMatchObject({
+      type: "tribute_card",
+      cardId: "c1",
+      expectedRevision: 7,
+    });
     expect(
       parseClientMessage(
         JSON.stringify({ type: "return_tribute", cardId: "c2" }),

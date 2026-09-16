@@ -29,22 +29,16 @@ describe("four-player competitive progression", () => {
   it("promotes 3 for 1-2, 2 for 1-3, and 1 for 1-4", () => {
     const levels = initialTeamLevels();
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), levels)
+        .steps,
     ).toBe(3);
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), levels)
+        .steps,
     ).toBe(2);
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 1, 3, 2]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 1, 3, 2]), levels)
+        .steps,
     ).toBe(1);
   });
 
@@ -77,16 +71,12 @@ describe("four-player competitive progression", () => {
       suited(`c${seat}`, "3"),
     ]);
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), hands)
+        .kind,
     ).toBe("single");
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), hands)
+        .kind,
     ).toBe("double");
   });
 
@@ -98,10 +88,8 @@ describe("four-player competitive progression", () => {
       [big("d1"), big("d2")],
     ];
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), hands)
+        .kind,
     ).toBe("anti-tribute");
   });
 
@@ -113,10 +101,8 @@ describe("four-player competitive progression", () => {
       [big("d1")],
     ];
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), hands)
+        .kind,
     ).toBe("anti-tribute");
   });
 });

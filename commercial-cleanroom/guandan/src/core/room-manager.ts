@@ -252,11 +252,7 @@ export class RoomManager {
     return next;
   }
 
-  submitTribute(
-    roomId: string,
-    seat: number,
-    cardId: string,
-  ): ManagedRoom {
+  submitTribute(roomId: string, seat: number, cardId: string): ManagedRoom {
     const managed = this.get(roomId);
     if (managed.game.phase !== "playing" || managed.tribute === undefined) {
       throw new Error("no native tribute exchange is active");

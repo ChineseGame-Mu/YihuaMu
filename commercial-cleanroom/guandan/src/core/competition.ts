@@ -85,16 +85,18 @@ export const mandatoryTributeCard = (
   const eligible = hand.filter(({ card }) => !isHeartLevel(card, levelRank));
   if (eligible.length === 0) throw new Error("no eligible tribute card");
   return [...eligible].sort(
-    (a, b) => tributeStrength(b.card, levelRank) - tributeStrength(a.card, levelRank),
+    (a, b) =>
+      tributeStrength(b.card, levelRank) - tributeStrength(a.card, levelRank),
   )[0]!;
 };
 
 export const canAntiTribute = (hand: readonly DeckCard[]): boolean =>
-  hand.filter(({ card }) => card.kind === "joker" && card.size === "big").length >=
-  2;
+  hand.filter(({ card }) => card.kind === "joker" && card.size === "big")
+    .length >= 2;
 
 const bigJokerCount = (hand: readonly DeckCard[]): number =>
-  hand.filter(({ card }) => card.kind === "joker" && card.size === "big").length;
+  hand.filter(({ card }) => card.kind === "joker" && card.size === "big")
+    .length;
 
 export const tributePlanForPlacements = (
   placements: readonly RoundPlacement[],

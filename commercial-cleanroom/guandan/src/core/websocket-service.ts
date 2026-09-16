@@ -26,7 +26,9 @@ const versionedRoomStateMessage = (managed: ManagedRoom): RoomStateMessage => ({
   revision: managed.revision,
 });
 
-const competitionPhase = (managed: ManagedRoom): "playing" | "tribute" | "return" => {
+const competitionPhase = (
+  managed: ManagedRoom,
+): "playing" | "tribute" | "return" => {
   if (managed.tribute?.status === "tribute") return "tribute";
   if (managed.tribute?.status === "return") return "return";
   return "playing";
@@ -166,7 +168,8 @@ export class WebSocketService {
     const participant = managed.room.participants.find(
       ({ id, kind }) => id === context.playerId && kind === "human",
     );
-    if (!participant) throw new Error("connection player is not seated in the room");
+    if (!participant)
+      throw new Error("connection player is not seated in the room");
     return participant.seat;
   }
 
@@ -276,7 +279,8 @@ export class WebSocketService {
         return managed;
       }
 
-      if (!(await this.guardMutation(socket, context, managed, message))) return managed;
+      if (!(await this.guardMutation(socket, context, managed, message)))
+        return managed;
 
       if (message.type === "start_game") {
         const next = this.rooms.start(context.roomId);
@@ -297,7 +301,11 @@ export class WebSocketService {
 
       if (message.type === "tribute_card") {
         const seat = this.humanSeat(managed, context);
-        const next = this.rooms.submitTribute(context.roomId, seat, message.cardId);
+        const next = this.rooms.submitTribute(
+          context.roomId,
+          seat,
+          message.cardId,
+        );
         this.rememberCommand(context.roomId, message);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
@@ -306,7 +314,11 @@ export class WebSocketService {
 
       if (message.type === "return_tribute") {
         const seat = this.humanSeat(managed, context);
-        const next = this.rooms.submitReturnTribute(context.roomId, seat, message.cardId);
+        const next = this.rooms.submitReturnTribute(
+          context.roomId,
+          seat,
+          message.cardId,
+        );
         this.rememberCommand(context.roomId, message);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
