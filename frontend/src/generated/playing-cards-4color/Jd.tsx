@@ -18,7 +18,7 @@ function SvgJd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M50-460h200m-100 0v710a100 100 0 01-400 0v-30"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}
@@ -32,7 +32,7 @@ function SvgJd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <symbol id="JD_svg__b" preserveAspectRatio="none" viewBox="0 0 1300 2000">

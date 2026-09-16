@@ -15,7 +15,7 @@ function SvgAd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-270 460h160m-90-10L0-460l200 910m-90 10h160m-390-330h240"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}
@@ -29,7 +29,7 @@ function SvgAd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <rect

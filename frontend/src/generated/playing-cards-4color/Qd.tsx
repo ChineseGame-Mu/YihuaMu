@@ -18,7 +18,7 @@ function SvgQd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-260 100c300 0 220 360 520 360M-175 0v-285a175 175 0 01350 0v570a175 175 0 01-350 0z"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}
@@ -32,7 +32,7 @@ function SvgQd(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <symbol id="QD_svg__b" preserveAspectRatio="none" viewBox="0 0 1300 2000">

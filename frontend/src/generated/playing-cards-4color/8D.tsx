@@ -15,7 +15,7 @@ function Svg8D(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <symbol
@@ -25,7 +25,7 @@ function Svg8D(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-1-50a205 205 0 112 0h-2a255 255 0 102 0z"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}
