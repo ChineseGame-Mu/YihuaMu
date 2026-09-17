@@ -15,7 +15,7 @@ function Svg6D(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-400 0C-350 0 0-450 0-500 0-450 350 0 400 0 350 0 0 450 0 500 0 450-350 0-400 0z"
-          fill="#00f"
+          fill="#f5a623"
         />
       </symbol>
       <symbol
@@ -25,7 +25,7 @@ function Svg6D(props: React.SVGProps<SVGSVGElement>) {
       >
         <path
           d="M-250 100a250 250 0 01500 0v110a250 250 0 01-500 0v-420A250 250 0 010-460c150 0 180 60 200 85"
-          stroke="#00f"
+          stroke="#f5a623"
           strokeWidth={80}
           strokeLinecap="square"
           strokeMiterlimit={1.5}

@@ -597,7 +597,7 @@ const GuandanTable: React.FunctionComponent = () => {
             onChange={(event) => setFourColor(event.target.value === "four")}
           >
             <option value="two">二色（黑 / 红）</option>
-            <option value="four">四色（黑 / 红 / 蓝 / 绿）</option>
+            <option value="four">四色（黑 / 红 / 橘黄 / 绿）</option>
           </select>
           <br />
           <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
