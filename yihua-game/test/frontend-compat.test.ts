@@ -97,6 +97,8 @@ describe("legacy frontend compatibility adapter", () => {
       minimum_players: 4,
       maximum_players: 14,
       card_count_alert_threshold: 6,
+      next_round_joiners: [],
+      next_round_leavers: [],
     });
   });
 

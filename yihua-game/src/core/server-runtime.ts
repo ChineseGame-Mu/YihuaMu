@@ -26,6 +26,10 @@ export const createServerRuntime = (
             ? { ...participant, connected: false }
             : participant,
         ),
+        observers: (saved.room.observers ?? []).map((observer) => ({
+          ...observer,
+          connected: false,
+        })),
       },
       game: saved.game,
       revision: saved.revision,

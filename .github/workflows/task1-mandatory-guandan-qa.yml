@@ -47,6 +47,8 @@ jobs:
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
           const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
+          const participation = fs.readFileSync("yihua-game/test/round-participation-rotation.test.ts", "utf8");
+          const spectatorFlow = fs.readFileSync("yihua-game/test/legacy-spectator-next-round.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
 
           const contracts = [
@@ -63,6 +65,9 @@ jobs:
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
+            ["optional partner selector exists", /选择搭档（可选）/.test(table) && /preferred_partner/.test(table)],
+            ["spectators may join the next round", /加入下一轮/.test(table) && /keeps a late arrival observing/.test(participation) && /legacy spectator next-round entry/.test(spectatorFlow)],
+            ["departing players receive robot replacements", /本局结束后退出（机器人替补）/.test(table) && /fills the exact seat with a robot/.test(participation)],
             ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
             ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],
           ];
@@ -111,6 +116,8 @@ jobs:
           test/legacy-next-round-compat.test.ts
           test/legacy-next-round-role.test.ts
           test/legacy-robot-next-round.test.ts
+          test/round-participation-rotation.test.ts
+          test/legacy-spectator-next-round.test.ts
           test/robot-teammate-yield.test.ts
           test/robot-strategy.test.ts
 

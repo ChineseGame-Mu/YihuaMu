@@ -19,10 +19,16 @@ import { RANKS, type Rank } from "./cards.js";
 import { classifyGameCardIds } from "./game-actions.js";
 import type { ServerMessage } from "./protocol.js";
 import {
+  addObserver,
+  choosePartner,
   disconnectHuman,
+  disconnectObserver,
   reconnectHuman,
+  reconnectObserver,
   removeParticipant,
+  removeObserver,
   replaceRobotWithHuman,
+  setParticipationForNextRound,
 } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
 import type { SupportedPlayerCount } from "./table.js";
@@ -221,11 +227,17 @@ export const legacyNextRoundRobotState = (
     ({ seat }) => seat === winnerSeat,
   );
   const shuffleReady = managed.room.participants.some(
-    ({ seat, kind, readyForNextRound }) =>
+    ({ seat, kind, readyForNextRound, leavingAfterRound }) =>
       seat % 2 !== winnerSeat % 2 &&
-      (kind === "robot" || readyForNextRound === true),
+      (kind === "robot" ||
+        readyForNextRound === true ||
+        leavingAfterRound === true),
   );
-  return { shuffleReady, winnerIsRobot: winner?.kind === "robot" };
+  return {
+    shuffleReady,
+    winnerIsRobot:
+      winner?.kind === "robot" || winner?.leavingAfterRound === true,
+  };
 };
 
 const advanceLegacyRobotNextRound = async (
@@ -249,6 +261,7 @@ const advanceLegacyRobotNextRound = async (
   prepareLegacyTribute(roomId, current.game.finishedSeats);
   const next = runtime.rooms.nextRound(roomId);
   startedLegacyGames.delete(roomId);
+  await runtime.websocket.broadcastRoomState(next);
   await runtime.websocket.broadcastGameState(next);
   await runtime.websocket.sendPrivateHands(next);
   if (resolveLegacyTributeResistance(roomId, next)) {
@@ -444,6 +457,20 @@ class LegacyAdapterSocket implements TextSocket {
     const message = JSON.parse(text) as ServerMessage;
     switch (message.type) {
       case "room_state":
+        {
+          const nextSeat =
+            message.participants.find(({ id }) => id === this.compat.playerId)
+              ?.seat ?? null;
+          if (nextSeat !== this.compat.seat) {
+            this.compat.seat = nextSeat;
+            if (nextSeat === null) this.compat.privateCardIds.splice(0);
+            await sendLegacy(this.socket, {
+              type: "joined",
+              room: this.compat.roomId,
+              seat: nextSeat,
+            });
+          }
+        }
         this.roomState = message;
         await sendLegacy(this.socket, roomStateToLegacyWaiting(message));
         if (this.gameState?.phase === "round-complete") {
@@ -664,20 +691,27 @@ export const attachLegacyGuandanConnection = async (
 
   connection.onClose(async () => {
     if (active === undefined) return;
-    runtime.sockets.unregister(active.roomId, active.adapter);
+    const closed = active;
+    runtime.sockets.unregister(closed.roomId, closed.adapter);
     if (
-      runtime.sockets.playerConnectionCount(active.roomId, active.playerId) > 0
+      runtime.sockets.playerConnectionCount(closed.roomId, closed.playerId) > 0
     ) {
       return;
     }
     try {
-      const managed = runtime.rooms.get(active.roomId);
-      const next = runtime.rooms.set(active.roomId, {
+      const managed = runtime.rooms.get(closed.roomId);
+      const isObserver = managed.room.observers.some(
+        ({ id }) => id === closed.playerId,
+      );
+      const next = runtime.rooms.set(closed.roomId, {
         ...managed,
-        room:
-          managed.game.phase === "lobby"
-            ? removeParticipant(managed.room, active.playerId)
-            : disconnectHuman(managed.room, active.playerId),
+        room: isObserver
+          ? managed.game.phase === "lobby"
+            ? removeObserver(managed.room, closed.playerId)
+            : disconnectObserver(managed.room, closed.playerId)
+          : managed.game.phase === "lobby"
+            ? removeParticipant(managed.room, closed.playerId)
+            : disconnectHuman(managed.room, closed.playerId),
       });
       await runtime.websocket.broadcastRoomState(next);
     } catch {
@@ -708,6 +742,9 @@ export const attachLegacyGuandanConnection = async (
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
+        const existingObserver = managed.room.observers.find(
+          ({ id }) => id === playerId,
+        );
         const desiredSeat = requestedLegacySeat(
           message,
           managed.room.config.playerCount,
@@ -720,6 +757,7 @@ export const attachLegacyGuandanConnection = async (
               );
         if (
           existing === undefined &&
+          managed.game.phase === "lobby" &&
           desiredOccupant !== undefined &&
           desiredOccupant.kind === "human"
         ) {
@@ -731,11 +769,15 @@ export const attachLegacyGuandanConnection = async (
             : [...managed.room.participants]
                 .filter(({ kind }) => kind === "robot")
                 .sort((a, b) => a.seat - b.seat)[0]?.seat;
-        const seat =
-          existing?.seat ??
-          desiredSeat ??
-          robotSeat ??
-          firstAvailableSeat(managed);
+        const joinsAsObserver =
+          existingObserver !== undefined ||
+          (existing === undefined && managed.game.phase !== "lobby");
+        const seat = joinsAsObserver
+          ? null
+          : (existing?.seat ??
+            desiredSeat ??
+            robotSeat ??
+            firstAvailableSeat(managed));
         const adapter = new LegacyAdapterSocket(connection.socket, {
           roomId,
           playerId,
@@ -753,6 +795,23 @@ export const attachLegacyGuandanConnection = async (
               });
               await runtime.websocket.broadcastRoomState(managed);
             }
+          } else if (existingObserver !== undefined) {
+            if (!existingObserver.connected) {
+              managed = runtime.rooms.set(roomId, {
+                ...managed,
+                room: reconnectObserver(managed.room, playerId),
+              });
+              await runtime.websocket.broadcastRoomState(managed);
+            }
+          } else if (joinsAsObserver) {
+            managed = runtime.rooms.set(roomId, {
+              ...managed,
+              room: addObserver(managed.room, {
+                id: playerId,
+                name: message.name,
+              }),
+            });
+            await runtime.websocket.broadcastRoomState(managed);
           } else if (robotSeat !== undefined && robotSeat === seat) {
             managed = runtime.rooms.set(roomId, {
               ...managed,
@@ -802,6 +861,55 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+
+      if (message.type === "reorder_players") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase !== "lobby") {
+          throw new Error(
+            "partners can only be selected before the first round",
+          );
+        }
+        const partner = managed.room.participants.find(
+          ({ seat, kind }) => seat === message.order[1] && kind === "human",
+        );
+        if (partner === undefined)
+          throw new Error("selected partner is unavailable");
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: choosePartner(managed.room, active.playerId, partner.id),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        return;
+      }
+
+      if (message.type === "set_participation") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase === "lobby") {
+          throw new Error(
+            "participation changes are available after play begins",
+          );
+        }
+        const preferredPartner =
+          message.preferred_partner === undefined
+            ? undefined
+            : managed.room.participants.find(
+                ({ name, kind }) =>
+                  name === message.preferred_partner && kind === "human",
+              );
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: setParticipationForNextRound(
+            managed.room,
+            active.playerId,
+            message.active,
+            preferredPartner?.id,
+          ),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        await runtime.websocket.broadcastGameState(next);
+        await advanceLegacyRobotNextRound(runtime, active.roomId);
+        return;
       }
 
       if (message.type === "start_trick") {

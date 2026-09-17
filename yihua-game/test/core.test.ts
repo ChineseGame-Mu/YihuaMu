@@ -31,11 +31,11 @@ describe("table configuration", () => {
     }
   });
 
-  it("allows zero through three robots", () => {
-    for (const botCount of [0, 1, 2, 3]) {
+  it("allows replacement robots while retaining at least one human", () => {
+    for (const botCount of [0, 1, 2, 3, 8, 13]) {
       expect(createTableConfig(14, botCount).botCount).toBe(botCount);
     }
-    expect(() => createTableConfig(14, 4)).toThrow();
+    expect(() => createTableConfig(14, 14)).toThrow();
   });
 
   it("alternates teams by seat", () => {

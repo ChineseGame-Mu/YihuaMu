@@ -197,6 +197,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const [showSettings, setShowSettings] = React.useState(false);
   const [shuffleFrom, setShuffleFrom] = React.useState("1");
   const [shuffleTo, setShuffleTo] = React.useState("108");
+  const [preferredPartner, setPreferredPartner] = React.useState("");
   const [fourColor, setFourColor] = React.useState(
     () => window.localStorage.getItem("guandan_four_color") === "on",
   );
@@ -261,6 +262,10 @@ const GuandanTable: React.FunctionComponent = () => {
     state.seat === null
       ? null
       : (state.players[state.seat] ?? `玩家${state.seat + 1}`);
+  const joiningNextRound = state.nextRoundJoiners.includes(name.trim());
+  const leavingNextRound =
+    currentPlayerName !== null &&
+    state.nextRoundLeavers.includes(currentPlayerName);
   const lastWinnerName =
     state.lastGameWinner === null
       ? null
@@ -459,9 +464,29 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
-  const swapSeat = (targetSeat: number): void => {
-    if (gameStarted || state.seat === null || targetSeat === state.seat) return;
-    send({ type: "reorder_players", order: [state.seat, targetSeat] });
+  const choosePartner = (partnerName: string): void => {
+    setPreferredPartner(partnerName);
+    if (gameStarted || state.seat === null || partnerName === "") return;
+    const partnerSeat = state.players.findIndex(
+      (player) => player === partnerName,
+    );
+    if (partnerSeat >= 0) {
+      send({ type: "reorder_players", order: [state.seat, partnerSeat] });
+    }
+  };
+
+  const toggleObserverEntry = (): void => {
+    send({
+      type: "set_participation",
+      active: !joiningNextRound,
+      ...(preferredPartner === ""
+        ? {}
+        : { preferred_partner: preferredPartner }),
+    });
+  };
+
+  const togglePlayerExit = (): void => {
+    send({ type: "set_participation", active: leavingNextRound });
   };
 
   const shuffleNextRound = (): void => {
@@ -786,7 +811,31 @@ const GuandanTable: React.FunctionComponent = () => {
         <>
           {observing && (
             <section className="guandan-observer-notice" role="status">
-              您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。
+              <p>
+                您正在围观本桌。可以看到玩家、在线状态和全部桌面出牌，但不会看到任何玩家的手牌。
+              </p>
+              <label>
+                下一轮搭档（可选）：
+                <select
+                  value={preferredPartner}
+                  onChange={(event) => setPreferredPartner(event.target.value)}
+                >
+                  <option value="">系统安排</option>
+                  {state.players
+                    .filter((player) => !player.startsWith("机器人"))
+                    .map((player) => (
+                      <option key={player} value={player}>
+                        {player}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button type="button" onClick={toggleObserverEntry}>
+                {joiningNextRound ? "取消加入下一轮" : "加入下一轮"}
+              </button>
+              {joiningNextRound && (
+                <strong> 已登记，下一轮有机器人座位时自动入座。</strong>
+              )}
               {testMode &&
                 requestedPlayerCount > 4 &&
                 state.maximumPlayers !== null &&
@@ -970,23 +1019,48 @@ const GuandanTable: React.FunctionComponent = () => {
                         ? "剩余：待发牌"
                         : `剩余：${remainingCountForSeat(index)} 张`}
                     </div>
-                    {!gameStarted &&
-                      state.seat !== null &&
-                      index !== state.seat && (
-                        <button
-                          type="button"
-                          className="normal"
-                          onClick={() => swapSeat(index)}
-                        >
-                          与我换位
-                        </button>
-                      )}
                   </div>
                 ))}
               </div>
               {state.observers.length > 0 && (
                 <div className="guandan-observers">
                   围观：{state.observers.join("、")}
+                </div>
+              )}
+              {!gameStarted && state.seat !== null && (
+                <label className="guandan-partner-choice">
+                  选择搭档（可选）：
+                  <select
+                    value={preferredPartner}
+                    onChange={(event) => choosePartner(event.target.value)}
+                  >
+                    <option value="">不指定</option>
+                    {state.players
+                      .filter((_, index) => index !== state.seat)
+                      .filter((player) => !player.startsWith("机器人"))
+                      .map((player) => (
+                        <option key={player} value={player}>
+                          {player}
+                        </option>
+                      ))}
+                  </select>
+                  <small>选择后自动调整座位，使双方成为同队搭档。</small>
+                </label>
+              )}
+              {gameStarted && !observing && (
+                <div className="guandan-participation-choice">
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={togglePlayerExit}
+                  >
+                    {leavingNextRound
+                      ? "取消退出，继续下一轮"
+                      : "本局结束后退出（机器人替补）"}
+                  </button>
+                  {leavingNextRound && (
+                    <strong> 已登记：下一轮转为旁观，机器人接替座位。</strong>
+                  )}
                 </div>
               )}
             </section>

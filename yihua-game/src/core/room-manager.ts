@@ -16,7 +16,12 @@ import {
   submitNativeTribute,
   type NativeTributeState,
 } from "./native-tribute.js";
-import { createRoom, openLateJoinWindow, type RoomState } from "./room.js";
+import {
+  applyNextRoundParticipation,
+  createRoom,
+  openLateJoinWindow,
+  type RoomState,
+} from "./room.js";
 import {
   isSupportedPlayerCount,
   SUPPORTED_PLAYER_COUNTS,
@@ -80,7 +85,10 @@ export const robotMustYieldToTeammate = (
   managed: ManagedRoom,
   seat: number,
 ): boolean => {
-  if (managed.game.phase !== "playing" || managed.game.config.playerCount !== 4) {
+  if (
+    managed.game.phase !== "playing" ||
+    managed.game.config.playerCount !== 4
+  ) {
     return false;
   }
   const participant = managed.room.participants.find(
@@ -224,13 +232,22 @@ export class RoomManager {
     }
 
     const activeCount = activeCountForNextRound(managed);
-    const completed =
+    const nextRoom = applyNextRoundParticipation(managed.room);
+    const completedWithCount =
       activeCount === managed.game.config.playerCount
         ? managed.game
         : {
             ...managed.game,
             config: { ...managed.game.config, playerCount: activeCount },
           };
+    const completed = {
+      ...completedWithCount,
+      config: {
+        ...completedWithCount.config,
+        botCount: nextRoom.participants.filter(({ kind }) => kind === "robot")
+          .length,
+      },
+    };
 
     let nextLevelRank = completed.levelRank;
     let nextTeamLevels = completed.teamLevels;
@@ -262,6 +279,7 @@ export class RoomManager {
 
     const next = {
       ...managed,
+      room: nextRoom,
       game: nextGame,
       revision: managed.revision + 1,
       tribute,
@@ -271,11 +289,7 @@ export class RoomManager {
     return next;
   }
 
-  submitTribute(
-    roomId: string,
-    seat: number,
-    cardId: string,
-  ): ManagedRoom {
+  submitTribute(roomId: string, seat: number, cardId: string): ManagedRoom {
     const managed = this.get(roomId);
     if (managed.game.phase !== "playing" || managed.tribute === undefined) {
       throw new Error("no native tribute exchange is active");
