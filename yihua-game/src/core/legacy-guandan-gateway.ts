@@ -13,6 +13,7 @@ import {
   hasPendingLegacyTribute,
   prepareLegacyTribute,
   resolveLegacyTributeResistance,
+  runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
 import { classifyGameCardIds } from "./game-actions.js";
@@ -206,6 +207,58 @@ const robotCandidatePriority = (
   });
 };
 
+export const legacyNextRoundRobotState = (
+  managed: ReturnType<ServerRuntime["rooms"]["get"]>,
+): { readonly shuffleReady: boolean; readonly winnerIsRobot: boolean } => {
+  if (managed.game.phase !== "round-complete") {
+    return { shuffleReady: false, winnerIsRobot: false };
+  }
+  const winnerSeat = managed.game.finishedSeats[0];
+  if (winnerSeat === undefined) {
+    return { shuffleReady: false, winnerIsRobot: false };
+  }
+  const winner = managed.room.participants.find(
+    ({ seat }) => seat === winnerSeat,
+  );
+  const shuffleReady = managed.room.participants.some(
+    ({ seat, kind, readyForNextRound }) =>
+      seat % 2 !== winnerSeat % 2 &&
+      (kind === "robot" || readyForNextRound === true),
+  );
+  return { shuffleReady, winnerIsRobot: winner?.kind === "robot" };
+};
+
+const advanceLegacyRobotNextRound = async (
+  runtime: ServerRuntime,
+  roomId: string,
+): Promise<boolean> => {
+  const managed = runtime.rooms.get(roomId);
+  const { shuffleReady, winnerIsRobot } = legacyNextRoundRobotState(managed);
+  if (!shuffleReady || !winnerIsRobot) return false;
+
+  await sleep(ROBOT_TURN_DELAY_MS);
+  const current = runtime.rooms.get(roomId);
+  const currentState = legacyNextRoundRobotState(current);
+  if (
+    current.game.phase !== "round-complete" ||
+    !currentState.shuffleReady ||
+    !currentState.winnerIsRobot
+  )
+    return false;
+
+  prepareLegacyTribute(roomId, current.game.finishedSeats);
+  const next = runtime.rooms.nextRound(roomId);
+  startedLegacyGames.delete(roomId);
+  await runtime.websocket.broadcastGameState(next);
+  await runtime.websocket.sendPrivateHands(next);
+  if (resolveLegacyTributeResistance(roomId, next)) {
+    await runtime.websocket.broadcastGameState(next);
+  } else {
+    await runLegacyRobotTribute(runtime, roomId);
+  }
+  return true;
+};
+
 const clearRobotWonTrick = async (
   runtime: ServerRuntime,
   roomId: string,
@@ -236,6 +289,10 @@ const runLegacyRobots = async (
 ): Promise<void> => {
   for (let guard = 0; guard < 64; guard += 1) {
     let managed = runtime.rooms.get(roomId);
+    if (managed.game.phase === "round-complete") {
+      await advanceLegacyRobotNextRound(runtime, roomId);
+      return;
+    }
     if (
       managed.game.phase !== "playing" ||
       !legacyTrickStarted(roomId, managed)
@@ -832,6 +889,7 @@ export const attachLegacyGuandanConnection = async (
           cardId,
           message.type,
         );
+        await runLegacyRobotTribute(runtime, active.roomId);
         return;
       }
 
@@ -868,10 +926,16 @@ export const attachLegacyGuandanConnection = async (
         await runLegacyRobots(runtime, active.roomId);
       }
 
+      if (message.type === "shuffle_next_round") {
+        await advanceLegacyRobotNextRound(runtime, active.roomId);
+      }
+
       if (message.type === "deal_next_round") {
         const managed = runtime.rooms.get(active.roomId);
         if (resolveLegacyTributeResistance(active.roomId, managed)) {
           await runtime.websocket.broadcastGameState(managed);
+        } else {
+          await runLegacyRobotTribute(runtime, active.roomId);
         }
       }
     } catch (error) {

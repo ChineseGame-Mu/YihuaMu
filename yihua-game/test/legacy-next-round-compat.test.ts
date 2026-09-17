@@ -25,6 +25,7 @@ const game = (
 
 const room = (
   losingTeamReady: boolean,
+  losingTeamKind: "human" | "robot" = "human",
 ): Extract<ServerMessage, { readonly type: "room_state" }> => ({
   type: "room_state",
   roomId: "room-a",
@@ -36,7 +37,7 @@ const room = (
       id: "b",
       name: "B",
       seat: 1,
-      kind: "human",
+      kind: losingTeamKind,
       connected: true,
       readyForNextRound: losingTeamReady,
     },
@@ -59,6 +60,16 @@ describe("legacy next-round compatibility bridge", () => {
     expect(legacy.type).toBe("state");
     if (legacy.type !== "state") return;
     expect(legacy.last_game_winner).toBe(0);
+    expect(legacy.next_round_phase).toBe("awaiting_deal");
+  });
+
+  it("advances the old UI to deal when a losing-team robot auto-shuffles", () => {
+    const legacy = gameStateToLegacy(
+      room(false, "robot"),
+      game("round-complete"),
+    );
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") return;
     expect(legacy.next_round_phase).toBe("awaiting_deal");
   });
 

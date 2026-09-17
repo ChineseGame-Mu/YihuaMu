@@ -235,8 +235,9 @@ export const gameStateToLegacy = (
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
     participants.some(
-      ({ seat, readyForNextRound }) =>
-        seat % 2 !== lastGameWinner % 2 && readyForNextRound === true,
+      ({ seat, kind, readyForNextRound }) =>
+        seat % 2 !== lastGameWinner % 2 &&
+        (kind === "robot" || readyForNextRound === true),
     );
 
   return {
