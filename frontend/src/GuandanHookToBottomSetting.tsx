@@ -73,7 +73,10 @@ const GuandanHookToBottomSetting = (): React.JSX.Element | null => {
       `;
       document.head.appendChild(style);
     }
-    document.body.classList.toggle(RETURN_PRIVACY_BODY_CLASS, hideCurrentReturn);
+    document.body.classList.toggle(
+      RETURN_PRIVACY_BODY_CLASS,
+      hideCurrentReturn,
+    );
     return () => document.body.classList.remove(RETURN_PRIVACY_BODY_CLASS);
   }, [hideCurrentReturn]);
 
