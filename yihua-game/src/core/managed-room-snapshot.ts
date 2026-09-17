@@ -64,6 +64,10 @@ export const decodeManagedRoomSnapshot = (text: string): ManagedRoom => {
           ? { ...participant, connected: false }
           : participant,
       ),
+      observers: (parsed.managed.room.observers ?? []).map((observer) => ({
+        ...observer,
+        connected: false,
+      })),
     },
   };
 };

@@ -91,6 +91,7 @@ describe("legacy robot next-round continuation", () => {
           connected: true,
         },
       ],
+      observers: [],
     },
     game: {
       phase: "round-complete",
@@ -112,6 +113,25 @@ describe("legacy robot next-round continuation", () => {
 
   it("lets a robot winner auto-deal after a losing robot auto-shuffles", () => {
     expect(legacyNextRoundRobotState(managed("robot"))).toEqual({
+      shuffleReady: true,
+      winnerIsRobot: true,
+    });
+  });
+
+  it("treats a departing human winner as the robot replacement for automatic continuation", () => {
+    const current = managed("human");
+    const departing: ManagedRoom = {
+      ...current,
+      room: {
+        ...current.room,
+        participants: current.room.participants.map((participant) =>
+          participant.id === "winner"
+            ? { ...participant, leavingAfterRound: true }
+            : participant,
+        ),
+      },
+    };
+    expect(legacyNextRoundRobotState(departing)).toEqual({
       shuffleReady: true,
       winnerIsRobot: true,
     });

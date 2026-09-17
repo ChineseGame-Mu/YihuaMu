@@ -29,7 +29,11 @@ export type LegacyClientMessage =
       readonly type: "reorder_players";
       readonly order: readonly [number, number];
     }
-  | { readonly type: "set_participation"; readonly active: boolean }
+  | {
+      readonly type: "set_participation";
+      readonly active: boolean;
+      readonly preferred_partner?: string;
+    }
   | { readonly type: "set_bots"; readonly count: 1 | 2 | 3 }
   | { readonly type: "start"; readonly player_count: number }
   | { readonly type: "start_trick" }
@@ -60,6 +64,8 @@ export type LegacyServerMessage =
       readonly minimum_players: number;
       readonly maximum_players: number;
       readonly card_count_alert_threshold: number;
+      readonly next_round_joiners: readonly string[];
+      readonly next_round_leavers: readonly string[];
     }
   | {
       readonly type: "started";
@@ -109,6 +115,8 @@ export type LegacyServerMessage =
       readonly match_winner: null;
       readonly next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
       readonly card_count_alert_threshold: number;
+      readonly next_round_joiners: readonly string[];
+      readonly next_round_leavers: readonly string[];
     }
   | { readonly type: "error"; readonly message: string };
 
@@ -209,11 +217,17 @@ export const roomStateToLegacyWaiting = (
   return {
     type: "waiting",
     players: participants.map(({ name }) => name),
-    observers: [],
+    observers: (message.observers ?? []).map(({ name }) => name),
     online_players: participants.map(({ connected }) => connected),
     minimum_players: 4,
     maximum_players: 14,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
+    next_round_joiners: (message.observers ?? [])
+      .filter(({ readyForNextRound }) => readyForNextRound)
+      .map(({ name }) => name),
+    next_round_leavers: participants
+      .filter(({ leavingAfterRound }) => leavingAfterRound)
+      .map(({ name }) => name),
   };
 };
 
@@ -235,15 +249,17 @@ export const gameStateToLegacy = (
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
     participants.some(
-      ({ seat, kind, readyForNextRound }) =>
+      ({ seat, kind, readyForNextRound, leavingAfterRound }) =>
         seat % 2 !== lastGameWinner % 2 &&
-        (kind === "robot" || readyForNextRound === true),
+        (kind === "robot" ||
+          readyForNextRound === true ||
+          leavingAfterRound === true),
     );
 
   return {
     type: "state",
     players: participants.map(({ name }) => name),
-    observers: [],
+    observers: (room.observers ?? []).map(({ name }) => name),
     online_players: participants.map(({ connected }) => connected),
     turn: game.currentTurn,
     hand_counts: game.handCounts,
@@ -274,5 +290,11 @@ export const gameStateToLegacy = (
           : "awaiting_shuffle"
         : null,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
+    next_round_joiners: (room.observers ?? [])
+      .filter(({ readyForNextRound }) => readyForNextRound)
+      .map(({ name }) => name),
+    next_round_leavers: participants
+      .filter(({ leavingAfterRound }) => leavingAfterRound)
+      .map(({ name }) => name),
   };
 };

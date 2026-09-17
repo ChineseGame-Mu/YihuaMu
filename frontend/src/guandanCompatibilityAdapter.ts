@@ -35,6 +35,8 @@ export interface GuandanTableState {
   tributeResisted: boolean;
   matchWinner: GuandanTeam | null;
   nextRoundPhase: "awaiting_shuffle" | "awaiting_deal" | null;
+  nextRoundJoiners: string[];
+  nextRoundLeavers: string[];
   hookToBottom: boolean;
   minimumPlayers: number | null;
   maximumPlayers: number | null;
@@ -70,6 +72,8 @@ export const initialGuandanTableState: GuandanTableState = {
   tributeResisted: false,
   matchWinner: null,
   nextRoundPhase: null,
+  nextRoundJoiners: [],
+  nextRoundLeavers: [],
   hookToBottom: false,
   minimumPlayers: null,
   maximumPlayers: null,
@@ -176,6 +180,8 @@ export const adaptGuandanServerMessage = (
         onlinePlayers: message.online_players,
         minimumPlayers: message.minimum_players,
         maximumPlayers: message.maximum_players,
+        nextRoundJoiners: message.next_round_joiners ?? [],
+        nextRoundLeavers: message.next_round_leavers ?? [],
         error: null,
       };
     case "started":
@@ -263,6 +269,8 @@ export const adaptGuandanServerMessage = (
         tributeResisted: message.tribute_resisted,
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
+        nextRoundJoiners: message.next_round_joiners ?? [],
+        nextRoundLeavers: message.next_round_leavers ?? [],
         hookToBottom: message.hook_to_bottom ?? state.hookToBottom,
         error: null,
       };
