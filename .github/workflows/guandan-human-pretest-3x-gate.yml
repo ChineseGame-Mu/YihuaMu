@@ -33,9 +33,13 @@ jobs:
         working-directory: frontend
         run: yarn install --frozen-lockfile
 
-      - name: Verify frontend Prettier version
+      - name: Verify frontend Prettier 3.4.1
         working-directory: frontend
-        run: test "$(yarn --silent prettier --version)" = "3.4.1"
+        run: yarn prettier:version
+
+      - name: Frontend formatting gate
+        working-directory: frontend
+        run: yarn format:check
 
       - name: Frontend build
         working-directory: frontend
@@ -48,10 +52,6 @@ jobs:
       - name: Frontend lint
         working-directory: frontend
         run: yarn lint
-
-      - name: Frontend formatting
-        working-directory: frontend
-        run: yarn prettier src --check
 
       - name: Install clean-room backend dependencies
         working-directory: yihua-game
