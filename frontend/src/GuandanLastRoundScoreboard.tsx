@@ -5,9 +5,7 @@ const GuandanLastRoundScoreboard = (): React.JSX.Element => {
   const { state } = React.useContext(GuandanStateContext);
   const winner = state.lastGameWinner;
   const winnerName =
-    winner === null
-      ? null
-      : (state.players[winner] ?? `玩家${winner + 1}`);
+    winner === null ? null : (state.players[winner] ?? `玩家${winner + 1}`);
   const score = state.lastPromotionSteps;
 
   return (
