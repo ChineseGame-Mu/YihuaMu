@@ -45,6 +45,7 @@ jobs:
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
+          const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
 
           const contracts = [
             ["public player name renders", /state\.players\[play\.player\]/.test(table)],
@@ -58,6 +59,8 @@ jobs:
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
+            ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
+            ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],
           ];
 
           const failed = contracts.filter(([, ok]) => !ok).map(([name]) => name);
@@ -80,6 +83,7 @@ jobs:
         run: >
           yarn test --runInBand
           src/guandanPublicPlayNameCss.test.ts
+          src/guandanFourColorPalette.test.ts
           src/guandanRealTestFixes.test.ts
           src/guandanCurrentTrickPlays.test.ts
           src/GuandanStateProvider.test.ts
