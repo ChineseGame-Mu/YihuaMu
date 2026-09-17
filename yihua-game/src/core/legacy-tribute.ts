@@ -81,6 +81,66 @@ export const legacyTributePlan = (roomId: string): LegacyTributePlan | null =>
 export const hasPendingLegacyTribute = (roomId: string): boolean =>
   sessions.has(roomId);
 
+export const runLegacyRobotTribute = async (
+  runtime: ServerRuntime,
+  roomId: string,
+): Promise<void> => {
+  let session = sessions.get(roomId);
+  if (session === undefined) return;
+
+  for (const seat of tributeGivers(session.plan)) {
+    if (session.tributeCards.some(({ player }) => player === seat)) continue;
+    const managed = runtime.rooms.get(roomId);
+    if (managed.game.phase !== "playing") return;
+    const participant = managed.room.participants.find(
+      (candidate) => candidate.seat === seat,
+    );
+    if (participant?.kind !== "robot") continue;
+    const level = managed.game.levelRank ?? "2";
+    const card = [...(managed.game.hands[seat] ?? [])]
+      .filter(({ card: candidate }) => !isWildLevelCard(candidate, level))
+      .sort(
+        (left, right) =>
+          singleStrength(right.card, level) - singleStrength(left.card, level),
+      )[0];
+    if (card === undefined) throw new Error("robot has no legal tribute card");
+    await applyLegacyTributeSelection(
+      runtime,
+      roomId,
+      seat,
+      card.id,
+      "tribute_card",
+    );
+    session = sessions.get(roomId);
+    if (session === undefined) return;
+  }
+
+  if (!allTributesReceived(session)) return;
+  for (const seat of tributeReceivers(session.plan)) {
+    if (session.returnCards.some(({ player }) => player === seat)) continue;
+    const managed = runtime.rooms.get(roomId);
+    if (managed.game.phase !== "playing") return;
+    const participant = managed.room.participants.find(
+      (candidate) => candidate.seat === seat,
+    );
+    if (participant?.kind !== "robot") continue;
+    const level = managed.game.levelRank ?? "2";
+    const card = (managed.game.hands[seat] ?? []).find(({ card: candidate }) =>
+      legalReturnCard(candidate, level),
+    );
+    if (card === undefined) throw new Error("robot has no legal return card");
+    await applyLegacyTributeSelection(
+      runtime,
+      roomId,
+      seat,
+      card.id,
+      "return_tribute",
+    );
+    session = sessions.get(roomId);
+    if (session === undefined) return;
+  }
+};
+
 export const legacyTributeResisted = (roomId: string): boolean =>
   resistedRooms.get(roomId) ?? false;
 
