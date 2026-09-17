@@ -1,0 +1,89 @@
+name: Guandan Human Pretest 3x Gate
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - "yihua-game/**"
+      - ".github/workflows/guandan-human-pretest-3x-gate.yml"
+  workflow_dispatch:
+
+jobs:
+  human-pretest-gate:
+    name: Human pretest QA pass ${{ matrix.pass }} of 3
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pass: [1, 2, 3]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Verify frontend Prettier 3.4.1
+        working-directory: frontend
+        run: yarn prettier:version
+
+      - name: Frontend formatting gate
+        working-directory: frontend
+        run: yarn format:check
+
+      - name: Frontend build
+        working-directory: frontend
+        run: yarn build
+
+      - name: Frontend full regression suite
+        working-directory: frontend
+        run: yarn test --runInBand
+
+      - name: Frontend lint
+        working-directory: frontend
+        run: yarn lint
+
+      - name: Install clean-room backend dependencies
+        working-directory: yihua-game
+        run: npm ci
+
+      - name: Verify clean-room Prettier version
+        working-directory: yihua-game
+        run: npm run prettier:version
+
+      - name: Clean-room format check
+        working-directory: yihua-game
+        run: npm run format:check
+
+      - name: Clean-room typecheck
+        working-directory: yihua-game
+        run: npm run typecheck
+
+      - name: Four-client tribute and return acceptance chain
+        working-directory: yihua-game
+        run: npx vitest run test/legacy-tribute-four-client-acceptance.test.ts
+
+      - name: Robot teammate-yield regression
+        working-directory: yihua-game
+        run: npx vitest run test/robot-teammate-yield.test.ts
+
+      - name: Full clean-room backend regression suite
+        working-directory: yihua-game
+        run: npm test
+
+      - name: Build clean-room backend
+        working-directory: yihua-game
+        run: npm run build
+
+      - name: Mandatory pass marker
+        run: echo "Human pretest mandatory QA pass ${{ matrix.pass }}/3 GREEN"
