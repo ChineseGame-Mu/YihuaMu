@@ -4,8 +4,8 @@ import path from "path";
 const src = (...parts: string[]): string =>
   fs.readFileSync(path.join(__dirname, ...parts), "utf8");
 
-describe("Guandan mandatory human-pretest UI regressions", () => {
-  test("public table renders the actual player name for every table play", () => {
+describe("Guandan human-pretest regressions", () => {
+  test("public plays include player names", () => {
     const table = src("GuandanTable.tsx");
     expect(table).toContain('className="guandan-trick-play"');
     expect(table).toContain(
@@ -13,7 +13,7 @@ describe("Guandan mandatory human-pretest UI regressions", () => {
     );
   });
 
-  test("public-play name is forced visible below the cards", () => {
+  test("public-play names stay visible below cards", () => {
     const css = src("guandan-real-test-20260916.css");
     expect(css).toContain(
       ".guandan-table .guandan-table-stage .guandan-trick-play > strong",
@@ -28,5 +28,15 @@ describe("Guandan mandatory human-pretest UI regressions", () => {
   test("duplicate fixed last-round HUD is not mounted", () => {
     const entry = src("CleanroomEntry.tsx");
     expect(entry).not.toContain("GuandanLastRoundScoreboard");
+  });
+
+  test("winner scoring persists between rounds", () => {
+    const hud = src("GuandanRoundResultHud.tsx");
+    expect(hud).toContain("scoreStorageKey");
+    expect(hud).toContain("scoreSignatureKey");
+    expect(hud).toContain("lastCompleteFinishOrder");
+    expect(hud).toContain("window.localStorage.setItem");
+    expect(hud).toContain("current.a + model.promotionSteps");
+    expect(hud).toContain("current.b + model.promotionSteps");
   });
 });
