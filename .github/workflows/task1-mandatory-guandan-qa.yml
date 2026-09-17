@@ -46,6 +46,7 @@ jobs:
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
+          const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
 
           const contracts = [
@@ -61,6 +62,7 @@ jobs:
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
+            ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
             ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
             ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],
           ];
@@ -106,6 +108,9 @@ jobs:
         run: >
           npx vitest run
           test/legacy-tribute-four-client-acceptance.test.ts
+          test/legacy-next-round-compat.test.ts
+          test/legacy-next-round-role.test.ts
+          test/legacy-robot-next-round.test.ts
           test/robot-teammate-yield.test.ts
           test/robot-strategy.test.ts
 
