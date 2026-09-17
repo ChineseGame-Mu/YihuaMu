@@ -36,7 +36,10 @@ const suitOrder: Record<string, number> = {
   Hearts: 3,
 };
 
-const cardSortValue = (card: GuandanCard, level: GuandanRank | null): number => {
+const cardSortValue = (
+  card: GuandanCard,
+  level: GuandanRank | null,
+): number => {
   if ("Joker" in card) return card.Joker === "Small" ? 1000 : 1100;
   const rank = rankOrder.indexOf(card.Suited.rank);
   return (
