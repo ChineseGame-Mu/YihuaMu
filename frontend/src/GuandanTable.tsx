@@ -632,7 +632,7 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="desc">从大到小</option>
           </select>
           <br />
-          <label htmlFor="guandan-hand-stack-direction">我的桌面牌叠加：</label>{" "}
+          <label htmlFor="guandan-hand-stack-direction">\n            我的桌面牌叠加：\n          </label>{" "}
           <select
             id="guandan-hand-stack-direction"
             value={handStackDirection}
