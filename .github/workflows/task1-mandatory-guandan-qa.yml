@@ -1,0 +1,107 @@
+name: Task 1 Mandatory Guandan QA x3
+
+on:
+  pull_request:
+    branches: [cleanroom/yihua-game-20260826]
+  push:
+    branches: [cleanroom/yihua-game-20260826]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: task1-mandatory-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  task1-mandatory-qa:
+    name: Mandatory QA pass ${{ matrix.pass }} of 3
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      max-parallel: 1
+      matrix:
+        pass: [1, 2, 3]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: yihua-game/package-lock.json
+
+      - name: Mandatory task-one source contracts
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+
+          const table = fs.readFileSync("frontend/src/GuandanTable.tsx", "utf8");
+          const entry = fs.readFileSync("frontend/src/CleanroomEntry.tsx", "utf8");
+          const css = fs.readFileSync("frontend/src/guandan-real-test-20260916.css", "utf8");
+          const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
+          const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
+          const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
+
+          const contracts = [
+            ["public player name renders", /state\.players\[play\.player\]/.test(table)],
+            ["player name follows public cards", /guandan-table-play[\s\S]*?<\/span>[\s\S]*?<\/div>/.test(table)],
+            ["legacy hidden-name CSS is overridden", /html body \.guandan-table \.guandan-trick-play > strong[\s\S]*?display:\s*block\s*!important/.test(css)],
+            ["name visibility is forced", /visibility:\s*visible\s*!important/.test(css) && /opacity:\s*1\s*!important/.test(css)],
+            ["public cards sort small to large", /sortPlayCards\(play\.cards, message\.level\)/.test(fixes)],
+            ["authoritative clear is preserved", /message\.table_plays\.length === 0 && message\.last_play\.length === 0/.test(fixes)],
+            ["finished hand is cleared", /shouldClearOwnHand\(adapted\.seat, message\.finish_order\)/.test(fixes)],
+            ["last-round scoreboard is mounted", /<GuandanLastRoundScoreboard\s*\/>/.test(entry)],
+            ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
+            ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
+            ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
+          ];
+
+          const failed = contracts.filter(([, ok]) => !ok).map(([name]) => name);
+          if (failed.length) throw new Error(`mandatory task-one contracts missing: ${failed.join(", ")}`);
+          console.log(JSON.stringify({type:"task1_source_contracts_pass", pass: process.env.QA_PASS, contracts: contracts.map(([name]) => name)}));
+          NODE
+        env:
+          QA_PASS: ${{ matrix.pass }}
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        working-directory: frontend
+        run: yarn build
+
+      - name: Run mandatory frontend regressions
+        working-directory: frontend
+        run: >
+          yarn test --runInBand
+          src/guandanPublicPlayNameCss.test.ts
+          src/guandanRealTestFixes.test.ts
+          src/guandanCurrentTrickPlays.test.ts
+          src/GuandanStateProvider.test.ts
+          src/GuandanLastRoundScoreboard.test.tsx
+          src/GuandanRoundResultHud.test.tsx
+          src/guandanReturnTributePrivacy.test.ts
+
+      - name: Install game-server dependencies
+        working-directory: yihua-game
+        run: npm ci
+
+      - name: Typecheck game server
+        working-directory: yihua-game
+        run: npm run typecheck
+
+      - name: Run mandatory backend regressions
+        working-directory: yihua-game
+        run: >
+          npx vitest run
+          test/legacy-tribute-four-client-acceptance.test.ts
+          test/robot-teammate-yield.test.ts
+          test/robot-strategy.test.ts
+
+      - name: Record successful pass
+        run: echo "Task 1 mandatory QA pass ${{ matrix.pass }} of 3 succeeded for ${{ github.sha }}"
