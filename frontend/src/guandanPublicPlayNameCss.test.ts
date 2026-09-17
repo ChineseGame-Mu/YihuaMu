@@ -9,7 +9,7 @@ describe("public Guandan play player name CSS", () => {
     );
 
     expect(css).toMatch(
-      /html body \.guandan-table \.guandan-trick-play > strong\s*\{[^}]*display:\s*block\s*!important;/s,
+      /html body \.guandan-table \.guandan-trick-play > strong\s*\{[^}]*display:\s*block\s*!important;/,
     );
     expect(css).toMatch(/visibility:\s*visible\s*!important;/);
     expect(css).toMatch(/opacity:\s*1\s*!important;/);
