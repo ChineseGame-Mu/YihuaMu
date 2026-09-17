@@ -2,7 +2,11 @@
 set -e
 
 repo_root="$(git rev-parse --show-toplevel)"
-cd "$repo_root/yihua-game"
 
+cd "$repo_root/frontend"
+yarn prettier:version
+yarn format:staged
+
+cd "$repo_root/yihua-game"
 npm run prettier:version
 npm run format:staged
