@@ -3,7 +3,10 @@ name: Cleanroom Short Link Gate
 on:
   push:
     branches:
-      - cleanroom/yihua-game-20260826
+      - master
+  pull_request:
+    branches:
+      - master
   workflow_dispatch:
 
 jobs:
@@ -38,7 +41,7 @@ jobs:
             if (actual === expected) break;
             if (attempt < 24) await page.waitForTimeout(10000);
           }
-          if (actual !== expected) throw new Error(`short link stale or not bound to Cleanroom: expected ${expected}, got ${actual}`);
+          if (actual !== expected) throw new Error(`short link stale or not bound to current master: expected ${expected}, got ${actual}`);
 
           const room = page.locator('#cleanroom-room');
           await room.waitFor({state:'visible',timeout:30000});
