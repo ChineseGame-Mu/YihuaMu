@@ -6,7 +6,10 @@ import {
 
 const single = { Single: { giver: 3, receiver: 0 } } as const;
 const double = {
-  Double: { givers: [2, 3] as [number, number], receivers: [0, 1] as [number, number] },
+  Double: {
+    givers: [2, 3] as [number, number],
+    receivers: [0, 1] as [number, number],
+  },
 } as const;
 
 describe("Guandan return tribute privacy", () => {
