@@ -2,11 +2,9 @@ import * as React from "react";
 import type { JSX } from "react";
 import GuandanStartGate from "./GuandanStartGate";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
-import {
-  adaptGuandanServerMessage,
-  initialGuandanTableState,
-} from "./guandanCompatibilityAdapter";
+import { initialGuandanTableState } from "./guandanCompatibilityAdapter";
 import type { GuandanTableState } from "./guandanCompatibilityAdapter";
+import { adaptGuandanServerMessageWithRealTestFixes } from "./guandanRealTestFixes";
 
 interface GuandanStateContextValue {
   state: GuandanTableState;
@@ -35,7 +33,9 @@ const GuandanStateProvider: React.FunctionComponent<
 
   React.useEffect(() => {
     if (lastMessage !== null) {
-      setState((current) => adaptGuandanServerMessage(current, lastMessage));
+      setState((current) =>
+        adaptGuandanServerMessageWithRealTestFixes(current, lastMessage),
+      );
     }
   }, [messageSequence, lastMessage]);
 
