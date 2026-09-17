@@ -55,7 +55,7 @@ jobs:
             ["public cards sort small to large", /sortPlayCards\(play\.cards, message\.level\)/.test(fixes)],
             ["authoritative clear is preserved", /message\.table_plays\.length === 0 && message\.last_play\.length === 0/.test(fixes)],
             ["finished hand is cleared", /shouldClearOwnHand\(adapted\.seat, message\.finish_order\)/.test(fixes)],
-            ["last-round scoreboard is mounted", /<GuandanLastRoundScoreboard\s*\/>/.test(entry)],
+            ["duplicate upper-right level HUD stays removed", !/GuandanLastRoundScoreboard/.test(entry)],
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
