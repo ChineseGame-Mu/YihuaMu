@@ -76,6 +76,25 @@ const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
 const tributePending = (managed: ManagedRoom): boolean =>
   managed.tribute !== undefined && managed.tribute.status !== "complete";
 
+export const robotMustYieldToTeammate = (
+  managed: ManagedRoom,
+  seat: number,
+): boolean => {
+  if (managed.game.phase !== "playing" || managed.game.config.playerCount !== 4) {
+    return false;
+  }
+  const participant = managed.room.participants.find(
+    (candidate) => candidate.seat === seat,
+  );
+  const leadingSeat = managed.game.trick.leadingPlay?.seat;
+  return (
+    participant?.kind === "robot" &&
+    leadingSeat !== undefined &&
+    leadingSeat !== seat &&
+    leadingSeat % 2 === seat % 2
+  );
+};
+
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
   private readonly restoredRoomsAwaitingReconnect = new Set<string>();
@@ -309,6 +328,9 @@ export class RoomManager {
     }
     if (tributePending(managed)) {
       throw new Error("tribute exchange must finish before play");
+    }
+    if (robotMustYieldToTeammate(managed, seat)) {
+      throw new Error("robot must yield when its teammate is leading");
     }
 
     const next = {

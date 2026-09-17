@@ -9,6 +9,7 @@ import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import GuandanRoundResultHud from "./GuandanRoundResultHud";
+import GuandanLastRoundScoreboard from "./GuandanLastRoundScoreboard";
 import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
 import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
@@ -17,6 +18,7 @@ import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
 import "./cleanroom-device-layout.css";
 import "./cleanroom-public-player-names.css";
+import "./guandan-real-test-20260916.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
@@ -48,7 +50,7 @@ const CleanroomTable = (): JSX.Element => {
     ["game","name","players","test","ws","room"].forEach((key) => url.searchParams.delete(key));
     url.searchParams.set("cleanroomRoom", isSelectableRoom(actualRoom) ? actualRoom : defaultCleanroomRoom); window.location.href = url.toString();
   };
-  return <GuandanWebsocketProvider><GuandanStateProvider><PublicPlayerCountMarker /><ExitGameButton onClick={exit} /><GuandanHeaderDecor /><GuandanCustomSortControls /><GuandanTable /><GuandanStartGate /><GuandanRoundResultHud /><GuandanHookToBottomSetting /><GuandanNoBeatHint /><GuandanNoBeatControls /></GuandanStateProvider></GuandanWebsocketProvider>;
+  return <GuandanWebsocketProvider><GuandanStateProvider><PublicPlayerCountMarker /><ExitGameButton onClick={exit} /><GuandanHeaderDecor /><GuandanCustomSortControls /><GuandanLastRoundScoreboard /><GuandanTable /><GuandanStartGate /><GuandanRoundResultHud /><GuandanHookToBottomSetting /><GuandanNoBeatHint /><GuandanNoBeatControls /></GuandanStateProvider></GuandanWebsocketProvider>;
 };
 
 const CleanroomEntry = (): JSX.Element => {
