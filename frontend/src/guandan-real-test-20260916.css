@@ -14,13 +14,21 @@
   min-height: 88px;
 }
 
-.guandan-trick-play > strong {
-  order: 2;
-  display: block;
-  margin-top: 6px;
-  text-align: center;
-  font-weight: 800;
-  line-height: 1.2;
+/*
+ * Keep this selector more specific than guandan-single-viewport.css, whose
+ * legacy rule hides the same element with display: none !important.
+ */
+html body .guandan-table .guandan-trick-play > strong {
+  order: 2 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  margin-top: 6px !important;
+  color: #fff9df !important;
+  -webkit-text-fill-color: #fff9df !important;
+  text-align: center !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
 }
 
 /* Issue 4: persistent last-completed-game result ('本局打'). */
