@@ -38,7 +38,7 @@
     "watch": "rimraf dist/ && webpack --watch --mode=development",
     "types": "cargo run --bin shengji-json-schema --quiet src/gen-types.schema.json && npx json2ts src/gen-types.schema.json src/gen-types.d.ts && prettier src --write",
     "prettier": "prettier src",
-    "prettier:version": "node scripts/prettier-341-guard.mjs check --version-only",
+    "prettier:version": "node scripts/prettier-341-guard.mjs version",
     "format:check": "node scripts/prettier-341-guard.mjs check",
     "format:write": "node scripts/prettier-341-guard.mjs write",
     "format:staged": "node scripts/prettier-341-guard.mjs staged",
