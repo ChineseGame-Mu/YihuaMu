@@ -42,7 +42,6 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-table-play > span {
   position: relative !important;
 }
 
-
 /* Optional personal layout: same-rank cards may overlap horizontally.
  * Vertical remains the default and the selected preference is local per browser.
  */
