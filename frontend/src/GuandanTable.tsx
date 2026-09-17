@@ -206,6 +206,13 @@ const GuandanTable: React.FunctionComponent = () => {
         ? "desc"
         : "asc",
   );
+  const [handStackDirection, setHandStackDirection] = React.useState<
+    "vertical" | "horizontal"
+  >(() =>
+    window.localStorage.getItem("guandan_hand_stack_direction") === "horizontal"
+      ? "horizontal"
+      : "vertical",
+  );
   const [cardCountAlertThreshold, setCardCountAlertThreshold] =
     React.useState<number>(() => {
       const saved = Number(
@@ -271,6 +278,19 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_hand_stack_direction",
+      handStackDirection,
+    );
+    document.body.classList.toggle(
+      "guandan-hand-stack-horizontal",
+      handStackDirection === "horizontal",
+    );
+    return () =>
+      document.body.classList.remove("guandan-hand-stack-horizontal");
+  }, [handStackDirection]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -612,6 +632,22 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="desc">从大到小</option>
           </select>
           <br />
+          <label htmlFor="guandan-hand-stack-direction">我的桌面牌叠加：</label>{" "}
+          <select
+            id="guandan-hand-stack-direction"
+            value={handStackDirection}
+            onChange={(event) =>
+              setHandStackDirection(
+                event.target.value === "horizontal"
+                  ? "horizontal"
+                  : "vertical",
+              )
+            }
+          >
+            <option value="vertical">纵向排列</option>
+            <option value="horizontal">横向排列</option>
+          </select>
+          <br />
           <label htmlFor="guandan-card-count-alert-threshold">
             报牌阈值：
           </label>{" "}
@@ -633,7 +669,7 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列和报牌阈值只影响您自己，并会保存在当前浏览器。
+            牌面配色、手牌排列、牌叠加方式和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
           <div className="guandan-bot-settings">
             <strong>机器人陪玩：</strong>{" "}
