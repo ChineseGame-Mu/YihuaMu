@@ -41,3 +41,38 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-table-play > span {
   flex: 0 0 auto !important;
   position: relative !important;
 }
+
+
+/* Optional personal layout: same-rank cards may overlap horizontally.
+ * Vertical remains the default and the selected preference is local per browser.
+ */
+html
+  body.guandan-hand-stack-horizontal
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack {
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  justify-content: flex-start !important;
+  width: auto !important;
+  min-width: 72px !important;
+  height: 126px !important;
+}
+
+html
+  body.guandan-hand-stack-horizontal
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack
+  > button {
+  margin: 0 -52px 0 0 !important;
+}
+
+html
+  body.guandan-hand-stack-horizontal
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack
+  > button:last-child {
+  margin-right: 0 !important;
+}
