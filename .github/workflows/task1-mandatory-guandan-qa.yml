@@ -42,6 +42,7 @@ jobs:
           const table = fs.readFileSync("frontend/src/GuandanTable.tsx", "utf8");
           const entry = fs.readFileSync("frontend/src/CleanroomEntry.tsx", "utf8");
           const css = fs.readFileSync("frontend/src/guandan-real-test-20260916.css", "utf8");
+          const handStackCss = fs.readFileSync("frontend/src/cleanroom-hand-stack-fix.css", "utf8");
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
@@ -56,6 +57,7 @@ jobs:
             ["authoritative clear is preserved", /message\.table_plays\.length === 0 && message\.last_play\.length === 0/.test(fixes)],
             ["finished hand is cleared", /shouldClearOwnHand\(adapted\.seat, message\.finish_order\)/.test(fixes)],
             ["duplicate upper-right level HUD stays removed", !/GuandanLastRoundScoreboard/.test(entry)],
+            ["personal hand stack direction setting exists", /guandan-hand-stack-direction/.test(table) && /纵向排列/.test(table) && /guandan_hand_stack_direction/.test(table) && /guandan-hand-stack-horizontal/.test(handStackCss)],
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
