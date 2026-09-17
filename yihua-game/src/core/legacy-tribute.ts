@@ -1,6 +1,7 @@
 import { RANKS, type Card, type Rank } from "./cards.js";
 import type { DeckCard } from "./deck.js";
 import type { LegacyServerMessage } from "./frontend-compat.js";
+import { classifyHand } from "./hand.js";
 import type { ManagedRoom } from "./room-manager.js";
 import type { ServerRuntime } from "./server-runtime.js";
 
@@ -31,6 +32,11 @@ interface TributeSession {
 
 const sessions = new Map<string, TributeSession>();
 const resistedRooms = new Map<string, boolean>();
+const PUBLIC_EXCHANGE_CARD_MS = 1200;
+
+const sleep = async (milliseconds: number): Promise<void> => {
+  await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
+};
 
 export const prepareLegacyTribute = (
   roomId: string,
@@ -172,6 +178,30 @@ const withHands = (
   return { ...managed, game: { ...managed.game, hands } };
 };
 
+const withPublicExchangeCard = (
+  managed: ManagedRoom,
+  seat: number,
+  card: DeckCard,
+): ManagedRoom => {
+  if (managed.game.phase !== "playing") {
+    throw new Error("tribute exchange requires the next round to be dealt");
+  }
+  return {
+    ...managed,
+    game: {
+      ...managed.game,
+      trick: {
+        ...managed.game.trick,
+        leadingPlay: {
+          seat,
+          cards: [card.card],
+          hand: classifyHand([card.card]),
+        },
+      },
+    },
+  };
+};
+
 const allTributesReceived = (session: TributeSession): boolean =>
   session.tributeCards.length === tributeGivers(session.plan).length;
 
@@ -231,6 +261,7 @@ const finalizeExchange = (
 
   return {
     ...managed,
+    tribute: undefined,
     game: {
       ...managed.game,
       hands,
@@ -239,6 +270,9 @@ const finalizeExchange = (
         ...managed.game.trick,
         currentTurn: leadSeat,
         leaderSeat: leadSeat,
+        leadingPlay: null,
+        plays: [],
+        passedSeats: [],
       },
     },
   };
@@ -272,10 +306,12 @@ export const applyLegacyTributeSelection = async (
       level,
     );
     session.tributeCards.push({ player: seat, card });
-    const next = runtime.rooms.set(
-      roomId,
+    const visible = withPublicExchangeCard(
       withHands(managed, removeCard(managed.game.hands, seat, cardId)),
+      seat,
+      card,
     );
+    const next = runtime.rooms.set(roomId, visible);
     await runtime.websocket.broadcastGameState(next);
     await runtime.websocket.sendPrivateHands(next);
     return;
@@ -301,15 +337,21 @@ export const applyLegacyTributeSelection = async (
   }
 
   session.returnCards.push({ player: seat, card: selected });
-  let nextManaged = withHands(
-    managed,
-    removeCard(managed.game.hands, seat, cardId),
+  const visibleReturn = withPublicExchangeCard(
+    withHands(managed, removeCard(managed.game.hands, seat, cardId)),
+    seat,
+    selected,
   );
-  if (allReturnsReceived(session)) {
-    nextManaged = finalizeExchange(nextManaged, session);
-    sessions.delete(roomId);
-  }
-  const next = runtime.rooms.set(roomId, nextManaged);
+  const visibleNext = runtime.rooms.set(roomId, visibleReturn);
+  await runtime.websocket.broadcastGameState(visibleNext);
+  await runtime.websocket.sendPrivateHands(visibleNext);
+
+  if (!allReturnsReceived(session)) return;
+
+  await sleep(PUBLIC_EXCHANGE_CARD_MS);
+  const finalized = finalizeExchange(runtime.rooms.get(roomId), session);
+  sessions.delete(roomId);
+  const next = runtime.rooms.set(roomId, finalized);
   await runtime.websocket.broadcastGameState(next);
   await runtime.websocket.sendPrivateHands(next);
 };
