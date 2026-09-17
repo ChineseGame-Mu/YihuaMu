@@ -2,7 +2,10 @@ import { initialGuandanTableState } from "./guandanCompatibilityAdapter";
 import { adaptGuandanServerMessageWithRealTestFixes } from "./guandanRealTestFixes";
 import type { GuandanCard } from "./guandanProtocol";
 
-const suited = (rank: "Four" | "King", suit: "Clubs" | "Hearts" = "Clubs"): GuandanCard => ({
+const suited = (
+  rank: "Four" | "King",
+  suit: "Clubs" | "Hearts" = "Clubs",
+): GuandanCard => ({
   Suited: { rank, suit },
 });
 
