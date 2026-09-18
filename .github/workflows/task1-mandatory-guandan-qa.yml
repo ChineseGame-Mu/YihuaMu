@@ -71,6 +71,7 @@ jobs:
             ["departing players receive robot replacements", /本局结束后退出（机器人替补）/.test(table) && /fills the exact seat with a robot/.test(participation)],
             ["second round carries promoted level", /expect\(dealt\.game\.levelRank\)\.toBe\("4"\)/.test(secondRound) && /latest\("state"\)\.level\)\.toBe\("Four"\)/.test(secondRound)],
             ["second round restores every private hand", /latest\("hand"\)\.cards\)\.toHaveLength\(27\)/.test(secondRound) && /never discard a newly dealt hand/.test(fixes)],
+            ["opening draw appears only in the first round", /initial_draw\)\.toHaveLength\(4\)/.test(secondRound) && /initial_draw\)\.toEqual\(\[\]\)/.test(secondRound) && /initial_draw_winner\)\.toBeNull/.test(secondRound)],
             ["tribute completion opens the loser lead", /errorsSince\(playStart\)\)\.toEqual\(\[\]\)/.test(secondRound) && /startedLegacyGames\.add\(roomId\)/.test(fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8"))],
             ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
             ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],

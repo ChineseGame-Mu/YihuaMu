@@ -47,6 +47,7 @@ export interface PlayingState {
   readonly phase: "playing";
   readonly config: TableConfig;
   readonly openingDraw: OpeningDrawResult;
+  readonly roundNumber?: number;
   readonly hands: readonly (readonly DeckCard[])[];
   readonly currentTurn: number;
   readonly trick: TrickState;
@@ -106,6 +107,7 @@ export const dealAfterOpeningDraw = (
     phase: "playing",
     config: opening.config,
     openingDraw: opening.openingDraw,
+    roundNumber: 1,
     hands,
     currentTurn: trick.currentTurn,
     trick,
@@ -142,6 +144,7 @@ export const startNextRound = (
     phase: "playing",
     config: completed.config,
     openingDraw: completed.openingDraw,
+    roundNumber: (completed.roundNumber ?? 1) + 1,
     hands,
     currentTurn: trick.currentTurn,
     trick,
