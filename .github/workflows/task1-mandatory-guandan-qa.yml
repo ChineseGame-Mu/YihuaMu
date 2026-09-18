@@ -47,6 +47,7 @@ jobs:
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const tributePlan = fs.readFileSync("yihua-game/test/legacy-tribute-plan.test.ts", "utf8");
           const trickClear = fs.readFileSync("yihua-game/test/legacy-trick-clear-compat.test.ts", "utf8");
+          const steelPlate = fs.readFileSync("yihua-game/test/steel-plate-222333-regression.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
           const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
           const participation = fs.readFileSync("yihua-game/test/round-participation-rotation.test.ts", "utf8");
@@ -72,6 +73,7 @@ jobs:
             ["exact tribute card is public", /tribute_cards\)\.toEqual/.test(tribute) && /state\.tributeCards\.map/.test(table) && /进贡：/.test(table)],
             ["only winners return tribute and resistance gives winner the lead", /losingPlayerReturnStart/.test(tribute) && /previous first-place winner the lead/.test(tributePlan) && /抗贡（双大王）/.test(table)],
             ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
+            ["222333 is accepted as a steel plate", /222333 steel-plate live regression/.test(steelPlate) && /kind: "consecutive-triples"/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
@@ -138,6 +140,7 @@ jobs:
           test/legacy-tribute-four-client-acceptance.test.ts
           test/legacy-tribute-plan.test.ts
           test/legacy-trick-clear-compat.test.ts
+          test/steel-plate-222333-regression.test.ts
           test/legacy-next-round-compat.test.ts
           test/legacy-next-round-role.test.ts
           test/legacy-robot-next-round.test.ts

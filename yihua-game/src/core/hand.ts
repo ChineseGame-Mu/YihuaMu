@@ -82,6 +82,17 @@ const repeatedSequenceHighRank = (
   if (counts.size !== groups) return null;
   const ranks = [...counts.keys()];
   if (ranks.some((rank) => counts.get(rank) !== repeat)) return null;
+  // This table's approved Guandan rules treat 222333 as the lowest steel
+  // plate (two consecutive triples). Ordinary runs still cannot wrap through
+  // 2 unless their own rule explicitly allows it.
+  if (
+    repeat === 3 &&
+    groups === 2 &&
+    ranks.includes("2") &&
+    ranks.includes("3")
+  ) {
+    return "3";
+  }
   return consecutiveHighRank(ranks);
 };
 
