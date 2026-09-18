@@ -19,6 +19,15 @@ export const isSupportedPlayerCount = (
 ): value is SupportedPlayerCount =>
   SUPPORTED_PLAYER_COUNTS.includes(value as SupportedPlayerCount);
 
+export const antiTributeBigJokerRequirement = (playerCount: number): number => {
+  if (!isSupportedPlayerCount(playerCount)) {
+    throw new Error(
+      "anti-tribute player count must be one of 4, 6, 8, 10, 12, 14",
+    );
+  }
+  return playerCount / 2;
+};
+
 export const teamForSeat = (seat: number): Team => {
   if (!Number.isInteger(seat) || seat < 0) {
     throw new Error("seat must be a non-negative integer");

@@ -1,7 +1,11 @@
 import { RANKS, type Card, type Rank } from "./cards.js";
 import type { DeckCard } from "./deck.js";
 import type { RoundPlacement } from "./round-result.js";
-import { teamForSeat, type Team } from "./table.js";
+import {
+  antiTributeBigJokerRequirement,
+  teamForSeat,
+  type Team,
+} from "./table.js";
 
 export interface TeamLevels {
   readonly A: Rank;
@@ -85,16 +89,18 @@ export const mandatoryTributeCard = (
   const eligible = hand.filter(({ card }) => !isHeartLevel(card, levelRank));
   if (eligible.length === 0) throw new Error("no eligible tribute card");
   return [...eligible].sort(
-    (a, b) => tributeStrength(b.card, levelRank) - tributeStrength(a.card, levelRank),
+    (a, b) =>
+      tributeStrength(b.card, levelRank) - tributeStrength(a.card, levelRank),
   )[0]!;
 };
 
 export const canAntiTribute = (hand: readonly DeckCard[]): boolean =>
-  hand.filter(({ card }) => card.kind === "joker" && card.size === "big").length >=
-  2;
+  hand.filter(({ card }) => card.kind === "joker" && card.size === "big")
+    .length >= antiTributeBigJokerRequirement(4);
 
 const bigJokerCount = (hand: readonly DeckCard[]): number =>
-  hand.filter(({ card }) => card.kind === "joker" && card.size === "big").length;
+  hand.filter(({ card }) => card.kind === "joker" && card.size === "big")
+    .length;
 
 export const tributePlanForPlacements = (
   placements: readonly RoundPlacement[],
@@ -113,7 +119,7 @@ export const tributePlanForPlacements = (
     (total, seat) => total + bigJokerCount(hands[seat] ?? []),
     0,
   );
-  if (payerBigJokers >= 2) {
+  if (payerBigJokers >= antiTributeBigJokerRequirement(4)) {
     return { kind: "anti-tribute", transfers: [] };
   }
   if (doubleDown) {
