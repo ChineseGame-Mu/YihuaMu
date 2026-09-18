@@ -26,14 +26,23 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
-  test("doubles the current-turn display and provides both seat arrows", () => {
+  test("doubles the current-turn display and embeds left, observe, right controls", () => {
     expect(css).toMatch(/min-width:\s*300px\s*!important/);
     expect(css).toMatch(/font-size:\s*28px\s*!important/);
     expect(css).toMatch(/right:\s*14px\s*!important/);
     expect(css).toMatch(/left:\s*auto\s*!important/);
     expect(css).toMatch(/bottom:\s*14px\s*!important/);
-    expect(table).toContain('aria-label="向左换位"');
-    expect(table).toContain('aria-label="向右换位"');
+    expect(table).toContain("`${player}向左换位`");
+    expect(table).toContain("`${player}切换参与或旁观`");
+    expect(table).toContain("`${player}向右换位`");
     expect(table).toContain('type: "move_seat"');
+    expect(table).toContain('type: "set_participation"');
+    expect(css).toMatch(
+      /\.guandan-public-card-back\s*\{[\s\S]*?position:\s*relative\s*!important/,
+    );
+    expect(css).toMatch(
+      /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/,
+    );
+    expect(css).toMatch(/width:\s*32px\s*!important/);
   });
 });

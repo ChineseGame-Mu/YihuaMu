@@ -29,6 +29,7 @@ import {
   removeParticipant,
   removeObserver,
   replaceRobotWithHuman,
+  setLobbyParticipation,
   setParticipationForNextRound,
 } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
@@ -920,9 +921,16 @@ export const attachLegacyGuandanConnection = async (
       if (message.type === "set_participation") {
         const managed = runtime.rooms.get(active.roomId);
         if (managed.game.phase === "lobby") {
-          throw new Error(
-            "participation changes are available after play begins",
-          );
+          const next = runtime.rooms.set(active.roomId, {
+            ...managed,
+            room: setLobbyParticipation(
+              managed.room,
+              active.playerId,
+              message.active,
+            ),
+          });
+          await runtime.websocket.broadcastRoomState(next);
+          return;
         }
         const preferredPartner =
           message.preferred_partner === undefined
