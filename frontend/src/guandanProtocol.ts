@@ -23,6 +23,7 @@ export type GuandanCard =
 export type GuandanClientMessage =
   | { type: "join"; room: string; name: string }
   | { type: "reorder_players"; order: [number, number] }
+  | { type: "move_seat"; direction: "left" | "right" }
   | {
       type: "set_participation";
       active: boolean;

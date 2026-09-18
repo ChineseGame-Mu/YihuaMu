@@ -475,6 +475,11 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  const moveMySeat = (direction: "left" | "right"): void => {
+    if (gameStarted || state.seat === null) return;
+    send({ type: "move_seat", direction });
+  };
+
   const toggleObserverEntry = (): void => {
     send({
       type: "set_participation",
@@ -902,6 +907,29 @@ const GuandanTable: React.FunctionComponent = () => {
                         <span>掼蛋</span>
                       </span>
                       <strong title={player}>{player}</strong>
+                      {index === state.seat && !gameStarted && (
+                        <span
+                          className="guandan-public-seat-move-controls"
+                          aria-label="我的换位按钮"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => moveMySeat("left")}
+                            aria-label="向左换位"
+                            title="向左换位"
+                          >
+                            ◀
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveMySeat("right")}
+                            aria-label="向右换位"
+                            title="向右换位"
+                          >
+                            ▶
+                          </button>
+                        </span>
+                      )}
                       {shouldReport && (
                         <span
                           className="guandan-public-card-count"

@@ -16,6 +16,7 @@ import "./guandan-statusbar-restore.css";
 import "./guandan-topbar-final.css";
 import "./guandan-button-3d.css";
 import "./guandan-public-player-position.css";
+import "./guandan-player-display-scale.css";
 import "./cleanroom-join.css";
 import "./cleanroom-hand-fit.css";
 import "./cleanroom-hide-review-label.css";

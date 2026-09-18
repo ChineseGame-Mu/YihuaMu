@@ -6,6 +6,7 @@ import {
   applyNextRoundParticipation,
   choosePartner,
   createRoom,
+  moveParticipantSeat,
   setParticipationForNextRound,
   setRobotCount,
 } from "../src/core/room.js";
@@ -73,6 +74,25 @@ describe("round-boundary participation rotation", () => {
     const player = room.participants.find(({ id }) => id === "p1")!;
     const partner = room.participants.find(({ id }) => id === "p2")!;
     expect(player.seat % 2).toBe(partner.seat % 2);
+    expect(new Set(room.participants.map(({ seat }) => seat)).size).toBe(4);
+  });
+
+  it("moves a seated player one place left or right without losing anyone", () => {
+    let room = createRoom("seat-arrows", 4);
+    for (let seat = 0; seat < 4; seat += 1) {
+      room = addHuman(room, {
+        id: `p${seat + 1}`,
+        name: `玩家${seat + 1}`,
+        seat,
+      });
+    }
+
+    room = moveParticipantSeat(room, "p1", "right");
+    expect(room.participants.find(({ id }) => id === "p1")?.seat).toBe(1);
+    expect(room.participants.find(({ id }) => id === "p2")?.seat).toBe(0);
+
+    room = moveParticipantSeat(room, "p1", "left");
+    expect(room.participants.find(({ id }) => id === "p1")?.seat).toBe(0);
     expect(new Set(room.participants.map(({ seat }) => seat)).size).toBe(4);
   });
 
