@@ -11,7 +11,12 @@ describe("Guandan enlarged player displays", () => {
   test("doubles public player displays with no gap", () => {
     expect(css).toMatch(/gap:\s*0\s*!important/);
     expect(css).toMatch(/flex:\s*0 0 96px\s*!important/);
-    expect(css).toMatch(/width:\s*72px\s*!important/);
+    expect(css).toMatch(
+      /\.guandan-public-card-back[\s\S]*?width:\s*96px\s*!important/,
+    );
+    expect(css).toMatch(
+      /\.guandan-public-card-back[\s\S]*?margin:\s*0\s*!important/,
+    );
     expect(css).toMatch(/height:\s*96px\s*!important/);
   });
 
@@ -24,6 +29,8 @@ describe("Guandan enlarged player displays", () => {
   test("doubles the current-turn display and provides both seat arrows", () => {
     expect(css).toMatch(/min-width:\s*300px\s*!important/);
     expect(css).toMatch(/font-size:\s*28px\s*!important/);
+    expect(css).toMatch(/right:\s*14px\s*!important/);
+    expect(css).toMatch(/left:\s*auto\s*!important/);
     expect(table).toContain('aria-label="向左换位"');
     expect(table).toContain('aria-label="向右换位"');
     expect(table).toContain('type: "move_seat"');
