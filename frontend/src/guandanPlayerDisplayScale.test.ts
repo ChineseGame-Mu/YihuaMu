@@ -17,7 +17,7 @@ describe("Guandan enlarged player displays", () => {
 
   test("reserves space so enlarged displays cannot cover played cards", () => {
     expect(css).toMatch(
-      /\.guandan-table-stage\s*\{[^}]*padding-top:\s*154px\s*!important/s,
+      /\.guandan-table-stage\s*\{[\s\S]*?padding-top:\s*154px\s*!important/,
     );
   });
 
