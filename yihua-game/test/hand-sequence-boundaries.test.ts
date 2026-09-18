@@ -90,7 +90,7 @@ describe("sequence hand boundaries", () => {
     ).toBe("invalid");
   });
 
-  it("rejects pair and triple runs that cross from ace into 2", () => {
+  it("rejects K-A-2 pairs but accepts the approved A-2 steel plate", () => {
     const pairsThroughTwo = ["K", "K", "A", "A", "2", "2"].map((rank) =>
       suited(rank as Rank),
     );
@@ -99,7 +99,10 @@ describe("sequence hand boundaries", () => {
     );
 
     expect(classifyHand(pairsThroughTwo).kind).toBe("invalid");
-    expect(classifyHand(triplesThroughTwo).kind).toBe("invalid");
+    expect(classifyHand(triplesThroughTwo)).toMatchObject({
+      kind: "consecutive-triples",
+      highRank: "2",
+    });
   });
 
   it("compares the ace-low wheel by its five-high boundary", () => {
