@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { mandatoryTributeCard } from "../src/core/competition.js";
 import { completeRound } from "../src/core/game-state.js";
@@ -50,6 +50,14 @@ class FakeConnection implements UpgradedConnection {
 
 const cardKey = (card: any): string => JSON.stringify(card);
 
+const seededRandom = (seed: number): (() => number) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 0x1_0000_0000;
+  };
+};
+
 const legacyCard = (card: any): any =>
   card.kind === "joker"
     ? { Joker: card.size === "small" ? "Small" : "Big" }
@@ -94,6 +102,7 @@ const legacyCard = (card: any): any =>
 
 describe("four-human second-round handoff", () => {
   test("shows the promoted level, redeals every private hand, completes tribute, and lets the loser lead", async () => {
+    vi.spyOn(Math, "random").mockImplementation(seededRandom(20260918));
     const runtime = createServerRuntime();
     const clients = Array.from({ length: 4 }, () => new FakeConnection());
     for (const client of clients)
@@ -108,6 +117,11 @@ describe("four-human second-round handoff", () => {
       });
     }
     await clients[0]!.send({ type: "start", player_count: 4 });
+
+    for (const client of clients) {
+      expect(client.latest("state").initial_draw).toHaveLength(4);
+      expect(client.latest("state").initial_draw_winner).not.toBeNull();
+    }
 
     const started = runtime.rooms.get("round-two-qa");
     if (started.game.phase !== "playing") throw new Error("game did not start");
@@ -135,6 +149,8 @@ describe("four-human second-round handoff", () => {
     for (const client of clients) {
       expect(client.latest("state").level).toBe("Four");
       expect(client.latest("hand").cards).toHaveLength(27);
+      expect(client.latest("state").initial_draw).toEqual([]);
+      expect(client.latest("state").initial_draw_winner).toBeNull();
     }
 
     const giver = 3;

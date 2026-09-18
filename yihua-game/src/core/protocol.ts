@@ -68,12 +68,13 @@ export type ServerMessage =
       readonly roomId: string;
       readonly revision: number;
       readonly phase: "playing" | "round-complete";
+      readonly roundNumber?: number;
       readonly levelRank?: Rank | undefined;
       readonly competitionPhase?: "playing" | "tribute" | "return" | undefined;
       readonly currentTurn: number;
       readonly handCounts: readonly number[];
       readonly openingDraw: readonly Card[];
-      readonly openingDrawWinner: number;
+      readonly openingDrawWinner: number | null;
       readonly leadingPlay: {
         readonly seat: number;
         readonly cards: readonly Card[];

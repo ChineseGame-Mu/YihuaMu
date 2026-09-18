@@ -246,6 +246,7 @@ export const gameStateToLegacy = (
   const lastPlay = game.leadingPlay?.cards.map(legacyCard) ?? [];
   const lastGameWinner =
     game.phase === "round-complete" ? (game.finishedSeats[0] ?? null) : null;
+  const isOpeningRound = (game.roundNumber ?? 1) === 1;
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
     participants.some(
@@ -272,8 +273,8 @@ export const gameStateToLegacy = (
     passes: game.passedSeats.length,
     trick_complete: false,
     last_trick_winner: null,
-    initial_draw: game.openingDraw.map(legacyCard),
-    initial_draw_winner: game.openingDrawWinner,
+    initial_draw: isOpeningRound ? game.openingDraw.map(legacyCard) : [],
+    initial_draw_winner: isOpeningRound ? game.openingDrawWinner : null,
     level: game.levelRank === undefined ? "Two" : rankMap[game.levelRank],
     team_levels: null,
     finish_order: game.finishedSeats,
