@@ -52,6 +52,7 @@ jobs:
           const secondRound = fs.readFileSync("yihua-game/test/legacy-second-round-four-human.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
           const playerScale = fs.readFileSync("frontend/src/guandan-player-display-scale.css", "utf8");
+          const actionControls = fs.readFileSync("frontend/src/GuandanCustomSortControls.tsx", "utf8");
 
           const contracts = [
             ["public player name renders", /state\.players\[play\.player\]/.test(table)],
@@ -81,6 +82,7 @@ jobs:
             ["current-turn display is doubled", /min-width:\s*300px\s*!important/.test(playerScale) && /font-size:\s*28px\s*!important/.test(playerScale)],
             ["current-turn display stays at the bottom of the right play area", /right:\s*14px\s*!important/.test(playerScale) && /left:\s*auto\s*!important/.test(playerScale) && /bottom:\s*14px\s*!important/.test(playerScale)],
             ["each player has left and right seat controls", /aria-label="向左换位"/.test(table) && /aria-label="向右换位"/.test(table) && /moveMySeat/.test(table) && /moves a seated player one place left or right/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
+            ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
           ];
 
           const failed = contracts.filter(([, ok]) => !ok).map(([name]) => name);
@@ -111,6 +113,7 @@ jobs:
           src/GuandanRoundResultHud.test.tsx
           src/guandanReturnTributePrivacy.test.ts
           src/guandanPlayerDisplayScale.test.ts
+          src/guandanTributeActionVisibility.test.ts
 
       - name: Install game-server dependencies
         working-directory: yihua-game

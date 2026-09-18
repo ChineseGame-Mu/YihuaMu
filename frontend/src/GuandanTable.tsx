@@ -1376,6 +1376,7 @@ const GuandanTable: React.FunctionComponent = () => {
               <section className="guandan-actions guandan-play-actions">
                 {tributePending && role === "giver" && (
                   <button
+                    className="guandan-tribute-action"
                     disabled={!gameStarted || selected.length !== 1}
                     onClick={() => sendSingleSelected("tribute_card")}
                   >
@@ -1384,24 +1385,36 @@ const GuandanTable: React.FunctionComponent = () => {
                 )}
                 {tributePending && role === "receiver" && (
                   <button
+                    className="guandan-tribute-action"
                     disabled={!gameStarted || selected.length !== 1}
                     onClick={() => sendSingleSelected("return_tribute")}
                   >
                     还贡此牌
                   </button>
                 )}
-                <button
-                  disabled={!gameStarted || selected.length === 0}
-                  onClick={playSelected}
-                >
-                  出牌
-                </button>
-                <button
-                  disabled={!gameStarted || state.lastPlayer === null}
-                  onClick={() => send({ type: "pass" })}
-                >
-                  过牌
-                </button>
+                {tributePending && role === null && (
+                  <button className="guandan-tribute-waiting" disabled>
+                    等待进贡 / 还贡
+                  </button>
+                )}
+                {!tributePending && (
+                  <>
+                    <button
+                      className="guandan-play-action"
+                      disabled={!gameStarted || selected.length === 0}
+                      onClick={playSelected}
+                    >
+                      出牌
+                    </button>
+                    <button
+                      className="guandan-pass-action"
+                      disabled={!gameStarted || state.lastPlayer === null}
+                      onClick={() => send({ type: "pass" })}
+                    >
+                      过牌
+                    </button>
+                  </>
+                )}
               </section>
             </div>
           )}
