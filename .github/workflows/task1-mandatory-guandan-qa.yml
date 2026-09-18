@@ -49,6 +49,7 @@ jobs:
           const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
           const participation = fs.readFileSync("yihua-game/test/round-participation-rotation.test.ts", "utf8");
           const spectatorFlow = fs.readFileSync("yihua-game/test/legacy-spectator-next-round.test.ts", "utf8");
+          const secondRound = fs.readFileSync("yihua-game/test/legacy-second-round-four-human.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
 
           const contracts = [
@@ -68,6 +69,9 @@ jobs:
             ["optional partner selector exists", /选择搭档（可选）/.test(table) && /preferred_partner/.test(table)],
             ["spectators may join the next round", /加入下一轮/.test(table) && /keeps a late arrival observing/.test(participation) && /legacy spectator next-round entry/.test(spectatorFlow)],
             ["departing players receive robot replacements", /本局结束后退出（机器人替补）/.test(table) && /fills the exact seat with a robot/.test(participation)],
+            ["second round carries promoted level", /expect\(dealt\.game\.levelRank\)\.toBe\("4"\)/.test(secondRound) && /latest\("state"\)\.level\)\.toBe\("Four"\)/.test(secondRound)],
+            ["second round restores every private hand", /latest\("hand"\)\.cards\)\.toHaveLength\(27\)/.test(secondRound) && /never discard a newly dealt hand/.test(fixes)],
+            ["tribute completion opens the loser lead", /errorsSince\(playStart\)\)\.toEqual\(\[\]\)/.test(secondRound) && /startedLegacyGames\.add\(roomId\)/.test(fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8"))],
             ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
             ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],
           ];
@@ -118,6 +122,7 @@ jobs:
           test/legacy-robot-next-round.test.ts
           test/round-participation-rotation.test.ts
           test/legacy-spectator-next-round.test.ts
+          test/legacy-second-round-four-human.test.ts
           test/robot-teammate-yield.test.ts
           test/robot-strategy.test.ts
 

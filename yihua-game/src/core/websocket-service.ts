@@ -48,6 +48,7 @@ const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
     roomId: managed.room.roomId,
     revision: managed.revision,
     phase: managed.game.phase,
+    levelRank: managed.game.levelRank,
     competitionPhase: competitionPhase(managed),
     currentTurn: managed.game.currentTurn,
     handCounts: managed.game.hands.map((hand) => hand.length),

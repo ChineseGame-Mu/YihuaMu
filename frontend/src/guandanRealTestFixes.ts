@@ -72,9 +72,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   const adapted = adaptGuandanServerMessage(current, message) as RealTestState;
 
   if (message.type === "hand") {
-    if (shouldClearOwnHand(adapted.seat, adapted.finishOrder)) {
-      return { ...adapted, hand: [] };
-    }
+    // A private-hand message is authoritative for the current round. It can
+    // arrive while React still holds the previous round's finish order, so
+    // never discard a newly dealt hand based on stale placement state.
     return adapted;
   }
 

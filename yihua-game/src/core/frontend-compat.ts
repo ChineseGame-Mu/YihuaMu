@@ -274,7 +274,7 @@ export const gameStateToLegacy = (
     last_trick_winner: null,
     initial_draw: game.openingDraw.map(legacyCard),
     initial_draw_winner: game.openingDrawWinner,
-    level: "Two",
+    level: game.levelRank === undefined ? "Two" : rankMap[game.levelRank],
     team_levels: null,
     finish_order: game.finishedSeats,
     last_game_winner: lastGameWinner,

@@ -1,4 +1,4 @@
-import type { Card } from "./cards.js";
+import type { Card, Rank } from "./cards.js";
 
 export interface CommandMetadata {
   readonly expectedRevision?: number;
@@ -68,6 +68,7 @@ export type ServerMessage =
       readonly roomId: string;
       readonly revision: number;
       readonly phase: "playing" | "round-complete";
+      readonly levelRank?: Rank | undefined;
       readonly competitionPhase?: "playing" | "tribute" | "return" | undefined;
       readonly currentTurn: number;
       readonly handCounts: readonly number[];
