@@ -69,7 +69,7 @@ jobs:
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["tribute must finish before return", /tribute_phase\)\.toBe\("tribute"\)/.test(tribute) && /tribute_phase\)\.toBe\("return"\)/.test(tribute) && /prematureReturnStart/.test(tribute)],
             ["exact tribute card is public", /tribute_cards\)\.toEqual/.test(tribute) && /state\.tributeCards\.map/.test(table) && /进贡：/.test(table)],
-            ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /newer clear id rejects delayed cards/.test(fixes)],
+            ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
