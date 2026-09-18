@@ -1307,6 +1307,16 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
+            {state.tributeResisted && (
+              <section
+                className="guandan-tribute-panel guandan-panel"
+                role="status"
+              >
+                <h2>抗贡（双大王）</h2>
+                <p>输方持有双大王，本局无需进贡、还贡，由上一局赢家先出牌。</p>
+              </section>
+            )}
+
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
               {state.finishOrder.length > 0 && (

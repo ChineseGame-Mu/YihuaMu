@@ -45,6 +45,7 @@ jobs:
           const handStackCss = fs.readFileSync("frontend/src/cleanroom-hand-stack-fix.css", "utf8");
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
+          const tributePlan = fs.readFileSync("yihua-game/test/legacy-tribute-plan.test.ts", "utf8");
           const trickClear = fs.readFileSync("yihua-game/test/legacy-trick-clear-compat.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
           const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
@@ -69,6 +70,7 @@ jobs:
             ["tribute four-client acceptance exists", /tribute -> all four see -> return -> all four see/.test(tribute)],
             ["tribute must finish before return", /tribute_phase\)\.toBe\("tribute"\)/.test(tribute) && /tribute_phase\)\.toBe\("return"\)/.test(tribute) && /prematureReturnStart/.test(tribute)],
             ["exact tribute card is public", /tribute_cards\)\.toEqual/.test(tribute) && /state\.tributeCards\.map/.test(table) && /进贡：/.test(table)],
+            ["only winners return tribute and resistance gives winner the lead", /losingPlayerReturnStart/.test(tribute) && /previous first-place winner the lead/.test(tributePlan) && /抗贡（双大王）/.test(table)],
             ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
@@ -134,6 +136,7 @@ jobs:
         run: >
           npx vitest run
           test/legacy-tribute-four-client-acceptance.test.ts
+          test/legacy-tribute-plan.test.ts
           test/legacy-trick-clear-compat.test.ts
           test/legacy-next-round-compat.test.ts
           test/legacy-next-round-role.test.ts

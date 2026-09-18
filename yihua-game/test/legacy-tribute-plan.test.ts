@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ManagedRoom } from "../src/core/room-manager.js";
 import {
+  applyLegacyTributeResistance,
   legacyTributePlan,
   legacyTributeResisted,
   prepareLegacyTribute,
@@ -14,6 +15,14 @@ const resistanceRoom = (
     game: {
       phase: "playing",
       hands,
+      currentTurn: 3,
+      trick: {
+        currentTurn: 3,
+        leaderSeat: 3,
+        leadingPlay: null,
+        plays: [],
+        passedSeats: [],
+      },
     },
   }) as unknown as ManagedRoom;
 
@@ -49,6 +58,26 @@ describe("approved legacy tribute mapping", () => {
     expect(resolveLegacyTributeResistance("resisted-tribute", room)).toBe(true);
     expect(legacyTributePlan("resisted-tribute")).toBeNull();
     expect(legacyTributeResisted("resisted-tribute")).toBe(true);
+  });
+
+  it("gives the previous first-place winner the lead after two-big-joker resistance", () => {
+    prepareLegacyTribute("winner-leads-after-resistance", [0, 2, 1, 3]);
+    const room = resistanceRoom([
+      [],
+      [{ id: "b1", card: { kind: "joker", size: "big" } }],
+      [],
+      [{ id: "b2", card: { kind: "joker", size: "big" } }],
+    ]);
+
+    const resisted = applyLegacyTributeResistance(
+      "winner-leads-after-resistance",
+      room,
+    );
+    expect(resisted).not.toBeNull();
+    if (resisted?.game.phase !== "playing") return;
+    expect(resisted.game.currentTurn).toBe(0);
+    expect(resisted.game.trick.leaderSeat).toBe(0);
+    expect(resisted.game.trick.currentTurn).toBe(0);
   });
 
   it("does not resist with only one big joker", () => {

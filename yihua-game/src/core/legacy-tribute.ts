@@ -171,19 +171,40 @@ const countBigJokers = (hand: readonly DeckCard[]): number =>
 export const resolveLegacyTributeResistance = (
   roomId: string,
   managed: ManagedRoom,
-): boolean => {
+): boolean => applyLegacyTributeResistance(roomId, managed) !== null;
+
+export const applyLegacyTributeResistance = (
+  roomId: string,
+  managed: ManagedRoom,
+): ManagedRoom | null => {
   const session = sessions.get(roomId);
   const game = managed.game;
-  if (session === undefined || game.phase !== "playing") return false;
+  if (session === undefined || game.phase !== "playing") return null;
   const givers = tributeGivers(session.plan);
   const bigJokers = givers.reduce(
     (total, seat) => total + countBigJokers(game.hands[seat] ?? []),
     0,
   );
-  if (bigJokers < 2) return false;
+  if (bigJokers < 2) return null;
+  const winnerSeat = tributeReceivers(session.plan)[0]!;
   sessions.delete(roomId);
   resistedRooms.set(roomId, true);
-  return true;
+  return {
+    ...managed,
+    tribute: undefined,
+    game: {
+      ...game,
+      currentTurn: winnerSeat,
+      trick: {
+        ...game.trick,
+        currentTurn: winnerSeat,
+        leaderSeat: winnerSeat,
+        leadingPlay: null,
+        plays: [],
+        passedSeats: [],
+      },
+    },
+  };
 };
 
 const isWildLevelCard = (card: Card, level: Rank): boolean =>

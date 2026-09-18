@@ -213,6 +213,12 @@ describe("2026-09-16 four-human tribute acceptance", () => {
       ).toBe(true);
     }
 
+    const losingPlayerReturnStart = clients[giver]!.messages.length;
+    await clients[giver]!.send({ type: "return_tribute", card_index: 0 });
+    expect(clients[giver]!.errorsSince(losingPlayerReturnStart)).toHaveLength(
+      1,
+    );
+
     const receiverHandAfterTribute = last(clients[receiver]!.hands())
       .cards as any[];
     const returnIndex = indexOfLegacyCard(

@@ -9,10 +9,10 @@ import {
 } from "./frontend-compat.js";
 import {
   applyLegacyTributeSelection,
+  applyLegacyTributeResistance,
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
-  resolveLegacyTributeResistance,
   runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
@@ -267,8 +267,10 @@ const advanceLegacyRobotNextRound = async (
   await runtime.websocket.broadcastRoomState(next);
   await runtime.websocket.broadcastGameState(next);
   await runtime.websocket.sendPrivateHands(next);
-  if (resolveLegacyTributeResistance(roomId, next)) {
-    await runtime.websocket.broadcastGameState(next);
+  const resisted = applyLegacyTributeResistance(roomId, next);
+  if (resisted !== null) {
+    const resistedNext = runtime.rooms.set(roomId, resisted);
+    await runtime.websocket.broadcastGameState(resistedNext);
   } else {
     await runLegacyRobotTribute(runtime, roomId);
   }
@@ -1089,8 +1091,10 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "deal_next_round") {
         const managed = runtime.rooms.get(active.roomId);
-        if (resolveLegacyTributeResistance(active.roomId, managed)) {
-          await runtime.websocket.broadcastGameState(managed);
+        const resisted = applyLegacyTributeResistance(active.roomId, managed);
+        if (resisted !== null) {
+          const resistedNext = runtime.rooms.set(active.roomId, resisted);
+          await runtime.websocket.broadcastGameState(resistedNext);
         } else {
           await runLegacyRobotTribute(runtime, active.roomId);
         }
