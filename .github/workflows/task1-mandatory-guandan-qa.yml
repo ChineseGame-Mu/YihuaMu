@@ -73,7 +73,7 @@ jobs:
             ["exact tribute card is public", /tribute_cards\)\.toEqual/.test(tribute) && /state\.tributeCards\.map/.test(table) && /进贡：/.test(table)],
             ["only winners return tribute and resistance gives winner the lead", /losingPlayerReturnStart/.test(tribute) && /previous first-place winner the lead/.test(tributePlan) && /抗贡（双大王）/.test(table)],
             ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
-            ["222333 is accepted as a steel plate", /222333 steel-plate live regression/.test(steelPlate) && /kind: "consecutive-triples"/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
+            ["low ace-two sequences are accepted", /222333 steel-plate live regression/.test(steelPlate) && /steelAAA222/.test(steelPlate) && /pairsAA2233/.test(steelPlate) && /wheelA2345/.test(steelPlate) && /straight23456/.test(steelPlate) && /straightFlushA2345/.test(steelPlate) && /straightFlush23456/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],

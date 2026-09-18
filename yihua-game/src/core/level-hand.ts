@@ -15,7 +15,14 @@ const sequenceCandidates = (length: number): readonly Rank[][] => {
   for (let start = 0; start + length <= regular.length; start += 1) {
     result.push(regular.slice(start, start + length));
   }
-  if (length === 2) result.push(["2", "3"]);
+  if (length === 2) {
+    result.push(["A", "2"]);
+    result.push(["2", "3"]);
+  }
+  if (length === 3) {
+    result.push(["A", "2", "3"]);
+    result.push(["2", "3", "4"]);
+  }
   if (length === 5) {
     result.push(["A", "2", "3", "4", "5"]);
     result.push(["2", "3", "4", "5", "6"]);
