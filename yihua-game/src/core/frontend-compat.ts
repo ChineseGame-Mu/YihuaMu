@@ -116,6 +116,16 @@ export type LegacyServerMessage =
       readonly last_promotion_steps: number | null;
       readonly pending_tribute: null;
       readonly tribute_resisted: false;
+      readonly tribute_phase: "tribute" | "return" | null;
+      readonly tribute_cards: readonly {
+        readonly player: number;
+        readonly cards: readonly LegacyGuandanCard[];
+      }[];
+      readonly return_tribute_cards: readonly {
+        readonly player: number;
+        readonly cards: readonly LegacyGuandanCard[];
+      }[];
+      readonly table_clear_id: number;
       readonly match_winner: null;
       readonly next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
       readonly card_count_alert_threshold: number;
@@ -289,6 +299,10 @@ export const gameStateToLegacy = (
     last_promotion_steps: null,
     pending_tribute: null,
     tribute_resisted: false,
+    tribute_phase: null,
+    tribute_cards: [],
+    return_tribute_cards: [],
+    table_clear_id: 0,
     match_winner: null,
     next_round_phase:
       game.phase === "round-complete"

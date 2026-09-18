@@ -234,6 +234,7 @@ const GuandanTable: React.FunctionComponent = () => {
     state.seat,
   );
   const tributePending = state.pendingTribute !== null;
+  const tributePhase = state.tributePhase ?? "tribute";
   const nextRoundPending = state.nextRoundPhase !== null;
   const testMode = query.get("test") === "1";
   const supportedPlayerCounts = [4, 6, 8, 10, 12, 14] as const;
@@ -1275,14 +1276,44 @@ const GuandanTable: React.FunctionComponent = () => {
 
             {tributePending && (
               <section className="guandan-tribute-panel guandan-panel">
-                <h2>进贡 / 还贡</h2>
+                <h2>{tributePhase === "tribute" ? "进贡" : "还贡"}</h2>
                 <p>
-                  {role === "giver"
+                  {tributePhase === "tribute" && role === "giver"
                     ? "请选择 1 张牌进贡。"
-                    : role === "receiver"
+                    : tributePhase === "return" && role === "receiver"
                       ? "请选择 1 张牌还贡。"
-                      : "等待相关玩家完成进贡与还贡。"}
+                      : tributePhase === "tribute"
+                        ? "等待所有进贡玩家完成进贡；完成后才能还贡。"
+                        : "进贡已完成，等待相关玩家还贡。"}
                 </p>
+                {state.tributeCards.length > 0 && (
+                  <div className="guandan-tribute-cards" role="status">
+                    {state.tributeCards.map((play, index) => (
+                      <div key={`tribute-${play.player}-${index}`}>
+                        <strong>
+                          {state.players[play.player] ??
+                            `玩家${play.player + 1}`}
+                          进贡：
+                        </strong>
+                        {play.cards.map((card, cardIndex) => (
+                          <span key={`tribute-card-${cardIndex}`}>
+                            {fullCard(card, 86)}
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {state.tributeResisted && (
+              <section
+                className="guandan-tribute-panel guandan-panel"
+                role="status"
+              >
+                <h2>抗贡（双大王）</h2>
+                <p>输方持有双大王，本局无需进贡、还贡，由上一局赢家先出牌。</p>
               </section>
             )}
 
@@ -1403,29 +1434,39 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
 
               <section className="guandan-actions guandan-play-actions">
-                {tributePending && role === "giver" && (
-                  <button
-                    className="guandan-tribute-action"
-                    disabled={!gameStarted || selected.length !== 1}
-                    onClick={() => sendSingleSelected("tribute_card")}
-                  >
-                    进贡此牌
-                  </button>
-                )}
-                {tributePending && role === "receiver" && (
-                  <button
-                    className="guandan-tribute-action"
-                    disabled={!gameStarted || selected.length !== 1}
-                    onClick={() => sendSingleSelected("return_tribute")}
-                  >
-                    还贡此牌
-                  </button>
-                )}
-                {tributePending && role === null && (
-                  <button className="guandan-tribute-waiting" disabled>
-                    等待进贡 / 还贡
-                  </button>
-                )}
+                {tributePending &&
+                  tributePhase === "tribute" &&
+                  role === "giver" && (
+                    <button
+                      className="guandan-tribute-action"
+                      disabled={!gameStarted || selected.length !== 1}
+                      onClick={() => sendSingleSelected("tribute_card")}
+                    >
+                      进贡此牌
+                    </button>
+                  )}
+                {tributePending &&
+                  tributePhase === "return" &&
+                  role === "receiver" && (
+                    <button
+                      className="guandan-tribute-action"
+                      disabled={!gameStarted || selected.length !== 1}
+                      onClick={() => sendSingleSelected("return_tribute")}
+                    >
+                      还贡此牌
+                    </button>
+                  )}
+                {tributePending &&
+                  !(
+                    (tributePhase === "tribute" && role === "giver") ||
+                    (tributePhase === "return" && role === "receiver")
+                  ) && (
+                    <button className="guandan-tribute-waiting" disabled>
+                      {tributePhase === "tribute"
+                        ? "等待进贡完成"
+                        : "等待还贡完成"}
+                    </button>
+                  )}
                 {!tributePending && (
                   <>
                     <button

@@ -76,6 +76,29 @@ describe("2026-09-16 mandatory real-test regressions", () => {
     expect(next.lastPlay).toEqual([]);
   });
 
+  test("a newer clear id rejects delayed cards from the previous trick", () => {
+    const current = {
+      ...initialGuandanTableState,
+      tablePlays: [{ player: 0, cards: [suited("Four")] }],
+      lastPlay: [suited("Four")],
+      lastPlayer: 0,
+      trickComplete: true,
+      tableClearId: 7,
+    };
+
+    const next = adaptGuandanServerMessageWithRealTestFixes(
+      current,
+      stateMessage({
+        table_clear_id: 8,
+        table_plays: [{ player: 0, cards: [suited("Four")] }],
+        last_play: [suited("Four")],
+      }),
+    );
+
+    expect(next.tablePlays).toEqual([]);
+    expect(next.tableClearId).toBe(8);
+  });
+
   test("clears a finished player's stale private hand", () => {
     const current = {
       ...initialGuandanTableState,

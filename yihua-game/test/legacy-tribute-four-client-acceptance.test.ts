@@ -31,7 +31,8 @@ class FakeConnection implements UpgradedConnection {
   }
 
   async send(message: Record<string, unknown>): Promise<void> {
-    if (this.textHandler === undefined) throw new Error("connection is not attached");
+    if (this.textHandler === undefined)
+      throw new Error("connection is not attached");
     await this.textHandler(JSON.stringify(message));
   }
 
@@ -104,121 +105,185 @@ const legacyCard = (card: any): any =>
       };
 
 describe("2026-09-16 four-human tribute acceptance", () => {
-  test(
-    "tribute -> all four see -> return -> all four see -> exchange -> clear -> loser leads and can play",
-    async () => {
-      const runtime = createServerRuntime();
-      const clients = Array.from({ length: 4 }, () => new FakeConnection());
-      for (const client of clients) await attachLegacyGuandanConnection(runtime, client);
+  test("tribute -> all four see -> return -> all four see -> exchange -> clear -> loser leads and can play", async () => {
+    const runtime = createServerRuntime();
+    const clients = Array.from({ length: 4 }, () => new FakeConnection());
+    for (const client of clients)
+      await attachLegacyGuandanConnection(runtime, client);
 
-      for (let seat = 0; seat < 4; seat += 1) {
-        await clients[seat]!.send({
-          type: "join",
-          room: "0916-tribute-qa",
-          name: `真人${seat + 1}`,
-          player_count: 4,
-          desired_seat: seat,
-        });
-      }
-      await clients[0]!.send({ type: "start", player_count: 4 });
-
-      let managed = runtime.rooms.get("0916-tribute-qa");
-      if (managed.game.phase !== "playing") throw new Error("game did not start");
-      const level = managed.game.levelRank ?? "2";
-      const giver = 3;
-      const receiver = 0;
-      const tributeCard = mandatoryTributeCard(managed.game.hands[giver]!, level);
-      const returnCard = managed.game.hands[receiver]!.find(({ card }) =>
-        isLegalReturnTributeCard(card, level),
-      );
-      if (returnCard === undefined) throw new Error("test hand has no legal return card");
-
-      managed = runtime.rooms.set("0916-tribute-qa", {
-        ...managed,
-        tribute: {
-          kind: "single",
-          transfers: [{ fromSeat: giver, toSeat: receiver }],
-          status: "tribute",
-          pendingTributeSeats: [giver],
-          pendingReturnSeats: [],
-          tributeCards: [],
-          returnCards: [],
-          leadSeat: receiver,
-        },
-        game: {
-          ...managed.game,
-          currentTurn: receiver,
-          trick: {
-            ...managed.game.trick,
-            leaderSeat: receiver,
-            currentTurn: receiver,
-            leadingPlay: null,
-            plays: [],
-            passedSeats: [],
-          },
-        },
+    for (let seat = 0; seat < 4; seat += 1) {
+      await clients[seat]!.send({
+        type: "join",
+        room: "0916-tribute-qa",
+        name: `真人${seat + 1}`,
+        player_count: 4,
+        desired_seat: seat,
       });
-      prepareLegacyTribute("0916-tribute-qa", [0, 1, 2, 3]);
-      await runtime.websocket.broadcastGameState(managed);
-      await runtime.websocket.sendPrivateHands(managed);
+    }
+    await clients[0]!.send({ type: "start", player_count: 4 });
 
-      const giverHandBefore = last(clients[giver]!.hands()).cards as any[];
-      const tributeIndex = indexOfLegacyCard(giverHandBefore, legacyCard(tributeCard.card));
-      expect(tributeIndex).toBeGreaterThanOrEqual(0);
-      await clients[giver]!.send({ type: "tribute_card", card_index: tributeIndex });
+    let managed = runtime.rooms.get("0916-tribute-qa");
+    if (managed.game.phase !== "playing") throw new Error("game did not start");
+    const level = managed.game.levelRank ?? "2";
+    const giver = 3;
+    const receiver = 0;
+    const tributeCard = mandatoryTributeCard(managed.game.hands[giver]!, level);
+    const returnCard = managed.game.hands[receiver]!.find(({ card }) =>
+      isLegalReturnTributeCard(card, level),
+    );
+    if (returnCard === undefined)
+      throw new Error("test hand has no legal return card");
 
-      const tributeLegacy = legacyCard(tributeCard.card);
-      for (const client of clients) {
-        const visible = last(client.states()).table_plays as Array<{ player: number; cards: any[] }>;
-        expect(visible.some((play) => play.player === giver && play.cards.some((card) => cardKey(card) === cardKey(tributeLegacy)))).toBe(true);
-      }
+    managed = runtime.rooms.set("0916-tribute-qa", {
+      ...managed,
+      tribute: {
+        kind: "single",
+        transfers: [{ fromSeat: giver, toSeat: receiver }],
+        status: "tribute",
+        pendingTributeSeats: [giver],
+        pendingReturnSeats: [],
+        tributeCards: [],
+        returnCards: [],
+        leadSeat: receiver,
+      },
+      game: {
+        ...managed.game,
+        currentTurn: receiver,
+        trick: {
+          ...managed.game.trick,
+          leaderSeat: receiver,
+          currentTurn: receiver,
+          leadingPlay: null,
+          plays: [],
+          passedSeats: [],
+        },
+      },
+    });
+    prepareLegacyTribute("0916-tribute-qa", [0, 1, 2, 3]);
+    await runtime.websocket.broadcastGameState(managed);
+    await runtime.websocket.sendPrivateHands(managed);
 
-      const receiverHandAfterTribute = last(clients[receiver]!.hands()).cards as any[];
-      const returnIndex = indexOfLegacyCard(receiverHandAfterTribute, legacyCard(returnCard.card));
-      expect(returnIndex).toBeGreaterThanOrEqual(0);
-      await clients[receiver]!.send({ type: "return_tribute", card_index: returnIndex });
+    for (const client of clients) {
+      expect(last(client.states()).tribute_phase).toBe("tribute");
+      expect(last(client.states()).tribute_cards).toEqual([]);
+    }
+    const receiverHandBeforeTribute = last(clients[receiver]!.hands())
+      .cards as any[];
+    const prematureReturnIndex = indexOfLegacyCard(
+      receiverHandBeforeTribute,
+      legacyCard(returnCard.card),
+    );
+    const prematureReturnStart = clients[receiver]!.messages.length;
+    await clients[receiver]!.send({
+      type: "return_tribute",
+      card_index: prematureReturnIndex,
+    });
+    expect(clients[receiver]!.errorsSince(prematureReturnStart)).toHaveLength(
+      1,
+    );
 
-      const returnLegacy = legacyCard(returnCard.card);
-      for (const client of clients) {
-        const states = client.states();
-        expect(
-          states.some((state) =>
-            (state.table_plays as Array<{ player: number; cards: any[] }>).some(
-              (play) => play.player === receiver && play.cards.some((card) => cardKey(card) === cardKey(returnLegacy)),
-            ),
+    const giverHandBefore = last(clients[giver]!.hands()).cards as any[];
+    const tributeIndex = indexOfLegacyCard(
+      giverHandBefore,
+      legacyCard(tributeCard.card),
+    );
+    expect(tributeIndex).toBeGreaterThanOrEqual(0);
+    await clients[giver]!.send({
+      type: "tribute_card",
+      card_index: tributeIndex,
+    });
+
+    const tributeLegacy = legacyCard(tributeCard.card);
+    for (const client of clients) {
+      const tributeState = last(client.states());
+      expect(tributeState.tribute_phase).toBe("return");
+      expect(tributeState.tribute_cards).toEqual([
+        { player: giver, cards: [tributeLegacy] },
+      ]);
+      const visible = tributeState.table_plays as Array<{
+        player: number;
+        cards: any[];
+      }>;
+      expect(
+        visible.some(
+          (play) =>
+            play.player === giver &&
+            play.cards.some((card) => cardKey(card) === cardKey(tributeLegacy)),
+        ),
+      ).toBe(true);
+    }
+
+    const losingPlayerReturnStart = clients[giver]!.messages.length;
+    await clients[giver]!.send({ type: "return_tribute", card_index: 0 });
+    expect(clients[giver]!.errorsSince(losingPlayerReturnStart)).toHaveLength(
+      1,
+    );
+
+    const receiverHandAfterTribute = last(clients[receiver]!.hands())
+      .cards as any[];
+    const returnIndex = indexOfLegacyCard(
+      receiverHandAfterTribute,
+      legacyCard(returnCard.card),
+    );
+    expect(returnIndex).toBeGreaterThanOrEqual(0);
+    await clients[receiver]!.send({
+      type: "return_tribute",
+      card_index: returnIndex,
+    });
+
+    const returnLegacy = legacyCard(returnCard.card);
+    for (const client of clients) {
+      const states = client.states();
+      expect(
+        states.some((state) =>
+          (state.table_plays as Array<{ player: number; cards: any[] }>).some(
+            (play) =>
+              play.player === receiver &&
+              play.cards.some(
+                (card) => cardKey(card) === cardKey(returnLegacy),
+              ),
           ),
-        ).toBe(true);
-        expect(last(states).table_plays).toEqual([]);
-        expect(last(states).last_play).toEqual([]);
-      }
+        ),
+      ).toBe(true);
+      expect(last(states).table_plays).toEqual([]);
+      expect(last(states).last_play).toEqual([]);
+    }
 
-      const finalized = runtime.rooms.get("0916-tribute-qa");
-      expect(finalized.tribute).toBeUndefined();
-      if (finalized.game.phase !== "playing") throw new Error("game left playing phase");
-      expect(finalized.game.currentTurn).toBe(giver);
-      expect(finalized.game.trick.leaderSeat).toBe(giver);
-      expect(finalized.game.trick.leadingPlay).toBeNull();
-      expect(finalized.game.hands[giver]).toHaveLength(27);
-      expect(finalized.game.hands[receiver]).toHaveLength(27);
-      expect(finalized.game.hands[giver]!.some(({ id }) => id === returnCard.id)).toBe(true);
-      expect(finalized.game.hands[receiver]!.some(({ id }) => id === tributeCard.id)).toBe(true);
+    const finalized = runtime.rooms.get("0916-tribute-qa");
+    expect(finalized.tribute).toBeUndefined();
+    if (finalized.game.phase !== "playing")
+      throw new Error("game left playing phase");
+    expect(finalized.game.currentTurn).toBe(giver);
+    expect(finalized.game.trick.leaderSeat).toBe(giver);
+    expect(finalized.game.trick.leadingPlay).toBeNull();
+    expect(finalized.game.hands[giver]).toHaveLength(27);
+    expect(finalized.game.hands[receiver]).toHaveLength(27);
+    expect(
+      finalized.game.hands[giver]!.some(({ id }) => id === returnCard.id),
+    ).toBe(true);
+    expect(
+      finalized.game.hands[receiver]!.some(({ id }) => id === tributeCard.id),
+    ).toBe(true);
 
-      await clients[giver]!.send({ type: "start_trick" });
-      const giverHandAfterExchange = last(clients[giver]!.hands()).cards as any[];
-      const beforePlayMessages = clients[giver]!.messages.length;
-      await clients[giver]!.send({ type: "play", card_indexes: [0] });
-      expect(clients[giver]!.errorsSince(beforePlayMessages)).toEqual([]);
+    await clients[giver]!.send({ type: "start_trick" });
+    const giverHandAfterExchange = last(clients[giver]!.hands()).cards as any[];
+    const beforePlayMessages = clients[giver]!.messages.length;
+    await clients[giver]!.send({ type: "play", card_indexes: [0] });
+    expect(clients[giver]!.errorsSince(beforePlayMessages)).toEqual([]);
 
-      const afterPlay = runtime.rooms.get("0916-tribute-qa");
-      if (afterPlay.game.phase !== "playing") throw new Error("play unexpectedly ended game");
-      expect(afterPlay.game.hands[giver]).toHaveLength(giverHandAfterExchange.length - 1);
-      expect(afterPlay.game.trick.leadingPlay?.seat).toBe(giver);
-      for (const client of clients) {
-        expect(
-          last(client.states()).table_plays.some((play: any) => play.player === giver),
-        ).toBe(true);
-      }
-    },
-    15_000,
-  );
+    const afterPlay = runtime.rooms.get("0916-tribute-qa");
+    if (afterPlay.game.phase !== "playing")
+      throw new Error("play unexpectedly ended game");
+    expect(afterPlay.game.hands[giver]).toHaveLength(
+      giverHandAfterExchange.length - 1,
+    );
+    expect(afterPlay.game.trick.leadingPlay?.seat).toBe(giver);
+    for (const client of clients) {
+      expect(
+        last(client.states()).table_plays.some(
+          (play: any) => play.player === giver,
+        ),
+      ).toBe(true);
+    }
+  }, 15_000);
 });

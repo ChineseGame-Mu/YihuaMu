@@ -9,10 +9,10 @@ import {
 } from "./frontend-compat.js";
 import {
   applyLegacyTributeSelection,
+  applyLegacyTributeResistance,
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
-  resolveLegacyTributeResistance,
   runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
@@ -54,6 +54,7 @@ interface PendingLegacyTrick {
 }
 
 const pendingLegacyTricks = new Map<string, PendingLegacyTrick>();
+const legacyTableClearIds = new Map<string, number>();
 const startedLegacyGames = new Set<string>();
 
 const sleep = async (milliseconds: number): Promise<void> => {
@@ -266,8 +267,10 @@ const advanceLegacyRobotNextRound = async (
   await runtime.websocket.broadcastRoomState(next);
   await runtime.websocket.broadcastGameState(next);
   await runtime.websocket.sendPrivateHands(next);
-  if (resolveLegacyTributeResistance(roomId, next)) {
-    await runtime.websocket.broadcastGameState(next);
+  const resisted = applyLegacyTributeResistance(roomId, next);
+  if (resisted !== null) {
+    const resistedNext = runtime.rooms.set(roomId, resisted);
+    await runtime.websocket.broadcastGameState(resistedNext);
   } else {
     await runLegacyRobotTribute(runtime, roomId);
   }
@@ -466,6 +469,7 @@ class LegacyAdapterSocket implements TextSocket {
       passes: pending === undefined ? decoratedState.passes : 0,
       trick_complete: pending !== undefined,
       last_trick_winner: pending?.winner ?? null,
+      table_clear_id: legacyTableClearIds.get(this.compat.roomId) ?? 0,
     });
   }
 
@@ -973,15 +977,19 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "end_round") {
         const pending = pendingLegacyTricks.get(active.roomId);
-        if (
-          pending !== undefined &&
-          active.adapter.compat.seat !== pending.winner
-        ) {
+        if (pending === undefined) {
+          throw new Error("round is not ready to end");
+        }
+        if (active.adapter.compat.seat !== pending.winner) {
           throw new Error(
             "only the completed trick winner may clear the table",
           );
         }
         pendingLegacyTricks.delete(active.roomId);
+        legacyTableClearIds.set(
+          active.roomId,
+          (legacyTableClearIds.get(active.roomId) ?? 0) + 1,
+        );
         await runtime.websocket.broadcastGameState(
           runtime.rooms.get(active.roomId),
         );
@@ -1083,8 +1091,10 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "deal_next_round") {
         const managed = runtime.rooms.get(active.roomId);
-        if (resolveLegacyTributeResistance(active.roomId, managed)) {
-          await runtime.websocket.broadcastGameState(managed);
+        const resisted = applyLegacyTributeResistance(active.roomId, managed);
+        if (resisted !== null) {
+          const resistedNext = runtime.rooms.set(active.roomId, resisted);
+          await runtime.websocket.broadcastGameState(resistedNext);
         } else {
           await runLegacyRobotTribute(runtime, active.roomId);
         }

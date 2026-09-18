@@ -80,6 +80,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
 
   if (message.type !== "state") return adapted;
 
+  const tableWasAuthoritativelyCleared =
+    (message.table_clear_id ?? current.tableClearId) > current.tableClearId;
+
   let tributePublicCount = currentFixed.__tributePublicCount ?? 0;
 
   // While tribute is pending, every public table entry belongs to the tribute
@@ -100,8 +103,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   }
 
   const normalPlayStarted = message.last_play.length > 0;
-  const visiblePlays =
-    normalPlayStarted && tributePublicCount > 0
+  const visiblePlays = tableWasAuthoritativelyCleared
+    ? []
+    : normalPlayStarted && tributePublicCount > 0
       ? message.table_plays.slice(tributePublicCount)
       : message.table_plays;
 

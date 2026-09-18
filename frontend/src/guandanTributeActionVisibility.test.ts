@@ -17,6 +17,14 @@ describe("Guandan tribute action visibility", () => {
     expect(table).toContain('className="guandan-pass-action"');
   });
 
+  test("enforces tribute before return and names the exact tribute card", () => {
+    expect(table).toContain('tributePhase === "tribute"');
+    expect(table).toContain('tributePhase === "return"');
+    expect(table).toContain("完成后才能还贡");
+    expect(table).toContain("state.tributeCards.map");
+    expect(table).toContain("进贡：");
+  });
+
   test("gives the exchange action its own full-width, non-overlapping slot", () => {
     expect(controls).toMatch(
       />\.guandan-tribute-action,[\s\S]*?>\.guandan-tribute-waiting\{[\s\S]*?left:14px!important;right:14px!important;width:auto!important/,
