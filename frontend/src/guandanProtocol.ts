@@ -50,6 +50,11 @@ export type GuandanTributePlan =
   | { Single: { giver: number; receiver: number } }
   | { Double: { givers: [number, number]; receivers: [number, number] } };
 
+export interface GuandanExchangeCard {
+  player: number;
+  cards: GuandanCard[];
+}
+
 export type GuandanServerMessage =
   | { type: "connected"; protocol: string }
   | { type: "joined"; room: string; seat: number | null }
@@ -88,6 +93,10 @@ export type GuandanServerMessage =
       last_promotion_steps: number | null;
       pending_tribute: GuandanTributePlan | null;
       tribute_resisted: boolean;
+      tribute_phase?: "tribute" | "return" | null;
+      tribute_cards?: GuandanExchangeCard[];
+      return_tribute_cards?: GuandanExchangeCard[];
+      table_clear_id?: number;
       match_winner: GuandanTeam | null;
       next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
       hook_to_bottom?: boolean;

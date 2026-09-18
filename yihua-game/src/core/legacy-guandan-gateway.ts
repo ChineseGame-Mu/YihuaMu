@@ -54,6 +54,7 @@ interface PendingLegacyTrick {
 }
 
 const pendingLegacyTricks = new Map<string, PendingLegacyTrick>();
+const legacyTableClearIds = new Map<string, number>();
 const startedLegacyGames = new Set<string>();
 
 const sleep = async (milliseconds: number): Promise<void> => {
@@ -466,6 +467,7 @@ class LegacyAdapterSocket implements TextSocket {
       passes: pending === undefined ? decoratedState.passes : 0,
       trick_complete: pending !== undefined,
       last_trick_winner: pending?.winner ?? null,
+      table_clear_id: legacyTableClearIds.get(this.compat.roomId) ?? 0,
     });
   }
 
@@ -973,15 +975,19 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "end_round") {
         const pending = pendingLegacyTricks.get(active.roomId);
-        if (
-          pending !== undefined &&
-          active.adapter.compat.seat !== pending.winner
-        ) {
+        if (pending === undefined) {
+          throw new Error("round is not ready to end");
+        }
+        if (active.adapter.compat.seat !== pending.winner) {
           throw new Error(
             "only the completed trick winner may clear the table",
           );
         }
         pendingLegacyTricks.delete(active.roomId);
+        legacyTableClearIds.set(
+          active.roomId,
+          (legacyTableClearIds.get(active.roomId) ?? 0) + 1,
+        );
         await runtime.websocket.broadcastGameState(
           runtime.rooms.get(active.roomId),
         );

@@ -33,6 +33,10 @@ export interface GuandanTableState {
   lastPromotionSteps: number | null;
   pendingTribute: unknown;
   tributeResisted: boolean;
+  tributePhase: "tribute" | "return" | null;
+  tributeCards: Array<{ player: number; cards: GuandanCard[] }>;
+  returnTributeCards: Array<{ player: number; cards: GuandanCard[] }>;
+  tableClearId: number;
   matchWinner: GuandanTeam | null;
   nextRoundPhase: "awaiting_shuffle" | "awaiting_deal" | null;
   nextRoundJoiners: string[];
@@ -70,6 +74,10 @@ export const initialGuandanTableState: GuandanTableState = {
   lastPromotionSteps: null,
   pendingTribute: null,
   tributeResisted: false,
+  tributePhase: null,
+  tributeCards: [],
+  returnTributeCards: [],
+  tableClearId: 0,
   matchWinner: null,
   nextRoundPhase: null,
   nextRoundJoiners: [],
@@ -232,8 +240,11 @@ export const adaptGuandanServerMessage = (
       const effectiveLevel = shouldInferNextLevel
         ? advanceRank(serverLevel, promotionSteps)
         : serverLevel;
+      const nextTableClearId = message.table_clear_id ?? state.tableClearId;
+      const tableWasAuthoritativelyCleared =
+        nextTableClearId > state.tableClearId;
       const currentTrickPlays = mergeCurrentTrickPlays(
-        state.tablePlays,
+        tableWasAuthoritativelyCleared ? [] : state.tablePlays,
         message.table_plays,
         state.trickComplete,
         message.trick_complete,
@@ -267,6 +278,10 @@ export const adaptGuandanServerMessage = (
         lastPromotionSteps: promotionSteps,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
+        tributePhase: message.tribute_phase ?? null,
+        tributeCards: message.tribute_cards ?? [],
+        returnTributeCards: message.return_tribute_cards ?? [],
+        tableClearId: nextTableClearId,
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
         nextRoundJoiners: message.next_round_joiners ?? [],

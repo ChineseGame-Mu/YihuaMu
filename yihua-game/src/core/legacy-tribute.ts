@@ -1,6 +1,6 @@
 import { RANKS, type Card, type Rank } from "./cards.js";
 import type { DeckCard } from "./deck.js";
-import type { LegacyServerMessage } from "./frontend-compat.js";
+import { legacyCard, type LegacyServerMessage } from "./frontend-compat.js";
 import { classifyHand } from "./hand.js";
 import type { ManagedRoom } from "./room-manager.js";
 import type { ServerRuntime } from "./server-runtime.js";
@@ -143,6 +143,20 @@ export const runLegacyRobotTribute = async (
 
 export const legacyTributeResisted = (roomId: string): boolean =>
   resistedRooms.get(roomId) ?? false;
+
+export const legacyTributePhase = (
+  roomId: string,
+): "tribute" | "return" | null => {
+  const session = sessions.get(roomId);
+  if (session === undefined) return null;
+  return allTributesReceived(session) ? "return" : "tribute";
+};
+
+const legacySelections = (selections: readonly TributeSelection[]) =>
+  selections.map(({ player, card }) => ({
+    player,
+    cards: [legacyCard(card.card)],
+  }));
 
 const tributeGivers = (plan: LegacyTributePlan): readonly number[] =>
   "Single" in plan ? [plan.Single.giver] : plan.Double.givers;
@@ -424,4 +438,9 @@ export const decorateLegacyTributeState = (
     ...state,
     pending_tribute: legacyTributePlan(roomId),
     tribute_resisted: legacyTributeResisted(roomId),
+    tribute_phase: legacyTributePhase(roomId),
+    tribute_cards: legacySelections(sessions.get(roomId)?.tributeCards ?? []),
+    return_tribute_cards: legacySelections(
+      sessions.get(roomId)?.returnCards ?? [],
+    ),
   }) as unknown as LegacyStateMessage;

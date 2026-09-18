@@ -50,6 +50,8 @@ interface LegacyState {
   readonly last_player: number | null;
   readonly trick_complete: boolean;
   readonly last_trick_winner: number | null;
+  readonly last_play: readonly unknown[];
+  readonly table_clear_id: number;
 }
 
 const latestState = (connection: FakeConnection): LegacyState => {
@@ -137,6 +139,50 @@ describe("legacy completed-trick display compatibility", () => {
       expect(state.last_trick_winner).toBeNull();
       expect(state.last_player).toBeNull();
       expect(state.table_plays).toEqual([]);
+      expect(state.table_clear_id).toBe(1);
+    }
+
+    await connections.get(leaderSeat)!.receive({
+      type: "play",
+      card_indexes: [0],
+    });
+    for (const connection of connections.values()) {
+      const state = latestState(connection);
+      expect(state.trick_complete).toBe(false);
+      expect(state.table_plays).toHaveLength(1);
+      expect(state.table_plays[0]?.player).toBe(leaderSeat);
+      expect(state.table_plays[0]?.cards).toEqual(state.last_play);
+      expect(state.table_clear_id).toBe(1);
+    }
+
+    await connections.get(leaderSeat)!.receive({ type: "end_round" });
+    for (const connection of connections.values()) {
+      const state = latestState(connection);
+      expect(state.table_plays).toHaveLength(1);
+      expect(state.table_clear_id).toBe(1);
+    }
+
+    managed = runtime.rooms.get(roomId);
+    let secondTrickPasses = 0;
+    while (
+      managed.game.phase === "playing" &&
+      managed.game.trick.leadingPlay !== null &&
+      managed.game.currentTurn !== leaderSeat
+    ) {
+      await connections
+        .get(managed.game.currentTurn)!
+        .receive({ type: "pass" });
+      secondTrickPasses += 1;
+      expect(secondTrickPasses).toBeLessThanOrEqual(3);
+      managed = runtime.rooms.get(roomId);
+    }
+    await connections.get(leaderSeat)!.receive({ type: "end_round" });
+
+    for (const connection of connections.values()) {
+      const state = latestState(connection);
+      expect(state.table_plays).toEqual([]);
+      expect(state.last_play).toEqual([]);
+      expect(state.table_clear_id).toBe(2);
     }
   });
 });
