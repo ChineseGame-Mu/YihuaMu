@@ -31,6 +31,7 @@ describe("Guandan enlarged player displays", () => {
     expect(css).toMatch(/font-size:\s*28px\s*!important/);
     expect(css).toMatch(/right:\s*14px\s*!important/);
     expect(css).toMatch(/left:\s*auto\s*!important/);
+    expect(css).toMatch(/bottom:\s*14px\s*!important/);
     expect(table).toContain('aria-label="向左换位"');
     expect(table).toContain('aria-label="向右换位"');
     expect(table).toContain('type: "move_seat"');
