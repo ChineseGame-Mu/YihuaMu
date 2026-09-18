@@ -108,4 +108,21 @@ describe("2026-09-16 mandatory real-test regressions", () => {
 
     expect(next.hand).toEqual([]);
   });
+
+  test("restores the winner's authoritative private hand for the second round", () => {
+    const previousRound = {
+      ...initialGuandanTableState,
+      seat: 0,
+      finishOrder: [0, 1, 2, 3],
+      hand: [],
+    };
+    const secondRoundHand = [suited("Four"), suited("King")];
+
+    const next = adaptGuandanServerMessageWithRealTestFixes(previousRound, {
+      type: "hand",
+      cards: secondRoundHand,
+    });
+
+    expect(next.hand).toEqual(secondRoundHand);
+  });
 });

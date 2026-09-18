@@ -126,6 +126,7 @@ describe("legacy frontend compatibility adapter", () => {
       roomId: "room-1",
       revision: 5,
       phase: "playing",
+      levelRank: "4",
       currentTurn: 1,
       handCounts: [26, 27],
       openingDraw: [
@@ -151,6 +152,7 @@ describe("legacy frontend compatibility adapter", () => {
       last_player: 0,
       passes: 1,
       initial_draw_winner: 1,
+      level: "Four",
       finish_order: [],
     });
   });

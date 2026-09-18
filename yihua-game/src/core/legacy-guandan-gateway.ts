@@ -269,6 +269,7 @@ const advanceLegacyRobotNextRound = async (
   } else {
     await runLegacyRobotTribute(runtime, roomId);
   }
+  await startLegacyPlayWhenTributeComplete(runtime, roomId);
   return true;
 };
 
@@ -377,6 +378,19 @@ const runLegacyRobots = async (
       continue;
     }
   }
+};
+
+const startLegacyPlayWhenTributeComplete = async (
+  runtime: ServerRuntime,
+  roomId: string,
+): Promise<boolean> => {
+  if (hasPendingLegacyTribute(roomId)) return false;
+  const managed = runtime.rooms.get(roomId);
+  if (managed.game.phase !== "playing") return false;
+  startedLegacyGames.add(roomId);
+  await runtime.websocket.broadcastGameState(managed);
+  await runLegacyRobots(runtime, roomId);
+  return true;
 };
 
 const sendLegacy = async (
@@ -998,6 +1012,7 @@ export const attachLegacyGuandanConnection = async (
           message.type,
         );
         await runLegacyRobotTribute(runtime, active.roomId);
+        await startLegacyPlayWhenTributeComplete(runtime, active.roomId);
         return;
       }
 
@@ -1045,6 +1060,7 @@ export const attachLegacyGuandanConnection = async (
         } else {
           await runLegacyRobotTribute(runtime, active.roomId);
         }
+        await startLegacyPlayWhenTributeComplete(runtime, active.roomId);
       }
     } catch (error) {
       await sendLegacy(connection.socket, {
