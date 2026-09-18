@@ -4,6 +4,10 @@ import { legacyCard, type LegacyServerMessage } from "./frontend-compat.js";
 import { classifyHand } from "./hand.js";
 import type { ManagedRoom } from "./room-manager.js";
 import type { ServerRuntime } from "./server-runtime.js";
+import {
+  antiTributeBigJokerRequirement,
+  isSupportedPlayerCount,
+} from "./table.js";
 
 export type LegacyTributePlan =
   | { readonly Single: { readonly giver: number; readonly receiver: number } }
@@ -43,16 +47,17 @@ export const prepareLegacyTribute = (
   finishOrder: readonly number[],
 ): void => {
   resistedRooms.set(roomId, false);
-  if (finishOrder.length !== 4) {
+  if (!isSupportedPlayerCount(finishOrder.length)) {
     sessions.delete(roomId);
     return;
   }
 
   const first = finishOrder[0]!;
   const second = finishOrder[1]!;
-  const third = finishOrder[2]!;
-  const last = finishOrder[3]!;
   const doubleDown = first % 2 === second % 2;
+  const losingFinishers = finishOrder.filter((seat) => seat % 2 !== first % 2);
+  const last = losingFinishers.at(-1)!;
+  const penultimate = losingFinishers.at(-2)!;
 
   sessions.set(
     roomId,
@@ -60,7 +65,7 @@ export const prepareLegacyTribute = (
       ? {
           plan: {
             Double: {
-              givers: [third, last],
+              givers: [penultimate, last],
               receivers: [first, second],
             },
           },
@@ -180,13 +185,14 @@ export const applyLegacyTributeResistance = (
   const session = sessions.get(roomId);
   const game = managed.game;
   if (session === undefined || game.phase !== "playing") return null;
-  const givers = tributeGivers(session.plan);
-  const bigJokers = givers.reduce(
-    (total, seat) => total + countBigJokers(game.hands[seat] ?? []),
+  const winnerSeat = tributeReceivers(session.plan)[0]!;
+  const losingTeamBigJokers = game.hands.reduce(
+    (total, hand, seat) =>
+      seat % 2 === winnerSeat % 2 ? total : total + countBigJokers(hand),
     0,
   );
-  if (bigJokers < 2) return null;
-  const winnerSeat = tributeReceivers(session.plan)[0]!;
+  const requiredBigJokers = antiTributeBigJokerRequirement(game.hands.length);
+  if (losingTeamBigJokers < requiredBigJokers) return null;
   sessions.delete(roomId);
   resistedRooms.set(roomId, true);
   return {
