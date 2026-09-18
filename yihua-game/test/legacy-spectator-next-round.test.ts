@@ -74,6 +74,27 @@ describe("legacy spectator next-round entry", () => {
         .get(roomId)
         .room.participants.find(({ name }) => name === "换位玩家1")?.seat,
     ).toBe(0);
+
+    await connections[0]!.receive({
+      type: "set_participation",
+      active: false,
+    });
+    expect(
+      messages(connections[0]!)
+        .filter(({ type }) => type === "joined")
+        .at(-1)?.seat,
+    ).toBeNull();
+    expect(runtime.rooms.get(roomId).room.observers[0]?.name).toBe("换位玩家1");
+
+    await connections[0]!.receive({
+      type: "set_participation",
+      active: true,
+    });
+    expect(
+      messages(connections[0]!)
+        .filter(({ type }) => type === "joined")
+        .at(-1)?.seat,
+    ).toBe(0);
   });
 
   it("keeps a late arrival observing, then seats them with their optional partner for the next round", async () => {

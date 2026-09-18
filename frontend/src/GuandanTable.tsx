@@ -480,6 +480,15 @@ const GuandanTable: React.FunctionComponent = () => {
     send({ type: "move_seat", direction });
   };
 
+  const toggleMyParticipation = (): void => {
+    if (state.seat === null) return;
+    if (gameStarted) {
+      togglePlayerExit();
+      return;
+    }
+    send({ type: "set_participation", active: false });
+  };
+
   const toggleObserverEntry = (): void => {
     send({
       type: "set_participation",
@@ -900,36 +909,56 @@ const GuandanTable: React.FunctionComponent = () => {
                       <span className="guandan-public-player-seat">
                         玩家{index + 1}
                       </span>
-                      <span
-                        className="guandan-public-card-back"
-                        aria-hidden="true"
-                      >
+                      <span className="guandan-public-card-back">
                         <span>掼蛋</span>
-                      </span>
-                      <strong title={player}>{player}</strong>
-                      {index === state.seat && !gameStarted && (
                         <span
                           className="guandan-public-seat-move-controls"
-                          aria-label="我的换位按钮"
+                          aria-label={`${player}的换位及参与按钮`}
                         >
                           <button
                             type="button"
+                            disabled={gameStarted || index !== state.seat}
                             onClick={() => moveMySeat("left")}
-                            aria-label="向左换位"
-                            title="向左换位"
+                            aria-label={`${player}向左换位`}
+                            title={
+                              index === state.seat
+                                ? "向左换位"
+                                : "由该玩家本人操作"
+                            }
                           >
-                            ◀
+                            ＜
                           </button>
                           <button
                             type="button"
-                            onClick={() => moveMySeat("right")}
-                            aria-label="向右换位"
-                            title="向右换位"
+                            disabled={index !== state.seat}
+                            onClick={toggleMyParticipation}
+                            aria-label={`${player}切换参与或旁观`}
+                            title={
+                              index === state.seat
+                                ? leavingNextRound
+                                  ? "取消旁观，继续参与下一轮"
+                                  : "切换为旁观"
+                                : "由该玩家本人操作"
+                            }
                           >
-                            ▶
+                            ▼
+                          </button>
+                          <button
+                            type="button"
+                            disabled={gameStarted || index !== state.seat}
+                            onClick={() => moveMySeat("right")}
+                            aria-label={`${player}向右换位`}
+                            title={
+                              index === state.seat
+                                ? "向右换位"
+                                : "由该玩家本人操作"
+                            }
+                          >
+                            ＞
                           </button>
                         </span>
-                      )}
+                      </span>
+                      <strong title={player}>{player}</strong>
                       {shouldReport && (
                         <span
                           className="guandan-public-card-count"

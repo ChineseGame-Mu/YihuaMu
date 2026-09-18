@@ -208,6 +208,56 @@ export const setParticipationForNextRound = (
   };
 };
 
+export const setLobbyParticipation = (
+  room: RoomState,
+  id: string,
+  active: boolean,
+): RoomState => {
+  const observer = room.observers.find(
+    ({ id: observerId }) => observerId === id,
+  );
+  if (observer !== undefined) {
+    if (!active) return room;
+    const robot = [...room.participants]
+      .filter(({ kind }) => kind === "robot")
+      .sort((left, right) => left.seat - right.seat)[0];
+    if (robot === undefined) throw new Error("no robot seat is available");
+    return replaceRobotWithHuman(removeObserver(room, id), {
+      id: observer.id,
+      name: observer.name,
+      seat: robot.seat,
+    });
+  }
+
+  const participant = room.participants.find(
+    ({ id: participantId, kind }) => participantId === id && kind === "human",
+  );
+  if (participant === undefined) {
+    throw new Error(`human or observer ${id} does not exist`);
+  }
+  if (active) return room;
+
+  return {
+    ...room,
+    config: createTableConfig(
+      room.config.playerCount,
+      room.config.botCount + 1,
+    ),
+    participants: room.participants.map((current) =>
+      current.id === id ? robotForSeat(current.seat) : current,
+    ),
+    observers: [
+      ...room.observers,
+      {
+        id: participant.id,
+        name: participant.name,
+        connected: participant.connected,
+        readyForNextRound: false,
+      },
+    ],
+  };
+};
+
 export const addHuman = (
   room: RoomState,
   input: { readonly id: string; readonly name: string; readonly seat: number },

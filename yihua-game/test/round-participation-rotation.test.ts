@@ -7,6 +7,7 @@ import {
   choosePartner,
   createRoom,
   moveParticipantSeat,
+  setLobbyParticipation,
   setParticipationForNextRound,
   setRobotCount,
 } from "../src/core/room.js";
@@ -94,6 +95,32 @@ describe("round-boundary participation rotation", () => {
     room = moveParticipantSeat(room, "p1", "left");
     expect(room.participants.find(({ id }) => id === "p1")?.seat).toBe(0);
     expect(new Set(room.participants.map(({ seat }) => seat)).size).toBe(4);
+  });
+
+  it("moves a lobby player down to observe and back into the same robot seat", () => {
+    let room = createRoom("lobby-participation-toggle", 4);
+    for (let seat = 0; seat < 4; seat += 1) {
+      room = addHuman(room, {
+        id: `p${seat + 1}`,
+        name: `玩家${seat + 1}`,
+        seat,
+      });
+    }
+
+    room = setLobbyParticipation(room, "p2", false);
+    expect(room.participants.find(({ seat }) => seat === 1)?.kind).toBe(
+      "robot",
+    );
+    expect(room.observers.find(({ id }) => id === "p2")?.name).toBe("玩家2");
+    expect(room.config.botCount).toBe(1);
+
+    room = setLobbyParticipation(room, "p2", true);
+    expect(room.participants.find(({ id }) => id === "p2")).toMatchObject({
+      kind: "human",
+      seat: 1,
+    });
+    expect(room.observers).toEqual([]);
+    expect(room.config.botCount).toBe(0);
   });
 
   it("supports cancelling both a queued observer entry and a queued player exit", () => {
