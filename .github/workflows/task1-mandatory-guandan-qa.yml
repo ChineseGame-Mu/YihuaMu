@@ -51,6 +51,7 @@ jobs:
           const spectatorFlow = fs.readFileSync("yihua-game/test/legacy-spectator-next-round.test.ts", "utf8");
           const secondRound = fs.readFileSync("yihua-game/test/legacy-second-round-four-human.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
+          const playerScale = fs.readFileSync("frontend/src/guandan-player-display-scale.css", "utf8");
 
           const contracts = [
             ["public player name renders", /state\.players\[play\.player\]/.test(table)],
@@ -75,6 +76,10 @@ jobs:
             ["tribute completion opens the loser lead", /errorsSince\(playStart\)\)\.toEqual\(\[\]\)/.test(secondRound) && /startedLegacyGames\.add\(roomId\)/.test(fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8"))],
             ["four-color diamond is orange", /#f5a623/.test(diamond) && !/#00f/.test(diamond)],
             ["four-color label names orange", /四色（黑 \/ 红 \/ 橘黄 \/ 绿）/.test(table)],
+            ["public player displays are doubled without gaps", /flex:\s*0 0 96px\s*!important/.test(playerScale) && /gap:\s*0\s*!important/.test(playerScale)],
+            ["enlarged displays never cover played cards", /\.guandan-table-stage[\s\S]*?padding-top:\s*154px\s*!important/.test(playerScale)],
+            ["current-turn display is doubled", /min-width:\s*300px\s*!important/.test(playerScale) && /font-size:\s*28px\s*!important/.test(playerScale)],
+            ["each player has left and right seat controls", /aria-label="向左换位"/.test(table) && /aria-label="向右换位"/.test(table) && /moveMySeat/.test(table) && /moves a seated player one place left or right/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
           ];
 
           const failed = contracts.filter(([, ok]) => !ok).map(([name]) => name);
@@ -104,6 +109,7 @@ jobs:
           src/GuandanLastRoundScoreboard.test.tsx
           src/GuandanRoundResultHud.test.tsx
           src/guandanReturnTributePrivacy.test.ts
+          src/guandanPlayerDisplayScale.test.ts
 
       - name: Install game-server dependencies
         working-directory: yihua-game

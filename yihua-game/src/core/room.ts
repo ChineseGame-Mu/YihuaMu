@@ -366,6 +366,35 @@ export const choosePartner = (
   };
 };
 
+export const moveParticipantSeat = (
+  room: RoomState,
+  playerId: string,
+  direction: "left" | "right",
+): RoomState => {
+  const player = room.participants.find(
+    ({ id, kind }) => id === playerId && kind === "human",
+  );
+  if (player === undefined)
+    throw new Error("a seated human player is required");
+  const offset = direction === "left" ? -1 : 1;
+  const targetSeat =
+    (player.seat + offset + room.config.playerCount) % room.config.playerCount;
+  const displaced = room.participants.find(({ seat }) => seat === targetSeat);
+  if (displaced === undefined) {
+    throw new Error("adjacent player seat is unavailable");
+  }
+  return {
+    ...room,
+    participants: room.participants.map((participant) => {
+      if (participant.id === player.id)
+        return { ...participant, seat: targetSeat };
+      if (participant.id === displaced.id)
+        return { ...participant, seat: player.seat };
+      return participant;
+    }),
+  };
+};
+
 const robotForSeat = (seat: number): Participant => ({
   id: `robot-seat-${seat + 1}`,
   name: `机器人${seat + 1}`,

@@ -40,6 +40,42 @@ const messages = (connection: FakeConnection): any[] =>
   connection.socket.sent.map((text) => JSON.parse(text));
 
 describe("legacy spectator next-round entry", () => {
+  it("moves the requesting player one seat left or right before the first round", async () => {
+    const runtime = createServerRuntime();
+    const roomId = "seat-arrow-movement";
+    const connections: FakeConnection[] = [];
+    for (let seat = 0; seat < 4; seat += 1) {
+      const connection = new FakeConnection({ roomId });
+      await attachLegacyGuandanConnection(runtime, connection);
+      await connection.receive({
+        type: "join",
+        room: roomId,
+        name: `换位玩家${seat + 1}`,
+        player_count: 4,
+      });
+      connections.push(connection);
+    }
+
+    await connections[0]!.receive({ type: "move_seat", direction: "right" });
+    expect(
+      runtime.rooms
+        .get(roomId)
+        .room.participants.find(({ name }) => name === "换位玩家1")?.seat,
+    ).toBe(1);
+    expect(
+      messages(connections[0]!)
+        .filter(({ type }) => type === "joined")
+        .at(-1)?.seat,
+    ).toBe(1);
+
+    await connections[0]!.receive({ type: "move_seat", direction: "left" });
+    expect(
+      runtime.rooms
+        .get(roomId)
+        .room.participants.find(({ name }) => name === "换位玩家1")?.seat,
+    ).toBe(0);
+  });
+
   it("keeps a late arrival observing, then seats them with their optional partner for the next round", async () => {
     const runtime = createServerRuntime();
     const roomId = "spectator-entry";

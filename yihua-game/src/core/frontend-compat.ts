@@ -30,6 +30,10 @@ export type LegacyClientMessage =
       readonly order: readonly [number, number];
     }
   | {
+      readonly type: "move_seat";
+      readonly direction: "left" | "right";
+    }
+  | {
       readonly type: "set_participation";
       readonly active: boolean;
       readonly preferred_partner?: string;
@@ -175,6 +179,8 @@ export const toCleanroomCommand = (
       throw new Error(
         "clean-room backend does not support seat reordering yet",
       );
+    case "move_seat":
+      throw new Error("legacy seat movement is handled by the gateway");
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
     case "set_bots":

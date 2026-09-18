@@ -21,6 +21,7 @@ import type { ServerMessage } from "./protocol.js";
 import {
   addObserver,
   choosePartner,
+  moveParticipantSeat,
   disconnectHuman,
   disconnectObserver,
   reconnectHuman,
@@ -875,6 +876,25 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+
+      if (message.type === "move_seat") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase !== "lobby") {
+          throw new Error(
+            "seat movement is only available before the first round",
+          );
+        }
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: moveParticipantSeat(
+            managed.room,
+            active.playerId,
+            message.direction,
+          ),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        return;
       }
 
       if (message.type === "reorder_players") {
