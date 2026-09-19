@@ -2,9 +2,8 @@ import type { GuandanTeam } from "./guandanProtocol";
 
 export const GUANDAN_MATCH_CELEBRATION_MS = 10_000;
 
-export const normalizeWinnerScreenshotEmail = (
-  value: string | null,
-): string => (value ?? "").trim().slice(0, 254);
+export const normalizeWinnerScreenshotEmail = (value: string | null): string =>
+  (value ?? "").trim().slice(0, 254);
 
 export const celebrationFireworks = [
   ["6%", "13%", "#ff334f", "0s"],
