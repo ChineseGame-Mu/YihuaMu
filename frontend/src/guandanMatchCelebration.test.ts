@@ -34,9 +34,17 @@ describe("Guandan A-level match celebration", () => {
     );
     expect(table).toContain('className="guandan-match-trophy"');
     expect(table).toContain('className="guandan-fireworks"');
+    expect(table).toContain("celebrationFireworks.map");
+    expect(table).toContain('" guandan-match-celebrating"');
     expect(table).toContain("获胜队员：");
     expect(table).toMatch(/>\s*继续\s*</);
     expect(table).toMatch(/>\s*退出\s*</);
     expect(css).toContain("@keyframes guandan-firework-burst");
+    expect(css).toContain(
+      ".guandan-match-complete-panel.guandan-match-celebrating",
+    );
+    expect(css).toContain(
+      ".guandan-match-complete-panel:not(.guandan-match-celebrating)",
+    );
   });
 });
