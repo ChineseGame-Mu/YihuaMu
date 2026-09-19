@@ -12,6 +12,7 @@ import { privateHandStackProgress } from "./guandanHandLayout";
 import {
   celebrationFireworks,
   GUANDAN_MATCH_CELEBRATION_MS,
+  normalizeWinnerScreenshotEmail,
   winningTeamPlayerNames,
 } from "./guandanMatchCelebration";
 import {
@@ -232,6 +233,11 @@ const GuandanTable: React.FunctionComponent = () => {
   );
   const [matchCelebrationComplete, setMatchCelebrationComplete] =
     React.useState(false);
+  const [winnerScreenshotEmail, setWinnerScreenshotEmail] = React.useState(() =>
+    normalizeWinnerScreenshotEmail(
+      window.localStorage.getItem("guandan_winner_screenshot_email"),
+    ),
+  );
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -365,6 +371,13 @@ const GuandanTable: React.FunctionComponent = () => {
       String(cardCountAlertThreshold),
     );
   }, [cardCountAlertThreshold]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_winner_screenshot_email",
+      winnerScreenshotEmail,
+    );
+  }, [winnerScreenshotEmail]);
 
   React.useEffect(() => {
     if (!gameStarted) setShuffleTo(String(deckSize));
@@ -806,30 +819,54 @@ const GuandanTable: React.FunctionComponent = () => {
           <p>
             牌面配色、手牌排列、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
+          <label htmlFor="guandan-winner-screenshot-email">赢家截图：</label>{" "}
+          <input
+            id="guandan-winner-screenshot-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="填写接收截图的邮箱地址"
+            value={winnerScreenshotEmail}
+            onChange={(event) =>
+              setWinnerScreenshotEmail(event.target.value.trim())
+            }
+          />
+          <p>打A获胜时，赢家全屏庆祝截图使用此邮箱地址。</p>
           <div className="guandan-bot-settings">
-            <strong>机器人陪玩：</strong>{" "}
-            {[1, 2, 3].map((count) => {
-              const humanCount = state.players.filter(
-                (player) => !player.startsWith("机器人"),
-              ).length;
-              return (
-                <button
-                  key={count}
-                  type="button"
-                  className="normal"
-                  disabled={
-                    !joined ||
-                    gameStarted ||
-                    humanCount + count > requestedPlayerCount
-                  }
-                  onClick={() =>
-                    send({ type: "set_bots", count: count as 1 | 2 | 3 })
-                  }
-                >
-                  {count} 个机器人
-                </button>
-              );
-            })}
+            <label htmlFor="guandan-bot-count">
+              <strong>机器人玩家：</strong>
+            </label>{" "}
+            <select
+              id="guandan-bot-count"
+              aria-label="机器人玩家数量"
+              value={String(
+                state.players.filter((player) => player.startsWith("机器人"))
+                  .length || "",
+              )}
+              disabled={!joined || gameStarted}
+              onChange={(event) => {
+                const count = Number(event.target.value) as 1 | 2 | 3;
+                if (count >= 1 && count <= 3) send({ type: "set_bots", count });
+              }}
+            >
+              <option value="" disabled>
+                请选择
+              </option>
+              {[1, 2, 3].map((count) => {
+                const humanCount = state.players.filter(
+                  (player) => !player.startsWith("机器人"),
+                ).length;
+                return (
+                  <option
+                    key={count}
+                    value={count}
+                    disabled={humanCount + count > requestedPlayerCount}
+                  >
+                    {count}
+                  </option>
+                );
+              })}
+            </select>
           </div>
           <p>
             4至14人大桌开局前可选择 1 至 3 个机器人。
