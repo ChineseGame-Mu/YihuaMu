@@ -12,7 +12,10 @@ import GuandanRoundResultHud from "./GuandanRoundResultHud";
 import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
 import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
-import { celebrationFireworks } from "./guandanMatchCelebration";
+import {
+  celebrationFireworks,
+  formatCelebrationDateTime,
+} from "./guandanMatchCelebration";
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
@@ -53,32 +56,42 @@ const CleanroomTable = (): JSX.Element => {
   return <GuandanWebsocketProvider><GuandanStateProvider><PublicPlayerCountMarker /><ExitGameButton onClick={exit} /><GuandanHeaderDecor /><GuandanCustomSortControls /><GuandanTable /><GuandanStartGate /><GuandanRoundResultHud /><GuandanHookToBottomSetting /><GuandanNoBeatHint /><GuandanNoBeatControls /></GuandanStateProvider></GuandanWebsocketProvider>;
 };
 
-const CelebrationPreview = (): JSX.Element => (
-  <main
-    className="guandan-match-complete-panel guandan-match-celebrating"
-    role="img"
-    aria-label="A级获胜全屏庆祝效果预览"
-  >
-    <div className="guandan-match-trophy" aria-hidden="true">🏆</div>
-    <div className="guandan-fireworks" aria-hidden="true">
-      {celebrationFireworks.map(([x, y, color, delay]) => (
-        <i
-          key={`${x}-${y}`}
-          className="guandan-firework"
-          style={{
-            "--firework-x": x,
-            "--firework-y": y,
-            "--firework-color": color,
-            "--firework-delay": delay,
-          } as React.CSSProperties}
-        />
-      ))}
-    </div>
-    <strong>本局结束：A队打A获胜</strong>
-    <span className="guandan-match-winners">获胜队员：玩家1 ｜ 玩家3 ｜ 玩家5</span>
-    <span>🏆 庆祝焰花播放中（10秒）</span>
-  </main>
-);
+const CelebrationPreview = (): JSX.Element => {
+  const [now, setNow] = React.useState(() => new Date());
+  React.useEffect(() => {
+    const clock = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(clock);
+  }, []);
+  return (
+    <main
+      className="guandan-match-complete-panel guandan-match-celebrating"
+      role="img"
+      aria-label="A级获胜全屏庆祝效果预览"
+    >
+      <div className="guandan-match-trophy" aria-hidden="true">🏆</div>
+      <div className="guandan-fireworks" aria-hidden="true">
+        {celebrationFireworks.map(([x, y, color, delay]) => (
+          <i
+            key={`${x}-${y}`}
+            className="guandan-firework"
+            style={{
+              "--firework-x": x,
+              "--firework-y": y,
+              "--firework-color": color,
+              "--firework-delay": delay,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+      <strong>本局结束：A队打A获胜</strong>
+      <span className="guandan-match-winners">获胜队员：玩家1 ｜ 玩家3 ｜ 玩家5</span>
+      <time className="guandan-match-celebration-time" dateTime={now.toISOString()}>
+        庆祝时间：{formatCelebrationDateTime(now)}
+      </time>
+      <span>🏆 庆祝焰花播放中（10秒）</span>
+    </main>
+  );
+};
 
 const CleanroomEntry = (): JSX.Element => {
   const initial = React.useMemo(() => new URLSearchParams(window.location.search), []);

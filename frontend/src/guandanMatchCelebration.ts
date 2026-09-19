@@ -2,6 +2,15 @@ import type { GuandanTeam } from "./guandanProtocol";
 
 export const GUANDAN_MATCH_CELEBRATION_MS = 10_000;
 
+const twoDigits = (value: number): string => String(value).padStart(2, "0");
+
+export const formatCelebrationDateTime = (date: Date): string =>
+  `${date.getFullYear()}年${twoDigits(date.getMonth() + 1)}月${twoDigits(
+    date.getDate(),
+  )}日 ${twoDigits(date.getHours())}:${twoDigits(
+    date.getMinutes(),
+  )}:${twoDigits(date.getSeconds())}`;
+
 export const normalizeWinnerScreenshotEmail = (value: string | null): string =>
   (value ?? "").trim().slice(0, 254);
 

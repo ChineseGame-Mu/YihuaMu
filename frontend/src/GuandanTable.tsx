@@ -11,6 +11,7 @@ import type {
 import { privateHandStackProgress } from "./guandanHandLayout";
 import {
   celebrationFireworks,
+  formatCelebrationDateTime,
   GUANDAN_MATCH_CELEBRATION_MS,
   normalizeWinnerScreenshotEmail,
   winningTeamPlayerNames,
@@ -233,6 +234,7 @@ const GuandanTable: React.FunctionComponent = () => {
   );
   const [matchCelebrationComplete, setMatchCelebrationComplete] =
     React.useState(false);
+  const [celebrationNow, setCelebrationNow] = React.useState(() => new Date());
   const [winnerScreenshotEmail, setWinnerScreenshotEmail] = React.useState(() =>
     normalizeWinnerScreenshotEmail(
       window.localStorage.getItem("guandan_winner_screenshot_email"),
@@ -285,13 +287,18 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     setMatchCelebrationComplete(false);
     if (state.matchWinner === null) return;
+    setCelebrationNow(new Date());
+    const clock = window.setInterval(() => setCelebrationNow(new Date()), 1000);
     const timer = window.setTimeout(() => {
       setSelected([]);
       setDealStep(null);
       setStartRequested(false);
       setMatchCelebrationComplete(true);
     }, GUANDAN_MATCH_CELEBRATION_MS);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearInterval(clock);
+      window.clearTimeout(timer);
+    };
   }, [state.matchWinner]);
 
   const joined = state.room !== null;
@@ -1370,7 +1377,15 @@ const GuandanTable: React.FunctionComponent = () => {
                   获胜队员：{winningPlayerNames.join(" ｜ ")}
                 </span>
                 {!matchCelebrationComplete ? (
-                  <span>🏆 庆祝焰花播放中（10秒）</span>
+                  <>
+                    <time
+                      className="guandan-match-celebration-time"
+                      dateTime={celebrationNow.toISOString()}
+                    >
+                      庆祝时间：{formatCelebrationDateTime(celebrationNow)}
+                    </time>
+                    <span>🏆 庆祝焰花播放中（10秒）</span>
+                  </>
                 ) : (
                   <>
                     <span>全局结束。继续后清零并重新抽牌决定首家。</span>

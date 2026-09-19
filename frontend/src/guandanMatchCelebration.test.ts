@@ -3,6 +3,7 @@ import { join } from "path";
 
 import {
   GUANDAN_MATCH_CELEBRATION_MS,
+  formatCelebrationDateTime,
   normalizeWinnerScreenshotEmail,
   winningTeamPlayerNames,
 } from "./guandanMatchCelebration";
@@ -27,6 +28,12 @@ describe("Guandan A-level match celebration", () => {
     expect(GUANDAN_MATCH_CELEBRATION_MS).toBe(10_000);
   });
 
+  test("formats the live celebration date and time to the second", () => {
+    expect(formatCelebrationDateTime(new Date(2026, 8, 19, 9, 7, 5))).toBe(
+      "2026年09月19日 09:07:05",
+    );
+  });
+
   test("stores a normalized winner screenshot email address", () => {
     expect(normalizeWinnerScreenshotEmail("  muyihua@gmail.com  ")).toBe(
       "muyihua@gmail.com",
@@ -42,6 +49,9 @@ describe("Guandan A-level match celebration", () => {
     );
     expect(table).toContain('className="guandan-match-trophy"');
     expect(table).toContain('className="guandan-fireworks"');
+    expect(table).toContain('className="guandan-match-celebration-time"');
+    expect(table).toContain("庆祝时间：");
+    expect(table).toContain("setInterval");
     expect(table).toContain("celebrationFireworks.map");
     expect(table).toContain('" guandan-match-celebrating"');
     expect(table).toContain("获胜队员：");
