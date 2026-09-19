@@ -9,6 +9,15 @@ import type {
   GuandanTributePlan,
 } from "./guandanProtocol";
 import { privateHandStackProgress } from "./guandanHandLayout";
+import {
+  GUANDAN_MATCH_CELEBRATION_MS,
+  winningTeamPlayerNames,
+} from "./guandanMatchCelebration";
+import {
+  normalizeGuandanMusicMode,
+  startGuandanMusic,
+  type GuandanMusicMode,
+} from "./guandanMusic";
 
 const rankLabel: Record<string, string> = {
   Two: "2",
@@ -215,6 +224,16 @@ const GuandanTable: React.FunctionComponent = () => {
       ? "horizontal"
       : "vertical",
   );
+  const [musicMode, setMusicMode] = React.useState<GuandanMusicMode>(() =>
+    normalizeGuandanMusicMode(
+      window.localStorage.getItem("guandan_music_mode"),
+    ),
+  );
+  const [matchCelebrationComplete, setMatchCelebrationComplete] =
+    React.useState(false);
+  const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
+  const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
+  const stopMusicRef = React.useRef<(() => void) | null>(null);
   const [cardCountAlertThreshold, setCardCountAlertThreshold] =
     React.useState<number>(() => {
       const saved = Number(
@@ -227,6 +246,46 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
+
+  const activateMusic = React.useCallback((mode: GuandanMusicMode): void => {
+    if (activeMusicModeRef.current === mode) return;
+    stopMusicRef.current?.();
+    stopMusicRef.current = null;
+    activeMusicModeRef.current = mode;
+    if (mode !== "off") stopMusicRef.current = startGuandanMusic(mode);
+  }, []);
+
+  const changeMusicMode = (mode: GuandanMusicMode): void => {
+    musicModeRef.current = mode;
+    setMusicMode(mode);
+    window.localStorage.setItem("guandan_music_mode", mode);
+    activateMusic(mode);
+  };
+
+  React.useEffect(() => {
+    const activateSavedMusic = (): void => {
+      activateMusic(musicModeRef.current);
+    };
+    window.addEventListener("pointerdown", activateSavedMusic, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", activateSavedMusic);
+      stopMusicRef.current?.();
+      stopMusicRef.current = null;
+      activeMusicModeRef.current = "off";
+    };
+  }, [activateMusic]);
+
+  React.useEffect(() => {
+    setMatchCelebrationComplete(false);
+    if (state.matchWinner === null) return;
+    const timer = window.setTimeout(() => {
+      setSelected([]);
+      setDealStep(null);
+      setStartRequested(false);
+      setMatchCelebrationComplete(true);
+    }, GUANDAN_MATCH_CELEBRATION_MS);
+    return () => window.clearTimeout(timer);
+  }, [state.matchWinner]);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -532,6 +591,27 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  const restartMatch = (): void => {
+    setSelected([]);
+    if (send({ type: "restart_match" })) {
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+    }
+  };
+
+  const exitCompletedMatch = (): void => {
+    if (state.seat !== null) send({ type: "set_participation", active: false });
+    stopMusicRef.current?.();
+    reset();
+    window.close();
+    window.setTimeout(() => window.location.replace("about:blank"), 50);
+  };
+
+  const winningPlayerNames =
+    state.matchWinner === null
+      ? []
+      : winningTeamPlayerNames(state.players, state.matchWinner);
+
   const testPlayerUrl = (player: number): string => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
@@ -661,6 +741,19 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="four">四色（黑 / 红 / 橘黄 / 绿）</option>
           </select>
           <br />
+          <label htmlFor="guandan-music-mode">播放音乐：</label>{" "}
+          <select
+            id="guandan-music-mode"
+            value={musicMode}
+            onChange={(event) =>
+              changeMusicMode(normalizeGuandanMusicMode(event.target.value))
+            }
+          >
+            <option value="off">关闭音乐</option>
+            <option value="relaxing">轻松气氛器乐</option>
+            <option value="chinese">中国民乐</option>
+          </select>
+          <br />
           <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
           <select
             id="guandan-hand-sort-order"
@@ -710,7 +803,7 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列、牌叠加方式和报牌阈值只影响您自己，并会保存在当前浏览器。
+            牌面配色、手牌排列、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
           <div className="guandan-bot-settings">
             <strong>机器人陪玩：</strong>{" "}
@@ -1199,7 +1292,74 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.nextRoundPhase !== null && (
+            {state.matchWinner !== null && (
+              <section
+                className="guandan-notice-panel guandan-match-complete-panel"
+                role="status"
+                aria-label="本局结束"
+              >
+                <div className="guandan-match-trophy" aria-hidden="true">
+                  🏆
+                </div>
+                {!matchCelebrationComplete && (
+                  <div className="guandan-fireworks" aria-hidden="true">
+                    {[
+                      ["15%", "22%", "#ff334f", "0s"],
+                      ["34%", "68%", "#ffd43b", "0.35s"],
+                      ["52%", "18%", "#46d9ff", "0.7s"],
+                      ["71%", "62%", "#ff74da", "0.2s"],
+                      ["86%", "28%", "#89ff63", "0.55s"],
+                    ].map(([x, y, color, delay]) => (
+                      <i
+                        key={`${x}-${y}`}
+                        className="guandan-firework"
+                        style={
+                          {
+                            "--firework-x": x,
+                            "--firework-y": y,
+                            "--firework-color": color,
+                            "--firework-delay": delay,
+                          } as React.CSSProperties
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+                <strong>
+                  本局结束：
+                  {state.matchWinner === "TeamA" ? "A队" : "B队"}
+                  打A获胜
+                </strong>
+                <span className="guandan-match-winners">
+                  获胜队员：{winningPlayerNames.join(" ｜ ")}
+                </span>
+                {!matchCelebrationComplete ? (
+                  <span>🏆 庆祝焰花播放中（10秒）</span>
+                ) : (
+                  <>
+                    <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                    <div className="guandan-match-actions">
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={restartMatch}
+                      >
+                        继续
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={exitCompletedMatch}
+                      >
+                        退出
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            {state.matchWinner === null && state.nextRoundPhase !== null && (
               <section
                 className="guandan-next-round-panel"
                 aria-label="下局开始"

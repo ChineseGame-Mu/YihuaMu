@@ -248,6 +248,8 @@ const advanceLegacyRobotNextRound = async (
   roomId: string,
 ): Promise<boolean> => {
   const managed = runtime.rooms.get(roomId);
+  if (managed.game.phase === "round-complete" && managed.game.levelRank === "A")
+    return false;
   const { shuffleReady, winnerIsRobot } = legacyNextRoundRobotState(managed);
   if (!shuffleReady || !winnerIsRobot) return false;
 
@@ -1077,7 +1079,11 @@ export const attachLegacyGuandanConnection = async (
         JSON.stringify(clean),
       );
 
-      if (message.type === "start" || message.type === "deal_next_round") {
+      if (
+        message.type === "start" ||
+        message.type === "deal_next_round" ||
+        message.type === "restart_match"
+      ) {
         startedLegacyGames.delete(active.roomId);
       }
 
