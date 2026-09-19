@@ -47,4 +47,12 @@ describe("Guandan A-level match celebration", () => {
       ".guandan-match-complete-panel:not(.guandan-match-celebrating)",
     );
   });
+
+  test("provides a test-only online preview for screenshot verification", () => {
+    const entry = readFileSync(join(__dirname, "CleanroomEntry.tsx"), "utf8");
+    expect(entry).toContain('initial.get("test") === "1"');
+    expect(entry).toContain('initial.get("celebrationPreview") === "1"');
+    expect(entry).toContain("A级获胜全屏庆祝效果预览");
+    expect(entry).toContain("celebrationFireworks.map");
+  });
 });
