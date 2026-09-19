@@ -47,9 +47,21 @@
 }
 
 .guandan-match-complete-panel.guandan-match-celebrating > strong,
-.guandan-match-complete-panel.guandan-match-celebrating > span {
+.guandan-match-complete-panel.guandan-match-celebrating > span,
+.guandan-match-complete-panel.guandan-match-celebrating > time {
   position: relative;
   z-index: 2;
+}
+
+.guandan-match-celebration-time {
+  padding: 8px 18px;
+  border: 1px solid rgb(255 244 173 / 72%);
+  border-radius: 999px;
+  background: rgb(6 81 48 / 62%);
+  color: #fff4ad;
+  font-size: clamp(1rem, 2vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .guandan-match-complete-panel:not(.guandan-match-celebrating) > strong {
