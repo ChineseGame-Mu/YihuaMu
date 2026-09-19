@@ -3,6 +3,7 @@ import { join } from "path";
 
 import {
   GUANDAN_MATCH_CELEBRATION_MS,
+  normalizeWinnerScreenshotEmail,
   winningTeamPlayerNames,
 } from "./guandanMatchCelebration";
 
@@ -24,6 +25,13 @@ describe("Guandan A-level match celebration", () => {
 
   test("keeps fireworks visible for exactly ten seconds", () => {
     expect(GUANDAN_MATCH_CELEBRATION_MS).toBe(10_000);
+  });
+
+  test("stores a normalized winner screenshot email address", () => {
+    expect(normalizeWinnerScreenshotEmail("  muyihua@gmail.com  ")).toBe(
+      "muyihua@gmail.com",
+    );
+    expect(normalizeWinnerScreenshotEmail(null)).toBe("");
   });
 
   test("shows the trophy, fireworks, winner names, continue and exit controls", () => {
@@ -54,5 +62,16 @@ describe("Guandan A-level match celebration", () => {
     expect(entry).toContain('initial.get("celebrationPreview") === "1"');
     expect(entry).toContain("A级获胜全屏庆祝效果预览");
     expect(entry).toContain("celebrationFireworks.map");
+  });
+
+  test("offers one screenshot email field and one 1-3 robot selector", () => {
+    const table = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
+    expect(table).toContain('id="guandan-winner-screenshot-email"');
+    expect(table).toContain('type="email"');
+    expect(table).toContain("guandan_winner_screenshot_email");
+    expect(table).toContain('id="guandan-bot-count"');
+    expect(table).toContain("机器人玩家数量");
+    expect(table).toContain("[1, 2, 3].map");
+    expect(table).not.toContain("{count} 个机器人");
   });
 });
