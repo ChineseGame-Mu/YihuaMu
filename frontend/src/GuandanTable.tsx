@@ -233,11 +233,10 @@ const GuandanTable: React.FunctionComponent = () => {
   );
   const [matchCelebrationComplete, setMatchCelebrationComplete] =
     React.useState(false);
-  const [winnerScreenshotEmail, setWinnerScreenshotEmail] = React.useState(
-    () =>
-      normalizeWinnerScreenshotEmail(
-        window.localStorage.getItem("guandan_winner_screenshot_email"),
-      ),
+  const [winnerScreenshotEmail, setWinnerScreenshotEmail] = React.useState(() =>
+    normalizeWinnerScreenshotEmail(
+      window.localStorage.getItem("guandan_winner_screenshot_email"),
+    ),
   );
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
@@ -820,9 +819,7 @@ const GuandanTable: React.FunctionComponent = () => {
           <p>
             牌面配色、手牌排列、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
-          <label htmlFor="guandan-winner-screenshot-email">
-            赢家截图：
-          </label>{" "}
+          <label htmlFor="guandan-winner-screenshot-email">赢家截图：</label>{" "}
           <input
             id="guandan-winner-screenshot-email"
             type="email"
