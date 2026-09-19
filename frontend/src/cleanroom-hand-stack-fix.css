@@ -1,25 +1,68 @@
-/* Clean-room compatibility repair: keep large same-rank stacks visible.
- * The accepted Guandan hand uses 126px cards with -82px vertical overlap.
- * With 6-8 copies in one rank stack that exceeds the lower grid row and the
- * hand section clips the earliest cards. Compress only those unusually tall
- * stacks; ordinary 1-5 card stacks keep the approved spacing unchanged.
+/* Keep the complete private hand inside the shortened "我的桌面" row.
+ * The row is a size container, so both the card face and the visible slice of
+ * every vertically stacked card shrink with the actual available height.
+ * React supplies each card's 0..1 progress through its own stack: the first
+ * card is anchored at the top and the final full face is anchored at the
+ * bottom, with every intervening card spread evenly between them.  This works
+ * for every supported 4-14 player deck count instead of assuming a fixed
+ * maximum stack.  A selected card's 12px lift is reserved above each stack.
  */
-html
-  body
-  .guandan-table:has(.guandan-public-zone)
-  .guandan-hand
-  .guandan-card-stack:has(> button:nth-child(6))
-  > button {
-  margin-top: -106px !important;
+html body .guandan-table:has(.guandan-public-zone) .guandan-hand-section {
+  container-type: size !important;
+}
+
+html body .guandan-table:has(.guandan-public-zone) .guandan-hand {
+  --guandan-private-card-height: clamp(88px, 40cqh, 126px);
+  --guandan-private-card-width: clamp(50px, 22.86cqh, 72px);
+  box-sizing: border-box !important;
+  height: calc(100% - 25px) !important;
+  min-height: 0 !important;
+  align-items: end !important;
+  padding-top: 0 !important;
+  padding-bottom: 2px !important;
+  overflow-y: hidden !important;
 }
 
 html
   body
   .guandan-table:has(.guandan-public-zone)
   .guandan-hand
-  .guandan-card-stack:has(> button:nth-child(6))
-  > button:first-child {
-  margin-top: 0 !important;
+  .guandan-card-stack {
+  box-sizing: border-box !important;
+  position: relative !important;
+  height: calc(100% - 15px) !important;
+  min-height: 0 !important;
+  margin-top: 15px !important;
+  justify-content: flex-end !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack
+  > button {
+  box-sizing: border-box !important;
+  position: absolute !important;
+  top: var(--guandan-stack-progress) !important;
+  left: 0 !important;
+  translate: 0 var(--guandan-stack-offset) !important;
+  line-height: 0 !important;
+  margin: 0 !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand
+  .guandan-card-stack
+  > button
+  > svg {
+  display: block !important;
+  width: var(--guandan-private-card-width) !important;
+  height: var(--guandan-private-card-height) !important;
+  max-width: var(--guandan-private-card-width) !important;
+  max-height: var(--guandan-private-card-height) !important;
 }
 
 /* Public table: every card in a multi-card play must stay individually visible.
@@ -55,7 +98,8 @@ html
   justify-content: flex-start !important;
   width: auto !important;
   min-width: 72px !important;
-  height: 126px !important;
+  height: var(--guandan-private-card-height) !important;
+  margin-top: 0 !important;
 }
 
 html
@@ -64,7 +108,11 @@ html
   .guandan-hand
   .guandan-card-stack
   > button {
-  margin: 0 -52px 0 0 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  translate: none !important;
+  margin: 0 calc(20px - var(--guandan-private-card-width)) 0 0 !important;
 }
 
 html

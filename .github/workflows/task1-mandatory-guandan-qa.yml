@@ -43,6 +43,7 @@ jobs:
           const entry = fs.readFileSync("frontend/src/CleanroomEntry.tsx", "utf8");
           const css = fs.readFileSync("frontend/src/guandan-real-test-20260916.css", "utf8");
           const handStackCss = fs.readFileSync("frontend/src/cleanroom-hand-stack-fix.css", "utf8");
+          const handLayout = fs.readFileSync("frontend/src/guandanHandLayout.ts", "utf8");
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const tributePlan = fs.readFileSync("yihua-game/test/legacy-tribute-plan.test.ts", "utf8");
@@ -94,6 +95,7 @@ jobs:
             ["current-turn display is doubled", /min-width:\s*300px\s*!important/.test(playerScale) && /font-size:\s*28px\s*!important/.test(playerScale)],
             ["current-turn display stays at the bottom of the right play area", /right:\s*14px\s*!important/.test(playerScale) && /left:\s*auto\s*!important/.test(playerScale) && /bottom:\s*14px\s*!important/.test(playerScale)],
             ["public table expands while my table shrinks by one quarter", /grid-template-rows:\s*auto\s+minmax\(0,\s*5fr\)\s+minmax\(0,\s*3fr\)\s*!important/.test(approvedLayout)],
+            ["every dealt private card remains inside my table", /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*100/.test(table) && /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*-100/.test(table) && /stackIndex\s*\/\s*\(stackSize\s*-\s*1\)/.test(handLayout) && /container-type:\s*size\s*!important/.test(handStackCss) && /top:\s*var\(--guandan-stack-progress\)\s*!important/.test(handStackCss) && /translate:\s*0\s+var\(--guandan-stack-offset\)\s*!important/.test(handStackCss)],
             ["each player display embeds left observe right controls", /\$\{player\}向左换位/.test(table) && /\$\{player\}切换参与或旁观/.test(table) && /\$\{player\}向右换位/.test(table) && /\.guandan-public-card-back\s*\{[\s\S]*?position:\s*relative\s*!important/.test(playerScale) && /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/.test(playerScale) && /width:\s*32px\s*!important/.test(playerScale)],
             ["players can securely move themselves or toggle participation", /moveMySeat/.test(table) && /toggleMyParticipation/.test(table) && /setLobbyParticipation/.test(roomSource) && /moves a lobby player down to observe and back into the same robot seat/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
             ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
@@ -127,6 +129,7 @@ jobs:
           src/GuandanRoundResultHud.test.tsx
           src/guandanReturnTributePrivacy.test.ts
           src/guandanPlayerDisplayScale.test.ts
+          src/guandanHandLayout.test.ts
           src/guandanTributeActionVisibility.test.ts
 
       - name: Install game-server dependencies

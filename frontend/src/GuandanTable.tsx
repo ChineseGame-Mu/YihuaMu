@@ -8,6 +8,7 @@ import type {
   GuandanRank,
   GuandanTributePlan,
 } from "./guandanProtocol";
+import { privateHandStackProgress } from "./guandanHandLayout";
 
 const rankLabel: Record<string, string> = {
   Two: "2",
@@ -1413,20 +1414,24 @@ const GuandanTable: React.FunctionComponent = () => {
                           aria-pressed={selected.includes(originalIndex)}
                           disabled={!gameStarted}
                           onClick={() => toggleCard(originalIndex)}
-                          style={{
-                            zIndex: selected.includes(originalIndex)
-                              ? 100
-                              : stackIndex + 1,
-                            padding: 0,
-                            border: selected.includes(originalIndex)
-                              ? "3px solid currentColor"
-                              : "2px solid transparent",
-                            borderRadius: 8,
-                            background: "transparent",
-                            transform: selected.includes(originalIndex)
-                              ? "translateY(-12px)"
-                              : "none",
-                          }}
+                          style={
+                            {
+                              "--guandan-stack-progress": `${privateHandStackProgress(stackIndex, stack.length) * 100}%`,
+                              "--guandan-stack-offset": `${privateHandStackProgress(stackIndex, stack.length) * -100}%`,
+                              zIndex: selected.includes(originalIndex)
+                                ? 100
+                                : stackIndex + 1,
+                              padding: 0,
+                              border: selected.includes(originalIndex)
+                                ? "3px solid currentColor"
+                                : "2px solid transparent",
+                              borderRadius: 8,
+                              background: "transparent",
+                              transform: selected.includes(originalIndex)
+                                ? "translateY(-12px)"
+                                : "none",
+                            } as React.CSSProperties
+                          }
                         >
                           {fullCard(card)}
                         </button>
