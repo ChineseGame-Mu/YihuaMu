@@ -59,6 +59,12 @@ jobs:
           const approvedLayout = fs.readFileSync("frontend/src/guandan-approved-layout.css", "utf8");
           const actionControls = fs.readFileSync("frontend/src/GuandanCustomSortControls.tsx", "utf8");
           const roomSource = fs.readFileSync("yihua-game/src/core/room.ts", "utf8");
+          const roomManager = fs.readFileSync("yihua-game/src/core/room-manager.ts", "utf8");
+          const frontendCompat = fs.readFileSync("yihua-game/src/core/frontend-compat.ts", "utf8");
+          const music = fs.readFileSync("frontend/src/guandanMusic.ts", "utf8");
+          const celebration = fs.readFileSync("frontend/src/guandanMatchCelebration.ts", "utf8");
+          const celebrationCss = fs.readFileSync("frontend/src/guandan-match-celebration.css", "utf8");
+          const legacyGateway = fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8");
 
           const contracts = [
             ["public player name renders", /state\.players\[play\.player\]/.test(table)],
@@ -96,6 +102,10 @@ jobs:
             ["current-turn display stays at the bottom of the right play area", /right:\s*14px\s*!important/.test(playerScale) && /left:\s*auto\s*!important/.test(playerScale) && /bottom:\s*14px\s*!important/.test(playerScale)],
             ["public table expands while my table shrinks by one quarter", /grid-template-rows:\s*auto\s+minmax\(0,\s*5fr\)\s+minmax\(0,\s*3fr\)\s*!important/.test(approvedLayout)],
             ["every dealt private card remains inside my table", /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*100/.test(table) && /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*-100/.test(table) && /stackIndex\s*\/\s*\(stackSize\s*-\s*1\)/.test(handLayout) && /container-type:\s*size\s*!important/.test(handStackCss) && /top:\s*var\(--guandan-stack-progress\)\s*!important/.test(handStackCss) && /translate:\s*0\s+var\(--guandan-stack-offset\)\s*!important/.test(handStackCss)],
+            ["winning on A ends the match and continue uses a fresh opening draw", /completed\.levelRank === "A"/.test(roomManager) && /startGame\([\s\S]*?createLobbyState/.test(roomManager) && /match_winner:\s*matchWinner/.test(frontendCompat) && /type:\s*"restart_match"/.test(table) && />\s*继续\s*</.test(table)],
+            ["settings offer optional synthesized atmosphere music", /guandan-music-mode/.test(table) && /轻松气氛器乐/.test(table) && /中国民乐/.test(table) && /AudioContext/.test(music) && !/https?:\/\//.test(music)],
+            ["A-level winners receive a ten-second trophy and fireworks finale", /GUANDAN_MATCH_CELEBRATION_MS\s*=\s*10_000/.test(celebration) && /winningTeamPlayerNames/.test(table) && /guandan-match-trophy/.test(table) && /guandan-fireworks/.test(table) && /继续/.test(table) && /退出/.test(table) && /guandan-firework-burst/.test(celebrationCss)],
+            ["robots cannot skip the A-level finale", /advanceLegacyRobotNextRound[\s\S]*?phase === "round-complete"[\s\S]*?levelRank === "A"/.test(legacyGateway)],
             ["each player display embeds left observe right controls", /\$\{player\}向左换位/.test(table) && /\$\{player\}切换参与或旁观/.test(table) && /\$\{player\}向右换位/.test(table) && /\.guandan-public-card-back\s*\{[\s\S]*?position:\s*relative\s*!important/.test(playerScale) && /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/.test(playerScale) && /width:\s*32px\s*!important/.test(playerScale)],
             ["players can securely move themselves or toggle participation", /moveMySeat/.test(table) && /toggleMyParticipation/.test(table) && /setLobbyParticipation/.test(roomSource) && /moves a lobby player down to observe and back into the same robot seat/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
             ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
@@ -130,6 +140,8 @@ jobs:
           src/guandanReturnTributePrivacy.test.ts
           src/guandanPlayerDisplayScale.test.ts
           src/guandanHandLayout.test.ts
+          src/guandanMusic.test.ts
+          src/guandanMatchCelebration.test.ts
           src/guandanTributeActionVisibility.test.ts
 
       - name: Install game-server dependencies
@@ -149,6 +161,7 @@ jobs:
           test/legacy-trick-clear-compat.test.ts
           test/steel-plate-222333-regression.test.ts
           test/legacy-next-round-compat.test.ts
+          test/competition-match-progression.test.ts
           test/legacy-next-round-role.test.ts
           test/legacy-robot-next-round.test.ts
           test/round-participation-rotation.test.ts

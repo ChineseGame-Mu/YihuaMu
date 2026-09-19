@@ -47,6 +47,7 @@ export type LegacyClientMessage =
       readonly to_position: number | null;
     }
   | { readonly type: "deal_next_round" }
+  | { readonly type: "restart_match" }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
   | { readonly type: "tribute_card"; readonly card_index: number }
   | { readonly type: "return_tribute"; readonly card_index: number }
@@ -112,7 +113,7 @@ export type LegacyServerMessage =
       readonly team_levels: null;
       readonly finish_order: readonly number[];
       readonly last_game_winner: number | null;
-      readonly last_game_winner_team: null;
+      readonly last_game_winner_team: "TeamA" | "TeamB" | null;
       readonly last_promotion_steps: number | null;
       readonly pending_tribute: null;
       readonly tribute_resisted: false;
@@ -126,7 +127,7 @@ export type LegacyServerMessage =
         readonly cards: readonly LegacyGuandanCard[];
       }[];
       readonly table_clear_id: number;
-      readonly match_winner: null;
+      readonly match_winner: "TeamA" | "TeamB" | null;
       readonly next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
       readonly card_count_alert_threshold: number;
       readonly next_round_joiners: readonly string[];
@@ -203,6 +204,8 @@ export const toCleanroomCommand = (
       return { type: "set_next_round_ready", ready: true };
     case "deal_next_round":
       return { type: "next_round" };
+    case "restart_match":
+      return { type: "next_round" };
     case "play": {
       const cardIds = message.card_indexes.map((index) => {
         const cardId = state.privateCardIds[index];
@@ -262,6 +265,16 @@ export const gameStateToLegacy = (
   const lastPlay = game.leadingPlay?.cards.map(legacyCard) ?? [];
   const lastGameWinner =
     game.phase === "round-complete" ? (game.finishedSeats[0] ?? null) : null;
+  const lastGameWinnerTeam =
+    lastGameWinner === null
+      ? null
+      : lastGameWinner % 2 === 0
+        ? "TeamA"
+        : "TeamB";
+  const matchWinner =
+    game.phase === "round-complete" && game.levelRank === "A"
+      ? lastGameWinnerTeam
+      : null;
   const isOpeningRound = (game.roundNumber ?? 1) === 1;
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
@@ -295,7 +308,7 @@ export const gameStateToLegacy = (
     team_levels: null,
     finish_order: game.finishedSeats,
     last_game_winner: lastGameWinner,
-    last_game_winner_team: null,
+    last_game_winner_team: lastGameWinnerTeam,
     last_promotion_steps: null,
     pending_tribute: null,
     tribute_resisted: false,
@@ -303,13 +316,15 @@ export const gameStateToLegacy = (
     tribute_cards: [],
     return_tribute_cards: [],
     table_clear_id: 0,
-    match_winner: null,
+    match_winner: matchWinner,
     next_round_phase:
-      game.phase === "round-complete"
-        ? losingTeamShuffleReady
-          ? "awaiting_deal"
-          : "awaiting_shuffle"
-        : null,
+      matchWinner !== null
+        ? null
+        : game.phase === "round-complete"
+          ? losingTeamShuffleReady
+            ? "awaiting_deal"
+            : "awaiting_shuffle"
+          : null,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
     next_round_joiners: (room.observers ?? [])
       .filter(({ readyForNextRound }) => readyForNextRound)

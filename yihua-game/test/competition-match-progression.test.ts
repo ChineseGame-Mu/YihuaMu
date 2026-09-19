@@ -21,7 +21,7 @@ const completeAsTeamADoubleDown = (game: PlayingState) =>
   );
 
 describe("integrated competitive match progression", () => {
-  it("advances a four-player team from 2 through A and records pass-A winner", () => {
+  it("advances a four-player team from 2 through A, then restarts after an A win", () => {
     const rooms = new RoomManager();
     const created = rooms.create("competition-progression", 4);
     let game = startGame(createLobbyState(4, 0), FIXED_RANDOM);
@@ -47,11 +47,15 @@ describe("integrated competitive match progression", () => {
       });
     }
 
-    const passedA = rooms.nextRound("competition-progression", FIXED_RANDOM);
-    expect(passedA.game.phase).toBe("playing");
-    if (passedA.game.phase !== "playing") return;
-    expect(passedA.game.teamLevels).toEqual({ A: "A", B: "2" });
-    expect(passedA.game.levelRank).toBe("A");
-    expect(passedA.game.matchWinner).toBe("A");
+    const restarted = rooms.nextRound("competition-progression", FIXED_RANDOM);
+    expect(restarted.game.phase).toBe("playing");
+    if (restarted.game.phase !== "playing") return;
+    expect(restarted.game.roundNumber).toBe(1);
+    expect(restarted.game.levelRank).toBe("2");
+    expect(restarted.game.teamLevels).toEqual({ A: "2", B: "2" });
+    expect(restarted.game.matchWinner).toBeNull();
+    expect(restarted.game.currentTurn).toBe(
+      restarted.game.openingDraw.winnerSeat,
+    );
   });
 });

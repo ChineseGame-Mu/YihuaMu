@@ -1,0 +1,107 @@
+.guandan-match-complete-panel {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 18px !important;
+  margin: 0 !important;
+  padding: 28px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: radial-gradient(
+      circle at center,
+      rgb(255 244 173 / 92%),
+      rgb(6 81 48 / 97%)
+    ),
+    #065130 !important;
+  color: #4f3100 !important;
+  isolation: isolate;
+}
+
+.guandan-match-trophy {
+  position: absolute;
+  z-index: -1;
+  font-size: min(62vw, 62vh);
+  line-height: 1;
+  opacity: 0.2;
+  filter: drop-shadow(0 0 36px rgb(255 215 0 / 70%));
+  user-select: none;
+}
+
+.guandan-match-complete-panel > strong {
+  font-size: clamp(2rem, 5vw, 5rem);
+  color: #8d180d;
+  text-shadow: 0 2px 0 #fff4ad;
+}
+
+.guandan-match-winners {
+  max-width: 900px;
+  font-size: clamp(1.25rem, 3vw, 2.5rem);
+  font-weight: 800;
+  text-align: center;
+}
+
+.guandan-match-actions {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+}
+
+.guandan-match-actions button {
+  min-width: 150px;
+  padding: 14px 28px !important;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
+}
+
+.guandan-fireworks {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.guandan-firework {
+  position: absolute;
+  left: var(--firework-x);
+  top: var(--firework-y);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  color: var(--firework-color);
+  animation: guandan-firework-burst 1.25s ease-out infinite;
+  animation-delay: var(--firework-delay);
+  box-shadow:
+    0 -76px 0 currentColor,
+    54px -54px 0 currentColor,
+    76px 0 0 currentColor,
+    54px 54px 0 currentColor,
+    0 76px 0 currentColor,
+    -54px 54px 0 currentColor,
+    -76px 0 0 currentColor,
+    -54px -54px 0 currentColor;
+}
+
+@keyframes guandan-firework-burst {
+  0% {
+    scale: 0.05;
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    scale: 1.35;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guandan-firework {
+    animation-duration: 2.5s;
+  }
+}

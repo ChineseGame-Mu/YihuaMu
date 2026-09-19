@@ -249,9 +249,36 @@ export class RoomManager {
       },
     };
 
+    // Winning while the table level is A completes the whole match.  A new
+    // request after that result is a brand-new match: scores/levels/tribute are
+    // cleared and the opening draw once again decides the first leader.
+    if (
+      completed.levelRank === "A" &&
+      completed.outcome !== null &&
+      completed.placements.length === activeCount
+    ) {
+      const restarted = startGame(
+        createLobbyState(
+          activeCount,
+          nextRoom.participants.filter(({ kind }) => kind === "robot").length,
+        ),
+        random,
+      );
+      const next = {
+        ...managed,
+        room: nextRoom,
+        game: { ...restarted, matchWinner: null },
+        revision: managed.revision + 1,
+        tribute: undefined,
+      } satisfies ManagedRoom;
+      this.restoredRoomsAwaitingReconnect.delete(roomId);
+      this.rooms.set(roomId, next);
+      return next;
+    }
+
     let nextLevelRank = completed.levelRank;
     let nextTeamLevels = completed.teamLevels;
-    let matchWinner = completed.matchWinner ?? null;
+    const matchWinner = null;
 
     if (
       activeCount === 4 &&
@@ -262,7 +289,6 @@ export class RoomManager {
       const promotion = promotionForPlacements(completed.placements, levels);
       nextTeamLevels = applyPromotion(levels, promotion);
       nextLevelRank = promotion.after;
-      if (promotion.passedA) matchWinner = promotion.team;
     }
 
     const nextGame = startNextRound(
