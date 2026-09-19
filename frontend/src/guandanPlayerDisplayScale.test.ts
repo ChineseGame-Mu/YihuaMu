@@ -7,6 +7,16 @@ describe("Guandan enlarged player displays", () => {
     "utf8",
   );
   const table = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
+  const layout = readFileSync(
+    join(__dirname, "guandan-approved-layout.css"),
+    "utf8",
+  );
+
+  test("gives the public table five eighths and my table three eighths", () => {
+    expect(layout).toMatch(
+      /grid-template-rows:\s*auto\s+minmax\(0,\s*5fr\)\s+minmax\(0,\s*3fr\)\s*!important/,
+    );
+  });
 
   test("doubles public player displays with no gap", () => {
     expect(css).toMatch(/gap:\s*0\s*!important/);
