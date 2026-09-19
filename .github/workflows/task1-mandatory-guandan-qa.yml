@@ -55,6 +55,7 @@ jobs:
           const secondRound = fs.readFileSync("yihua-game/test/legacy-second-round-four-human.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
           const playerScale = fs.readFileSync("frontend/src/guandan-player-display-scale.css", "utf8");
+          const approvedLayout = fs.readFileSync("frontend/src/guandan-approved-layout.css", "utf8");
           const actionControls = fs.readFileSync("frontend/src/GuandanCustomSortControls.tsx", "utf8");
           const roomSource = fs.readFileSync("yihua-game/src/core/room.ts", "utf8");
 
@@ -76,6 +77,7 @@ jobs:
             ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
             ["low ace-two sequences are accepted", /222333 steel-plate live regression/.test(steelPlate) && /steelAAA222/.test(steelPlate) && /pairsAA2233/.test(steelPlate) && /wheelA2345/.test(steelPlate) && /straight23456/.test(steelPlate) && /straightFlushA2345/.test(steelPlate) && /straightFlush23456/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
+            ["largest tribute payer leads and equal cards follow display order", /gives the lead to the largest tribute payer/.test(tributePlan) && /breaks equal tribute ties by left-to-right player display order/.test(tributePlan) && /left\.player - right\.player/.test(fs.readFileSync("yihua-game/src/core/legacy-tribute.ts", "utf8"))],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
             ["optional partner selector exists", /选择搭档（可选）/.test(table) && /preferred_partner/.test(table)],
@@ -91,6 +93,7 @@ jobs:
             ["enlarged displays never cover played cards", /\.guandan-table-stage[\s\S]*?padding-top:\s*154px\s*!important/.test(playerScale)],
             ["current-turn display is doubled", /min-width:\s*300px\s*!important/.test(playerScale) && /font-size:\s*28px\s*!important/.test(playerScale)],
             ["current-turn display stays at the bottom of the right play area", /right:\s*14px\s*!important/.test(playerScale) && /left:\s*auto\s*!important/.test(playerScale) && /bottom:\s*14px\s*!important/.test(playerScale)],
+            ["public table expands while my table shrinks by one quarter", /grid-template-rows:\s*auto\s+minmax\(0,\s*5fr\)\s+minmax\(0,\s*3fr\)\s*!important/.test(approvedLayout)],
             ["each player display embeds left observe right controls", /\$\{player\}向左换位/.test(table) && /\$\{player\}切换参与或旁观/.test(table) && /\$\{player\}向右换位/.test(table) && /\.guandan-public-card-back\s*\{[\s\S]*?position:\s*relative\s*!important/.test(playerScale) && /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/.test(playerScale) && /width:\s*32px\s*!important/.test(playerScale)],
             ["players can securely move themselves or toggle participation", /moveMySeat/.test(table) && /toggleMyParticipation/.test(table) && /setLobbyParticipation/.test(roomSource) && /moves a lobby player down to observe and back into the same robot seat/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
             ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
