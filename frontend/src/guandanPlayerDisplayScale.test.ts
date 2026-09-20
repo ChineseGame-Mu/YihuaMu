@@ -18,6 +18,15 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
+  test("shrinks the review panel by twenty percent and extends both tables", () => {
+    expect(layout).toMatch(
+      /grid-template-columns:\s*minmax\(0,\s*4fr\)\s+minmax\(224px,\s*1fr\)\s*!important/,
+    );
+    expect(layout).toMatch(
+      /@media \(max-width:\s*760px\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*4fr\)\s+minmax\(144px,\s*1fr\)\s*!important/,
+    );
+  });
+
   test("doubles public player displays with no gap", () => {
     expect(css).toMatch(/gap:\s*0\s*!important/);
     expect(css).toMatch(/flex:\s*0 0 96px\s*!important/);
