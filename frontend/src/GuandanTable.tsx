@@ -9,6 +9,7 @@ import type {
   GuandanTributePlan,
 } from "./guandanProtocol";
 import { privateHandStackProgress } from "./guandanHandLayout";
+import { autoArrangeGuandanHand } from "./guandanAutoArrange";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -220,6 +221,13 @@ const GuandanTable: React.FunctionComponent = () => {
         ? "desc"
         : "asc",
   );
+  const [handArrangeMode, setHandArrangeMode] = React.useState<
+    "manual" | "auto"
+  >(() =>
+    window.localStorage.getItem("guandan_hand_arrange_mode") === "auto"
+      ? "auto"
+      : "manual",
+  );
   const [handStackDirection, setHandStackDirection] = React.useState<
     "vertical" | "horizontal"
   >(() =>
@@ -358,6 +366,10 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_arrange_mode", handArrangeMode);
+  }, [handArrangeMode]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -681,16 +693,19 @@ const GuandanTable: React.FunctionComponent = () => {
         ? state.hand.length
         : dealtCount();
     const direction = handSortOrder === "asc" ? 1 : -1;
-    return state.hand
+    const cards = state.hand
       .map((card, originalIndex) => ({ card, originalIndex }))
-      .filter(({ originalIndex }) => originalIndex < count)
-      .sort(
-        (a, b) =>
-          direction *
-            (cardSortValue(a.card, state.level) -
-              cardSortValue(b.card, state.level)) ||
-          a.originalIndex - b.originalIndex,
-      );
+      .filter(({ originalIndex }) => originalIndex < count);
+    if (handArrangeMode === "auto") {
+      return autoArrangeGuandanHand(cards, handSortOrder);
+    }
+    return cards.sort(
+      (a, b) =>
+        direction *
+          (cardSortValue(a.card, state.level) -
+            cardSortValue(b.card, state.level)) ||
+        a.originalIndex - b.originalIndex,
+    );
   }, [
     dealStep,
     state.hand,
@@ -699,6 +714,7 @@ const GuandanTable: React.FunctionComponent = () => {
     cardsPerPlayer,
     state.level,
     handSortOrder,
+    handArrangeMode,
   ]);
 
   const toggleCard = (index: number): void => {
@@ -799,6 +815,20 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             <option value="asc">从小到大</option>
             <option value="desc">从大到小</option>
+          </select>
+          <br />
+          <label htmlFor="guandan-hand-arrange-mode">理牌方式：</label>{" "}
+          <select
+            id="guandan-hand-arrange-mode"
+            value={handArrangeMode}
+            onChange={(event) =>
+              setHandArrangeMode(
+                event.target.value === "auto" ? "auto" : "manual",
+              )
+            }
+          >
+            <option value="manual">手动（按点数排列）</option>
+            <option value="auto">自动组牌（顺子、钢板等）</option>
           </select>
           <br />
           <label htmlFor="guandan-hand-stack-direction">
@@ -1665,10 +1695,10 @@ const GuandanTable: React.FunctionComponent = () => {
                   {visibleHand.length}）
                 </h2>
                 <div className="guandan-hand">
-                  {stackedHand.map((stack) => (
+                  {stackedHand.map((stack, stackIndex) => (
                     <div
                       className="guandan-card-stack"
-                      key={cardStackKey(stack[0]!.card)}
+                      key={`${cardStackKey(stack[0]!.card)}-${stackIndex}`}
                     >
                       {stack.map(({ card, originalIndex }, stackIndex) => (
                         <button
@@ -1775,10 +1805,20 @@ const GuandanTable: React.FunctionComponent = () => {
             role="status"
             aria-label="当前应出牌玩家"
           >
-            <span>当前应出牌：</span>
-            <strong>
-              {state.players[effectiveTurn] ?? `玩家${effectiveTurn + 1}`}
-            </strong>
+            <span className="guandan-current-turn-player">
+              <span>当前应出牌：</span>
+              <strong>
+                {state.players[effectiveTurn] ?? `玩家${effectiveTurn + 1}`}
+              </strong>
+            </span>
+            {state.passedPlayers.length > 0 && (
+              <span className="guandan-current-pass-list">
+                过牌：
+                {state.passedPlayers
+                  .map((seat) => state.players[seat] ?? `玩家${seat + 1}`)
+                  .join("、")}
+              </span>
+            )}
           </div>
         )}
 

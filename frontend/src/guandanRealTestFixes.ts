@@ -82,6 +82,8 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
 
   const tableWasAuthoritativelyCleared =
     (message.table_clear_id ?? current.tableClearId) > current.tableClearId;
+  const staleTableSnapshot =
+    (message.table_clear_id ?? current.tableClearId) < current.tableClearId;
 
   let tributePublicCount = currentFixed.__tributePublicCount ?? 0;
 
@@ -103,11 +105,13 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   }
 
   const normalPlayStarted = message.last_play.length > 0;
-  const visiblePlays = tableWasAuthoritativelyCleared
-    ? []
-    : normalPlayStarted && tributePublicCount > 0
-      ? message.table_plays.slice(tributePublicCount)
-      : message.table_plays;
+  const visiblePlays = staleTableSnapshot
+    ? current.tablePlays
+    : tableWasAuthoritativelyCleared
+      ? []
+      : normalPlayStarted && tributePublicCount > 0
+        ? message.table_plays.slice(tributePublicCount)
+        : message.table_plays;
 
   const tablePlays = visiblePlays.map((play) => ({
     ...play,

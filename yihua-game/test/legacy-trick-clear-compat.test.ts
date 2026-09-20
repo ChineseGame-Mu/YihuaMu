@@ -52,6 +52,7 @@ interface LegacyState {
   readonly last_trick_winner: number | null;
   readonly last_play: readonly unknown[];
   readonly table_clear_id: number;
+  readonly passed_players: readonly number[];
 }
 
 const latestState = (connection: FakeConnection): LegacyState => {
@@ -108,6 +109,11 @@ describe("legacy completed-trick display compatibility", () => {
       await connections.get(passingSeat)!.receive({ type: "pass" });
       passes += 1;
       expect(passes).toBeLessThanOrEqual(3);
+      if (passes === 1) {
+        for (const connection of connections.values()) {
+          expect(latestState(connection).passed_players).toEqual([passingSeat]);
+        }
+      }
       managed = runtime.rooms.get(roomId);
     }
 
@@ -140,6 +146,7 @@ describe("legacy completed-trick display compatibility", () => {
       expect(state.last_player).toBeNull();
       expect(state.table_plays).toEqual([]);
       expect(state.table_clear_id).toBe(1);
+      expect(state.passed_players).toEqual([]);
     }
 
     await connections.get(leaderSeat)!.receive({
@@ -184,5 +191,48 @@ describe("legacy completed-trick display compatibility", () => {
       expect(state.last_play).toEqual([]);
       expect(state.table_clear_id).toBe(2);
     }
+  });
+
+  it("shows an existing opening play immediately to a late sixth client", async () => {
+    const runtime = createServerRuntime();
+    const roomId = "legacy-six-player-opening-reconnect";
+    const connections = new Map<number, FakeConnection>();
+
+    for (let seat = 0; seat < 6; seat += 1) {
+      const connection = new FakeConnection({ roomId });
+      await attachLegacyGuandanConnection(runtime, connection);
+      await connection.receive({
+        type: "join",
+        room: roomId,
+        name: `六人玩家${seat + 1}`,
+        player_count: 6,
+      });
+      connections.set(seat, connection);
+    }
+
+    await connections.get(0)!.receive({ type: "start", player_count: 6 });
+    const managed = runtime.rooms.get(roomId);
+    expect(managed.game.phase).toBe("playing");
+    if (managed.game.phase !== "playing") return;
+    const leaderSeat = managed.game.currentTurn;
+    await connections.get(leaderSeat)!.receive({ type: "start_trick" });
+    await connections.get(leaderSeat)!.receive({
+      type: "play",
+      card_indexes: [0],
+    });
+
+    const lateConnection = new FakeConnection({ roomId });
+    await attachLegacyGuandanConnection(runtime, lateConnection);
+    await lateConnection.receive({
+      type: "join",
+      room: roomId,
+      name: "六人旁观者",
+      player_count: 6,
+    });
+
+    const visible = latestState(lateConnection);
+    expect(visible.table_plays).toHaveLength(1);
+    expect(visible.table_plays[0]?.player).toBe(leaderSeat);
+    expect(visible.table_plays[0]?.cards).toEqual(visible.last_play);
   });
 });

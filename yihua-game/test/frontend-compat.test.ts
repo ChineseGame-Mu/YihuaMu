@@ -151,6 +151,7 @@ describe("legacy frontend compatibility adapter", () => {
       last_play: [{ Joker: "Small" }],
       last_player: 0,
       passes: 1,
+      passed_players: [1],
       initial_draw_winner: 1,
       level: "Four",
       finish_order: [],

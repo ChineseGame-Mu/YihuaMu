@@ -82,6 +82,7 @@ export type GuandanServerMessage =
       last_player: number | null;
       table_plays: Array<{ player: number; cards: GuandanCard[] }>;
       passes: number;
+      passed_players?: number[];
       trick_complete: boolean;
       last_trick_winner: number | null;
       initial_draw: GuandanCard[];

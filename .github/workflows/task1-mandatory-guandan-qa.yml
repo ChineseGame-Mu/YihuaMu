@@ -44,6 +44,7 @@ jobs:
           const css = fs.readFileSync("frontend/src/guandan-real-test-20260916.css", "utf8");
           const handStackCss = fs.readFileSync("frontend/src/cleanroom-hand-stack-fix.css", "utf8");
           const handLayout = fs.readFileSync("frontend/src/guandanHandLayout.ts", "utf8");
+          const autoArrange = fs.readFileSync("frontend/src/guandanAutoArrange.ts", "utf8");
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const tributePlan = fs.readFileSync("yihua-game/test/legacy-tribute-plan.test.ts", "utf8");
@@ -84,6 +85,10 @@ jobs:
             ["name visibility is forced", /visibility:\s*visible\s*!important/.test(css) && /opacity:\s*1\s*!important/.test(css)],
             ["public cards sort small to large", /sortPlayCards\(play\.cards, message\.level\)/.test(fixes)],
             ["authoritative clear is preserved", /message\.table_plays\.length === 0 && message\.last_play\.length === 0/.test(fixes)],
+            ["settings offer manual or automatic pattern arranging", /guandan-hand-arrange-mode/.test(table) && /手动（按点数排列）/.test(table) && /自动组牌（顺子、钢板等）/.test(table) && /autoArrangeGuandanHand/.test(autoArrange) && /Straight flushes first/.test(autoArrange)],
+            ["current-turn display names every passer", /passedPlayers\.length > 0/.test(table) && /guandan-current-pass-list/.test(table) && /passed_players/.test(frontendCompat)],
+            ["six-player reconnect immediately restores the current play", /this\.gameState !== undefined/.test(legacyGateway) && /decoratedState\.table_plays/.test(legacyGateway) && /shows an existing opening play immediately to a late sixth client/.test(trickClear)],
+            ["stale trick snapshots cannot restore collected cards", /staleTableSnapshot/.test(fixes) && /nextTableClearId < state\.tableClearId/.test(fs.readFileSync("frontend/src/guandanCompatibilityAdapter.ts", "utf8"))],
             ["finished hand is cleared", /shouldClearOwnHand\(adapted\.seat, message\.finish_order\)/.test(fixes)],
             ["duplicate upper-right level HUD stays removed", !/GuandanLastRoundScoreboard/.test(entry)],
             ["personal hand stack direction setting exists", /guandan-hand-stack-direction/.test(table) && /纵向排列/.test(table) && /guandan_hand_stack_direction/.test(table) && /guandan-hand-stack-horizontal/.test(handStackCss)],
@@ -159,6 +164,7 @@ jobs:
           src/guandanPublicPlayNameCss.test.ts
           src/guandanFourColorPalette.test.ts
           src/guandanRealTestFixes.test.ts
+          src/guandanAutoArrange.test.ts
           src/guandanCurrentTrickPlays.test.ts
           src/GuandanStateProvider.test.ts
           src/GuandanLastRoundScoreboard.test.tsx

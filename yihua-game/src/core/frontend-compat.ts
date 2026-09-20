@@ -92,6 +92,7 @@ export type LegacyServerMessage =
         readonly cards: readonly LegacyGuandanCard[];
       }[];
       readonly passes: number;
+      readonly passed_players: readonly number[];
       readonly trick_complete: boolean;
       readonly last_trick_winner: number | null;
       readonly initial_draw: readonly LegacyGuandanCard[];
@@ -339,6 +340,7 @@ export const gameStateToLegacy = (
         ? []
         : [{ player: game.leadingPlay.seat, cards: lastPlay }],
     passes: game.passedSeats.length,
+    passed_players: game.passedSeats,
     trick_complete: false,
     last_trick_winner: null,
     initial_draw: isOpeningRound ? game.openingDraw.map(legacyCard) : [],

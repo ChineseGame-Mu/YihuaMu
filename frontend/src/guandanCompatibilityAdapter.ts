@@ -22,6 +22,7 @@ export interface GuandanTableState {
   lastPlayer: number | null;
   tablePlays: Array<{ player: number; cards: GuandanCard[] }>;
   passes: number;
+  passedPlayers: number[];
   trickComplete: boolean;
   lastTrickWinner: number | null;
   initialDraw: GuandanCard[];
@@ -68,6 +69,7 @@ export const initialGuandanTableState: GuandanTableState = {
   lastPlayer: null,
   tablePlays: [],
   passes: 0,
+  passedPlayers: [],
   trickComplete: false,
   lastTrickWinner: null,
   initialDraw: [],
@@ -200,6 +202,7 @@ export const adaptGuandanServerMessage = (
         lastPlayer: null,
         tablePlays: [],
         passes: 0,
+        passedPlayers: [],
         trickComplete: false,
         lastTrickWinner: null,
         initialDraw: [],
@@ -238,6 +241,7 @@ export const adaptGuandanServerMessage = (
         ? advanceRank(serverLevel, promotionSteps)
         : serverLevel;
       const nextTableClearId = message.table_clear_id ?? state.tableClearId;
+      const staleTableSnapshot = nextTableClearId < state.tableClearId;
       const tableWasAuthoritativelyCleared =
         nextTableClearId > state.tableClearId;
       const currentTrickPlays = mergeCurrentTrickPlays(
@@ -256,12 +260,19 @@ export const adaptGuandanServerMessage = (
         hand: state.hand,
         turn: message.turn,
         handCounts: message.hand_counts,
-        lastPlay: message.last_play,
-        lastPlayer: message.last_player,
-        tablePlays: currentTrickPlays,
-        passes: message.passes,
-        trickComplete: message.trick_complete,
-        lastTrickWinner: message.last_trick_winner,
+        lastPlay: staleTableSnapshot ? state.lastPlay : message.last_play,
+        lastPlayer: staleTableSnapshot ? state.lastPlayer : message.last_player,
+        tablePlays: staleTableSnapshot ? state.tablePlays : currentTrickPlays,
+        passes: staleTableSnapshot ? state.passes : message.passes,
+        passedPlayers: staleTableSnapshot
+          ? state.passedPlayers
+          : (message.passed_players ?? []),
+        trickComplete: staleTableSnapshot
+          ? state.trickComplete
+          : message.trick_complete,
+        lastTrickWinner: staleTableSnapshot
+          ? state.lastTrickWinner
+          : message.last_trick_winner,
         initialDraw: message.initial_draw,
         initialDrawWinner: message.initial_draw_winner,
         level: effectiveLevel,
@@ -283,7 +294,7 @@ export const adaptGuandanServerMessage = (
         tributePhase: message.tribute_phase ?? null,
         tributeCards: message.tribute_cards ?? [],
         returnTributeCards: message.return_tribute_cards ?? [],
-        tableClearId: nextTableClearId,
+        tableClearId: Math.max(state.tableClearId, nextTableClearId),
         matchWinner: message.match_winner,
         nextRoundPhase: message.next_round_phase,
         nextRoundJoiners: message.next_round_joiners ?? [],
