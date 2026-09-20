@@ -10,6 +10,8 @@ const WEBSOCKET_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 const MAX_FRAME_BYTES = 1024 * 1024;
 const MAX_PENDING_FRAMES = 64;
 const MAX_PENDING_BYTES = 2 * 1024 * 1024;
+const MAX_INCOMING_BUFFER_BYTES = 2 * 1024 * 1024;
+const MAX_QUEUED_TEXT_FRAMES = 128;
 
 interface PendingServerFrame {
   readonly frame: Buffer;
@@ -134,6 +136,7 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   private writeBlocked = false;
   private pendingBytes = 0;
   private pendingFrames: PendingServerFrame[] = [];
+  private queuedTextFrames = 0;
 
   constructor(
     private readonly rawSocket: Duplex,
@@ -230,6 +233,11 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   }
 
   feed(chunk: Buffer): void {
+    if (this.buffer.length + chunk.length > MAX_INCOMING_BUFFER_BYTES) {
+      this.buffer = Buffer.alloc(0);
+      this.close(1009, "websocket input buffer is too large");
+      return;
+    }
     this.buffer = Buffer.concat([this.buffer, chunk]);
     try {
       while (this.buffer.length > 0) {
@@ -248,6 +256,11 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
 
   private handleFrame(opcode: number, payload: Buffer): void {
     if (opcode === 0x1) {
+      if (this.queuedTextFrames >= MAX_QUEUED_TEXT_FRAMES) {
+        this.close(1008, "too many queued websocket messages");
+        return;
+      }
+      this.queuedTextFrames += 1;
       const text = payload.toString("utf8");
       this.textHandling = this.textHandling
         .then(async () => {
@@ -258,6 +271,9 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
             1011,
             error instanceof Error ? error.message : "message handler failed",
           );
+        })
+        .finally(() => {
+          this.queuedTextFrames = Math.max(0, this.queuedTextFrames - 1);
         });
       return;
     }

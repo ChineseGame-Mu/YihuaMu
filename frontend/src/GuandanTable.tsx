@@ -8,6 +8,19 @@ import type {
   GuandanRank,
   GuandanTributePlan,
 } from "./guandanProtocol";
+import { privateHandStackProgress } from "./guandanHandLayout";
+import {
+  celebrationFireworks,
+  formatCelebrationDateTime,
+  GUANDAN_MATCH_CELEBRATION_MS,
+  normalizeWinnerScreenshotEmail,
+  winningTeamPlayerNames,
+} from "./guandanMatchCelebration";
+import {
+  normalizeGuandanMusicMode,
+  startGuandanMusic,
+  type GuandanMusicMode,
+} from "./guandanMusic";
 
 const rankLabel: Record<string, string> = {
   Two: "2",
@@ -214,6 +227,22 @@ const GuandanTable: React.FunctionComponent = () => {
       ? "horizontal"
       : "vertical",
   );
+  const [musicMode, setMusicMode] = React.useState<GuandanMusicMode>(() =>
+    normalizeGuandanMusicMode(
+      window.localStorage.getItem("guandan_music_mode"),
+    ),
+  );
+  const [matchCelebrationComplete, setMatchCelebrationComplete] =
+    React.useState(false);
+  const [celebrationNow, setCelebrationNow] = React.useState(() => new Date());
+  const [winnerScreenshotEmail, setWinnerScreenshotEmail] = React.useState(() =>
+    normalizeWinnerScreenshotEmail(
+      window.localStorage.getItem("guandan_winner_screenshot_email"),
+    ),
+  );
+  const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
+  const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
+  const stopMusicRef = React.useRef<(() => void) | null>(null);
   const [cardCountAlertThreshold, setCardCountAlertThreshold] =
     React.useState<number>(() => {
       const saved = Number(
@@ -226,6 +255,51 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
+
+  const activateMusic = React.useCallback((mode: GuandanMusicMode): void => {
+    if (activeMusicModeRef.current === mode) return;
+    stopMusicRef.current?.();
+    stopMusicRef.current = null;
+    activeMusicModeRef.current = mode;
+    if (mode !== "off") stopMusicRef.current = startGuandanMusic(mode);
+  }, []);
+
+  const changeMusicMode = (mode: GuandanMusicMode): void => {
+    musicModeRef.current = mode;
+    setMusicMode(mode);
+    window.localStorage.setItem("guandan_music_mode", mode);
+    activateMusic(mode);
+  };
+
+  React.useEffect(() => {
+    const activateSavedMusic = (): void => {
+      activateMusic(musicModeRef.current);
+    };
+    window.addEventListener("pointerdown", activateSavedMusic, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", activateSavedMusic);
+      stopMusicRef.current?.();
+      stopMusicRef.current = null;
+      activeMusicModeRef.current = "off";
+    };
+  }, [activateMusic]);
+
+  React.useEffect(() => {
+    setMatchCelebrationComplete(false);
+    if (state.matchWinner === null) return;
+    setCelebrationNow(new Date());
+    const clock = window.setInterval(() => setCelebrationNow(new Date()), 1000);
+    const timer = window.setTimeout(() => {
+      setSelected([]);
+      setDealStep(null);
+      setStartRequested(false);
+      setMatchCelebrationComplete(true);
+    }, GUANDAN_MATCH_CELEBRATION_MS);
+    return () => {
+      window.clearInterval(clock);
+      window.clearTimeout(timer);
+    };
+  }, [state.matchWinner]);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -304,6 +378,13 @@ const GuandanTable: React.FunctionComponent = () => {
       String(cardCountAlertThreshold),
     );
   }, [cardCountAlertThreshold]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_winner_screenshot_email",
+      winnerScreenshotEmail,
+    );
+  }, [winnerScreenshotEmail]);
 
   React.useEffect(() => {
     if (!gameStarted) setShuffleTo(String(deckSize));
@@ -531,6 +612,41 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  const restartMatch = (): void => {
+    setSelected([]);
+    if (send({ type: "restart_match" })) {
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+    }
+  };
+
+  const exitCompletedMatch = (): void => {
+    if (state.seat !== null) send({ type: "set_participation", active: false });
+    stopMusicRef.current?.();
+    reset();
+    window.close();
+    window.setTimeout(() => window.location.replace("about:blank"), 50);
+  };
+
+  const winningPlayerNames =
+    state.matchWinner === null
+      ? []
+      : winningTeamPlayerNames(state.players, state.matchWinner);
+  const threeMatchSeriesActive =
+    state.seriesMatchNumber !== null && state.seriesTotalMatches === 3;
+  const threeMatchSeriesComplete =
+    threeMatchSeriesActive &&
+    state.matchWinner !== null &&
+    state.seriesMatchNumber === 3;
+  const seriesChampion =
+    threeMatchSeriesComplete &&
+    state.seriesTeamAWins !== null &&
+    state.seriesTeamBWins !== null
+      ? state.seriesTeamAWins > state.seriesTeamBWins
+        ? "A队"
+        : "B队"
+      : null;
+
   const testPlayerUrl = (player: number): string => {
     const url = new URL(window.location.href);
     url.searchParams.set("game", "guandan");
@@ -660,6 +776,19 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="four">四色（黑 / 红 / 橘黄 / 绿）</option>
           </select>
           <br />
+          <label htmlFor="guandan-music-mode">播放音乐：</label>{" "}
+          <select
+            id="guandan-music-mode"
+            value={musicMode}
+            onChange={(event) =>
+              changeMusicMode(normalizeGuandanMusicMode(event.target.value))
+            }
+          >
+            <option value="off">关闭音乐</option>
+            <option value="relaxing">轻松气氛器乐</option>
+            <option value="chinese">中国民乐</option>
+          </select>
+          <br />
           <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
           <select
             id="guandan-hand-sort-order"
@@ -709,32 +838,56 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列、牌叠加方式和报牌阈值只影响您自己，并会保存在当前浏览器。
+            牌面配色、手牌排列、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
+          <label htmlFor="guandan-winner-screenshot-email">赢家截图：</label>{" "}
+          <input
+            id="guandan-winner-screenshot-email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="填写接收截图的邮箱地址"
+            value={winnerScreenshotEmail}
+            onChange={(event) =>
+              setWinnerScreenshotEmail(event.target.value.trim())
+            }
+          />
+          <p>打A获胜时，赢家全屏庆祝截图使用此邮箱地址。</p>
           <div className="guandan-bot-settings">
-            <strong>机器人陪玩：</strong>{" "}
-            {[1, 2, 3].map((count) => {
-              const humanCount = state.players.filter(
-                (player) => !player.startsWith("机器人"),
-              ).length;
-              return (
-                <button
-                  key={count}
-                  type="button"
-                  className="normal"
-                  disabled={
-                    !joined ||
-                    gameStarted ||
-                    humanCount + count > requestedPlayerCount
-                  }
-                  onClick={() =>
-                    send({ type: "set_bots", count: count as 1 | 2 | 3 })
-                  }
-                >
-                  {count} 个机器人
-                </button>
-              );
-            })}
+            <label htmlFor="guandan-bot-count">
+              <strong>机器人玩家：</strong>
+            </label>{" "}
+            <select
+              id="guandan-bot-count"
+              aria-label="机器人玩家数量"
+              value={String(
+                state.players.filter((player) => player.startsWith("机器人"))
+                  .length || "",
+              )}
+              disabled={!joined || gameStarted}
+              onChange={(event) => {
+                const count = Number(event.target.value) as 1 | 2 | 3;
+                if (count >= 1 && count <= 3) send({ type: "set_bots", count });
+              }}
+            >
+              <option value="" disabled>
+                请选择
+              </option>
+              {[1, 2, 3].map((count) => {
+                const humanCount = state.players.filter(
+                  (player) => !player.startsWith("机器人"),
+                ).length;
+                return (
+                  <option
+                    key={count}
+                    value={count}
+                    disabled={humanCount + count > requestedPlayerCount}
+                  >
+                    {count}
+                  </option>
+                );
+              })}
+            </select>
           </div>
           <p>
             4至14人大桌开局前可选择 1 至 3 个机器人。
@@ -1198,7 +1351,118 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.nextRoundPhase !== null && (
+            {threeMatchSeriesActive && (
+              <section
+                className="guandan-result-panel"
+                role="status"
+                aria-label="三局赛进度"
+              >
+                <strong>{state.players.length}人三局赛</strong>
+                <span>当前第 {state.seriesMatchNumber}/3 局</span>
+                <span>
+                  已完成 {state.seriesCompletedMatches ?? 0}/3 局 ｜ A队{" "}
+                  {state.seriesTeamAWins ?? 0} 胜 ｜ B队{" "}
+                  {state.seriesTeamBWins ?? 0} 胜
+                </span>
+              </section>
+            )}
+
+            {state.matchWinner !== null && (
+              <section
+                className={`guandan-notice-panel guandan-match-complete-panel${
+                  matchCelebrationComplete ? "" : " guandan-match-celebrating"
+                }`}
+                role="status"
+                aria-label="本局结束"
+              >
+                {!matchCelebrationComplete && (
+                  <>
+                    <div className="guandan-match-trophy" aria-hidden="true">
+                      🏆
+                    </div>
+                    <div className="guandan-fireworks" aria-hidden="true">
+                      {celebrationFireworks.map(([x, y, color, delay]) => (
+                        <i
+                          key={`${x}-${y}`}
+                          className="guandan-firework"
+                          style={
+                            {
+                              "--firework-x": x,
+                              "--firework-y": y,
+                              "--firework-color": color,
+                              "--firework-delay": delay,
+                            } as React.CSSProperties
+                          }
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+                <strong>
+                  本局结束：
+                  {state.matchWinner === "TeamA" ? "A队" : "B队"}
+                  打A获胜
+                </strong>
+                <span className="guandan-match-winners">
+                  获胜队员：{winningPlayerNames.join(" ｜ ")}
+                </span>
+                {!matchCelebrationComplete ? (
+                  <>
+                    <time
+                      className="guandan-match-celebration-time"
+                      dateTime={celebrationNow.toISOString()}
+                    >
+                      庆祝时间：{formatCelebrationDateTime(celebrationNow)}
+                    </time>
+                    <span>🏆 庆祝焰花播放中（10秒）</span>
+                  </>
+                ) : (
+                  <>
+                    {threeMatchSeriesComplete ? (
+                      <span>
+                        三局比赛全部结束，{seriesChampion}以{" "}
+                        {Math.max(
+                          state.seriesTeamAWins ?? 0,
+                          state.seriesTeamBWins ?? 0,
+                        )}
+                        比
+                        {Math.min(
+                          state.seriesTeamAWins ?? 0,
+                          state.seriesTeamBWins ?? 0,
+                        )}{" "}
+                        获得总冠军。继续后开始新的三局赛。
+                      </span>
+                    ) : threeMatchSeriesActive ? (
+                      <span>
+                        第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
+                        重新抽牌并从打2开始第{" "}
+                        {(state.seriesMatchNumber ?? 0) + 1}/3 局。
+                      </span>
+                    ) : (
+                      <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                    )}
+                    <div className="guandan-match-actions">
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={restartMatch}
+                      >
+                        继续
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={exitCompletedMatch}
+                      >
+                        退出
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+            )}
+
+            {state.matchWinner === null && state.nextRoundPhase !== null && (
               <section
                 className="guandan-next-round-panel"
                 aria-label="下局开始"
@@ -1413,20 +1677,24 @@ const GuandanTable: React.FunctionComponent = () => {
                           aria-pressed={selected.includes(originalIndex)}
                           disabled={!gameStarted}
                           onClick={() => toggleCard(originalIndex)}
-                          style={{
-                            zIndex: selected.includes(originalIndex)
-                              ? 100
-                              : stackIndex + 1,
-                            padding: 0,
-                            border: selected.includes(originalIndex)
-                              ? "3px solid currentColor"
-                              : "2px solid transparent",
-                            borderRadius: 8,
-                            background: "transparent",
-                            transform: selected.includes(originalIndex)
-                              ? "translateY(-12px)"
-                              : "none",
-                          }}
+                          style={
+                            {
+                              "--guandan-stack-progress": `${privateHandStackProgress(stackIndex, stack.length) * 100}%`,
+                              "--guandan-stack-offset": `${privateHandStackProgress(stackIndex, stack.length) * -100}%`,
+                              zIndex: selected.includes(originalIndex)
+                                ? 100
+                                : stackIndex + 1,
+                              padding: 0,
+                              border: selected.includes(originalIndex)
+                                ? "3px solid currentColor"
+                                : "2px solid transparent",
+                              borderRadius: 8,
+                              background: "transparent",
+                              transform: selected.includes(originalIndex)
+                                ? "translateY(-12px)"
+                                : "none",
+                            } as React.CSSProperties
+                          }
                         >
                           {fullCard(card)}
                         </button>

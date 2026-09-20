@@ -2,11 +2,22 @@ import { describe, expect, it } from "vitest";
 import type { ManagedRoom } from "../src/core/room-manager.js";
 import {
   applyLegacyTributeResistance,
+  highestTributeSelection,
   legacyTributePlan,
   legacyTributeResisted,
   prepareLegacyTribute,
   resolveLegacyTributeResistance,
 } from "../src/core/legacy-tribute.js";
+import type { Rank } from "../src/core/cards.js";
+
+const suitedTribute = (player: number, rank: Rank, id: string) => ({
+  player,
+  card: {
+    id,
+    copy: 0,
+    card: { kind: "suited" as const, suit: "clubs" as const, rank },
+  },
+});
 
 const resistanceRoom = (
   hands: Array<Array<{ id: string; card: { kind: "joker"; size: "big" } }>>,
@@ -53,6 +64,22 @@ const scaledResistanceRoom = (
 };
 
 describe("approved legacy tribute mapping", () => {
+  it("gives the lead to the largest tribute payer", () => {
+    const lower = suitedTribute(1, "10", "lower");
+    const higher = suitedTribute(3, "A", "higher");
+
+    expect(highestTributeSelection([lower, higher], "2").player).toBe(3);
+  });
+
+  it("breaks equal tribute ties by left-to-right player display order", () => {
+    const rightDisplay = suitedTribute(5, "A", "right");
+    const leftDisplay = suitedTribute(1, "A", "left");
+
+    expect(
+      highestTributeSelection([rightDisplay, leftDisplay], "2").player,
+    ).toBe(1);
+  });
+
   it("makes fourth place tribute first place after a normal result", () => {
     prepareLegacyTribute("single-tribute", [0, 1, 2, 3]);
 

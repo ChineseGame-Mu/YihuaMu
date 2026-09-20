@@ -33,6 +33,16 @@ describe("GuandanRoundResultHud acceptance", () => {
       expect(html).toContain(`第${playerCount}名 玩家${playerCount}`);
       expect(model.finishOrder).toHaveLength(playerCount);
       expect(model.winnerName).toBe("玩家1");
+      expect(model.promotionSteps).toBe(
+        new Map([
+          [4, 2],
+          [6, 1],
+          [8, 1],
+          [10, 3],
+          [12, 3],
+          [14, 4],
+        ]).get(playerCount),
+      );
     });
   }
 

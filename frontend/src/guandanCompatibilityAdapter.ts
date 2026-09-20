@@ -5,6 +5,7 @@ import type {
   GuandanServerMessage,
   GuandanTeam,
 } from "./guandanProtocol";
+import { guandanPromotionSteps } from "./guandanPromotion";
 
 export interface GuandanTableState {
   room: string | null;
@@ -31,6 +32,11 @@ export interface GuandanTableState {
   lastGameWinner: number | null;
   lastGameWinnerTeam: GuandanTeam | null;
   lastPromotionSteps: number | null;
+  seriesMatchNumber: number | null;
+  seriesTotalMatches: 3 | null;
+  seriesCompletedMatches: number | null;
+  seriesTeamAWins: number | null;
+  seriesTeamBWins: number | null;
   pendingTribute: unknown;
   tributeResisted: boolean;
   tributePhase: "tribute" | "return" | null;
@@ -72,6 +78,11 @@ export const initialGuandanTableState: GuandanTableState = {
   lastGameWinner: null,
   lastGameWinnerTeam: null,
   lastPromotionSteps: null,
+  seriesMatchNumber: null,
+  seriesTotalMatches: null,
+  seriesCompletedMatches: null,
+  seriesTeamAWins: null,
+  seriesTeamBWins: null,
   pendingTribute: null,
   tributeResisted: false,
   tributePhase: null,
@@ -92,20 +103,6 @@ export const shouldClearOwnHand = (
   ownSeat: number | null,
   finishOrder: number[],
 ): boolean => ownSeat !== null && finishOrder.includes(ownSeat);
-
-const inferPromotionSteps = (finishOrder: number[]): number | null => {
-  const winner = finishOrder[0];
-  if (winner === undefined) return null;
-  if (finishOrder.length !== 4) return finishOrder.length >= 4 ? 1 : null;
-  const partner = (winner + 2) % 4;
-  const partnerIndex = finishOrder.indexOf(partner);
-  if (partnerIndex < 0) return null;
-  const partnerPlace = partnerIndex + 1;
-  if (partnerPlace === 2) return 3;
-  if (partnerPlace === 3) return 2;
-  if (partnerPlace === 4) return 1;
-  return null;
-};
 
 const rankSequence: GuandanRank[] = [
   "Two",
@@ -228,7 +225,7 @@ export const adaptGuandanServerMessage = (
         winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
       const promotionSteps =
         message.last_promotion_steps ??
-        (roundComplete ? inferPromotionSteps(message.finish_order) : null) ??
+        (roundComplete ? guandanPromotionSteps(message.finish_order) : null) ??
         state.lastPromotionSteps;
       const serverLevel = message.level ?? state.level ?? "Two";
       const shouldInferNextLevel =
@@ -276,6 +273,11 @@ export const adaptGuandanServerMessage = (
           inferredTeam ??
           state.lastGameWinnerTeam,
         lastPromotionSteps: promotionSteps,
+        seriesMatchNumber: message.series_match_number ?? null,
+        seriesTotalMatches: message.series_total_matches ?? null,
+        seriesCompletedMatches: message.series_completed_matches ?? null,
+        seriesTeamAWins: message.series_team_a_wins ?? null,
+        seriesTeamBWins: message.series_team_b_wins ?? null,
         pendingTribute: message.pending_tribute,
         tributeResisted: message.tribute_resisted,
         tributePhase: message.tribute_phase ?? null,

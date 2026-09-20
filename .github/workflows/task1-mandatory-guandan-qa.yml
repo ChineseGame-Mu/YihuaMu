@@ -43,6 +43,7 @@ jobs:
           const entry = fs.readFileSync("frontend/src/CleanroomEntry.tsx", "utf8");
           const css = fs.readFileSync("frontend/src/guandan-real-test-20260916.css", "utf8");
           const handStackCss = fs.readFileSync("frontend/src/cleanroom-hand-stack-fix.css", "utf8");
+          const handLayout = fs.readFileSync("frontend/src/guandanHandLayout.ts", "utf8");
           const fixes = fs.readFileSync("frontend/src/guandanRealTestFixes.ts", "utf8");
           const tribute = fs.readFileSync("yihua-game/test/legacy-tribute-four-client-acceptance.test.ts", "utf8");
           const tributePlan = fs.readFileSync("yihua-game/test/legacy-tribute-plan.test.ts", "utf8");
@@ -55,8 +56,24 @@ jobs:
           const secondRound = fs.readFileSync("yihua-game/test/legacy-second-round-four-human.test.ts", "utf8");
           const diamond = fs.readFileSync("frontend/src/generated/playing-cards-4color/Ad.tsx", "utf8");
           const playerScale = fs.readFileSync("frontend/src/guandan-player-display-scale.css", "utf8");
+          const approvedLayout = fs.readFileSync("frontend/src/guandan-approved-layout.css", "utf8");
           const actionControls = fs.readFileSync("frontend/src/GuandanCustomSortControls.tsx", "utf8");
           const roomSource = fs.readFileSync("yihua-game/src/core/room.ts", "utf8");
+          const roomManager = fs.readFileSync("yihua-game/src/core/room-manager.ts", "utf8");
+          const frontendCompat = fs.readFileSync("yihua-game/src/core/frontend-compat.ts", "utf8");
+          const competition = fs.readFileSync("yihua-game/src/core/competition.ts", "utf8");
+          const competitionTest = fs.readFileSync("yihua-game/test/competition.test.ts", "utf8");
+          const frontendPromotion = fs.readFileSync("frontend/src/guandanPromotion.ts", "utf8");
+          const frontendPromotionTest = fs.readFileSync("frontend/src/guandanPromotion.test.ts", "utf8");
+          const competitionSeries = fs.readFileSync("yihua-game/src/core/competition-series.ts", "utf8");
+          const music = fs.readFileSync("frontend/src/guandanMusic.ts", "utf8");
+          const celebration = fs.readFileSync("frontend/src/guandanMatchCelebration.ts", "utf8");
+          const celebrationCss = fs.readFileSync("frontend/src/guandan-match-celebration.css", "utf8");
+          const legacyGateway = fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8");
+          const nodeServer = fs.readFileSync("yihua-game/src/node-server.ts", "utf8");
+          const nodeWebsocket = fs.readFileSync("yihua-game/src/node-websocket.ts", "utf8");
+          const protocol = fs.readFileSync("yihua-game/src/core/protocol.ts", "utf8");
+          const vercelConfig = fs.readFileSync("frontend/vercel.json", "utf8");
 
           const contracts = [
             ["public player name renders", /state\.players\[play\.player\]/.test(table)],
@@ -76,6 +93,7 @@ jobs:
             ["every collected trick has an authoritative clear id", /table_clear_id\)\.toBe\(1\)/.test(trickClear) && /table_clear_id\)\.toBe\(2\)/.test(trickClear) && /tableWasAuthoritativelyCleared/.test(fixes)],
             ["low ace-two sequences are accepted", /222333 steel-plate live regression/.test(steelPlate) && /steelAAA222/.test(steelPlate) && /pairsAA2233/.test(steelPlate) && /wheelA2345/.test(steelPlate) && /straight23456/.test(steelPlate) && /straightFlushA2345/.test(steelPlate) && /straightFlush23456/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
+            ["largest tribute payer leads and equal cards follow display order", /gives the lead to the largest tribute payer/.test(tributePlan) && /breaks equal tribute ties by left-to-right player display order/.test(tributePlan) && /left\.player - right\.player/.test(fs.readFileSync("yihua-game/src/core/legacy-tribute.ts", "utf8"))],
             ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
             ["optional partner selector exists", /选择搭档（可选）/.test(table) && /preferred_partner/.test(table)],
@@ -91,9 +109,24 @@ jobs:
             ["enlarged displays never cover played cards", /\.guandan-table-stage[\s\S]*?padding-top:\s*154px\s*!important/.test(playerScale)],
             ["current-turn display is doubled", /min-width:\s*300px\s*!important/.test(playerScale) && /font-size:\s*28px\s*!important/.test(playerScale)],
             ["current-turn display stays at the bottom of the right play area", /right:\s*14px\s*!important/.test(playerScale) && /left:\s*auto\s*!important/.test(playerScale) && /bottom:\s*14px\s*!important/.test(playerScale)],
+            ["public table expands while my table shrinks by one quarter", /grid-template-rows:\s*auto\s+minmax\(0,\s*5fr\)\s+minmax\(0,\s*3fr\)\s*!important/.test(approvedLayout)],
+            ["every dealt private card remains inside my table", /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*100/.test(table) && /privateHandStackProgress\(stackIndex,\s*stack\.length\)\s*\*\s*-100/.test(table) && /stackIndex\s*\/\s*\(stackSize\s*-\s*1\)/.test(handLayout) && /container-type:\s*size\s*!important/.test(handStackCss) && /top:\s*var\(--guandan-stack-progress\)\s*!important/.test(handStackCss) && /translate:\s*0\s+var\(--guandan-stack-offset\)\s*!important/.test(handStackCss)],
+            ["winning on the winner team's A ends the match and continue uses a fresh opening draw", /completedWinnerLevel === "A"/.test(roomManager) && /completed\.teamLevels/.test(roomManager) && /startGame\([\s\S]*?createLobbyState/.test(roomManager) && /winnerLevel === "A"/.test(frontendCompat) && /match_winner:\s*matchWinner/.test(frontendCompat) && /type:\s*"restart_match"/.test(table) && />\s*继续\s*</.test(table)],
+            ["PDF 6-14 player scoring tables are enforced on server and client", /playerCount === 6/.test(competition) && /playerCount === 8/.test(competition) && /leadingHalf \+ 1/.test(competition) && /6-14 player scoring tables/.test(competitionTest) && /playerCount === 6/.test(frontendPromotion) && /playerCount === 8/.test(frontendPromotion) && /leadingHalf \+ 1/.test(frontendPromotion) && /6-14 player Guandan scoring/.test(frontendPromotionTest)],
+            ["6-14 player formats run exactly three complete 2-to-A matches", /playerCount === 6/.test(competitionSeries) && /playerCount === 14/.test(competitionSeries) && /COMPETITION_SERIES_MATCHES\s*=\s*3/.test(competitionSeries) && /runs exactly three complete 2-to-A matches/.test(fs.readFileSync("yihua-game/test/competition-match-progression.test.ts", "utf8")) && /aria-label="三局赛进度"/.test(table) && /三局比赛全部结束/.test(table)],
+            ["settings offer optional synthesized atmosphere music", /guandan-music-mode/.test(table) && /轻松气氛器乐/.test(table) && /中国民乐/.test(table) && /AudioContext/.test(music) && !/https?:\/\//.test(music)],
+            ["A-level winners receive a ten-second full-screen trophy and fireworks finale", /GUANDAN_MATCH_CELEBRATION_MS\s*=\s*10_000/.test(celebration) && /winningTeamPlayerNames/.test(table) && /celebrationFireworks\.map/.test(table) && /guandan-match-trophy/.test(table) && /guandan-fireworks/.test(table) && /guandan-match-celebrating/.test(table) && /继续/.test(table) && /退出/.test(table) && /\.guandan-match-complete-panel\.guandan-match-celebrating/.test(celebrationCss) && /guandan-firework-burst/.test(celebrationCss)],
+            ["celebration shows a live date and time updated every second", /formatCelebrationDateTime/.test(celebration) && /guandan-match-celebration-time/.test(table) && /庆祝时间：/.test(table) && /setInterval\([\s\S]*?1000\)/.test(table) && /guandan-match-celebration-time/.test(celebrationCss)],
+            ["test-only online celebration preview supports screenshot verification", /initial\.get\("test"\) === "1"/.test(entry) && /initial\.get\("celebrationPreview"\) === "1"/.test(entry) && /A级获胜全屏庆祝效果预览/.test(entry) && /celebrationFireworks\.map/.test(entry)],
+            ["settings provide winner screenshot email and one robot count selector", /guandan-winner-screenshot-email/.test(table) && /guandan_winner_screenshot_email/.test(table) && /type="email"/.test(table) && /id="guandan-bot-count"/.test(table) && /机器人玩家数量/.test(table) && /\[1, 2, 3\]\.map/.test(table) && !/\{count\} 个机器人/.test(table)],
+            ["robots cannot skip the A-level finale", /advanceLegacyRobotNextRound[\s\S]*?phase === "round-complete"[\s\S]*?levelRank === "A"/.test(legacyGateway)],
             ["each player display embeds left observe right controls", /\$\{player\}向左换位/.test(table) && /\$\{player\}切换参与或旁观/.test(table) && /\$\{player\}向右换位/.test(table) && /\.guandan-public-card-back\s*\{[\s\S]*?position:\s*relative\s*!important/.test(playerScale) && /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/.test(playerScale) && /width:\s*32px\s*!important/.test(playerScale)],
             ["players can securely move themselves or toggle participation", /moveMySeat/.test(table) && /toggleMyParticipation/.test(table) && /setLobbyParticipation/.test(roomSource) && /moves a lobby player down to observe and back into the same robot seat/.test(participation) && /moves the requesting player one seat left or right/.test(spectatorFlow)],
             ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
+            ["HTTP requests and responses have mandatory safety limits", /MAX_JSON_BODY_BYTES\s*=\s*64 \* 1024/.test(nodeServer) && /RequestLimitError/.test(nodeServer) && /x-content-type-options/.test(nodeServer) && /x-frame-options/.test(nodeServer)],
+            ["WebSocket memory and queue growth are bounded", /MAX_INCOMING_BUFFER_BYTES\s*=\s*2 \* 1024 \* 1024/.test(nodeWebsocket) && /MAX_QUEUED_TEXT_FRAMES\s*=\s*128/.test(nodeWebsocket)],
+            ["client protocol strings and arrays are bounded", /MAX_ROOM_ID_LENGTH\s*=\s*64/.test(protocol) && /MAX_PLAY_CARD_IDS\s*=\s*64/.test(protocol) && /MAX_NONCE_LENGTH\s*=\s*256/.test(protocol)],
+            ["Vercel frontend sends browser security headers", /X-Content-Type-Options/.test(vercelConfig) && /X-Frame-Options/.test(vercelConfig) && /Content-Security-Policy/.test(vercelConfig) && /frame-ancestors 'none'/.test(vercelConfig)],
           ];
 
           const failed = contracts.filter(([, ok]) => !ok).map(([name]) => name);
@@ -111,6 +144,10 @@ jobs:
         working-directory: frontend
         run: yarn build
 
+      - name: Audit production frontend dependencies
+        working-directory: frontend
+        run: yarn audit --groups dependencies --level high
+
       - name: Run mandatory frontend regressions
         working-directory: frontend
         run: >
@@ -122,9 +159,14 @@ jobs:
           src/GuandanStateProvider.test.ts
           src/GuandanLastRoundScoreboard.test.tsx
           src/GuandanRoundResultHud.test.tsx
+          src/guandanPromotion.test.ts
           src/guandanReturnTributePrivacy.test.ts
           src/guandanPlayerDisplayScale.test.ts
+          src/guandanHandLayout.test.ts
+          src/guandanMusic.test.ts
+          src/guandanMatchCelebration.test.ts
           src/guandanTributeActionVisibility.test.ts
+          src/securityHeaders.test.ts
 
       - name: Install game-server dependencies
         working-directory: yihua-game
@@ -133,6 +175,10 @@ jobs:
       - name: Typecheck game server
         working-directory: yihua-game
         run: npm run typecheck
+
+      - name: Audit production game-server dependencies
+        working-directory: yihua-game
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Run mandatory backend regressions
         working-directory: yihua-game
@@ -143,6 +189,8 @@ jobs:
           test/legacy-trick-clear-compat.test.ts
           test/steel-plate-222333-regression.test.ts
           test/legacy-next-round-compat.test.ts
+          test/competition-match-progression.test.ts
+          test/competition.test.ts
           test/legacy-next-round-role.test.ts
           test/legacy-robot-next-round.test.ts
           test/round-participation-rotation.test.ts
@@ -150,6 +198,7 @@ jobs:
           test/legacy-second-round-four-human.test.ts
           test/robot-teammate-yield.test.ts
           test/robot-strategy.test.ts
+          test/security-guardrails.test.ts
 
       - name: Record successful pass
         run: echo "Task 1 mandatory QA pass ${{ matrix.pass }} of 3 succeeded for ${{ github.sha }}"

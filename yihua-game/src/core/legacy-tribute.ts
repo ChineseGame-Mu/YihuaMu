@@ -23,7 +23,7 @@ type LegacyStateMessage = Extract<
   { readonly type: "state" }
 >;
 
-interface TributeSelection {
+export interface TributeSelection {
   readonly player: number;
   readonly card: DeckCard;
 }
@@ -224,6 +224,26 @@ const singleStrength = (card: Card, level: Rank): number => {
   return RANKS.indexOf(card.rank);
 };
 
+export const highestTributeSelection = (
+  selections: readonly TributeSelection[],
+  level: Rank,
+): TributeSelection => {
+  const ordered = [...selections].sort((left, right) => {
+    const strengthDifference =
+      singleStrength(right.card.card, level) -
+      singleStrength(left.card.card, level);
+    return strengthDifference !== 0
+      ? strengthDifference
+      // Public player displays render in ascending seat order from left to right.
+      : left.player - right.player;
+  });
+  const highest = ordered[0];
+  if (highest === undefined) {
+    throw new Error("at least one tribute selection is required");
+  }
+  return highest;
+};
+
 const legalTributeCard = (
   hand: readonly DeckCard[],
   cardId: string,
@@ -340,16 +360,11 @@ const finalizeExchange = (
     const { givers, receivers } = session.plan.Double;
     const first = selectionFor(session.tributeCards, givers[0]);
     const second = selectionFor(session.tributeCards, givers[1]);
-    const firstStrength = singleStrength(
-      first.card.card,
+    const high = highestTributeSelection(
+      [first, second],
       managed.game.levelRank ?? "2",
     );
-    const secondStrength = singleStrength(
-      second.card.card,
-      managed.game.levelRank ?? "2",
-    );
-    const [high, low] =
-      secondStrength > firstStrength ? [second, first] : [first, second];
+    const low = high.player === first.player ? second : first;
     const firstReturn = selectionFor(session.returnCards, receivers[0]).card;
     const secondReturn = selectionFor(session.returnCards, receivers[1]).card;
 
