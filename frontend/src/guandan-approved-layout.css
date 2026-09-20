@@ -6,7 +6,9 @@
 
 html body .guandan-table:has(.guandan-public-zone) {
   display: grid !important;
-  grid-template-columns: minmax(0, 3fr) minmax(280px, 1fr) !important;
+  /* Shrink the review panel by 20%: 25% -> 20% of the table width.
+   * The public table and my table share the released width: 75% -> 80%. */
+  grid-template-columns: minmax(0, 4fr) minmax(224px, 1fr) !important;
   /* Public table receives the 25% removed from the former half-height
    * private table: 62.5% public / 37.5% private = 5 / 3. */
   grid-template-rows: auto minmax(0, 5fr) minmax(0, 3fr) !important;
@@ -313,7 +315,7 @@ html body .guandan-selected-preview-card:first-child {
 
 @media (max-width: 760px) {
   html body .guandan-table:has(.guandan-public-zone) {
-    grid-template-columns: minmax(0, 3fr) minmax(180px, 1fr) !important;
+    grid-template-columns: minmax(0, 4fr) minmax(144px, 1fr) !important;
   }
 
   html
