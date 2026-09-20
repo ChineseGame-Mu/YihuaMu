@@ -91,10 +91,7 @@ export const robotMustYieldToTeammate = (
   managed: ManagedRoom,
   seat: number,
 ): boolean => {
-  if (
-    managed.game.phase !== "playing" ||
-    managed.game.config.playerCount !== 4
-  ) {
+  if (managed.game.phase !== "playing") {
     return false;
   }
   const participant = managed.room.participants.find(

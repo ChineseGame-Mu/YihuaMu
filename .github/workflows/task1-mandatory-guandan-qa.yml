@@ -50,6 +50,7 @@ jobs:
           const trickClear = fs.readFileSync("yihua-game/test/legacy-trick-clear-compat.test.ts", "utf8");
           const steelPlate = fs.readFileSync("yihua-game/test/steel-plate-222333-regression.test.ts", "utf8");
           const robot = fs.readFileSync("yihua-game/test/robot-teammate-yield.test.ts", "utf8");
+          const robotStrategy = fs.readFileSync("yihua-game/test/robot-strategy.test.ts", "utf8");
           const robotNextRound = fs.readFileSync("yihua-game/test/legacy-robot-next-round.test.ts", "utf8");
           const participation = fs.readFileSync("yihua-game/test/round-participation-rotation.test.ts", "utf8");
           const spectatorFlow = fs.readFileSync("yihua-game/test/legacy-spectator-next-round.test.ts", "utf8");
@@ -95,7 +96,7 @@ jobs:
             ["low ace-two sequences are accepted", /222333 steel-plate live regression/.test(steelPlate) && /steelAAA222/.test(steelPlate) && /pairsAA2233/.test(steelPlate) && /wheelA2345/.test(steelPlate) && /straight23456/.test(steelPlate) && /straightFlushA2345/.test(steelPlate) && /straightFlush23456/.test(steelPlate) && /playGameCardIds/.test(steelPlate)],
             ["loser leads after exchange", /expect\(finalized\.game\.currentTurn\)\.toBe\(giver\)/.test(tribute)],
             ["largest tribute payer leads and equal cards follow display order", /gives the lead to the largest tribute payer/.test(tributePlan) && /breaks equal tribute ties by left-to-right player display order/.test(tributePlan) && /left\.player - right\.player/.test(fs.readFileSync("yihua-game/src/core/legacy-tribute.ts", "utf8"))],
-            ["robot yields to teammate", /robotMustYieldToTeammate/.test(robot)],
+            ["robot applies Guandan handbook tactics across 4-14 players", /robotMustYieldToTeammate/.test(robot) && /\[4, 6, 8, 10, 12, 14\]/.test(robot) && /five-card combination/.test(robotStrategy) && /opponent is about to finish/.test(robotStrategy) && /threatening straight/.test(robotStrategy) && /handSizeBefore/.test(fs.readFileSync("yihua-game/src/core/robot-strategy.ts", "utf8")) && /opponentMinHandSize/.test(fs.readFileSync("yihua-game/src/core/robot-strategy.ts", "utf8"))],
             ["robots continue next round and exchange tribute", /robot loser pays tribute and robot winner returns a card automatically/.test(robotNextRound)],
             ["optional partner selector exists", /选择搭档（可选）/.test(table) && /preferred_partner/.test(table)],
             ["spectators may join the next round", /加入下一轮/.test(table) && /keeps a late arrival observing/.test(participation) && /legacy spectator next-round entry/.test(spectatorFlow)],

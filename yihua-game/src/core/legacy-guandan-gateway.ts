@@ -207,12 +207,25 @@ const robotCandidatePriority = (
 ): number => {
   const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);
   const strength = robotNormalStrength(hand, game.levelRank ?? "2");
+  const opponentHandSizes = (game.hands as readonly (readonly unknown[])[])
+    .map((cards, candidateSeat) => ({ candidateSeat, count: cards.length }))
+    .filter(
+      ({ candidateSeat, count }) => candidateSeat % 2 !== seat % 2 && count > 0,
+    )
+    .map(({ count }) => count);
   return robotPatternPriority({
     kind: hand.kind,
     strength,
     size: "size" in hand ? hand.size : undefined,
+    playSize: cardIds.length,
     leading: game.trick.leadingPlay === null,
     leadCycle: game.trick.completedTricks + seat,
+    handSizeBefore: game.hands[seat]?.length,
+    opponentMinHandSize:
+      opponentHandSizes.length === 0
+        ? undefined
+        : Math.min(...opponentHandSizes),
+    leadingKind: game.trick.leadingPlay?.hand.kind,
   });
 };
 
