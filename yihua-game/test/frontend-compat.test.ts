@@ -156,6 +156,33 @@ describe("legacy frontend compatibility adapter", () => {
       finish_order: [],
     });
   });
+
+  it("shows level 3 immediately after a six-player team earns one point", () => {
+    const legacy = gameStateToLegacy(roomState, {
+      type: "game_state",
+      roomId: "room-1",
+      revision: 6,
+      phase: "round-complete",
+      roundNumber: 1,
+      levelRank: "2",
+      teamLevels: { A: "2", B: "2" },
+      lastPromotionSteps: 1,
+      currentTurn: 1,
+      handCounts: [0, 0, 0, 0, 0, 0],
+      openingDraw: [],
+      openingDrawWinner: null,
+      leadingPlay: null,
+      passedSeats: [],
+      finishedSeats: [1, 0, 3, 2, 4, 5],
+      completedTricks: 27,
+    });
+
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") throw new Error("expected legacy state");
+    expect(legacy.level).toBe("Three");
+    expect(legacy.last_game_winner_team).toBe("TeamB");
+    expect(legacy.last_promotion_steps).toBe(1);
+  });
 });
 
 // Keep this compatibility suite on the formatted descendant so full CI runs there.
