@@ -92,6 +92,11 @@ export type GuandanServerMessage =
       last_game_winner: number | null;
       last_game_winner_team: GuandanTeam | null;
       last_promotion_steps: number | null;
+      series_match_number?: number | null;
+      series_total_matches?: 3 | null;
+      series_completed_matches?: number | null;
+      series_team_a_wins?: number | null;
+      series_team_b_wins?: number | null;
       pending_tribute: GuandanTributePlan | null;
       tribute_resisted: boolean;
       tribute_phase?: "tribute" | "return" | null;

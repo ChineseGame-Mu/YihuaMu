@@ -3,6 +3,7 @@ import type { DeckCard } from "./deck.js";
 import type { RoundPlacement } from "./round-result.js";
 import {
   antiTributeBigJokerRequirement,
+  isSupportedPlayerCount,
   teamForSeat,
   type Team,
 } from "./table.js";
@@ -14,11 +15,13 @@ export interface TeamLevels {
 
 export interface PromotionResult {
   readonly team: Team;
-  readonly steps: 1 | 2 | 3;
+  readonly steps: PromotionSteps;
   readonly before: Rank;
   readonly after: Rank;
   readonly passedA: boolean;
 }
+
+export type PromotionSteps = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export interface TributeTransfer {
   readonly fromSeat: number;
@@ -46,14 +49,17 @@ export const promotionForPlacements = (
   placements: readonly RoundPlacement[],
   levels: TeamLevels,
 ): PromotionResult => {
-  if (placements.length !== 4) {
-    throw new Error("competitive promotion requires four placements");
+  if (!isSupportedPlayerCount(placements.length)) {
+    throw new Error(
+      "competitive promotion requires 4, 6, 8, 10, 12, or 14 placements",
+    );
   }
   const winner = placements[0]!.team;
-  const partnerPlace = placements.find(
-    (placement) => placement.team === winner && placement.place !== 1,
-  )?.place;
-  const steps: 1 | 2 | 3 = partnerPlace === 2 ? 3 : partnerPlace === 3 ? 2 : 1;
+  const winnerPlaces = placements
+    .filter((placement) => placement.team === winner)
+    .map((placement) => placement.place)
+    .sort((left, right) => left - right);
+  const steps = promotionStepsForPlaces(placements.length, winnerPlaces);
   const before = levels[winner];
   const advanced = advanceRank(before, steps);
   return {
@@ -63,6 +69,55 @@ export const promotionForPlacements = (
     after: advanced.rank,
     passedA: advanced.passedA,
   };
+};
+
+export const promotionStepsForPlaces = (
+  playerCount: number,
+  winnerPlaces: readonly number[],
+): PromotionSteps => {
+  if (!isSupportedPlayerCount(playerCount)) {
+    throw new Error("player count must be one of 4, 6, 8, 10, 12, 14");
+  }
+  if (
+    winnerPlaces.length !== playerCount / 2 ||
+    winnerPlaces[0] !== 1 ||
+    new Set(winnerPlaces).size !== winnerPlaces.length ||
+    winnerPlaces.some(
+      (place) => !Number.isInteger(place) || place < 1 || place > playerCount,
+    )
+  ) {
+    throw new Error(
+      "winner places must contain the first-place team's complete ranking",
+    );
+  }
+
+  const key = [...winnerPlaces].sort((left, right) => left - right).join(",");
+  if (playerCount === 4) {
+    return winnerPlaces[1] === 2 ? 3 : winnerPlaces[1] === 3 ? 2 : 1;
+  }
+  if (playerCount === 6) {
+    if (key === "1,2,3") return 4;
+    if (key === "1,2,4") return 3;
+    if (key === "1,2,5" || key === "1,3,4") return 2;
+    return 1;
+  }
+  if (playerCount === 8) {
+    if (key === "1,2,3,4") return 5;
+    if (key === "1,2,3,5") return 4;
+    if (key === "1,2,3,6" || key === "1,2,4,5") return 3;
+    if (key === "1,2,3,7" || key === "1,2,4,6" || key === "1,3,4,5") {
+      return 2;
+    }
+    return 1;
+  }
+
+  const leadingHalf = playerCount / 2;
+  const leadingHalfWinners = winnerPlaces.filter(
+    (place) => place <= leadingHalf,
+  ).length;
+  return (
+    leadingHalfWinners === leadingHalf ? leadingHalf + 1 : leadingHalfWinners
+  ) as PromotionSteps;
 };
 
 export const applyPromotion = (

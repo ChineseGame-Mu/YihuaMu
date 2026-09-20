@@ -29,22 +29,16 @@ describe("four-player competitive progression", () => {
   it("promotes 3 for 1-2, 2 for 1-3, and 1 for 1-4", () => {
     const levels = initialTeamLevels();
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), levels)
+        .steps,
     ).toBe(3);
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), levels)
+        .steps,
     ).toBe(2);
     expect(
-      promotionForPlacements(
-        buildRoundPlacements(4, [0, 1, 3, 2]),
-        levels,
-      ).steps,
+      promotionForPlacements(buildRoundPlacements(4, [0, 1, 3, 2]), levels)
+        .steps,
     ).toBe(1);
   });
 
@@ -77,16 +71,12 @@ describe("four-player competitive progression", () => {
       suited(`c${seat}`, "3"),
     ]);
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), hands)
+        .kind,
     ).toBe("single");
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), hands)
+        .kind,
     ).toBe("double");
   });
 
@@ -98,10 +88,8 @@ describe("four-player competitive progression", () => {
       [big("d1"), big("d2")],
     ];
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 1, 2, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 1, 2, 3]), hands)
+        .kind,
     ).toBe("anti-tribute");
   });
 
@@ -113,10 +101,77 @@ describe("four-player competitive progression", () => {
       [big("d1")],
     ];
     expect(
-      tributePlanForPlacements(
-        buildRoundPlacements(4, [0, 2, 1, 3]),
-        hands,
-      ).kind,
+      tributePlanForPlacements(buildRoundPlacements(4, [0, 2, 1, 3]), hands)
+        .kind,
     ).toBe("anti-tribute");
+  });
+});
+
+describe("6-14 player scoring tables", () => {
+  const promotion = (playerCount: 4 | 6 | 8 | 10 | 12 | 14, order: number[]) =>
+    promotionForPlacements(
+      buildRoundPlacements(playerCount, order),
+      initialTeamLevels(),
+    ).steps;
+
+  it.each([
+    [[0, 2, 4, 1, 3, 5], 4],
+    [[0, 2, 1, 4, 3, 5], 3],
+    [[0, 2, 1, 3, 4, 5], 2],
+    [[0, 1, 2, 4, 3, 5], 2],
+    [[0, 1, 3, 2, 4, 5], 1],
+  ] as const)("scores six-player order %j as %i", (order, expected) => {
+    expect(promotion(6, [...order])).toBe(expected);
+  });
+
+  it.each([
+    [[0, 2, 4, 6, 1, 3, 5, 7], 5],
+    [[0, 2, 4, 1, 6, 3, 5, 7], 4],
+    [[0, 2, 4, 1, 3, 6, 5, 7], 3],
+    [[0, 2, 1, 4, 3, 6, 5, 7], 2],
+    [[0, 1, 2, 3, 4, 5, 6, 7], 1],
+  ] as const)("scores eight-player order %j as %i", (order, expected) => {
+    expect(promotion(8, [...order])).toBe(expected);
+  });
+
+  it.each([
+    [10, [6, 4, 3, 2, 1]],
+    [12, [7, 5, 4, 3, 2, 1]],
+    [14, [8, 6, 5, 4, 3, 2, 1]],
+  ] as const)(
+    "scores %i players by winners in the leading half",
+    (playerCount, expectedScores) => {
+      const teamA = Array.from(
+        { length: playerCount / 2 },
+        (_, index) => index * 2,
+      );
+      const teamB = Array.from(
+        { length: playerCount / 2 },
+        (_, index) => index * 2 + 1,
+      );
+      for (
+        let leadingWinners = playerCount / 2;
+        leadingWinners >= 1;
+        leadingWinners -= 1
+      ) {
+        const leading = [
+          ...teamA.slice(0, leadingWinners),
+          ...teamB.slice(0, playerCount / 2 - leadingWinners),
+        ];
+        const trailing = [
+          ...teamA.slice(leadingWinners),
+          ...teamB.slice(playerCount / 2 - leadingWinners),
+        ];
+        expect(promotion(playerCount, [...leading, ...trailing])).toBe(
+          expectedScores[playerCount / 2 - leadingWinners],
+        );
+      }
+    },
+  );
+
+  it("applies the same table when Team B takes first place", () => {
+    expect(promotion(14, [1, 3, 5, 7, 9, 11, 13, 0, 2, 4, 6, 8, 10, 12])).toBe(
+      8,
+    );
   });
 });

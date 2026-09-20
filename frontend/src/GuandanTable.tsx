@@ -632,6 +632,20 @@ const GuandanTable: React.FunctionComponent = () => {
     state.matchWinner === null
       ? []
       : winningTeamPlayerNames(state.players, state.matchWinner);
+  const threeMatchSeriesActive =
+    state.seriesMatchNumber !== null && state.seriesTotalMatches === 3;
+  const threeMatchSeriesComplete =
+    threeMatchSeriesActive &&
+    state.matchWinner !== null &&
+    state.seriesMatchNumber === 3;
+  const seriesChampion =
+    threeMatchSeriesComplete &&
+    state.seriesTeamAWins !== null &&
+    state.seriesTeamBWins !== null
+      ? state.seriesTeamAWins > state.seriesTeamBWins
+        ? "A队"
+        : "B队"
+      : null;
 
   const testPlayerUrl = (player: number): string => {
     const url = new URL(window.location.href);
@@ -1337,6 +1351,22 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
+            {threeMatchSeriesActive && (
+              <section
+                className="guandan-result-panel"
+                role="status"
+                aria-label="三局赛进度"
+              >
+                <strong>{state.players.length}人三局赛</strong>
+                <span>当前第 {state.seriesMatchNumber}/3 局</span>
+                <span>
+                  已完成 {state.seriesCompletedMatches ?? 0}/3 局 ｜ A队{" "}
+                  {state.seriesTeamAWins ?? 0} 胜 ｜ B队{" "}
+                  {state.seriesTeamBWins ?? 0} 胜
+                </span>
+              </section>
+            )}
+
             {state.matchWinner !== null && (
               <section
                 className={`guandan-notice-panel guandan-match-complete-panel${
@@ -1388,7 +1418,29 @@ const GuandanTable: React.FunctionComponent = () => {
                   </>
                 ) : (
                   <>
-                    <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                    {threeMatchSeriesComplete ? (
+                      <span>
+                        三局比赛全部结束，{seriesChampion}以{" "}
+                        {Math.max(
+                          state.seriesTeamAWins ?? 0,
+                          state.seriesTeamBWins ?? 0,
+                        )}
+                        比
+                        {Math.min(
+                          state.seriesTeamAWins ?? 0,
+                          state.seriesTeamBWins ?? 0,
+                        )}{" "}
+                        获得总冠军。继续后开始新的三局赛。
+                      </span>
+                    ) : threeMatchSeriesActive ? (
+                      <span>
+                        第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
+                        重新抽牌并从打2开始第{" "}
+                        {(state.seriesMatchNumber ?? 0) + 1}/3 局。
+                      </span>
+                    ) : (
+                      <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                    )}
                     <div className="guandan-match-actions">
                       <button
                         type="button"

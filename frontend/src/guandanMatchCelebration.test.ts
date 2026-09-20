@@ -84,4 +84,12 @@ describe("Guandan A-level match celebration", () => {
     expect(table).toContain("[1, 2, 3].map");
     expect(table).not.toContain("{count} 个机器人");
   });
+
+  test("shows the five 6-14 player formats as an exact three-match series", () => {
+    const table = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
+    expect(table).toContain('aria-label="三局赛进度"');
+    expect(table).toContain("当前第 {state.seriesMatchNumber}/3 局");
+    expect(table).toContain("三局比赛全部结束");
+    expect(table).toContain("重新抽牌并从打2开始");
+  });
 });

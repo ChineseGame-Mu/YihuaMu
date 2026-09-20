@@ -115,6 +115,11 @@ export type LegacyServerMessage =
       readonly last_game_winner: number | null;
       readonly last_game_winner_team: "TeamA" | "TeamB" | null;
       readonly last_promotion_steps: number | null;
+      readonly series_match_number: number | null;
+      readonly series_total_matches: 3 | null;
+      readonly series_completed_matches: number | null;
+      readonly series_team_a_wins: number | null;
+      readonly series_team_b_wins: number | null;
       readonly pending_tribute: null;
       readonly tribute_resisted: false;
       readonly tribute_phase: "tribute" | "return" | null;
@@ -271,10 +276,28 @@ export const gameStateToLegacy = (
       : lastGameWinner % 2 === 0
         ? "TeamA"
         : "TeamB";
+  const winnerLevel =
+    lastGameWinnerTeam === "TeamA"
+      ? (game.teamLevels?.A ?? game.levelRank)
+      : lastGameWinnerTeam === "TeamB"
+        ? (game.teamLevels?.B ?? game.levelRank)
+        : null;
   const matchWinner =
-    game.phase === "round-complete" && game.levelRank === "A"
+    game.phase === "round-complete" && winnerLevel === "A"
       ? lastGameWinnerTeam
       : null;
+  const pendingSeriesWin =
+    matchWinner !== null && game.seriesMatchNumber != null;
+  const seriesTeamAWins =
+    game.seriesTeamAWins === null || game.seriesTeamAWins === undefined
+      ? null
+      : game.seriesTeamAWins +
+        (pendingSeriesWin && matchWinner === "TeamA" ? 1 : 0);
+  const seriesTeamBWins =
+    game.seriesTeamBWins === null || game.seriesTeamBWins === undefined
+      ? null
+      : game.seriesTeamBWins +
+        (pendingSeriesWin && matchWinner === "TeamB" ? 1 : 0);
   const isOpeningRound = (game.roundNumber ?? 1) === 1;
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
@@ -309,7 +332,15 @@ export const gameStateToLegacy = (
     finish_order: game.finishedSeats,
     last_game_winner: lastGameWinner,
     last_game_winner_team: lastGameWinnerTeam,
-    last_promotion_steps: null,
+    last_promotion_steps: game.lastPromotionSteps ?? null,
+    series_match_number: game.seriesMatchNumber ?? null,
+    series_total_matches: game.seriesMatchNumber == null ? null : 3,
+    series_completed_matches:
+      game.seriesCompletedMatches == null
+        ? null
+        : game.seriesCompletedMatches + (pendingSeriesWin ? 1 : 0),
+    series_team_a_wins: seriesTeamAWins,
+    series_team_b_wins: seriesTeamBWins,
     pending_tribute: null,
     tribute_resisted: false,
     tribute_phase: null,

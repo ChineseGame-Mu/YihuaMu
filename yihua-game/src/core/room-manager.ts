@@ -3,6 +3,11 @@ import {
   initialTeamLevels,
   promotionForPlacements,
 } from "./competition.js";
+import {
+  advanceCompetitionSeries,
+  initialCompetitionSeries,
+  type CompetitionSeriesState,
+} from "./competition-series.js";
 import { passGameSeat, playGameCardIds } from "./game-actions.js";
 import {
   createLobbyState,
@@ -33,6 +38,7 @@ export interface ManagedRoom {
   readonly game: GameState;
   readonly revision: number;
   readonly tribute?: NativeTributeState | undefined;
+  readonly series?: CompetitionSeriesState | undefined;
 }
 
 const activeCountForNextRound = (
@@ -118,6 +124,7 @@ export class RoomManager {
       game: createLobbyState(playerCount, 0),
       revision: 0,
       tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
     } satisfies ManagedRoom;
     this.rooms.set(room.roomId, managed);
     return managed;
@@ -138,6 +145,7 @@ export class RoomManager {
         game: createLobbyState(managed.room.config.playerCount, 0),
         revision: managed.revision + 1,
         tribute: undefined,
+        series: initialCompetitionSeries(managed.room.config.playerCount),
       } satisfies ManagedRoom;
       this.rooms.set(roomId, reset);
       return reset;
@@ -219,6 +227,7 @@ export class RoomManager {
       game: startGame(createLobbyState(participantCount, botCount), random),
       revision: managed.revision + 1,
       tribute: undefined,
+      series: managed.series ?? initialCompetitionSeries(participantCount),
     } satisfies ManagedRoom;
     this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
@@ -252,11 +261,22 @@ export class RoomManager {
     // Winning while the table level is A completes the whole match.  A new
     // request after that result is a brand-new match: scores/levels/tribute are
     // cleared and the opening draw once again decides the first leader.
+    const completedWinnerTeam = completed.outcome?.winningTeam ?? null;
+    const completedWinnerLevel =
+      completedWinnerTeam === null
+        ? null
+        : (completed.teamLevels ?? initialTeamLevels())[completedWinnerTeam];
     if (
-      completed.levelRank === "A" &&
+      completedWinnerLevel === "A" &&
       completed.outcome !== null &&
       completed.placements.length === activeCount
     ) {
+      const currentSeries =
+        managed.series ?? initialCompetitionSeries(activeCount);
+      const advancedSeries =
+        currentSeries === undefined || completedWinnerTeam === null
+          ? undefined
+          : advanceCompetitionSeries(currentSeries, completedWinnerTeam);
       const restarted = startGame(
         createLobbyState(
           activeCount,
@@ -270,6 +290,10 @@ export class RoomManager {
         game: { ...restarted, matchWinner: null },
         revision: managed.revision + 1,
         tribute: undefined,
+        series:
+          currentSeries === undefined
+            ? undefined
+            : (advancedSeries ?? initialCompetitionSeries(activeCount)),
       } satisfies ManagedRoom;
       this.restoredRoomsAwaitingReconnect.delete(roomId);
       this.rooms.set(roomId, next);
@@ -279,16 +303,17 @@ export class RoomManager {
     let nextLevelRank = completed.levelRank;
     let nextTeamLevels = completed.teamLevels;
     const matchWinner = null;
+    let lastPromotionSteps: number | null = null;
 
     if (
-      activeCount === 4 &&
-      completed.placements.length === 4 &&
+      completed.placements.length === activeCount &&
       completed.outcome !== null
     ) {
       const levels = completed.teamLevels ?? initialTeamLevels();
       const promotion = promotionForPlacements(completed.placements, levels);
       nextTeamLevels = applyPromotion(levels, promotion);
       nextLevelRank = promotion.after;
+      lastPromotionSteps = promotion.steps;
     }
 
     const nextGame = startNextRound(
@@ -297,6 +322,7 @@ export class RoomManager {
       nextLevelRank,
       nextTeamLevels,
       matchWinner,
+      lastPromotionSteps,
     );
     const tribute =
       activeCount === 4 && completed.placements.length === 4

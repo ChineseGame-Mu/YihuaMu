@@ -2,6 +2,7 @@ import * as React from "react";
 import { createPortal } from "react-dom";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import type { GuandanRank, GuandanTeam } from "./guandanProtocol";
+import { guandanPromotionSteps } from "./guandanPromotion";
 
 const rankSequence: GuandanRank[] = [
   "Two",
@@ -54,21 +55,7 @@ export const buildGuandanRoundDisplayModel = (
     winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
   const winnerTeam = lastGameWinnerTeam ?? inferredTeam;
 
-  let inferredPromotion = 0;
-  if (completeFinishOrder.length === 4 && winner !== null) {
-    const partner = (winner + 2) % 4;
-    const partnerPlace = completeFinishOrder.indexOf(partner) + 1;
-    inferredPromotion =
-      partnerPlace === 2
-        ? 3
-        : partnerPlace === 3
-          ? 2
-          : partnerPlace === 4
-            ? 1
-            : 0;
-  } else if (completeFinishOrder.length >= 4) {
-    inferredPromotion = 1;
-  }
+  const inferredPromotion = guandanPromotionSteps(completeFinishOrder) ?? 0;
   const promotionSteps = lastPromotionSteps ?? inferredPromotion;
 
   const rankingText = completeFinishOrder
