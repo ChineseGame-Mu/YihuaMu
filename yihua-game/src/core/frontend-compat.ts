@@ -1,4 +1,4 @@
-import type { Card } from "./cards.js";
+import { RANKS, type Card, type Rank } from "./cards.js";
 import type { ClientMessage, ServerMessage } from "./protocol.js";
 
 export type LegacyGuandanCard =
@@ -157,6 +157,22 @@ const rankMap = {
   K: "King",
   A: "Ace",
 } as const;
+
+const displayedLevelRank = (
+  game: Extract<ServerMessage, { readonly type: "game_state" }>,
+): Rank => {
+  const current = game.levelRank ?? "2";
+  if (game.phase !== "round-complete" || game.lastPromotionSteps == null) {
+    return current;
+  }
+
+  const currentIndex = RANKS.indexOf(current);
+  const nextIndex = Math.min(
+    currentIndex + game.lastPromotionSteps,
+    RANKS.indexOf("A"),
+  );
+  return RANKS[nextIndex]!;
+};
 
 const suitMap = {
   clubs: "Clubs",
@@ -327,7 +343,10 @@ export const gameStateToLegacy = (
     last_trick_winner: null,
     initial_draw: isOpeningRound ? game.openingDraw.map(legacyCard) : [],
     initial_draw_winner: isOpeningRound ? game.openingDrawWinner : null,
-    level: game.levelRank === undefined ? "Two" : rankMap[game.levelRank],
+    // Once a round is complete, show the level that was just earned rather
+    // than the level used by the completed deal.  The authoritative next-round
+    // transition applies the same promotion exactly once when cards are dealt.
+    level: rankMap[displayedLevelRank(game)],
     team_levels: null,
     finish_order: game.finishedSeats,
     last_game_winner: lastGameWinner,
