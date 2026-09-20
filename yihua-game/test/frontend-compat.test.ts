@@ -157,32 +157,42 @@ describe("legacy frontend compatibility adapter", () => {
     });
   });
 
-  it("shows level 3 immediately after a six-player team earns one point", () => {
-    const legacy = gameStateToLegacy(roomState, {
-      type: "game_state",
-      roomId: "room-1",
-      revision: 6,
-      phase: "round-complete",
-      roundNumber: 1,
-      levelRank: "2",
-      teamLevels: { A: "2", B: "2" },
-      lastPromotionSteps: 1,
-      currentTurn: 1,
-      handCounts: [0, 0, 0, 0, 0, 0],
-      openingDraw: [],
-      openingDrawWinner: null,
-      leadingPlay: null,
-      passedSeats: [],
-      finishedSeats: [1, 0, 3, 2, 4, 5],
-      completedTricks: 27,
-    });
+  it.each([6, 8, 10, 12, 14] as const)(
+    "shows level 3 immediately after Team B earns one point with %i players",
+    (playerCount) => {
+      const otherSeats = Array.from(
+        { length: playerCount },
+        (_, seat) => seat,
+      ).filter((seat) => seat !== 1);
+      const legacy = gameStateToLegacy(
+        { ...roomState, playerCount },
+        {
+          type: "game_state",
+          roomId: "room-1",
+          revision: 6,
+          phase: "round-complete",
+          roundNumber: 1,
+          levelRank: "2",
+          teamLevels: { A: "2", B: "2" },
+          lastPromotionSteps: 1,
+          currentTurn: 1,
+          handCounts: Array.from({ length: playerCount }, () => 0),
+          openingDraw: [],
+          openingDrawWinner: null,
+          leadingPlay: null,
+          passedSeats: [],
+          finishedSeats: [1, ...otherSeats],
+          completedTricks: 27,
+        },
+      );
 
-    expect(legacy.type).toBe("state");
-    if (legacy.type !== "state") throw new Error("expected legacy state");
-    expect(legacy.level).toBe("Three");
-    expect(legacy.last_game_winner_team).toBe("TeamB");
-    expect(legacy.last_promotion_steps).toBe(1);
-  });
+      expect(legacy.type).toBe("state");
+      if (legacy.type !== "state") throw new Error("expected legacy state");
+      expect(legacy.level).toBe("Three");
+      expect(legacy.last_game_winner_team).toBe("TeamB");
+      expect(legacy.last_promotion_steps).toBe(1);
+    },
+  );
 });
 
 // Keep this compatibility suite on the formatted descendant so full CI runs there.
