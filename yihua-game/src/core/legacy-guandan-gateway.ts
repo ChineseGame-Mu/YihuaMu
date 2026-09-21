@@ -487,8 +487,14 @@ class LegacyAdapterSocket implements TextSocket {
       ...decoratedState,
       last_play: pending?.lastPlay ?? decoratedState.last_play,
       last_player: pending?.winner ?? decoratedState.last_player,
-      table_plays: pending?.tablePlays ?? this.tablePlays,
+      table_plays:
+        pending?.tablePlays ??
+        (this.tablePlays.length > 0
+          ? this.tablePlays
+          : decoratedState.table_plays),
       passes: pending === undefined ? decoratedState.passes : 0,
+      passed_players:
+        pending === undefined ? decoratedState.passed_players : [],
       trick_complete: pending !== undefined,
       last_trick_winner: pending?.winner ?? null,
       table_clear_id: legacyTableClearIds.get(this.compat.roomId) ?? 0,
@@ -522,7 +528,15 @@ class LegacyAdapterSocket implements TextSocket {
         }
         this.roomState = message;
         await sendLegacy(this.socket, roomStateToLegacyWaiting(message));
-        if (this.gameState?.phase === "round-complete") {
+        if (this.gameState !== undefined) {
+          if (this.startedRevision === undefined) {
+            this.startedRevision = this.gameState.revision;
+            await sendLegacy(this.socket, {
+              type: "started",
+              player_count: this.gameState.handCounts.length,
+              cards_per_player: this.gameState.handCounts[0] ?? 0,
+            });
+          }
           await this.sendCurrentLegacyState();
         }
         return;

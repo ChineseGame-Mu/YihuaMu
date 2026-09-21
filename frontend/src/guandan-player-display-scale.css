@@ -96,6 +96,23 @@ html body .guandan-current-turn-mini {
   border-radius: 18px !important;
   font-size: 28px !important;
   line-height: 1.1 !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+}
+
+html body .guandan-current-turn-player {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+html body .guandan-current-pass-list {
+  max-width: 420px !important;
+  color: #735219 !important;
+  font-size: 18px !important;
+  font-weight: 850 !important;
+  line-height: 1.25 !important;
+  overflow-wrap: anywhere !important;
 }
 
 html body .guandan-current-turn-mini strong {

@@ -21,6 +21,7 @@ const stateMessage = (overrides: Record<string, unknown> = {}) =>
     last_player: null,
     table_plays: [],
     passes: 0,
+    passed_players: [],
     trick_complete: false,
     last_trick_winner: null,
     initial_draw: [],
@@ -76,6 +77,16 @@ describe("2026-09-16 mandatory real-test regressions", () => {
     expect(next.lastPlay).toEqual([]);
   });
 
+  test("keeps the exact names of players who passed in the current trick", () => {
+    const next = adaptGuandanServerMessageWithRealTestFixes(
+      initialGuandanTableState,
+      stateMessage({ passes: 2, passed_players: [1, 3] }),
+    );
+
+    expect(next.passes).toBe(2);
+    expect(next.passedPlayers).toEqual([1, 3]);
+  });
+
   test("a newer clear id rejects delayed cards from the previous trick", () => {
     const current = {
       ...initialGuandanTableState,
@@ -97,6 +108,31 @@ describe("2026-09-16 mandatory real-test regressions", () => {
 
     expect(next.tablePlays).toEqual([]);
     expect(next.tableClearId).toBe(8);
+  });
+
+  test("an older clear id can never restore cards after a collected trick", () => {
+    const current = {
+      ...initialGuandanTableState,
+      tableClearId: 8,
+      tablePlays: [],
+      lastPlay: [],
+      lastPlayer: null,
+    };
+
+    const next = adaptGuandanServerMessageWithRealTestFixes(
+      current,
+      stateMessage({
+        table_clear_id: 7,
+        table_plays: [{ player: 2, cards: [suited("King")] }],
+        last_play: [suited("King")],
+        last_player: 2,
+      }),
+    );
+
+    expect(next.tableClearId).toBe(8);
+    expect(next.tablePlays).toEqual([]);
+    expect(next.lastPlay).toEqual([]);
+    expect(next.lastPlayer).toBeNull();
   });
 
   test("clears a finished player's stale private hand", () => {
