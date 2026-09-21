@@ -33,6 +33,10 @@ import {
   setParticipationForNextRound,
 } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
+import {
+  issuePlayerSessionToken,
+  verifyPlayerSessionToken,
+} from "./player-session.js";
 import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
 import type { UpgradedConnection } from "./websocket-upgrade.js";
@@ -451,6 +455,7 @@ class LegacyAdapterSocket implements TextSocket {
   readonly compat: {
     roomId: string;
     playerId: string;
+    name: string;
     seat: number | null;
     privateCardIds: string[];
   };
@@ -458,10 +463,12 @@ class LegacyAdapterSocket implements TextSocket {
   constructor(
     private readonly socket: TextSocket,
     initial: FrontendCompatState,
+    name: string,
   ) {
     this.compat = {
       roomId: initial.roomId,
       playerId: initial.playerId,
+      name,
       seat: initial.seat,
       privateCardIds: [...initial.privateCardIds],
     };
@@ -503,6 +510,13 @@ class LegacyAdapterSocket implements TextSocket {
               type: "joined",
               room: this.compat.roomId,
               seat: nextSeat,
+              player_id: this.compat.playerId,
+              resume_token: issuePlayerSessionToken({
+                roomId: this.compat.roomId,
+                playerId: this.compat.playerId,
+                name: this.compat.name,
+                role: nextSeat === null ? "observer" : "player",
+              }),
             });
           }
         }
@@ -655,32 +669,6 @@ const requestedLegacySeat = (
   return seat;
 };
 
-const reclaimStaleLobbyHumans = (
-  runtime: ServerRuntime,
-  roomId: string,
-  preservePlayerId: string,
-): ReturnType<ServerRuntime["rooms"]["get"]> => {
-  let managed = runtime.rooms.get(roomId);
-  if (managed.game.phase !== "lobby") return managed;
-
-  const staleIds = managed.room.participants
-    .filter(
-      ({ id, kind, connected }) =>
-        kind === "human" &&
-        id !== preservePlayerId &&
-        !connected &&
-        runtime.sockets.playerConnectionCount(roomId, id) === 0,
-    )
-    .map(({ id }) => id);
-
-  if (staleIds.length === 0) return managed;
-
-  let room = managed.room;
-  for (const id of staleIds) room = removeParticipant(room, id);
-  managed = runtime.rooms.set(roomId, { ...managed, room });
-  return managed;
-};
-
 export const assertLegacyNextRoundRole = (
   message: LegacyClientMessage,
   seat: number | null,
@@ -766,20 +754,63 @@ export const attachLegacyGuandanConnection = async (
             ? message.room
             : connection.context.roomId;
         const roomId = requestedRoomId.trim();
-        if (roomId.length === 0) throw new Error("room id is required");
-        const playerId = legacyPlayerId(message.name);
+        const name = message.name.trim();
+        if (roomId.length === 0 || roomId.length > 64)
+          throw new Error("room id is invalid");
+        if (name.length === 0 || name.length > 64)
+          throw new Error("player name is invalid");
+
+        const suppliedToken = message.resume_token?.trim();
+        const tokenClaims =
+          suppliedToken === undefined || suppliedToken === ""
+            ? null
+            : verifyPlayerSessionToken(suppliedToken, { roomId, name });
+        if (
+          suppliedToken !== undefined &&
+          suppliedToken !== "" &&
+          tokenClaims === null
+        ) {
+          throw new Error("player session is invalid or expired");
+        }
+        if (
+          tokenClaims !== null &&
+          message.player_id !== undefined &&
+          message.player_id !== tokenClaims.playerId
+        ) {
+          throw new Error("player session identity does not match");
+        }
+        const playerId = tokenClaims?.playerId ?? legacyPlayerId(name);
         const requestedPlayerCount = (
           message as LegacyClientMessage & { readonly player_count?: number }
         ).player_count;
         ensureLegacyRoom(runtime, roomId, requestedPlayerCount);
 
-        let managed = reclaimStaleLobbyHumans(runtime, roomId, playerId);
+        let managed = runtime.rooms.get(roomId);
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
         const existingObserver = managed.room.observers.find(
           ({ id }) => id === playerId,
         );
+        if (
+          (existing !== undefined || existingObserver !== undefined) &&
+          tokenClaims === null
+        ) {
+          throw new Error("resume token is required for this player");
+        }
+        if (
+          tokenClaims !== null &&
+          existing === undefined &&
+          existingObserver === undefined
+        ) {
+          throw new Error("player session no longer belongs to this room");
+        }
+        if (
+          (existing !== undefined && tokenClaims?.role === "observer") ||
+          (existingObserver !== undefined && tokenClaims?.role === "player")
+        ) {
+          throw new Error("player session role does not match");
+        }
         const desiredSeat = requestedLegacySeat(
           message,
           managed.room.config.playerCount,
@@ -813,12 +844,16 @@ export const attachLegacyGuandanConnection = async (
             desiredSeat ??
             robotSeat ??
             firstAvailableSeat(managed));
-        const adapter = new LegacyAdapterSocket(connection.socket, {
-          roomId,
-          playerId,
-          seat,
-          privateCardIds: [],
-        });
+        const adapter = new LegacyAdapterSocket(
+          connection.socket,
+          {
+            roomId,
+            playerId,
+            seat,
+            privateCardIds: [],
+          },
+          name,
+        );
 
         try {
           runtime.sockets.register(roomId, adapter, playerId);
@@ -843,7 +878,7 @@ export const attachLegacyGuandanConnection = async (
               ...managed,
               room: addObserver(managed.room, {
                 id: playerId,
-                name: message.name,
+                name,
               }),
             });
             await runtime.websocket.broadcastRoomState(managed);
@@ -852,7 +887,7 @@ export const attachLegacyGuandanConnection = async (
               ...managed,
               room: replaceRobotWithHuman(managed.room, {
                 id: playerId,
-                name: message.name,
+                name,
                 seat: robotSeat,
               }),
             });
@@ -865,7 +900,7 @@ export const attachLegacyGuandanConnection = async (
                 type: "join_room",
                 roomId,
                 playerId,
-                name: message.name,
+                name,
                 seat,
               }),
             );
@@ -885,10 +920,18 @@ export const attachLegacyGuandanConnection = async (
         }
 
         active = { roomId, playerId, adapter };
+        const role = seat === null ? "observer" : "player";
         await sendLegacy(connection.socket, {
           type: "joined",
           room: roomId,
           seat,
+          player_id: playerId,
+          resume_token: issuePlayerSessionToken({
+            roomId,
+            playerId,
+            name,
+            role,
+          }),
         });
         await runtime.websocket.sendSnapshot(adapter, roomId, playerId);
         return;

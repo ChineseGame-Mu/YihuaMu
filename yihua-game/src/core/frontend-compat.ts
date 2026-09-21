@@ -24,7 +24,13 @@ export type LegacyGuandanCard =
   | { readonly Joker: "Small" | "Big" };
 
 export type LegacyClientMessage =
-  | { readonly type: "join"; readonly room: string; readonly name: string }
+  | {
+      readonly type: "join";
+      readonly room: string;
+      readonly name: string;
+      readonly player_id?: string;
+      readonly resume_token?: string;
+    }
   | {
       readonly type: "reorder_players";
       readonly order: readonly [number, number];
@@ -60,6 +66,8 @@ export type LegacyServerMessage =
       readonly type: "joined";
       readonly room: string;
       readonly seat: number | null;
+      readonly player_id?: string;
+      readonly resume_token?: string;
     }
   | {
       readonly type: "waiting";

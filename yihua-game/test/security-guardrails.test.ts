@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { request } from "node:http";
 import { PassThrough } from "node:stream";
 import { parseClientMessage } from "../src/core/protocol.js";
-import { createNodeHttpServer } from "../src/node-server.js";
+import {
+  createNodeHttpServer,
+  isAllowedWebSocketOrigin,
+} from "../src/node-server.js";
 import { NodeWebSocketConnection } from "../src/node-websocket.js";
 
 const servers: ReturnType<typeof createNodeHttpServer>[] = [];
@@ -74,6 +77,37 @@ const httpRequest = async (
   });
 
 describe("network security guardrails", () => {
+  it("accepts only exact trusted websocket origins in production", () => {
+    const configured =
+      "https://yihua-mu.vercel.app,https://approved-preview.vercel.app";
+    expect(
+      isAllowedWebSocketOrigin("https://yihua-mu.vercel.app", true, configured),
+    ).toBe(true);
+    expect(
+      isAllowedWebSocketOrigin(
+        "https://approved-preview.vercel.app",
+        true,
+        configured,
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedWebSocketOrigin("https://evil.example", true, configured),
+    ).toBe(false);
+    expect(
+      isAllowedWebSocketOrigin(
+        "https://yihua-mu.vercel.app.evil.example",
+        true,
+        configured,
+      ),
+    ).toBe(false);
+    expect(isAllowedWebSocketOrigin(undefined, true, configured)).toBe(false);
+  });
+
+  it("allows origin-free test clients only outside production", () => {
+    expect(isAllowedWebSocketOrigin(undefined, false)).toBe(true);
+    expect(isAllowedWebSocketOrigin("http://localhost:3000", false)).toBe(true);
+  });
+
   it("adds browser hardening headers to every HTTP response", async () => {
     const response = await httpRequest(await listen(), {
       method: "GET",

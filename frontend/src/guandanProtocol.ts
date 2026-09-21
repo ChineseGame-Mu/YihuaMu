@@ -21,7 +21,13 @@ export type GuandanCard =
   | { Joker: GuandanJoker };
 
 export type GuandanClientMessage =
-  | { type: "join"; room: string; name: string }
+  | {
+      type: "join";
+      room: string;
+      name: string;
+      player_id?: string;
+      resume_token?: string;
+    }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "move_seat"; direction: "left" | "right" }
   | {
@@ -58,7 +64,13 @@ export interface GuandanExchangeCard {
 
 export type GuandanServerMessage =
   | { type: "connected"; protocol: string }
-  | { type: "joined"; room: string; seat: number | null }
+  | {
+      type: "joined";
+      room: string;
+      seat: number | null;
+      player_id?: string;
+      resume_token?: string;
+    }
   | {
       type: "waiting";
       players: string[];

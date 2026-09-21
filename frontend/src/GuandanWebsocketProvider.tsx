@@ -32,6 +32,69 @@ interface GuandanWebsocketProviderProps {
 
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
+const PLAYER_SESSION_PREFIX = "guandan-player-session:";
+
+export interface StoredPlayerSession {
+  readonly playerId: string;
+  readonly resumeToken: string;
+}
+
+interface JoinWireMessage {
+  readonly type: "join";
+  readonly room: string;
+  readonly name: string;
+  readonly [key: string]: unknown;
+}
+
+export const addPlayerSessionToJoin = (
+  message: JoinWireMessage,
+  session: StoredPlayerSession | null,
+): JoinWireMessage =>
+  session === null
+    ? message
+    : {
+        ...message,
+        player_id: session.playerId,
+        resume_token: session.resumeToken,
+      };
+
+const playerSessionKey = (room: string, name: string): string =>
+  `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
+
+const readPlayerSession = (
+  room: string,
+  name: string,
+): StoredPlayerSession | null => {
+  try {
+    const raw = window.sessionStorage.getItem(playerSessionKey(room, name));
+    if (raw === null) return null;
+    const parsed = JSON.parse(raw) as Partial<StoredPlayerSession>;
+    return typeof parsed.playerId === "string" &&
+      parsed.playerId.length > 0 &&
+      typeof parsed.resumeToken === "string" &&
+      parsed.resumeToken.length > 0
+      ? { playerId: parsed.playerId, resumeToken: parsed.resumeToken }
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const storePlayerSession = (
+  room: string,
+  name: string,
+  session: StoredPlayerSession,
+): void => {
+  try {
+    window.sessionStorage.setItem(
+      playerSessionKey(room, name),
+      JSON.stringify(session),
+    );
+  } catch {
+    // The game remains usable when browser storage is unavailable, but a page
+    // refresh will require a new player identity.
+  }
+};
 
 export const cleanroomBuildCommit =
   typeof __CLEANROOM_BUILD_COMMIT__ === "string"
@@ -119,6 +182,10 @@ const GuandanWebsocketProvider: React.FunctionComponent<
   const messageQueueIndexRef = React.useRef(0);
   const messageDrainTimerRef = React.useRef<number | null>(null);
   const sequenceRef = React.useRef(0);
+  const lastJoinIdentityRef = React.useRef<{
+    room: string;
+    name: string;
+  } | null>(null);
 
   React.useEffect(() => {
     document.documentElement.dataset.cleanroomCommit = cleanroomBuildCommit;
@@ -204,6 +271,19 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         try {
           const message = JSON.parse(event.data) as GuandanServerMessage;
           if (message.type === "connected") setStatus("connected");
+          if (
+            message.type === "joined" &&
+            typeof message.player_id === "string" &&
+            typeof message.resume_token === "string"
+          ) {
+            const identity = lastJoinIdentityRef.current;
+            if (identity !== null && identity.room === message.room) {
+              storePlayerSession(identity.room, identity.name, {
+                playerId: message.player_id,
+                resumeToken: message.resume_token,
+              });
+            }
+          }
           enqueueMessage(message);
         } catch (error) {
           console.error("Failed to parse Guandan websocket message", error);
@@ -256,6 +336,14 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       desiredSeat:
         query.has("seat") && Number.isInteger(desiredSeat) ? desiredSeat : null,
     });
+    if (adapted.type === "join") {
+      const joinRoom = adapted.room.trim();
+      const joinName = adapted.name.trim();
+      lastJoinIdentityRef.current = { room: joinRoom, name: joinName };
+      const stored = readPlayerSession(joinRoom, joinName);
+      ws.send(JSON.stringify(addPlayerSessionToJoin(adapted, stored)));
+      return true;
+    }
     ws.send(JSON.stringify(adapted));
     return true;
   }, []);
