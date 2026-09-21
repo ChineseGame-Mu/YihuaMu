@@ -74,6 +74,9 @@ jobs:
           const legacyGateway = fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8");
           const nodeServer = fs.readFileSync("yihua-game/src/node-server.ts", "utf8");
           const nodeWebsocket = fs.readFileSync("yihua-game/src/node-websocket.ts", "utf8");
+          const playerSession = fs.readFileSync("yihua-game/src/core/player-session.ts", "utf8");
+          const playerSessionTest = fs.readFileSync("yihua-game/test/player-session-security.test.ts", "utf8");
+          const guandanWebsocketProvider = fs.readFileSync("frontend/src/GuandanWebsocketProvider.tsx", "utf8");
           const protocol = fs.readFileSync("yihua-game/src/core/protocol.ts", "utf8");
           const vercelConfig = fs.readFileSync("frontend/vercel.json", "utf8");
 
@@ -82,6 +85,7 @@ jobs:
             ["player name follows public cards", /guandan-table-play[\s\S]*?<\/span>[\s\S]*?<\/div>/.test(table)],
             ["legacy hidden-name CSS is overridden", /html body \.guandan-table \.guandan-trick-play > strong[\s\S]*?display:\s*block\s*!important/.test(css)],
             ["name visibility is forced", /visibility:\s*visible\s*!important/.test(css) && /opacity:\s*1\s*!important/.test(css)],
+            ["public play names use two stable team colors", /play\.player % 2 === 0 \? "a" : "b"/.test(table) && /\.guandan-trick-play\.guandan-public-team-a[\s\S]*?background:\s*#f4a6c1\s*!important/.test(css) && /\.guandan-trick-play\.guandan-public-team-b[\s\S]*?background:\s*#5156d9\s*!important/.test(css)],
             ["public cards sort small to large", /sortPlayCards\(play\.cards, message\.level\)/.test(fixes)],
             ["authoritative clear is preserved", /message\.table_plays\.length === 0 && message\.last_play\.length === 0/.test(fixes)],
             ["finished hand is cleared", /shouldClearOwnHand\(adapted\.seat, message\.finish_order\)/.test(fixes)],
@@ -129,6 +133,8 @@ jobs:
             ["tribute action cannot be covered by ordinary play", /!tributePending\s*&&\s*\(/.test(table) && /className="guandan-tribute-action"/.test(table) && /sendSingleSelected\("tribute_card"\)/.test(table) && /sendSingleSelected\("return_tribute"\)/.test(table) && />\.guandan-tribute-action,[\s\S]*?width:auto!important/.test(actionControls) && !/button:nth-last-of-type/.test(actionControls)],
             ["HTTP requests and responses have mandatory safety limits", /MAX_JSON_BODY_BYTES\s*=\s*64 \* 1024/.test(nodeServer) && /RequestLimitError/.test(nodeServer) && /x-content-type-options/.test(nodeServer) && /x-frame-options/.test(nodeServer)],
             ["WebSocket memory and queue growth are bounded", /MAX_INCOMING_BUFFER_BYTES\s*=\s*2 \* 1024 \* 1024/.test(nodeWebsocket) && /MAX_QUEUED_TEXT_FRAMES\s*=\s*128/.test(nodeWebsocket)],
+            ["player reconnects require a signed room-bound session", /createHmac\("sha256"/.test(playerSession) && /timingSafeEqual/.test(playerSession) && /resume token is required/.test(legacyGateway) && /rejects same-name takeover/.test(playerSessionTest) && /sessionStorage/.test(guandanWebsocketProvider)],
+            ["production WebSockets require an exact trusted origin", /isAllowedWebSocketOrigin/.test(nodeServer) && /parsed\.origin !== origin/.test(nodeServer) && /websocket origin is not allowed/.test(nodeServer)],
             ["client protocol strings and arrays are bounded", /MAX_ROOM_ID_LENGTH\s*=\s*64/.test(protocol) && /MAX_PLAY_CARD_IDS\s*=\s*64/.test(protocol) && /MAX_NONCE_LENGTH\s*=\s*256/.test(protocol)],
             ["Vercel frontend sends browser security headers", /X-Content-Type-Options/.test(vercelConfig) && /X-Frame-Options/.test(vercelConfig) && /Content-Security-Policy/.test(vercelConfig) && /frame-ancestors 'none'/.test(vercelConfig)],
           ];
@@ -203,6 +209,7 @@ jobs:
           test/legacy-second-round-four-human.test.ts
           test/robot-teammate-yield.test.ts
           test/robot-strategy.test.ts
+          test/player-session-security.test.ts
           test/security-guardrails.test.ts
 
       - name: Record successful pass

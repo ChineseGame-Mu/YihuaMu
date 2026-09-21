@@ -4,6 +4,7 @@ import {
   loadRuntimeSnapshotFile,
   saveRuntimeSnapshotFile,
 } from "./node-runtime-store.js";
+import { assertPlayerSessionConfiguration } from "./core/player-session.js";
 
 const port = Number(process.env.PORT ?? "3000");
 const host = process.env.HOST ?? "0.0.0.0";
@@ -16,6 +17,7 @@ if (!Number.isInteger(port) || port <= 0 || port > 65535) {
 if (!Number.isInteger(checkpointMs) || checkpointMs < 100) {
   throw new Error("YIHUA_CHECKPOINT_MS must be an integer of at least 100");
 }
+assertPlayerSessionConfiguration();
 
 const snapshot = snapshotPath
   ? await loadRuntimeSnapshotFile(snapshotPath)

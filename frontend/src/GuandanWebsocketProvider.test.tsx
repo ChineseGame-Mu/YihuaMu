@@ -1,4 +1,7 @@
-import { cleanroomDeploymentRoom } from "./GuandanWebsocketProvider";
+import {
+  addPlayerSessionToJoin,
+  cleanroomDeploymentRoom,
+} from "./GuandanWebsocketProvider";
 
 describe("cleanroom deployment room isolation", () => {
   test("isolates the same visible room across immutable Vercel deployments", () => {
@@ -17,5 +20,28 @@ describe("cleanroom deployment room isolation", () => {
   test("rejects an empty visible room", () => {
     expect(cleanroomDeploymentRoom(null, "yihua-example.vercel.app")).toBeNull();
     expect(cleanroomDeploymentRoom("   ", "yihua-example.vercel.app")).toBeNull();
+  });
+});
+
+describe("cleanroom player-session reconnect", () => {
+  test("adds a stored player id and resume token to the join message body", () => {
+    expect(
+      addPlayerSessionToJoin(
+        { type: "join", room: "0004", name: "玩家一", player_count: 6 },
+        { playerId: "legacy:玩家一", resumeToken: "signed-token" },
+      ),
+    ).toEqual({
+      type: "join",
+      room: "0004",
+      name: "玩家一",
+      player_count: 6,
+      player_id: "legacy:玩家一",
+      resume_token: "signed-token",
+    });
+  });
+
+  test("does not add empty credentials to a first-time join", () => {
+    const join = { type: "join" as const, room: "0004", name: "玩家一" };
+    expect(addPlayerSessionToJoin(join, null)).toBe(join);
   });
 });

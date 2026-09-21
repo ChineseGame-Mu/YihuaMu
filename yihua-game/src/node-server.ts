@@ -26,6 +26,9 @@ const CLEANROOM_GUANDAN_WEBSOCKET =
 const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
 const MAX_JSON_BODY_BYTES = 64 * 1024;
 const MAX_REQUEST_TARGET_BYTES = 4 * 1024;
+const DEFAULT_ALLOWED_WEBSOCKET_ORIGINS = [
+  "https://yihua-mu.vercel.app",
+] as const;
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -116,12 +119,46 @@ const approvedTableUrl = (
   return target.toString();
 };
 
+const productionRuntime = (): boolean =>
+  process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+
+export const isAllowedWebSocketOrigin = (
+  origin: string | undefined,
+  production = productionRuntime(),
+  configuredOrigins = process.env.WS_ALLOWED_ORIGINS,
+): boolean => {
+  if (origin === undefined) return !production;
+  let normalized: string;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.origin !== origin) return false;
+    normalized = parsed.origin;
+  } catch {
+    return false;
+  }
+
+  const configured: readonly string[] =
+    configuredOrigins === undefined
+      ? DEFAULT_ALLOWED_WEBSOCKET_ORIGINS
+      : configuredOrigins
+          .split(",")
+          .map((candidate) => candidate.trim())
+          .filter(Boolean);
+  if (configured.includes(normalized)) return true;
+  if (production) return false;
+
+  const host = new URL(normalized).hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+};
+
 const rejectUpgrade = (
   socket: NodeJS.WritableStream,
   message: string,
+  status = 400,
 ): void => {
+  const reason = status === 403 ? "Forbidden" : "Bad Request";
   socket.write(
-    "HTTP/1.1 400 Bad Request\r\n" +
+    `HTTP/1.1 ${status} ${reason}\r\n` +
       "Connection: close\r\n" +
       "Content-Type: text/plain; charset=utf-8\r\n" +
       `Content-Length: ${Buffer.byteLength(message)}\r\n\r\n` +
@@ -213,6 +250,11 @@ export const createNodeHttpServer = (
     socket.pause();
     void (async () => {
       try {
+        const origin = headerValue(request.headers.origin);
+        if (!isAllowedWebSocketOrigin(origin)) {
+          rejectUpgrade(socket, "websocket origin is not allowed", 403);
+          return;
+        }
         const upgrade = headerValue(request.headers.upgrade)?.toLowerCase();
         const connection = headerValue(
           request.headers.connection,

@@ -305,6 +305,8 @@ export type GuandanWireClientMessage =
       name: string;
       player_count: number;
       desired_seat?: number;
+      player_id?: string;
+      resume_token?: string;
     };
 
 interface GuandanClientAdapterOptions {

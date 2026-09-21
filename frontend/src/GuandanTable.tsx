@@ -1607,7 +1607,9 @@ const GuandanTable: React.FunctionComponent = () => {
                 <div className="guandan-trick-plays">
                   {state.tablePlays.map((play, playIndex) => (
                     <div
-                      className="guandan-trick-play"
+                      className={`guandan-trick-play guandan-public-team-${
+                        play.player % 2 === 0 ? "a" : "b"
+                      }`}
                       key={`${play.player}-${playIndex}`}
                     >
                       <strong>
