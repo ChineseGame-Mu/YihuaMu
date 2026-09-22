@@ -28,6 +28,7 @@ import {
   type RoomState,
 } from "./room.js";
 import {
+  createTableConfig,
   isSupportedPlayerCount,
   SUPPORTED_PLAYER_COUNTS,
   type SupportedPlayerCount,
@@ -125,6 +126,37 @@ export class RoomManager {
     } satisfies ManagedRoom;
     this.rooms.set(room.roomId, managed);
     return managed;
+  }
+
+  resizeLobby(roomId: string, playerCount: SupportedPlayerCount): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.room.config.playerCount === playerCount) return managed;
+    if (managed.game.phase !== "lobby") {
+      throw new Error("table size can only change before the game starts");
+    }
+    if (
+      managed.room.participants.length > playerCount ||
+      managed.room.participants.some(({ seat }) => seat >= playerCount)
+    ) {
+      throw new Error("occupied seats do not fit the selected table size");
+    }
+
+    const botCount = managed.room.participants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
+    const next = {
+      ...managed,
+      room: {
+        ...managed.room,
+        config: createTableConfig(playerCount, botCount),
+      },
+      game: createLobbyState(playerCount, botCount),
+      revision: managed.revision + 1,
+      tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
   }
 
   get(roomId: string): ManagedRoom {
