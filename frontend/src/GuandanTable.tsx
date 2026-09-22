@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import SvgCard from "./SvgCard";
+import { arrangeGuandanHand } from "./guandanAutoArrange";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 import type {
@@ -220,6 +221,13 @@ const GuandanTable: React.FunctionComponent = () => {
         ? "desc"
         : "asc",
   );
+  const [handArrangeMode, setHandArrangeMode] = React.useState<
+    "manual" | "auto"
+  >(() =>
+    window.localStorage.getItem("guandan_hand_arrange_mode") === "auto"
+      ? "auto"
+      : "manual",
+  );
   const [handStackDirection, setHandStackDirection] = React.useState<
     "vertical" | "horizontal"
   >(() =>
@@ -358,6 +366,10 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_sort_order", handSortOrder);
   }, [handSortOrder]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_hand_arrange_mode", handArrangeMode);
+  }, [handArrangeMode]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -726,6 +738,24 @@ const GuandanTable: React.FunctionComponent = () => {
     return stacks;
   }, [visibleHand]);
 
+  const autoArrangedHand = React.useMemo(() => {
+    if (handArrangeMode !== "auto") return [];
+    const visibleIndexes = new Set(
+      visibleHand.map(({ originalIndex }) => originalIndex),
+    );
+    return arrangeGuandanHand(state.hand, state.level)
+      .map((group) => ({
+        ...group,
+        cards: group.indexes
+          .filter((index) => visibleIndexes.has(index))
+          .map((originalIndex) => ({
+            card: state.hand[originalIndex],
+            originalIndex,
+          })),
+      }))
+      .filter((group) => group.cards.length > 0);
+  }, [handArrangeMode, state.hand, state.level, visibleHand]);
+
   const playSelected = (): void => {
     if (gameStarted && selected.length > 0) {
       send({ type: "play", card_indexes: selected });
@@ -801,9 +831,25 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="desc">从大到小</option>
           </select>
           <br />
-          <label htmlFor="guandan-hand-stack-direction">
-            我的桌面牌叠加：
+          <label htmlFor="guandan-hand-arrange-mode">
+            选牌／理牌方式：
           </label>{" "}
+          <select
+            id="guandan-hand-arrange-mode"
+            value={handArrangeMode}
+            onChange={(event) =>
+              setHandArrangeMode(
+                event.target.value === "auto" ? "auto" : "manual",
+              )
+            }
+          >
+            <option value="manual">手动（按点数排列）</option>
+            <option value="auto">自动（按牌型组合）</option>
+          </select>
+          <p>
+            自动模式会组合王炸、炸弹、同花顺、钢板、三连对、顺子、三带二等；仍由您点击选牌和出牌。
+          </p>
+          <label htmlFor="guandan-hand-stack-direction">我的桌面牌叠加：</label>{" "}
           <select
             id="guandan-hand-stack-direction"
             value={handStackDirection}
@@ -838,7 +884,7 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
+            牌面配色、手牌排列、自动理牌、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
           <label htmlFor="guandan-winner-screenshot-email">赢家截图：</label>{" "}
           <input
@@ -1667,42 +1713,80 @@ const GuandanTable: React.FunctionComponent = () => {
                   {visibleHand.length}）
                 </h2>
                 <div className="guandan-hand">
-                  {stackedHand.map((stack) => (
-                    <div
-                      className="guandan-card-stack"
-                      key={cardStackKey(stack[0]!.card)}
-                    >
-                      {stack.map(({ card, originalIndex }, stackIndex) => (
-                        <button
-                          type="button"
-                          key={`${cardGlyph(card)}-${originalIndex}`}
-                          aria-pressed={selected.includes(originalIndex)}
-                          disabled={!gameStarted}
-                          onClick={() => toggleCard(originalIndex)}
-                          style={
-                            {
-                              "--guandan-stack-progress": `${privateHandStackProgress(stackIndex, stack.length) * 100}%`,
-                              "--guandan-stack-offset": `${privateHandStackProgress(stackIndex, stack.length) * -100}%`,
-                              zIndex: selected.includes(originalIndex)
-                                ? 100
-                                : stackIndex + 1,
-                              padding: 0,
-                              border: selected.includes(originalIndex)
-                                ? "3px solid currentColor"
-                                : "2px solid transparent",
-                              borderRadius: 8,
-                              background: "transparent",
-                              transform: selected.includes(originalIndex)
-                                ? "translateY(-12px)"
-                                : "none",
-                            } as React.CSSProperties
-                          }
+                  {handArrangeMode === "auto"
+                    ? autoArrangedHand.map((group, groupIndex) => (
+                        <div
+                          className={`guandan-auto-hand-group guandan-auto-hand-group-${group.kind}`}
+                          key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
                         >
-                          {fullCard(card)}
-                        </button>
+                          <span className="guandan-auto-hand-group-label">
+                            {group.label}
+                          </span>
+                          {group.cards.map(({ card, originalIndex }) => (
+                            <button
+                              type="button"
+                              key={`${cardGlyph(card)}-${originalIndex}`}
+                              data-card-index={originalIndex}
+                              aria-pressed={selected.includes(originalIndex)}
+                              disabled={!gameStarted}
+                              onClick={() => toggleCard(originalIndex)}
+                              style={{
+                                zIndex: selected.includes(originalIndex)
+                                  ? 100
+                                  : 1,
+                                padding: 0,
+                                border: selected.includes(originalIndex)
+                                  ? "3px solid currentColor"
+                                  : "2px solid transparent",
+                                borderRadius: 8,
+                                background: "transparent",
+                                transform: selected.includes(originalIndex)
+                                  ? "translateY(-12px)"
+                                  : "none",
+                              }}
+                            >
+                              {fullCard(card)}
+                            </button>
+                          ))}
+                        </div>
+                      ))
+                    : stackedHand.map((stack) => (
+                        <div
+                          className="guandan-card-stack"
+                          key={cardStackKey(stack[0]!.card)}
+                        >
+                          {stack.map(({ card, originalIndex }, stackIndex) => (
+                            <button
+                              type="button"
+                              key={`${cardGlyph(card)}-${originalIndex}`}
+                              data-card-index={originalIndex}
+                              aria-pressed={selected.includes(originalIndex)}
+                              disabled={!gameStarted}
+                              onClick={() => toggleCard(originalIndex)}
+                              style={
+                                {
+                                  "--guandan-stack-progress": `${privateHandStackProgress(stackIndex, stack.length) * 100}%`,
+                                  "--guandan-stack-offset": `${privateHandStackProgress(stackIndex, stack.length) * -100}%`,
+                                  zIndex: selected.includes(originalIndex)
+                                    ? 100
+                                    : stackIndex + 1,
+                                  padding: 0,
+                                  border: selected.includes(originalIndex)
+                                    ? "3px solid currentColor"
+                                    : "2px solid transparent",
+                                  borderRadius: 8,
+                                  background: "transparent",
+                                  transform: selected.includes(originalIndex)
+                                    ? "translateY(-12px)"
+                                    : "none",
+                                } as React.CSSProperties
+                              }
+                            >
+                              {fullCard(card)}
+                            </button>
+                          ))}
+                        </div>
                       ))}
-                    </div>
-                  ))}
                 </div>
               </section>
 

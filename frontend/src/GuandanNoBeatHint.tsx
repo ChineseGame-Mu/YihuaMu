@@ -860,7 +860,10 @@ const selectSuggestedCards = (
   );
 
   buttons.forEach((button, visibleIndex) => {
-    const originalIndex = ordered[visibleIndex]?.originalIndex;
+    const explicitIndex = Number(button.dataset.cardIndex);
+    const originalIndex = Number.isInteger(explicitIndex)
+      ? explicitIndex
+      : ordered[visibleIndex]?.originalIndex;
     if (originalIndex === undefined) return;
     const shouldBeSelected = desired.has(originalIndex);
     const isSelected = button.getAttribute("aria-pressed") === "true";

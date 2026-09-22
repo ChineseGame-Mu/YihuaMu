@@ -38,7 +38,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
   const refreshSelectedPreview = React.useCallback(() => {
     const selectedButtons = Array.from(
       document.querySelectorAll<HTMLButtonElement>(
-        '.guandan-hand .guandan-card-stack > button[aria-pressed="true"]',
+        '.guandan-hand button[data-card-index][aria-pressed="true"]',
       ),
     );
 
@@ -54,7 +54,7 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
 
   const deselectPreviewCard = React.useCallback((id: string) => {
     const button = document.querySelector<HTMLButtonElement>(
-      `.guandan-hand .guandan-card-stack > button[data-selected-preview-id="${id}"]`,
+      `.guandan-hand button[data-selected-preview-id="${id}"]`,
     );
     button?.click();
   }, []);

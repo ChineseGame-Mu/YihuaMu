@@ -766,3 +766,36 @@
     padding: 9px 12px;
   }
 }
+.guandan-auto-hand-group {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  margin: 22px 8px 0 0;
+  padding: 4px 6px 3px;
+  border: 2px solid rgb(255 224 120 / 78%);
+  border-radius: 10px;
+  background: rgb(255 248 210 / 16%);
+}
+
+.guandan-auto-hand-group > button + button {
+  margin-left: -46px;
+}
+
+.guandan-auto-hand-group-label {
+  position: absolute;
+  top: -22px;
+  left: 3px;
+  color: #fff3b0;
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #2d1800;
+}
+
+.guandan-auto-hand-group-bomb,
+.guandan-auto-hand-group-joker-bomb,
+.guandan-auto-hand-group-straight-flush {
+  border-color: #ffba2f;
+  background: rgb(255 190 45 / 20%);
+}
