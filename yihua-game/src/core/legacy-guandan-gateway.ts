@@ -637,10 +637,25 @@ const ensureLegacyRoom = (
   roomId: string,
   requestedPlayerCount: unknown,
 ): void => {
+  const playerCount = supportedPlayerCount(requestedPlayerCount);
+  let managed: ReturnType<ServerRuntime["rooms"]["get"]>;
   try {
-    runtime.rooms.get(roomId);
+    managed = runtime.rooms.get(roomId);
   } catch {
-    runtime.rooms.create(roomId, supportedPlayerCount(requestedPlayerCount));
+    runtime.rooms.create(roomId, playerCount);
+    return;
+  }
+
+  const currentPlayerCount = managed.room.config.playerCount;
+  const lobbyIsEmpty =
+    managed.room.participants.length === 0 &&
+    managed.room.observers.length === 0;
+  if (
+    managed.game.phase === "lobby" &&
+    currentPlayerCount !== playerCount &&
+    (playerCount > currentPlayerCount || lobbyIsEmpty)
+  ) {
+    runtime.rooms.resizeLobby(roomId, playerCount);
   }
 };
 
