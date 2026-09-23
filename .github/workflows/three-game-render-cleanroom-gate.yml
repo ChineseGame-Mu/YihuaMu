@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/unified-websocket-reconnect-20260915
+      - cleanroom/three-game-commercial-20260916
   workflow_dispatch:
 
 jobs:
