@@ -1,7 +1,11 @@
 import * as React from "react";
 
 import SvgCard from "./SvgCard";
-import { arrangeGuandanHand } from "./guandanAutoArrange";
+import {
+  arrangeGuandanHand,
+  type GuandanArrangeStrategy,
+  type GuandanAutoGroup,
+} from "./guandanAutoArrange";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 import type {
@@ -228,6 +232,24 @@ const GuandanTable: React.FunctionComponent = () => {
       ? "auto"
       : "manual",
   );
+  const [autoArrangeStrategy, setAutoArrangeStrategy] =
+    React.useState<GuandanArrangeStrategy>(() => {
+      const saved = window.localStorage.getItem(
+        "guandan_auto_arrange_strategy",
+      );
+      return saved === "sequences" || saved === "sets" ? saved : "balanced";
+    });
+  const [autoHandLayout, setAutoHandLayout] = React.useState<
+    "horizontal" | "vertical"
+  >(() =>
+    window.localStorage.getItem("guandan_auto_hand_layout") === "vertical"
+      ? "vertical"
+      : "horizontal",
+  );
+  const [autoGroupOverrides, setAutoGroupOverrides] = React.useState<
+    GuandanAutoGroup[] | null
+  >(null);
+  const [activeAutoGroupIndex, setActiveAutoGroupIndex] = React.useState(0);
   const [handStackDirection, setHandStackDirection] = React.useState<
     "vertical" | "horizontal"
   >(() =>
@@ -370,6 +392,17 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     window.localStorage.setItem("guandan_hand_arrange_mode", handArrangeMode);
   }, [handArrangeMode]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      "guandan_auto_arrange_strategy",
+      autoArrangeStrategy,
+    );
+  }, [autoArrangeStrategy]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem("guandan_auto_hand_layout", autoHandLayout);
+  }, [autoHandLayout]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -738,14 +771,32 @@ const GuandanTable: React.FunctionComponent = () => {
     return stacks;
   }, [visibleHand]);
 
+  const handSignature = React.useMemo(
+    () => state.hand.map(cardGlyph).join("|"),
+    [state.hand],
+  );
+
+  const baseAutoArrangement = React.useMemo(
+    () => arrangeGuandanHand(state.hand, state.level, autoArrangeStrategy),
+    [autoArrangeStrategy, state.hand, state.level],
+  );
+
+  React.useEffect(() => {
+    setAutoGroupOverrides(null);
+    setActiveAutoGroupIndex(0);
+  }, [autoArrangeStrategy, handSignature, state.level]);
+
+  const editableAutoGroups = autoGroupOverrides ?? baseAutoArrangement;
+
   const autoArrangedHand = React.useMemo(() => {
     if (handArrangeMode !== "auto") return [];
     const visibleIndexes = new Set(
       visibleHand.map(({ originalIndex }) => originalIndex),
     );
-    return arrangeGuandanHand(state.hand, state.level)
-      .map((group) => ({
+    return editableAutoGroups
+      .map((group, editableIndex) => ({
         ...group,
+        editableIndex,
         cards: group.indexes
           .filter((index) => visibleIndexes.has(index))
           .map((originalIndex) => ({
@@ -754,7 +805,81 @@ const GuandanTable: React.FunctionComponent = () => {
           })),
       }))
       .filter((group) => group.cards.length > 0);
-  }, [handArrangeMode, state.hand, state.level, visibleHand]);
+  }, [editableAutoGroups, handArrangeMode, state.hand, visibleHand]);
+
+  const activeAutoGroup = editableAutoGroups[activeAutoGroupIndex] ?? null;
+
+  const moveActiveAutoGroup = (offset: -1 | 1): void => {
+    if (activeAutoGroup === null) return;
+    const targetIndex = activeAutoGroupIndex + offset;
+    if (targetIndex < 0 || targetIndex >= editableAutoGroups.length) return;
+    setAutoGroupOverrides((current) => {
+      const next = [...(current ?? baseAutoArrangement)];
+      const [group] = next.splice(activeAutoGroupIndex, 1);
+      if (group === undefined) return current;
+      next.splice(targetIndex, 0, group);
+      return next;
+    });
+    setActiveAutoGroupIndex(targetIndex);
+  };
+
+  const splitActiveAutoGroup = (): void => {
+    if (activeAutoGroup === null || activeAutoGroup.indexes.length < 2) return;
+    setAutoGroupOverrides((current) => {
+      const next = [...(current ?? baseAutoArrangement)];
+      next.splice(
+        activeAutoGroupIndex,
+        1,
+        ...activeAutoGroup.indexes.map((index, cardIndex) => ({
+          kind: "single" as const,
+          label: `拆分牌${cardIndex + 1}`,
+          indexes: [index],
+        })),
+      );
+      return next;
+    });
+  };
+
+  const makeSelectedCustomGroup = (): void => {
+    if (selected.length === 0) return;
+    const selectedIndexes = new Set(selected);
+    setAutoGroupOverrides((current) => {
+      const source = current ?? baseAutoArrangement;
+      const next = source.flatMap((group) => {
+        const remaining = group.indexes.filter(
+          (index) => !selectedIndexes.has(index),
+        );
+        if (remaining.length === group.indexes.length) return [group];
+        return remaining.map((index, cardIndex) => ({
+          kind: "single" as const,
+          label: `拆分牌${cardIndex + 1}`,
+          indexes: [index],
+        }));
+      });
+      const insertionIndex = Math.min(activeAutoGroupIndex, next.length);
+      next.splice(insertionIndex, 0, {
+        kind: "custom",
+        label: `自定义组合（${selected.length}张）`,
+        indexes: [...selected],
+      });
+      return next;
+    });
+  };
+
+  const restoreAutoArrangement = (): void => {
+    setAutoGroupOverrides(null);
+    setActiveAutoGroupIndex(0);
+  };
+
+  const selectActiveAutoGroup = (): void => {
+    if (activeAutoGroup !== null) setSelected([...activeAutoGroup.indexes]);
+  };
+
+  const playActiveAutoGroup = (): void => {
+    if (activeAutoGroup !== null && activeAutoGroup.indexes.length > 0) {
+      send({ type: "play", card_indexes: activeAutoGroup.indexes });
+    }
+  };
 
   const playSelected = (): void => {
     if (gameStarted && selected.length > 0) {
@@ -846,10 +971,46 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="manual">手动（按点数排列）</option>
             <option value="auto">自动（按牌型组合）</option>
           </select>
+          <br />
+          <label htmlFor="guandan-auto-arrange-strategy">
+            自动理牌方案：
+          </label>{" "}
+          <select
+            id="guandan-auto-arrange-strategy"
+            value={autoArrangeStrategy}
+            disabled={handArrangeMode !== "auto"}
+            onChange={(event) =>
+              setAutoArrangeStrategy(
+                event.target.value === "sequences" ||
+                  event.target.value === "sets"
+                  ? event.target.value
+                  : "balanced",
+              )
+            }
+          >
+            <option value="balanced">智能综合</option>
+            <option value="sequences">顺子／同花顺优先</option>
+            <option value="sets">对子／三张／钢板优先</option>
+          </select>
+          <br />
+          <label htmlFor="guandan-auto-hand-layout">自动牌型排列：</label>{" "}
+          <select
+            id="guandan-auto-hand-layout"
+            value={autoHandLayout}
+            disabled={handArrangeMode !== "auto"}
+            onChange={(event) =>
+              setAutoHandLayout(
+                event.target.value === "vertical" ? "vertical" : "horizontal",
+              )
+            }
+          >
+            <option value="horizontal">横向排列</option>
+            <option value="vertical">竖式排列</option>
+          </select>
           <p>
-            自动模式会组合王炸、炸弹、同花顺、钢板、三连对、顺子、三带二等；仍由您点击选牌和出牌。
+            自动模式会组合王炸、炸弹、同花顺、钢板、三连对、顺子、三带二等；可选择组合方案、横竖布局，并在桌面手动调整。
           </p>
-          <label htmlFor="guandan-hand-stack-direction">我的桌面牌叠加：</label>{" "}
+          <label htmlFor="guandan-hand-stack-direction">手动理牌叠加：</label>{" "}
           <select
             id="guandan-hand-stack-direction"
             value={handStackDirection}
@@ -884,7 +1045,7 @@ const GuandanTable: React.FunctionComponent = () => {
             0 张。
           </p>
           <p>
-            牌面配色、手牌排列、自动理牌、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
+            牌面配色、手牌排列、自动理牌方案、横竖布局、牌叠加方式、音乐和报牌阈值只影响您自己，并会保存在当前浏览器。
           </p>
           <label htmlFor="guandan-winner-screenshot-email">赢家截图：</label>{" "}
           <input
@@ -1712,12 +1873,123 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
-                <div className="guandan-hand">
+                {handArrangeMode === "auto" &&
+                  editableAutoGroups.length > 0 && (
+                    <div
+                      className="guandan-auto-hand-toolbar"
+                      role="group"
+                      aria-label="自动理牌手动调整"
+                    >
+                      <label htmlFor="guandan-active-auto-group">
+                        调整组合：
+                      </label>
+                      <select
+                        id="guandan-active-auto-group"
+                        value={Math.min(
+                          activeAutoGroupIndex,
+                          editableAutoGroups.length - 1,
+                        )}
+                        onChange={(event) =>
+                          setActiveAutoGroupIndex(Number(event.target.value))
+                        }
+                      >
+                        {editableAutoGroups.map((group, groupIndex) => (
+                          <option
+                            key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
+                            value={groupIndex}
+                          >
+                            {groupIndex + 1}. {group.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={activeAutoGroupIndex === 0}
+                        onClick={() => moveActiveAutoGroup(-1)}
+                      >
+                        前移
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={
+                          activeAutoGroupIndex >= editableAutoGroups.length - 1
+                        }
+                        onClick={() => moveActiveAutoGroup(1)}
+                      >
+                        后移
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={
+                          activeAutoGroup === null ||
+                          activeAutoGroup.indexes.length < 2
+                        }
+                        onClick={splitActiveAutoGroup}
+                      >
+                        拆开此组
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={selected.length === 0}
+                        onClick={makeSelectedCustomGroup}
+                      >
+                        选中牌组成一组
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        onClick={restoreAutoArrangement}
+                      >
+                        恢复方案
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
+                        disabled={activeAutoGroup === null}
+                        onClick={selectActiveAutoGroup}
+                      >
+                        选中此组
+                      </button>
+                      <button
+                        type="button"
+                        className="guandan-auto-play-group"
+                        disabled={
+                          activeAutoGroup === null ||
+                          !gameStarted ||
+                          state.seat === null ||
+                          effectiveTurn !== state.seat ||
+                          tributePending ||
+                          state.trickComplete
+                        }
+                        onClick={playActiveAutoGroup}
+                      >
+                        一键出此组
+                      </button>
+                    </div>
+                  )}
+                <div
+                  className={`guandan-hand${
+                    handArrangeMode === "auto"
+                      ? ` guandan-auto-layout-${autoHandLayout}`
+                      : ""
+                  }`}
+                >
                   {handArrangeMode === "auto"
                     ? autoArrangedHand.map((group, groupIndex) => (
                         <div
-                          className={`guandan-auto-hand-group guandan-auto-hand-group-${group.kind}`}
+                          className={`guandan-auto-hand-group guandan-auto-hand-group-${group.kind}${
+                            group.editableIndex === activeAutoGroupIndex
+                              ? " guandan-auto-hand-group-active"
+                              : ""
+                          }`}
                           key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
+                          onPointerDown={() =>
+                            setActiveAutoGroupIndex(group.editableIndex)
+                          }
                         >
                           <span className="guandan-auto-hand-group-label">
                             {group.label}
@@ -1831,7 +2103,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       disabled={!gameStarted || selected.length === 0}
                       onClick={playSelected}
                     >
-                      出牌
+                      一键出选中牌
                     </button>
                     <button
                       className="guandan-pass-action"

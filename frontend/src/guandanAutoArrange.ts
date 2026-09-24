@@ -10,6 +10,7 @@ export type GuandanAutoGroupKind =
   | "full-house"
   | "triple"
   | "pair"
+  | "custom"
   | "single";
 
 export interface GuandanAutoGroup {
@@ -17,6 +18,8 @@ export interface GuandanAutoGroup {
   label: string;
   indexes: number[];
 }
+
+export type GuandanArrangeStrategy = "balanced" | "sequences" | "sets";
 
 const ranks: GuandanRank[] = [
   "Two",
@@ -85,6 +88,7 @@ type Target = { rank: GuandanRank; count: number };
 export const arrangeGuandanHand = (
   hand: GuandanCard[],
   level: GuandanRank | null,
+  strategy: GuandanArrangeStrategy = "balanced",
 ): GuandanAutoGroup[] => {
   if (level === null) {
     return hand.map((_, index) => ({
@@ -191,71 +195,101 @@ export const arrangeGuandanHand = (
     }
   };
 
-  takeRepeatedly("straight-flush", () =>
-    suits.flatMap((suit) =>
-      straightWindows().map((window) => ({
-        indexes: findTarget(
-          window.map((rank) => ({ rank, count: 1 })),
-          suit,
-        ),
-        label: `同花顺（到${highLabel(window)}）`,
-      })),
-    ),
-  );
-
-  takeRepeatedly("consecutive-triples", () =>
-    ranks.slice(0, -1).map((rank, start) => ({
-      indexes: findTarget([
-        { rank, count: 3 },
-        { rank: ranks[start + 1], count: 3 },
-      ]),
-      label: `钢板（${rankLabels[rank]}-${rankLabels[ranks[start + 1]]}）`,
-    })),
-  );
-
-  takeRepeatedly("consecutive-pairs", () =>
-    ranks.slice(0, -2).map((rank, start) => ({
-      indexes: findTarget([
-        { rank, count: 2 },
-        { rank: ranks[start + 1], count: 2 },
-        { rank: ranks[start + 2], count: 2 },
-      ]),
-      label: `三连对（到${rankLabels[ranks[start + 2]]}）`,
-    })),
-  );
-
-  takeRepeatedly("straight", () =>
-    straightWindows().map((window) => ({
-      indexes: findTarget(window.map((rank) => ({ rank, count: 1 }))),
-      label: `顺子（到${highLabel(window)}）`,
-    })),
-  );
-
-  takeRepeatedly("full-house", () =>
-    ranks.flatMap((tripleRank) =>
-      ranks
-        .filter((pairRank) => pairRank !== tripleRank)
-        .map((pairRank) => ({
-          indexes: findTarget([
-            { rank: tripleRank, count: 3 },
-            { rank: pairRank, count: 2 },
-          ]),
-          label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
+  const takeStraightFlushes = (): void =>
+    takeRepeatedly("straight-flush", () =>
+      suits.flatMap((suit) =>
+        straightWindows().map((window) => ({
+          indexes: findTarget(
+            window.map((rank) => ({ rank, count: 1 })),
+            suit,
+          ),
+          label: `同花顺（到${highLabel(window)}）`,
         })),
-    ),
-  );
-
-  ranks.forEach((rank) => {
-    const indexes = Array.from(remaining).filter(
-      (index) => rankOf(hand[index]) === rank,
+      ),
     );
-    while (indexes.length >= 3) {
-      addGroup("triple", `三张${rankLabels[rank]}`, indexes.splice(0, 3));
-    }
-    while (indexes.length >= 2) {
-      addGroup("pair", `对子${rankLabels[rank]}`, indexes.splice(0, 2));
-    }
-  });
+
+  const takeConsecutiveTriples = (): void =>
+    takeRepeatedly("consecutive-triples", () =>
+      ranks.slice(0, -1).map((rank, start) => ({
+        indexes: findTarget([
+          { rank, count: 3 },
+          { rank: ranks[start + 1], count: 3 },
+        ]),
+        label: `钢板（${rankLabels[rank]}-${rankLabels[ranks[start + 1]]}）`,
+      })),
+    );
+
+  const takeConsecutivePairs = (): void =>
+    takeRepeatedly("consecutive-pairs", () =>
+      ranks.slice(0, -2).map((rank, start) => ({
+        indexes: findTarget([
+          { rank, count: 2 },
+          { rank: ranks[start + 1], count: 2 },
+          { rank: ranks[start + 2], count: 2 },
+        ]),
+        label: `三连对（到${rankLabels[ranks[start + 2]]}）`,
+      })),
+    );
+
+  const takeStraights = (): void =>
+    takeRepeatedly("straight", () =>
+      straightWindows().map((window) => ({
+        indexes: findTarget(window.map((rank) => ({ rank, count: 1 }))),
+        label: `顺子（到${highLabel(window)}）`,
+      })),
+    );
+
+  const takeFullHouses = (): void =>
+    takeRepeatedly("full-house", () =>
+      ranks.flatMap((tripleRank) =>
+        ranks
+          .filter((pairRank) => pairRank !== tripleRank)
+          .map((pairRank) => ({
+            indexes: findTarget([
+              { rank: tripleRank, count: 3 },
+              { rank: pairRank, count: 2 },
+            ]),
+            label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
+          })),
+      ),
+    );
+
+  const takeRankGroups = (): void => {
+    ranks.forEach((rank) => {
+      const indexes = Array.from(remaining).filter(
+        (index) => rankOf(hand[index]) === rank,
+      );
+      while (indexes.length >= 3) {
+        addGroup("triple", `三张${rankLabels[rank]}`, indexes.splice(0, 3));
+      }
+      while (indexes.length >= 2) {
+        addGroup("pair", `对子${rankLabels[rank]}`, indexes.splice(0, 2));
+      }
+    });
+  };
+
+  if (strategy === "sequences") {
+    takeStraightFlushes();
+    takeStraights();
+    takeConsecutivePairs();
+    takeConsecutiveTriples();
+    takeFullHouses();
+    takeRankGroups();
+  } else if (strategy === "sets") {
+    takeConsecutiveTriples();
+    takeConsecutivePairs();
+    takeFullHouses();
+    takeRankGroups();
+    takeStraightFlushes();
+    takeStraights();
+  } else {
+    takeStraightFlushes();
+    takeConsecutiveTriples();
+    takeConsecutivePairs();
+    takeStraights();
+    takeFullHouses();
+    takeRankGroups();
+  }
 
   Array.from(remaining).forEach((index) => {
     const card = hand[index];
