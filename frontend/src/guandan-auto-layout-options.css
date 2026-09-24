@@ -1,0 +1,151 @@
+.guandan-auto-hand-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 0 3px 4px;
+  padding: 5px 7px;
+  border: 1px solid #c99a37;
+  border-radius: 8px;
+  background: #fff8db;
+  color: #513300;
+  font-size: 0.78rem;
+}
+
+.guandan-auto-hand-toolbar label {
+  font-weight: 900;
+}
+
+.guandan-auto-hand-toolbar select {
+  min-width: 132px;
+  max-width: 210px;
+  padding: 4px 6px;
+}
+
+.guandan-auto-hand-toolbar button,
+.guandan-auto-hand-toolbar button.normal {
+  min-width: 0;
+  padding: 5px 8px;
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
+.guandan-auto-hand-toolbar .guandan-auto-play-group {
+  border-color: #146b34;
+  background: linear-gradient(#35a85d, #167238);
+  color: #fff;
+  font-weight: 900;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section:has(.guandan-auto-hand-toolbar) {
+  display: flex !important;
+  flex-direction: column;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section:has(.guandan-auto-hand-toolbar)
+  .guandan-hand {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+html body .guandan-hand.guandan-auto-layout-horizontal {
+  align-items: flex-end;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+html
+  body
+  .guandan-hand.guandan-auto-layout-horizontal
+  .guandan-auto-hand-group {
+  flex: 0 0 auto;
+}
+
+html
+  body
+  .guandan-hand.guandan-auto-layout-horizontal
+  .guandan-auto-hand-group
+  > button
+  + button {
+  margin-left: -32px;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical {
+  flex-direction: column;
+  align-items: flex-start !important;
+  justify-content: flex-start;
+  gap: 7px;
+  overflow-x: auto;
+  overflow-y: auto !important;
+}
+
+html body .guandan-hand.guandan-auto-layout-vertical .guandan-auto-hand-group {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: max-content;
+  margin: 24px 0 0;
+  padding: 4px 6px 3px;
+}
+
+html
+  body
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group-label {
+  top: -22px;
+  right: auto;
+  left: 3px;
+  overflow: visible;
+  color: #5b3600;
+  text-align: left;
+  text-overflow: clip;
+  text-shadow: 0 1px 1px #fff8d5;
+}
+
+html
+  body
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group
+  > button
+  + button {
+  margin-left: -32px;
+}
+
+.guandan-auto-hand-group-active {
+  border-color: #14733b !important;
+  box-shadow: 0 0 0 3px rgb(20 115 59 / 24%);
+}
+
+.guandan-auto-hand-group-custom {
+  border-style: dashed;
+  border-color: #2377b8;
+  background: rgb(77 166 232 / 15%);
+}
+
+@media (max-width: 720px) {
+  .guandan-auto-hand-toolbar {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .guandan-auto-hand-toolbar select {
+    min-width: 112px;
+    max-width: 160px;
+  }
+
+  .guandan-auto-hand-toolbar button,
+  .guandan-auto-hand-toolbar button.normal {
+    padding: 4px 6px;
+    font-size: 0.7rem;
+  }
+}

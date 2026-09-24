@@ -92,4 +92,27 @@ describe("automatic Guandan hand arrangement", () => {
       { kind: "bomb", label: "4张Q炸", indexes: [0, 1, 2, 3] },
     ]);
   });
+
+  test("offers sequence-first and same-rank-first alternative plans", () => {
+    const hand: GuandanCard[] = [
+      suited("Three", "Clubs"),
+      suited("Three", "Diamonds"),
+      suited("Three", "Spades"),
+      suited("Four", "Hearts"),
+      suited("Five", "Clubs"),
+      suited("Six", "Diamonds"),
+      suited("Seven", "Spades"),
+    ];
+
+    const sequencePlan = arrangeGuandanHand(hand, "Two", "sequences");
+    const setPlan = arrangeGuandanHand(hand, "Two", "sets");
+
+    expect(sequencePlan.some(({ kind }) => kind === "straight")).toBe(true);
+    expect(setPlan[0]).toMatchObject({ kind: "triple", label: "三张3" });
+    for (const plan of [sequencePlan, setPlan]) {
+      expect(
+        plan.flatMap(({ indexes }) => indexes).sort((a, b) => a - b),
+      ).toEqual(hand.map((_, index) => index));
+    }
+  });
 });
