@@ -57,9 +57,7 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(entry).toContain(`const cleanroomWebsocket = "${allowed}"`);
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
-    expect(transport).toContain(
-      `const CLEANROOM_WEBSOCKET = "${allowed}"`,
-    );
+    expect(transport).toContain(`const CLEANROOM_WEBSOCKET = "${allowed}"`);
     expect(transport).toContain(
       'if (query.get("cleanroom") !== "1") return CLEANROOM_WEBSOCKET',
     );
