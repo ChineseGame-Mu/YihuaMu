@@ -1,0 +1,145 @@
+name: Shared Games Live Player Matrix
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  shared-player-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WS_URL: wss://chinesegame-pr18-qa.onrender.com/api
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install WebSocket client
+        run: npm install --no-save ws@8.21.0
+      - name: Run real Shengji and Finding Friends 4-14 start/reconnect matrix
+        run: |
+          node --input-type=module <<'NODE'
+          import WebSocket from 'ws';
+
+          const URL=process.env.WS_URL;
+          const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+          const timeout=(ms,label)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error(`timeout: ${label}`)),ms));
+
+          class Client {
+            constructor(name,room){this.name=name;this.room=room;this.ws=null;this.messages=[];this.waiters=[];}
+            async connect(){
+              this.ws=new WebSocket(URL,{handshakeTimeout:15000});
+              this.ws.on('error',error=>console.log(JSON.stringify({type:'shared_matrix_socket_error',name:this.name,error:String(error)})));
+              this.ws.on('message',data=>{
+                let m; try{m=JSON.parse(Buffer.from(data).toString('utf8'));}catch{return;}
+                this.messages.push(m);
+                for(const w of [...this.waiters]) if(this.messages.length>w.after&&w.pred(m)){
+                  this.waiters.splice(this.waiters.indexOf(w),1);w.resolve(m);
+                }
+              });
+              await Promise.race([
+                new Promise((resolve,reject)=>{this.ws.once('open',resolve);this.ws.once('error',reject);}),
+                timeout(15000,`${this.name} open`)
+              ]);
+              return this;
+            }
+            send(m){if(this.ws?.readyState!==WebSocket.OPEN)throw new Error(`${this.name} socket not open`);this.ws.send(JSON.stringify(m));}
+            waitNew(pred,after=this.messages.length,ms=25000){
+              for(let i=after;i<this.messages.length;i++)if(pred(this.messages[i]))return Promise.resolve(this.messages[i]);
+              return Promise.race([new Promise(resolve=>this.waiters.push({pred,resolve,after})),timeout(ms,`${this.name} message`)]);
+            }
+            terminate(){try{this.ws?.terminate();}catch{}}
+            close(){try{this.ws?.close();}catch{}}
+          }
+
+          const isState=m=>m&&typeof m==='object'&&m.State;
+          const isError=m=>m&&typeof m==='object'&&m.Error;
+          const phase=m=>m?.State ? Object.keys(m.State)[0] : null;
+
+          async function join(c){
+            const mark=c.messages.length;
+            c.send({room_name:c.room,name:c.name,disable_compression:true});
+            const reply=await c.waitNew(m=>isState(m)||isError(m),mark,25000);
+            if(isError(reply))throw new Error(`${c.name} join error ${JSON.stringify(reply)}`);
+            return reply;
+          }
+
+          async function run(mode,count,rep){
+            const tag=mode==='Tractor'?'T':'F';
+            const room=`${tag}${String(count).padStart(2,'0')}${rep}${Math.random().toString(36).slice(2,4).toUpperCase()}`;
+            const clients=[];
+            try{
+              const owner=await new Client(`${tag}${count}R${rep}P1`,room).connect();
+              await join(owner);
+              clients.push(owner);
+
+              const action=mode==='Tractor'
+                ? {Action:{SetGameMode:'Tractor'}}
+                : {Action:{SetGameMode:{FindingFriends:{num_friends:null}}}};
+              let mark=owner.messages.length;
+              owner.send(action);
+              const configured=await owner.waitNew(m=>isState(m)||isError(m),mark,25000);
+              if(isError(configured))throw new Error(`${mode} configure error ${JSON.stringify(configured)}`);
+              if(phase(configured)!=='Initialize')throw new Error(`${mode} unexpected configure phase ${phase(configured)}`);
+
+              for(let i=1;i<count;i++){
+                const c=await new Client(`${tag}${count}R${rep}P${i+1}`,room).connect();
+                await join(c);
+                clients.push(c);
+              }
+
+              const marks=clients.map(c=>c.messages.length);
+              owner.send({Action:'StartGame'});
+              const started=await owner.waitNew(m=>isState(m)&&phase(m)==='Draw'||isError(m),marks[0],30000);
+              if(isError(started))throw new Error(`${mode} count ${count} start error ${JSON.stringify(started)}`);
+              if(phase(started)!=='Draw')throw new Error(`${mode} count ${count} did not enter Draw`);
+
+              for(let i=1;i<count;i++){
+                const s=await clients[i].waitNew(m=>isState(m)&&phase(m)==='Draw',marks[i],30000);
+                if(phase(s)!=='Draw')throw new Error(`${mode} count ${count} client ${i} missing Draw`);
+              }
+
+              const target=clients[Math.min(2,count-1)];
+              const name=target.name;
+              target.terminate();
+              await sleep(500);
+              const replacement=await new Client(name,room).connect();
+              const recovered=await join(replacement);
+              if(phase(recovered)!=='Draw')throw new Error(`${mode} count ${count} reconnect phase ${phase(recovered)}`);
+              replacement.close();
+
+              console.log(JSON.stringify({
+                type:'shared_player_matrix_pass',
+                sha:process.env.EXPECTED_COMMIT,
+                mode,
+                playerCount:count,
+                repetition:rep,
+                room,
+                phase:'Draw',
+                reconnect:true
+              }));
+            } finally {
+              for(const c of clients)c.close();
+            }
+          }
+
+          for(const count of [4,6,8,10,12,14]){
+            for(let rep=1;rep<=3;rep++)await run('Tractor',count,rep);
+          }
+          for(let count=4;count<=14;count++){
+            for(let rep=1;rep<=3;rep++)await run('FindingFriends',count,rep);
+          }
+
+          console.log(JSON.stringify({
+            type:'shared_player_matrix_complete',
+            sha:process.env.EXPECTED_COMMIT,
+            tractorCounts:[4,6,8,10,12,14],
+            findingFriendsCounts:[4,5,6,7,8,9,10,11,12,13,14],
+            repetitions:3,
+            note:'Live join/configure/start/reconnect matrix. Full complete-game playthrough remains a separate mandatory gate.'
+          }));
+          NODE
