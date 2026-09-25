@@ -98,7 +98,8 @@ jobs:
             const room=(mode==='Tractor'?'T':'F') + Math.random().toString(36).slice(2,5).toUpperCase();
             const clients=[];
             for(let i=0;i<4;i++){
-              const c=await new SharedClient(`${mode}-QA-${Date.now()}-${i}`,room).connect();
+              const prefix=mode==='Tractor'?'TR':'FF';
+              const c=await new SharedClient(`${prefix}-${Date.now().toString().slice(-6)}-${i}`,room).connect();
               await join(c); clients.push(c);
             }
 
@@ -108,7 +109,8 @@ jobs:
 
             let mark=clients[0].messages.length;
             clients[0].send(action);
-            await clients[0].waitNew(isState,mark,20000);
+            const modeReply=await clients[0].waitNew(m=>isState(m)||isError(m),mark,20000);
+            if(isError(modeReply)) throw new Error(`${mode} SetGameMode error: ${JSON.stringify(modeReply)}`);
 
             // Duplicate-delivery simulation: replay the same idempotent mode action.
             mark=clients[0].messages.length;
