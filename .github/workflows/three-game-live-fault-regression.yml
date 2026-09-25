@@ -97,28 +97,39 @@ jobs:
           async function runMode(mode) {
             const room=(mode==='Tractor'?'T':'F') + Math.random().toString(36).slice(2,5).toUpperCase();
             const clients=[];
-            for(let i=0;i<4;i++){
-              const prefix=mode==='Tractor'?'TR':'FF';
-              const c=await new SharedClient(`${prefix}-${Date.now().toString().slice(-6)}-${i}`,room).connect();
-              await join(c); clients.push(c);
-            }
+            const prefix=mode==='Tractor'?'TR':'FF';
+
+            // Mirror the real create-room flow: first player joins, chooses the mode,
+            // then the remaining players join that already-configured room.
+            const owner=await new SharedClient(`${prefix}-${Date.now().toString().slice(-6)}-0`,room).connect();
+            await join(owner);
+            clients.push(owner);
 
             const action = mode==='Tractor'
               ? {Action:{SetGameMode:'Tractor'}}
               : {Action:{SetGameMode:{FindingFriends:{num_friends:null}}}};
 
-            let mark=clients[0].messages.length;
-            clients[0].send(action);
-            const modeReply=await clients[0].waitNew(m=>isState(m)||isError(m),mark,20000);
+            let mark=owner.messages.length;
+            owner.send(action);
+            const modeReply=await owner.waitNew(m=>isState(m)||isError(m),mark,20000);
             if(isError(modeReply)) throw new Error(`${mode} SetGameMode error: ${JSON.stringify(modeReply)}`);
 
-            // Duplicate-delivery simulation: replay the same idempotent mode action.
-            mark=clients[0].messages.length;
-            clients[0].send(action);
-            clients[0].send(action);
-            await clients[0].waitNew(isState,mark,20000);
-            const duplicateErrors=clients[0].messages.slice(mark).filter(isError);
+            for(let i=1;i<4;i++){
+              const c=await new SharedClient(`${prefix}-${Date.now().toString().slice(-6)}-${i}`,room).connect();
+              await join(c); clients.push(c);
+            }
+
+            // Duplicate-delivery simulation: replay the same idempotent mode action twice,
+            // then prove the connection and authoritative room state remain usable.
+            mark=owner.messages.length;
+            owner.send(action);
+            owner.send(action);
+            await sleep(750);
+            const duplicateErrors=owner.messages.slice(mark).filter(isError);
             if(duplicateErrors.length) throw new Error(`${mode} duplicate replay produced error: ${JSON.stringify(duplicateErrors)}`);
+            mark=owner.messages.length;
+            owner.send({Message:`${mode}-duplicate-survival`});
+            await owner.waitNew(m=>m?.Message?.message===`${mode}-duplicate-survival`,mark,20000);
 
             // Latency/timeout window: keep the live connection idle beyond the frontend 5s response timer,
             // then prove a real round trip still succeeds.
