@@ -77,23 +77,25 @@ jobs:
                 const hand=await clients[i].waitNew(m=>m.type==='hand',marks[i],25000);
                 if(!Array.isArray(hand.cards)||hand.cards.length!==27) throw new Error(`hand count ${hand.cards?.length}`);
               }
-              const trickMarks=clients.map(c=>c.messages.length);
-              clients[0].send({type:'start_trick'});
-              for(let i=0;i<playerCount;i++) await clients[i].waitNew(m=>m.type==='state'&&Number.isInteger(m.turn),trickMarks[i],20000);
               let state=clients.flatMap(c=>c.messages).filter(m=>m.type==='state').at(-1);
+              if(!state || !Number.isInteger(state.turn)) throw new Error('missing started state');
               const seatToClient=new Map(clients.map(c=>[c.seat,c]));
               const leader=seatToClient.get(state.turn);
+              const leaderSeat=leader.seat;
               let mark=leader.messages.length;
               leader.send({type:'play',card_indexes:[0]});
-              state=await leader.waitNew(m=>m.type==='state'&&m.hand_counts?.[leader.seat]===26,mark,25000);
+              state=await leader.waitNew(m=>m.type==='state'&&m.hand_counts?.[leaderSeat]===26,mark,25000);
               let passes=0;
-              while(passes<playerCount-1 && !state.trick_complete){
+              while(passes<playerCount-1 && !(state.last_trick_winner===leaderSeat && state.last_play?.length===0 && state.passes===0)){
                 const active=seatToClient.get(state.turn); mark=active.messages.length;
                 active.send({type:'pass'});
-                state=await active.waitNew(m=>m.type==='state'&&(m.trick_complete===true||m.turn!==active.seat),mark,25000);
+                state=await active.waitNew(m=>m.type==='state'&&(
+                  m.turn!==active.seat ||
+                  (m.last_trick_winner===leaderSeat && m.last_play?.length===0 && m.passes===0)
+                ),mark,25000);
                 passes++;
               }
-              if(!state.trick_complete) throw new Error('trick did not complete');
+              if(!(state.last_trick_winner===leaderSeat && state.last_play?.length===0 && state.passes===0)) throw new Error('trick did not complete');
               const target=clients[Math.min(2,playerCount-1)], originalSeat=target.seat;
               target.close(); await new Promise(r=>setTimeout(r,700));
               const replacement=new Client(target.name); await replacement.connect(); mark=replacement.messages.length;
