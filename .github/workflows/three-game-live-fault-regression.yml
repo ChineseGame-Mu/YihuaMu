@@ -246,6 +246,7 @@ jobs:
             mark=replacement.messages.length;
             replacement.send({type:'join',room,name:replacement.name});
             const joined=await replacement.waitNew(m=>m.type==='joined',mark,20000);
+            replacement.seat=joined.seat;
             const hand=await replacement.waitNew(m=>m.type==='hand',mark,20000);
             const state=await replacement.waitNew(m=>m.type==='state',mark,20000);
             if(joined.seat!==originalSeat)throw new Error(`reconnect seat changed ${joined.seat} != ${originalSeat}`);
