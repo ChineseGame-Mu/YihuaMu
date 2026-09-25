@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      FRONTEND_URL: https://chinesegame-yihua.onrender.com/
-      SHENGJI_WS_URL: wss://chinesegame-yihua.onrender.com/api
-      GUANDAN_WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
+      FRONTEND_URL: https://chinesegame-pr18-qa.onrender.com/
+      SHENGJI_WS_URL: wss://chinesegame-pr18-qa.onrender.com/api
+      GUANDAN_WS_URL: wss://chinesegame-pr18-qa.onrender.com/api/guandan
       EXPECTED_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
           if (finalUrl.hostname.endsWith('.vercel.app')) {
             throw new Error(`Render-only QA escaped to Vercel: ${finalUrl.href}`);
           }
-          if (finalUrl.hostname !== 'chinesegame-yihua.onrender.com') {
+          if (finalUrl.hostname !== 'chinesegame-pr18-qa.onrender.com') {
             throw new Error(`unexpected frontend origin: ${finalUrl.href}`);
           }
           console.log(JSON.stringify({
@@ -74,17 +74,18 @@ jobs:
             if (!source.includes(needle)) throw new Error(`missing reconnect contract: ${needle}`);
           }
           if (!source.includes('chinesegame-yihua.onrender.com/api')) {
-            throw new Error('shared Shengji/Finding Friends Render WebSocket target missing');
+            throw new Error('shared Shengji/Finding Friends production WebSocket target missing');
           }
           console.log(JSON.stringify({
             type: 'shared_reconnect_contract_pass',
             games: ['shengji','finding-friends'],
             backoffCapMs: 10000,
             responseTimeoutMs: 5000,
+            qaTarget: process.env.SHENGJI_WS_URL,
           }));
           NODE
 
-      - name: Proven Guandan 4-client live WebSocket E2E on Render
+      - name: Proven Guandan 4-client live WebSocket E2E on PR18 Render QA
         run: |
           node --input-type=module <<'NODE'
           const WS_URL = process.env.GUANDAN_WS_URL;
@@ -204,6 +205,8 @@ jobs:
             reconnectSeat: rejoined.seat,
             reconnectHandCount: rehand.cards.length,
             trickComplete: true,
+            expectedCommit: process.env.EXPECTED_COMMIT,
+            qaHost: new URL(process.env.FRONTEND_URL).hostname,
             vercelTouched: false,
           }));
 
