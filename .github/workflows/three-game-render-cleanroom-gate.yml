@@ -153,9 +153,10 @@ jobs:
 
           const marks = clients.map(c => c.messages.length);
           clients[0].send({ type: 'start', player_count: 4 });
+          const started = await clients[0].waitNew(m => m.type === 'started' && m.player_count === 4, marks[0], 20000);
+          if (started.cards_per_player !== 27) throw new Error(`cards_per_player ${started.cards_per_player}`);
           for (let i = 0; i < 4; i++) {
-            const started = await clients[i].waitNew(m => m.type === 'started' && m.player_count === 4, marks[i], 20000);
-            if (started.cards_per_player !== 27) throw new Error(`cards_per_player ${started.cards_per_player}`);
+            await clients[i].waitNew(m => m.type === 'state' && Array.isArray(m.hand_counts) && m.hand_counts.length === 4, marks[i], 20000);
             const hand = await clients[i].waitNew(m => m.type === 'hand', marks[i], 20000);
             if (!Array.isArray(hand.cards) || hand.cards.length !== 27) throw new Error(`hand count ${hand.cards?.length}`);
           }
