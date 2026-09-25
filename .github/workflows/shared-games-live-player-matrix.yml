@@ -70,7 +70,7 @@ jobs:
 
           async function run(mode,count,rep){
             const tag=mode==='Tractor'?'T':'F';
-            const room=`${tag}${String(count).padStart(2,'0')}${rep}${Math.random().toString(36).slice(2,4).toUpperCase()}`;
+            const room=`${tag}${Math.random().toString(36).slice(2,5).toUpperCase()}`;
             const clients=[];
             try{
               const owner=await new Client(`${tag}${count}R${rep}P1`,room).connect();
