@@ -53,58 +53,64 @@ describe("approved Guandan frontend clean-room bridge", () => {
     },
   );
 
-  it("locks the approved frontend to the authorized three-game Render backend", () => {
-    const entry = readFileSync(
-      new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
-      "utf8",
-    );
-    const transport = readFileSync(
-      new URL(
-        "../../frontend/src/GuandanWebsocketProvider.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    );
-    const allowed = "wss://chinesegame-yihua.onrender.com/api/guandan";
-    expect(entry).toContain(`const cleanroomWebsocket = "${allowed}"`);
-    expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
-    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
-    expect(transport).toContain(`const CLEANROOM_WEBSOCKET = "${allowed}"`);
-    expect(transport).toContain(
-      'if (query.get("cleanroom") !== "1") return CLEANROOM_WEBSOCKET',
-    );
-    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
-    expect(entry).not.toContain("card-games-yihua.onrender.com");
-    expect(transport).not.toContain("card-games-yihua.onrender.com");
-    expect(entry).not.toContain("yihua-mu.vercel.app");
-    expect(transport).not.toContain(".vercel.app");
-  });
+  it(
+    "locks the approved frontend to the authorized three-game Render backend",
+    () => {
+      const entry = readFileSync(
+        new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
+        "utf8",
+      );
+      const transport = readFileSync(
+        new URL(
+          "../../frontend/src/GuandanWebsocketProvider.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      const allowed = "wss://chinesegame-yihua.onrender.com/api/guandan";
+      expect(entry).toContain(`const cleanroomWebsocket = "${allowed}"`);
+      expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
+      expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+      expect(transport).toContain(`const CLEANROOM_WEBSOCKET = "${allowed}"`);
+      expect(transport).toContain(
+        'if (query.get("cleanroom") !== "1") return CLEANROOM_WEBSOCKET',
+      );
+      expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
+      expect(entry).not.toContain("card-games-yihua.onrender.com");
+      expect(transport).not.toContain("card-games-yihua.onrender.com");
+      expect(entry).not.toContain("yihua-mu.vercel.app");
+      expect(transport).not.toContain(".vercel.app");
+    },
+  );
 
-  it("preserves the visible clean-room room id at the compatibility boundary", () => {
-    const entry = readFileSync(
-      new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
-      "utf8",
-    );
-    const transport = readFileSync(
-      new URL(
-        "../../frontend/src/GuandanWebsocketProvider.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    );
-    const adapter = readFileSync(
-      new URL(
-        "../../frontend/src/guandanCompatibilityAdapter.ts",
-        import.meta.url,
-      ),
-      "utf8",
-    );
-    expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
-    expect(entry).toContain('url.searchParams.set("room", roomId)');
-    expect(transport).toContain('room: query.get("cleanroomRoom")');
-    expect(adapter).toContain("const room = options.room?.trim()");
-    expect(adapter).toContain("room: room || message.room");
-  });
+  it(
+    "preserves the visible clean-room room id at the compatibility boundary",
+    () => {
+      const entry = readFileSync(
+        new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
+        "utf8",
+      );
+      const transport = readFileSync(
+        new URL(
+          "../../frontend/src/GuandanWebsocketProvider.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      const adapter = readFileSync(
+        new URL(
+          "../../frontend/src/guandanCompatibilityAdapter.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
+      expect(entry).toContain('url.searchParams.set("room", roomId)');
+      expect(transport).toContain('room: query.get("cleanroomRoom")');
+      expect(adapter).toContain("const room = options.room?.trim()");
+      expect(adapter).toContain("room: room || message.room");
+    },
+  );
 
   it("makes the clean-room branch root enter through CleanroomEntry", () => {
     const index = readFileSync(
