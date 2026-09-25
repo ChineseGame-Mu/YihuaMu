@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
+      WS_URL: wss://chinesegame-pr18-qa.onrender.com/api/guandan
       EXPECTED_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -101,7 +101,7 @@ jobs:
               if(!Array.isArray(rehand.cards)) throw new Error('reconnect private hand missing');
               if(!Array.isArray(restate.hand_counts)||restate.hand_counts.length!==playerCount) throw new Error('reconnect public state invalid');
               replacement.close();
-              console.log(JSON.stringify({type:'live_matrix_pass',sha:process.env.EXPECTED_COMMIT,playerCount,repetition,room,reconnectSeat:rejoined.seat,trickComplete:true}));
+              console.log(JSON.stringify({type:'live_matrix_pass',sha:process.env.EXPECTED_COMMIT,playerCount,repetition,room,reconnectSeat:rejoined.seat,trickComplete:true,qaHost:new URL(WS_URL).hostname}));
             } finally { for(const c of clients)c.close(); }
           }
           for(const count of COUNTS) for(let repetition=1;repetition<=REPETITIONS;repetition++) await run(count,repetition);
