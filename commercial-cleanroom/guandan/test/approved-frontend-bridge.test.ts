@@ -14,37 +14,44 @@ describe("approved Guandan frontend clean-room bridge", () => {
   it(
     "mounts the approved Guandan frontend stack without replacing GuandanTable",
     () => {
-    const entry = readFileSync(
-      new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
-      "utf8",
-    );
-    const table = readFileSync(
-      new URL("../../frontend/src/GuandanTable.tsx", import.meta.url),
-      "utf8",
-    );
-    const transport = readFileSync(
-      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
-      "utf8",
-    );
-    const adapter = readFileSync(
-      new URL("../../frontend/src/guandanCompatibilityAdapter.ts", import.meta.url),
-      "utf8",
-    );
-    expect(entry).toContain('import GuandanTable from "./GuandanTable"');
-    expect(entry).toContain(
-      'import GuandanWebsocketProvider from "./GuandanWebsocketProvider"',
-    );
-    expect(entry).toContain("<GuandanWebsocketProvider>");
-    expect(entry).toContain("<GuandanStateProvider>");
-    expect(entry).toContain("<GuandanTable />");
-    expect(transport).toContain("adaptGuandanClientMessage");
-    expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
-    expect(adapter).toContain("player_count: playerCount");
-    expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
-    expect(table).toContain(
-      "const GuandanTable: React.FunctionComponent = () =>",
-    );
-  });
+      const entry = readFileSync(
+        new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
+        "utf8",
+      );
+      const table = readFileSync(
+        new URL("../../frontend/src/GuandanTable.tsx", import.meta.url),
+        "utf8",
+      );
+      const transport = readFileSync(
+        new URL(
+          "../../frontend/src/GuandanWebsocketProvider.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      const adapter = readFileSync(
+        new URL(
+          "../../frontend/src/guandanCompatibilityAdapter.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      expect(entry).toContain('import GuandanTable from "./GuandanTable"');
+      expect(entry).toContain(
+        'import GuandanWebsocketProvider from "./GuandanWebsocketProvider"',
+      );
+      expect(entry).toContain("<GuandanWebsocketProvider>");
+      expect(entry).toContain("<GuandanStateProvider>");
+      expect(entry).toContain("<GuandanTable />");
+      expect(transport).toContain("adaptGuandanClientMessage");
+      expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
+      expect(adapter).toContain("player_count: playerCount");
+      expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
+      expect(table).toContain(
+        "const GuandanTable: React.FunctionComponent = () =>",
+      );
+    },
+  );
 
   it("locks the approved frontend to the authorized three-game Render backend", () => {
     const entry = readFileSync(
