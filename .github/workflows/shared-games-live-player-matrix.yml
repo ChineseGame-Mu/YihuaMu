@@ -58,7 +58,7 @@ jobs:
 
           const isState=m=>m&&typeof m==='object'&&m.State;
           const isError=m=>m&&typeof m==='object'&&m.Error;
-          const phase=m=>m?.State ? Object.keys(m.State)[0] : null;
+          const phase=m=>m?.State ? Object.keys(m.State.state ?? m.State)[0] : null;
 
           async function join(c){
             const mark=c.messages.length;
