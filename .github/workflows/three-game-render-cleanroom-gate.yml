@@ -25,7 +25,7 @@ jobs:
 
       - name: Install proven Cleanroom browser runtime
         run: |
-          npm install --no-save playwright@1.55.0
+          npm install --no-save playwright@1.55.0 ws@8.21.0
           npx playwright install --with-deps chromium
 
       - name: Render-only frontend origin contract
@@ -88,6 +88,7 @@ jobs:
       - name: Proven Guandan 4-client live WebSocket E2E on PR18 Render QA
         run: |
           node --input-type=module <<'NODE'
+          import WebSocket from 'ws';
           const WS_URL = process.env.GUANDAN_WS_URL;
           const room = `render-cleanroom-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
           const timeout = (ms, label) => new Promise((_, rej) => setTimeout(() => rej(new Error(`timeout: ${label}`)), ms));
