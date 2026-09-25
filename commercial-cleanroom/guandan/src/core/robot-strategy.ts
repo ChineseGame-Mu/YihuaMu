@@ -15,8 +15,12 @@ export interface RobotPatternPriorityInput {
   readonly kind: RobotPatternKind;
   readonly strength: number;
   readonly size: number | undefined;
+  readonly playSize?: number | undefined;
   readonly leading: boolean;
   readonly leadCycle: number;
+  readonly handSizeBefore?: number | undefined;
+  readonly opponentMinHandSize?: number | undefined;
+  readonly leadingKind?: RobotPatternKind | undefined;
 }
 
 const responseBase: Record<RobotPatternKind, number> = {
@@ -89,14 +93,54 @@ export const robotPatternPriority = ({
   kind,
   strength,
   size,
+  playSize,
   leading,
   leadCycle,
+  handSizeBefore,
+  opponentMinHandSize,
+  leadingKind,
 }: RobotPatternPriorityInput): number => {
+  // 残局能一次走完时优先走完，不为了保炸弹而错失胜局。
+  if (
+    handSizeBefore !== undefined &&
+    playSize !== undefined &&
+    handSizeBefore === playSize
+  ) {
+    return -30_000 - playSize * 100 - strength;
+  }
+
   const bomb = bombPriority(kind, size, strength);
-  if (bomb !== undefined) return bomb;
+  if (bomb !== undefined) {
+    // “炸第一顺、封顺封到顶”：仅在对手顺子已形成明显残局威胁时，
+    // 才提前动用普通炸弹；同类炸弹优先用更有把握的一手。
+    if (
+      !leading &&
+      leadingKind === "straight" &&
+      opponentMinHandSize !== undefined &&
+      opponentMinHandSize <= 7 &&
+      kind === "bomb"
+    ) {
+      return 250 - (size ?? 4) * 10 - strength;
+    }
+    return bomb;
+  }
   if (kind === "invalid") return responseBase.invalid;
-  if (!leading) return responseBase[kind] + strength;
+  if (!leading) {
+    // 对手只剩一两张时，不再总用最小牌应对，要提高封堵强度。
+    const endgameBlock =
+      opponentMinHandSize !== undefined && opponentMinHandSize <= 2
+        ? -strength * 10
+        : 0;
+    return responseBase[kind] + strength + endgameBlock;
+  }
   const order = leadOrders[Math.abs(leadCycle) % leadOrders.length]!;
   const index = order.indexOf(kind);
-  return (index === -1 ? 900 : index * 100) + strength;
+  const fiveCardEndgame =
+    playSize === 5 &&
+    handSizeBefore !== undefined &&
+    handSizeBefore >= 7 &&
+    handSizeBefore <= 9
+      ? -500
+      : 0;
+  return (index === -1 ? 900 : index * 100) + strength + fiveCardEndgame;
 };

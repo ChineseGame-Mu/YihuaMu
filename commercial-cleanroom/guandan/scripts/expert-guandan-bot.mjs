@@ -54,21 +54,11 @@ const sequenceWindows = (length) => {
   return windows;
 };
 
-const candidateKey = (cards) =>
-  cards
-    .map((c) => c.id)
-    .sort()
-    .join("|");
+const candidateKey = (cards) => cards.map((c) => c.id).sort().join("|");
 
-export const generateLegalCandidates = (
-  hand,
-  levelRank,
-  leadingHand = null,
-) => {
+export const generateLegalCandidates = (hand, levelRank, leadingHand = null) => {
   const wildcardCards = hand.filter((c) => isWildcard(c, levelRank));
-  const fixedSuited = hand.filter(
-    (c) => isSuited(c) && !isWildcard(c, levelRank),
-  );
+  const fixedSuited = hand.filter((c) => isSuited(c) && !isWildcard(c, levelRank));
   const byRank = new Map();
   for (const card of fixedSuited) {
     const rank = card.card.rank;
@@ -78,16 +68,9 @@ export const generateLegalCandidates = (
   const candidates = new Map();
   const add = (cards) => {
     if (!cards || cards.length === 0) return;
-    const classified = classifyHandWithLevel(
-      cards.map((c) => c.card),
-      levelRank,
-    );
+    const classified = classifyHandWithLevel(cards.map((c) => c.card), levelRank);
     if (classified.kind === "invalid") return;
-    if (
-      leadingHand &&
-      !canHandBeatWithLevel(classified, leadingHand, levelRank)
-    )
-      return;
+    if (leadingHand && !canHandBeatWithLevel(classified, leadingHand, levelRank)) return;
     candidates.set(candidateKey(cards), { cards, hand: classified });
   };
 
@@ -105,16 +88,11 @@ export const generateLegalCandidates = (
     }
   }
 
-  const small = hand.filter(
-    (c) => c.card.kind === "joker" && c.card.size === "small",
-  );
-  const big = hand.filter(
-    (c) => c.card.kind === "joker" && c.card.size === "big",
-  );
+  const small = hand.filter((c) => c.card.kind === "joker" && c.card.size === "small");
+  const big = hand.filter((c) => c.card.kind === "joker" && c.card.size === "big");
   if (small.length >= 2) add(small.slice(0, 2));
   if (big.length >= 2) add(big.slice(0, 2));
-  if (small.length >= 2 && big.length >= 2)
-    add([...small.slice(0, 2), ...big.slice(0, 2)]);
+  if (small.length >= 2 && big.length >= 2) add([...small.slice(0, 2), ...big.slice(0, 2)]);
 
   for (const ranks of sequenceWindows(5)) {
     add(chooseOnePerRank(byRank, ranks, wildcardCards, 1));
@@ -123,9 +101,7 @@ export const generateLegalCandidates = (
       for (const rank of ranks) {
         suitedBuckets.set(
           rank,
-          (byRank.get(rank) ?? []).filter(
-            (c) => c.card.kind === "suited" && c.card.suit === suit,
-          ),
+          (byRank.get(rank) ?? []).filter((c) => c.card.kind === "suited" && c.card.suit === suit),
         );
       }
       add(chooseOnePerRank(suitedBuckets, ranks, wildcardCards, 1));
@@ -146,11 +122,7 @@ export const generateLegalCandidates = (
       const pairFixed = (byRank.get(pairRank) ?? []).slice(0, 2);
       const need = 5 - tripleFixed.length - pairFixed.length;
       if (need < 0 || need > wildcardCards.length) continue;
-      const cards = [
-        ...tripleFixed,
-        ...pairFixed,
-        ...wildcardCards.slice(0, need),
-      ];
+      const cards = [...tripleFixed, ...pairFixed, ...wildcardCards.slice(0, need)];
       if (cards.length === 5) add(cards);
     }
   }
@@ -158,8 +130,7 @@ export const generateLegalCandidates = (
   return [...candidates.values()];
 };
 
-const isBombLike = (h) =>
-  ["bomb", "straight-flush", "joker-bomb"].includes(h.kind);
+const isBombLike = (h) => ["bomb", "straight-flush", "joker-bomb"].includes(h.kind);
 const isStructure = (h) => !["single", "invalid"].includes(h.kind);
 const handStrength = (h) => {
   if (h.kind === "joker-bomb") return 100000;
@@ -180,11 +151,7 @@ const opponentSeats = (seat, playerCount) =>
 const structureBreakPenalty = (candidate, allCandidates) => {
   if (candidate.hand.kind !== "single") return 0;
   const id = candidate.cards[0].id;
-  return allCandidates.some(
-    (c) => isStructure(c.hand) && c.cards.some((x) => x.id === id),
-  )
-    ? 35
-    : 0;
+  return allCandidates.some((c) => isStructure(c.hand) && c.cards.some((x) => x.id === id)) ? 35 : 0;
 };
 
 export const createPublicMemory = (playerCount) => ({
@@ -195,12 +162,7 @@ export const createPublicMemory = (playerCount) => ({
 
 export const recordPublicPlay = (memory, seat, cards, hand) => {
   memory.playedBySeat[seat].push(...cards.map((c) => c.card));
-  memory.decisions.push({
-    type: "play",
-    seat,
-    kind: hand.kind,
-    size: hand.size,
-  });
+  memory.decisions.push({ type: "play", seat, kind: hand.kind, size: hand.size });
 };
 
 export const recordPublicPass = (memory, seat) => {
@@ -221,11 +183,7 @@ export const chooseExpertAction = ({
   const leadingHand = leadingPlay?.hand ?? null;
   const candidates = generateLegalCandidates(hand, levelRank, leadingHand);
   if (candidates.length === 0) {
-    return {
-      type: "pass",
-      reason: "no-legal-overtake",
-      tactics: ["playedCardMemory"],
-    };
+    return { type: "pass", reason: "no-legal-overtake", tactics: ["playedCardMemory"] };
   }
 
   const partner = publicPartnerSeat(seat, playerCount);
@@ -233,9 +191,7 @@ export const chooseExpertAction = ({
   const partnerNearOut = partner !== null && (handCounts[partner] ?? 99) <= 2;
   const partnerFinished = partner !== null && finishedSeats.includes(partner);
   const opponents = opponentSeats(seat, playerCount);
-  const opponentNearOut = opponents.some(
-    (s) => (handCounts[s] ?? 99) <= 2 && !finishedSeats.includes(s),
-  );
+  const opponentNearOut = opponents.some((s) => (handCounts[s] ?? 99) <= 2 && !finishedSeats.includes(s));
   const ownNearOut = hand.length <= 5;
   const leading = leadingHand === null;
 
@@ -262,28 +218,17 @@ export const chooseExpertAction = ({
     score -= candidate.cards.length * (leading ? 22 : 8);
     score += structureBreakPenalty(candidate, allOpenCandidates);
     if (isBombLike(h)) score += opponentNearOut || ownNearOut ? 150 : 5000;
-    const wildcardUse = candidate.cards.filter((c) =>
-      isWildcard(c, levelRank),
-    ).length;
+    const wildcardUse = candidate.cards.filter((c) => isWildcard(c, levelRank)).length;
     score += wildcardUse * (ownNearOut ? 5 : 90);
 
     if (leading) {
-      if (
-        [
-          "straight",
-          "consecutive-pairs",
-          "consecutive-triples",
-          "full-house",
-        ].includes(h.kind)
-      )
-        score -= 180;
+      if (["straight", "consecutive-pairs", "consecutive-triples", "full-house"].includes(h.kind)) score -= 180;
       if (h.kind === "single") score += 40;
     } else {
       score += handStrength(h) * 2;
     }
 
-    if (leading && partnerNearOut && ["single", "pair"].includes(h.kind))
-      score -= 220;
+    if (leading && partnerNearOut && ["single", "pair"].includes(h.kind)) score -= 220;
     if (opponentNearOut) score -= candidate.cards.length * 20;
 
     if (score < bestScore) {
@@ -300,24 +245,19 @@ export const chooseExpertAction = ({
     "remainingCardInferenceWithoutHiddenInfo",
   ];
   if (leading && partnerNearOut) tactics.push("partnerFeeding");
-  if (partnerNearOut || opponentNearOut || ownNearOut)
-    tactics.push("dynamicRoleSwitch");
+  if (partnerNearOut || opponentNearOut || ownNearOut) tactics.push("dynamicRoleSwitch");
   if (leading && partnerFinished) tactics.push("partnerCatchLeadExploitation");
   if (opponentNearOut) tactics.push("opponentSprintBlock", "endgameModeSwitch");
   if (best && isBombLike(best.hand)) tactics.push("bombForControlWithFollowup");
   else tactics.push("bombConservation");
-  if (best?.cards.some((c) => isWildcard(c, levelRank)))
-    tactics.push("wildcardValueOptimization");
-  if (ownNearOut)
-    tactics.push("endgameModeSwitch", "upgradeOutcomeOptimization");
+  if (best?.cards.some((c) => isWildcard(c, levelRank))) tactics.push("wildcardValueOptimization");
+  if (ownNearOut) tactics.push("endgameModeSwitch", "upgradeOutcomeOptimization");
 
   return {
     type: "play",
     cards: best.cards,
     hand: best.hand,
-    reason: leading
-      ? "structured-low-burden-lead"
-      : "minimum-sufficient-overtake",
+    reason: leading ? "structured-low-burden-lead" : "minimum-sufficient-overtake",
     tactics: [...new Set(tactics)],
   };
 };

@@ -1,4 +1,4 @@
-import type { Card } from "./cards.js";
+import { RANKS, type Card, type Rank } from "./cards.js";
 import type { ClientMessage, ServerMessage } from "./protocol.js";
 
 export type LegacyGuandanCard =
@@ -24,12 +24,26 @@ export type LegacyGuandanCard =
   | { readonly Joker: "Small" | "Big" };
 
 export type LegacyClientMessage =
-  | { readonly type: "join"; readonly room: string; readonly name: string }
+  | {
+      readonly type: "join";
+      readonly room: string;
+      readonly name: string;
+      readonly player_id?: string;
+      readonly resume_token?: string;
+    }
   | {
       readonly type: "reorder_players";
       readonly order: readonly [number, number];
     }
-  | { readonly type: "set_participation"; readonly active: boolean }
+  | {
+      readonly type: "move_seat";
+      readonly direction: "left" | "right";
+    }
+  | {
+      readonly type: "set_participation";
+      readonly active: boolean;
+      readonly preferred_partner?: string;
+    }
   | { readonly type: "set_bots"; readonly count: 1 | 2 | 3 }
   | { readonly type: "start"; readonly player_count: number }
   | { readonly type: "start_trick" }
@@ -39,6 +53,7 @@ export type LegacyClientMessage =
       readonly to_position: number | null;
     }
   | { readonly type: "deal_next_round" }
+  | { readonly type: "restart_match" }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
   | { readonly type: "tribute_card"; readonly card_index: number }
   | { readonly type: "return_tribute"; readonly card_index: number }
@@ -51,6 +66,8 @@ export type LegacyServerMessage =
       readonly type: "joined";
       readonly room: string;
       readonly seat: number | null;
+      readonly player_id?: string;
+      readonly resume_token?: string;
     }
   | {
       readonly type: "waiting";
@@ -60,6 +77,8 @@ export type LegacyServerMessage =
       readonly minimum_players: number;
       readonly maximum_players: number;
       readonly card_count_alert_threshold: number;
+      readonly next_round_joiners: readonly string[];
+      readonly next_round_leavers: readonly string[];
     }
   | {
       readonly type: "started";
@@ -102,13 +121,30 @@ export type LegacyServerMessage =
       readonly team_levels: null;
       readonly finish_order: readonly number[];
       readonly last_game_winner: number | null;
-      readonly last_game_winner_team: null;
+      readonly last_game_winner_team: "TeamA" | "TeamB" | null;
       readonly last_promotion_steps: number | null;
+      readonly series_match_number: number | null;
+      readonly series_total_matches: 3 | null;
+      readonly series_completed_matches: number | null;
+      readonly series_team_a_wins: number | null;
+      readonly series_team_b_wins: number | null;
       readonly pending_tribute: null;
       readonly tribute_resisted: false;
-      readonly match_winner: null;
+      readonly tribute_phase: "tribute" | "return" | null;
+      readonly tribute_cards: readonly {
+        readonly player: number;
+        readonly cards: readonly LegacyGuandanCard[];
+      }[];
+      readonly return_tribute_cards: readonly {
+        readonly player: number;
+        readonly cards: readonly LegacyGuandanCard[];
+      }[];
+      readonly table_clear_id: number;
+      readonly match_winner: "TeamA" | "TeamB" | null;
       readonly next_round_phase: "awaiting_shuffle" | "awaiting_deal" | null;
       readonly card_count_alert_threshold: number;
+      readonly next_round_joiners: readonly string[];
+      readonly next_round_leavers: readonly string[];
     }
   | { readonly type: "error"; readonly message: string };
 
@@ -129,6 +165,22 @@ const rankMap = {
   K: "King",
   A: "Ace",
 } as const;
+
+const displayedLevelRank = (
+  game: Extract<ServerMessage, { readonly type: "game_state" }>,
+): Rank => {
+  const current = game.levelRank ?? "2";
+  if (game.phase !== "round-complete" || game.lastPromotionSteps == null) {
+    return current;
+  }
+
+  const currentIndex = RANKS.indexOf(current);
+  const nextIndex = Math.min(
+    currentIndex + game.lastPromotionSteps,
+    RANKS.indexOf("A"),
+  );
+  return RANKS[nextIndex]!;
+};
 
 const suitMap = {
   clubs: "Clubs",
@@ -167,6 +219,8 @@ export const toCleanroomCommand = (
       throw new Error(
         "clean-room backend does not support seat reordering yet",
       );
+    case "move_seat":
+      throw new Error("legacy seat movement is handled by the gateway");
     case "set_participation":
       return { type: "set_next_round_ready", ready: message.active };
     case "set_bots":
@@ -178,6 +232,8 @@ export const toCleanroomCommand = (
     case "shuffle_next_round":
       return { type: "set_next_round_ready", ready: true };
     case "deal_next_round":
+      return { type: "next_round" };
+    case "restart_match":
       return { type: "next_round" };
     case "play": {
       const cardIds = message.card_indexes.map((index) => {
@@ -209,11 +265,17 @@ export const roomStateToLegacyWaiting = (
   return {
     type: "waiting",
     players: participants.map(({ name }) => name),
-    observers: [],
+    observers: (message.observers ?? []).map(({ name }) => name),
     online_players: participants.map(({ connected }) => connected),
     minimum_players: 4,
     maximum_players: 14,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
+    next_round_joiners: (message.observers ?? [])
+      .filter(({ readyForNextRound }) => readyForNextRound)
+      .map(({ name }) => name),
+    next_round_leavers: participants
+      .filter(({ leavingAfterRound }) => leavingAfterRound)
+      .map(({ name }) => name),
   };
 };
 
@@ -232,17 +294,49 @@ export const gameStateToLegacy = (
   const lastPlay = game.leadingPlay?.cards.map(legacyCard) ?? [];
   const lastGameWinner =
     game.phase === "round-complete" ? (game.finishedSeats[0] ?? null) : null;
+  const lastGameWinnerTeam =
+    lastGameWinner === null
+      ? null
+      : lastGameWinner % 2 === 0
+        ? "TeamA"
+        : "TeamB";
+  const winnerLevel =
+    lastGameWinnerTeam === "TeamA"
+      ? (game.teamLevels?.A ?? game.levelRank)
+      : lastGameWinnerTeam === "TeamB"
+        ? (game.teamLevels?.B ?? game.levelRank)
+        : null;
+  const matchWinner =
+    game.phase === "round-complete" && winnerLevel === "A"
+      ? lastGameWinnerTeam
+      : null;
+  const pendingSeriesWin =
+    matchWinner !== null && game.seriesMatchNumber != null;
+  const seriesTeamAWins =
+    game.seriesTeamAWins === null || game.seriesTeamAWins === undefined
+      ? null
+      : game.seriesTeamAWins +
+        (pendingSeriesWin && matchWinner === "TeamA" ? 1 : 0);
+  const seriesTeamBWins =
+    game.seriesTeamBWins === null || game.seriesTeamBWins === undefined
+      ? null
+      : game.seriesTeamBWins +
+        (pendingSeriesWin && matchWinner === "TeamB" ? 1 : 0);
+  const isOpeningRound = (game.roundNumber ?? 1) === 1;
   const losingTeamShuffleReady =
     lastGameWinner !== null &&
     participants.some(
-      ({ seat, readyForNextRound }) =>
-        seat % 2 !== lastGameWinner % 2 && readyForNextRound === true,
+      ({ seat, kind, readyForNextRound, leavingAfterRound }) =>
+        seat % 2 !== lastGameWinner % 2 &&
+        (kind === "robot" ||
+          readyForNextRound === true ||
+          leavingAfterRound === true),
     );
 
   return {
     type: "state",
     players: participants.map(({ name }) => name),
-    observers: [],
+    observers: (room.observers ?? []).map(({ name }) => name),
     online_players: participants.map(({ connected }) => connected),
     turn: game.currentTurn,
     hand_counts: game.handCounts,
@@ -255,23 +349,46 @@ export const gameStateToLegacy = (
     passes: game.passedSeats.length,
     trick_complete: false,
     last_trick_winner: null,
-    initial_draw: game.openingDraw.map(legacyCard),
-    initial_draw_winner: game.openingDrawWinner,
-    level: "Two",
+    initial_draw: isOpeningRound ? game.openingDraw.map(legacyCard) : [],
+    initial_draw_winner: isOpeningRound ? game.openingDrawWinner : null,
+    // Once a round is complete, show the level that was just earned rather
+    // than the level used by the completed deal.  The authoritative next-round
+    // transition applies the same promotion exactly once when cards are dealt.
+    level: rankMap[displayedLevelRank(game)],
     team_levels: null,
     finish_order: game.finishedSeats,
     last_game_winner: lastGameWinner,
-    last_game_winner_team: null,
-    last_promotion_steps: null,
+    last_game_winner_team: lastGameWinnerTeam,
+    last_promotion_steps: game.lastPromotionSteps ?? null,
+    series_match_number: game.seriesMatchNumber ?? null,
+    series_total_matches: game.seriesMatchNumber == null ? null : 3,
+    series_completed_matches:
+      game.seriesCompletedMatches == null
+        ? null
+        : game.seriesCompletedMatches + (pendingSeriesWin ? 1 : 0),
+    series_team_a_wins: seriesTeamAWins,
+    series_team_b_wins: seriesTeamBWins,
     pending_tribute: null,
     tribute_resisted: false,
-    match_winner: null,
+    tribute_phase: null,
+    tribute_cards: [],
+    return_tribute_cards: [],
+    table_clear_id: 0,
+    match_winner: matchWinner,
     next_round_phase:
-      game.phase === "round-complete"
-        ? losingTeamShuffleReady
-          ? "awaiting_deal"
-          : "awaiting_shuffle"
-        : null,
+      matchWinner !== null
+        ? null
+        : game.phase === "round-complete"
+          ? losingTeamShuffleReady
+            ? "awaiting_deal"
+            : "awaiting_shuffle"
+          : null,
     card_count_alert_threshold: LEGACY_CARD_COUNT_ALERT_THRESHOLD,
+    next_round_joiners: (room.observers ?? [])
+      .filter(({ readyForNextRound }) => readyForNextRound)
+      .map(({ name }) => name),
+    next_round_leavers: participants
+      .filter(({ leavingAfterRound }) => leavingAfterRound)
+      .map(({ name }) => name),
   };
 };

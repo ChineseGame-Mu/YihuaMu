@@ -9,21 +9,34 @@ import {
 } from "./frontend-compat.js";
 import {
   applyLegacyTributeSelection,
+  applyLegacyTributeResistance,
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
-  resolveLegacyTributeResistance,
+  runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
 import { classifyGameCardIds } from "./game-actions.js";
 import type { ServerMessage } from "./protocol.js";
 import {
+  addObserver,
+  choosePartner,
+  moveParticipantSeat,
   disconnectHuman,
+  disconnectObserver,
   reconnectHuman,
+  reconnectObserver,
   removeParticipant,
+  removeObserver,
   replaceRobotWithHuman,
+  setLobbyParticipation,
+  setParticipationForNextRound,
 } from "./room.js";
 import type { ServerRuntime } from "./server-runtime.js";
+import {
+  issuePlayerSessionToken,
+  verifyPlayerSessionToken,
+} from "./player-session.js";
 import type { SupportedPlayerCount } from "./table.js";
 import type { TextSocket } from "./websocket-service.js";
 import type { UpgradedConnection } from "./websocket-upgrade.js";
@@ -45,6 +58,7 @@ interface PendingLegacyTrick {
 }
 
 const pendingLegacyTricks = new Map<string, PendingLegacyTrick>();
+const legacyTableClearIds = new Map<string, number>();
 const startedLegacyGames = new Set<string>();
 
 const sleep = async (milliseconds: number): Promise<void> => {
@@ -197,13 +211,90 @@ const robotCandidatePriority = (
 ): number => {
   const hand = classifyGameCardIds(game, seat, cardIds, game.levelRank);
   const strength = robotNormalStrength(hand, game.levelRank ?? "2");
+  const opponentHandSizes = (game.hands as readonly (readonly unknown[])[])
+    .map((cards, candidateSeat) => ({ candidateSeat, count: cards.length }))
+    .filter(
+      ({ candidateSeat, count }) => candidateSeat % 2 !== seat % 2 && count > 0,
+    )
+    .map(({ count }) => count);
   return robotPatternPriority({
     kind: hand.kind,
     strength,
     size: "size" in hand ? hand.size : undefined,
+    playSize: cardIds.length,
     leading: game.trick.leadingPlay === null,
     leadCycle: game.trick.completedTricks + seat,
+    handSizeBefore: game.hands[seat]?.length,
+    opponentMinHandSize:
+      opponentHandSizes.length === 0
+        ? undefined
+        : Math.min(...opponentHandSizes),
+    leadingKind: game.trick.leadingPlay?.hand.kind,
   });
+};
+
+export const legacyNextRoundRobotState = (
+  managed: ReturnType<ServerRuntime["rooms"]["get"]>,
+): { readonly shuffleReady: boolean; readonly winnerIsRobot: boolean } => {
+  if (managed.game.phase !== "round-complete") {
+    return { shuffleReady: false, winnerIsRobot: false };
+  }
+  const winnerSeat = managed.game.finishedSeats[0];
+  if (winnerSeat === undefined) {
+    return { shuffleReady: false, winnerIsRobot: false };
+  }
+  const winner = managed.room.participants.find(
+    ({ seat }) => seat === winnerSeat,
+  );
+  const shuffleReady = managed.room.participants.some(
+    ({ seat, kind, readyForNextRound, leavingAfterRound }) =>
+      seat % 2 !== winnerSeat % 2 &&
+      (kind === "robot" ||
+        readyForNextRound === true ||
+        leavingAfterRound === true),
+  );
+  return {
+    shuffleReady,
+    winnerIsRobot:
+      winner?.kind === "robot" || winner?.leavingAfterRound === true,
+  };
+};
+
+const advanceLegacyRobotNextRound = async (
+  runtime: ServerRuntime,
+  roomId: string,
+): Promise<boolean> => {
+  const managed = runtime.rooms.get(roomId);
+  if (managed.game.phase === "round-complete" && managed.game.levelRank === "A")
+    return false;
+  const { shuffleReady, winnerIsRobot } = legacyNextRoundRobotState(managed);
+  if (!shuffleReady || !winnerIsRobot) return false;
+
+  await sleep(ROBOT_TURN_DELAY_MS);
+  const current = runtime.rooms.get(roomId);
+  const currentState = legacyNextRoundRobotState(current);
+  if (
+    current.game.phase !== "round-complete" ||
+    !currentState.shuffleReady ||
+    !currentState.winnerIsRobot
+  )
+    return false;
+
+  prepareLegacyTribute(roomId, current.game.finishedSeats);
+  const next = runtime.rooms.nextRound(roomId);
+  startedLegacyGames.delete(roomId);
+  await runtime.websocket.broadcastRoomState(next);
+  await runtime.websocket.broadcastGameState(next);
+  await runtime.websocket.sendPrivateHands(next);
+  const resisted = applyLegacyTributeResistance(roomId, next);
+  if (resisted !== null) {
+    const resistedNext = runtime.rooms.set(roomId, resisted);
+    await runtime.websocket.broadcastGameState(resistedNext);
+  } else {
+    await runLegacyRobotTribute(runtime, roomId);
+  }
+  await startLegacyPlayWhenTributeComplete(runtime, roomId);
+  return true;
 };
 
 const clearRobotWonTrick = async (
@@ -236,6 +327,10 @@ const runLegacyRobots = async (
 ): Promise<void> => {
   for (let guard = 0; guard < 64; guard += 1) {
     let managed = runtime.rooms.get(roomId);
+    if (managed.game.phase === "round-complete") {
+      await advanceLegacyRobotNextRound(runtime, roomId);
+      return;
+    }
     if (
       managed.game.phase !== "playing" ||
       !legacyTrickStarted(roomId, managed)
@@ -309,6 +404,19 @@ const runLegacyRobots = async (
   }
 };
 
+const startLegacyPlayWhenTributeComplete = async (
+  runtime: ServerRuntime,
+  roomId: string,
+): Promise<boolean> => {
+  if (hasPendingLegacyTribute(roomId)) return false;
+  const managed = runtime.rooms.get(roomId);
+  if (managed.game.phase !== "playing") return false;
+  startedLegacyGames.add(roomId);
+  await runtime.websocket.broadcastGameState(managed);
+  await runLegacyRobots(runtime, roomId);
+  return true;
+};
+
 const sendLegacy = async (
   socket: TextSocket,
   message: LegacyServerMessage,
@@ -347,6 +455,7 @@ class LegacyAdapterSocket implements TextSocket {
   readonly compat: {
     roomId: string;
     playerId: string;
+    name: string;
     seat: number | null;
     privateCardIds: string[];
   };
@@ -354,10 +463,12 @@ class LegacyAdapterSocket implements TextSocket {
   constructor(
     private readonly socket: TextSocket,
     initial: FrontendCompatState,
+    name: string,
   ) {
     this.compat = {
       roomId: initial.roomId,
       playerId: initial.playerId,
+      name,
       seat: initial.seat,
       privateCardIds: [...initial.privateCardIds],
     };
@@ -380,6 +491,7 @@ class LegacyAdapterSocket implements TextSocket {
       passes: pending === undefined ? decoratedState.passes : 0,
       trick_complete: pending !== undefined,
       last_trick_winner: pending?.winner ?? null,
+      table_clear_id: legacyTableClearIds.get(this.compat.roomId) ?? 0,
     });
   }
 
@@ -387,6 +499,27 @@ class LegacyAdapterSocket implements TextSocket {
     const message = JSON.parse(text) as ServerMessage;
     switch (message.type) {
       case "room_state":
+        {
+          const nextSeat =
+            message.participants.find(({ id }) => id === this.compat.playerId)
+              ?.seat ?? null;
+          if (nextSeat !== this.compat.seat) {
+            this.compat.seat = nextSeat;
+            if (nextSeat === null) this.compat.privateCardIds.splice(0);
+            await sendLegacy(this.socket, {
+              type: "joined",
+              room: this.compat.roomId,
+              seat: nextSeat,
+              player_id: this.compat.playerId,
+              resume_token: issuePlayerSessionToken({
+                roomId: this.compat.roomId,
+                playerId: this.compat.playerId,
+                name: this.compat.name,
+                role: nextSeat === null ? "observer" : "player",
+              }),
+            });
+          }
+        }
         this.roomState = message;
         await sendLegacy(this.socket, roomStateToLegacyWaiting(message));
         if (this.gameState?.phase === "round-complete") {
@@ -504,10 +637,25 @@ const ensureLegacyRoom = (
   roomId: string,
   requestedPlayerCount: unknown,
 ): void => {
+  const playerCount = supportedPlayerCount(requestedPlayerCount);
+  let managed: ReturnType<ServerRuntime["rooms"]["get"]>;
   try {
-    runtime.rooms.get(roomId);
+    managed = runtime.rooms.get(roomId);
   } catch {
-    runtime.rooms.create(roomId, supportedPlayerCount(requestedPlayerCount));
+    runtime.rooms.create(roomId, playerCount);
+    return;
+  }
+
+  const currentPlayerCount = managed.room.config.playerCount;
+  const lobbyIsEmpty =
+    managed.room.participants.length === 0 &&
+    managed.room.observers.length === 0;
+  if (
+    managed.game.phase === "lobby" &&
+    currentPlayerCount !== playerCount &&
+    (playerCount > currentPlayerCount || lobbyIsEmpty)
+  ) {
+    runtime.rooms.resizeLobby(roomId, playerCount);
   }
 };
 
@@ -534,32 +682,6 @@ const requestedLegacySeat = (
     throw new Error("requested player seat is out of range");
   }
   return seat;
-};
-
-const reclaimStaleLobbyHumans = (
-  runtime: ServerRuntime,
-  roomId: string,
-  preservePlayerId: string,
-): ReturnType<ServerRuntime["rooms"]["get"]> => {
-  let managed = runtime.rooms.get(roomId);
-  if (managed.game.phase !== "lobby") return managed;
-
-  const staleIds = managed.room.participants
-    .filter(
-      ({ id, kind, connected }) =>
-        kind === "human" &&
-        id !== preservePlayerId &&
-        !connected &&
-        runtime.sockets.playerConnectionCount(roomId, id) === 0,
-    )
-    .map(({ id }) => id);
-
-  if (staleIds.length === 0) return managed;
-
-  let room = managed.room;
-  for (const id of staleIds) room = removeParticipant(room, id);
-  managed = runtime.rooms.set(roomId, { ...managed, room });
-  return managed;
 };
 
 export const assertLegacyNextRoundRole = (
@@ -607,20 +729,27 @@ export const attachLegacyGuandanConnection = async (
 
   connection.onClose(async () => {
     if (active === undefined) return;
-    runtime.sockets.unregister(active.roomId, active.adapter);
+    const closed = active;
+    runtime.sockets.unregister(closed.roomId, closed.adapter);
     if (
-      runtime.sockets.playerConnectionCount(active.roomId, active.playerId) > 0
+      runtime.sockets.playerConnectionCount(closed.roomId, closed.playerId) > 0
     ) {
       return;
     }
     try {
-      const managed = runtime.rooms.get(active.roomId);
-      const next = runtime.rooms.set(active.roomId, {
+      const managed = runtime.rooms.get(closed.roomId);
+      const isObserver = managed.room.observers.some(
+        ({ id }) => id === closed.playerId,
+      );
+      const next = runtime.rooms.set(closed.roomId, {
         ...managed,
-        room:
-          managed.game.phase === "lobby"
-            ? removeParticipant(managed.room, active.playerId)
-            : disconnectHuman(managed.room, active.playerId),
+        room: isObserver
+          ? managed.game.phase === "lobby"
+            ? removeObserver(managed.room, closed.playerId)
+            : disconnectObserver(managed.room, closed.playerId)
+          : managed.game.phase === "lobby"
+            ? removeParticipant(managed.room, closed.playerId)
+            : disconnectHuman(managed.room, closed.playerId),
       });
       await runtime.websocket.broadcastRoomState(next);
     } catch {
@@ -640,17 +769,63 @@ export const attachLegacyGuandanConnection = async (
             ? message.room
             : connection.context.roomId;
         const roomId = requestedRoomId.trim();
-        if (roomId.length === 0) throw new Error("room id is required");
-        const playerId = legacyPlayerId(message.name);
+        const name = message.name.trim();
+        if (roomId.length === 0 || roomId.length > 64)
+          throw new Error("room id is invalid");
+        if (name.length === 0 || name.length > 64)
+          throw new Error("player name is invalid");
+
+        const suppliedToken = message.resume_token?.trim();
+        const tokenClaims =
+          suppliedToken === undefined || suppliedToken === ""
+            ? null
+            : verifyPlayerSessionToken(suppliedToken, { roomId, name });
+        if (
+          suppliedToken !== undefined &&
+          suppliedToken !== "" &&
+          tokenClaims === null
+        ) {
+          throw new Error("player session is invalid or expired");
+        }
+        if (
+          tokenClaims !== null &&
+          message.player_id !== undefined &&
+          message.player_id !== tokenClaims.playerId
+        ) {
+          throw new Error("player session identity does not match");
+        }
+        const playerId = tokenClaims?.playerId ?? legacyPlayerId(name);
         const requestedPlayerCount = (
           message as LegacyClientMessage & { readonly player_count?: number }
         ).player_count;
         ensureLegacyRoom(runtime, roomId, requestedPlayerCount);
 
-        let managed = reclaimStaleLobbyHumans(runtime, roomId, playerId);
+        let managed = runtime.rooms.get(roomId);
         const existing = managed.room.participants.find(
           ({ id, kind }) => id === playerId && kind === "human",
         );
+        const existingObserver = managed.room.observers.find(
+          ({ id }) => id === playerId,
+        );
+        if (
+          (existing !== undefined || existingObserver !== undefined) &&
+          tokenClaims === null
+        ) {
+          throw new Error("resume token is required for this player");
+        }
+        if (
+          tokenClaims !== null &&
+          existing === undefined &&
+          existingObserver === undefined
+        ) {
+          throw new Error("player session no longer belongs to this room");
+        }
+        if (
+          (existing !== undefined && tokenClaims?.role === "observer") ||
+          (existingObserver !== undefined && tokenClaims?.role === "player")
+        ) {
+          throw new Error("player session role does not match");
+        }
         const desiredSeat = requestedLegacySeat(
           message,
           managed.room.config.playerCount,
@@ -663,6 +838,7 @@ export const attachLegacyGuandanConnection = async (
               );
         if (
           existing === undefined &&
+          managed.game.phase === "lobby" &&
           desiredOccupant !== undefined &&
           desiredOccupant.kind === "human"
         ) {
@@ -674,17 +850,25 @@ export const attachLegacyGuandanConnection = async (
             : [...managed.room.participants]
                 .filter(({ kind }) => kind === "robot")
                 .sort((a, b) => a.seat - b.seat)[0]?.seat;
-        const seat =
-          existing?.seat ??
-          desiredSeat ??
-          robotSeat ??
-          firstAvailableSeat(managed);
-        const adapter = new LegacyAdapterSocket(connection.socket, {
-          roomId,
-          playerId,
-          seat,
-          privateCardIds: [],
-        });
+        const joinsAsObserver =
+          existingObserver !== undefined ||
+          (existing === undefined && managed.game.phase !== "lobby");
+        const seat = joinsAsObserver
+          ? null
+          : (existing?.seat ??
+            desiredSeat ??
+            robotSeat ??
+            firstAvailableSeat(managed));
+        const adapter = new LegacyAdapterSocket(
+          connection.socket,
+          {
+            roomId,
+            playerId,
+            seat,
+            privateCardIds: [],
+          },
+          name,
+        );
 
         try {
           runtime.sockets.register(roomId, adapter, playerId);
@@ -696,12 +880,29 @@ export const attachLegacyGuandanConnection = async (
               });
               await runtime.websocket.broadcastRoomState(managed);
             }
+          } else if (existingObserver !== undefined) {
+            if (!existingObserver.connected) {
+              managed = runtime.rooms.set(roomId, {
+                ...managed,
+                room: reconnectObserver(managed.room, playerId),
+              });
+              await runtime.websocket.broadcastRoomState(managed);
+            }
+          } else if (joinsAsObserver) {
+            managed = runtime.rooms.set(roomId, {
+              ...managed,
+              room: addObserver(managed.room, {
+                id: playerId,
+                name,
+              }),
+            });
+            await runtime.websocket.broadcastRoomState(managed);
           } else if (robotSeat !== undefined && robotSeat === seat) {
             managed = runtime.rooms.set(roomId, {
               ...managed,
               room: replaceRobotWithHuman(managed.room, {
                 id: playerId,
-                name: message.name,
+                name,
                 seat: robotSeat,
               }),
             });
@@ -714,7 +915,7 @@ export const attachLegacyGuandanConnection = async (
                 type: "join_room",
                 roomId,
                 playerId,
-                name: message.name,
+                name,
                 seat,
               }),
             );
@@ -734,10 +935,18 @@ export const attachLegacyGuandanConnection = async (
         }
 
         active = { roomId, playerId, adapter };
+        const role = seat === null ? "observer" : "player";
         await sendLegacy(connection.socket, {
           type: "joined",
           room: roomId,
           seat,
+          player_id: playerId,
+          resume_token: issuePlayerSessionToken({
+            roomId,
+            playerId,
+            name,
+            role,
+          }),
         });
         await runtime.websocket.sendSnapshot(adapter, roomId, playerId);
         return;
@@ -745,6 +954,81 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+
+      if (message.type === "move_seat") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase !== "lobby") {
+          throw new Error(
+            "seat movement is only available before the first round",
+          );
+        }
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: moveParticipantSeat(
+            managed.room,
+            active.playerId,
+            message.direction,
+          ),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        return;
+      }
+
+      if (message.type === "reorder_players") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase !== "lobby") {
+          throw new Error(
+            "partners can only be selected before the first round",
+          );
+        }
+        const partner = managed.room.participants.find(
+          ({ seat, kind }) => seat === message.order[1] && kind === "human",
+        );
+        if (partner === undefined)
+          throw new Error("selected partner is unavailable");
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: choosePartner(managed.room, active.playerId, partner.id),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        return;
+      }
+
+      if (message.type === "set_participation") {
+        const managed = runtime.rooms.get(active.roomId);
+        if (managed.game.phase === "lobby") {
+          const next = runtime.rooms.set(active.roomId, {
+            ...managed,
+            room: setLobbyParticipation(
+              managed.room,
+              active.playerId,
+              message.active,
+            ),
+          });
+          await runtime.websocket.broadcastRoomState(next);
+          return;
+        }
+        const preferredPartner =
+          message.preferred_partner === undefined
+            ? undefined
+            : managed.room.participants.find(
+                ({ name, kind }) =>
+                  name === message.preferred_partner && kind === "human",
+              );
+        const next = runtime.rooms.set(active.roomId, {
+          ...managed,
+          room: setParticipationForNextRound(
+            managed.room,
+            active.playerId,
+            message.active,
+            preferredPartner?.id,
+          ),
+        });
+        await runtime.websocket.broadcastRoomState(next);
+        await runtime.websocket.broadcastGameState(next);
+        await advanceLegacyRobotNextRound(runtime, active.roomId);
+        return;
       }
 
       if (message.type === "start_trick") {
@@ -766,15 +1050,19 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "end_round") {
         const pending = pendingLegacyTricks.get(active.roomId);
-        if (
-          pending !== undefined &&
-          active.adapter.compat.seat !== pending.winner
-        ) {
+        if (pending === undefined) {
+          throw new Error("round is not ready to end");
+        }
+        if (active.adapter.compat.seat !== pending.winner) {
           throw new Error(
             "only the completed trick winner may clear the table",
           );
         }
         pendingLegacyTricks.delete(active.roomId);
+        legacyTableClearIds.set(
+          active.roomId,
+          (legacyTableClearIds.get(active.roomId) ?? 0) + 1,
+        );
         await runtime.websocket.broadcastGameState(
           runtime.rooms.get(active.roomId),
         );
@@ -832,6 +1120,8 @@ export const attachLegacyGuandanConnection = async (
           cardId,
           message.type,
         );
+        await runLegacyRobotTribute(runtime, active.roomId);
+        await startLegacyPlayWhenTributeComplete(runtime, active.roomId);
         return;
       }
 
@@ -860,7 +1150,11 @@ export const attachLegacyGuandanConnection = async (
         JSON.stringify(clean),
       );
 
-      if (message.type === "start" || message.type === "deal_next_round") {
+      if (
+        message.type === "start" ||
+        message.type === "deal_next_round" ||
+        message.type === "restart_match"
+      ) {
         startedLegacyGames.delete(active.roomId);
       }
 
@@ -868,11 +1162,20 @@ export const attachLegacyGuandanConnection = async (
         await runLegacyRobots(runtime, active.roomId);
       }
 
+      if (message.type === "shuffle_next_round") {
+        await advanceLegacyRobotNextRound(runtime, active.roomId);
+      }
+
       if (message.type === "deal_next_round") {
         const managed = runtime.rooms.get(active.roomId);
-        if (resolveLegacyTributeResistance(active.roomId, managed)) {
-          await runtime.websocket.broadcastGameState(managed);
+        const resisted = applyLegacyTributeResistance(active.roomId, managed);
+        if (resisted !== null) {
+          const resistedNext = runtime.rooms.set(active.roomId, resisted);
+          await runtime.websocket.broadcastGameState(resistedNext);
+        } else {
+          await runLegacyRobotTribute(runtime, active.roomId);
         }
+        await startLegacyPlayWhenTributeComplete(runtime, active.roomId);
       }
     } catch (error) {
       await sendLegacy(connection.socket, {

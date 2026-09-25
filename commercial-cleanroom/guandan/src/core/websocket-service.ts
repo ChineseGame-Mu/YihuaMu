@@ -42,17 +42,28 @@ const gameStateMessage = (managed: ManagedRoom): ServerMessage | null => {
   const finalDraw = managed.game.openingDraw.attempts.at(-1);
   if (!finalDraw) throw new Error("opening draw is missing");
   const tribute = managed.tribute;
+  const roundNumber = managed.game.roundNumber ?? 1;
 
   return {
     type: "game_state",
     roomId: managed.room.roomId,
     revision: managed.revision,
     phase: managed.game.phase,
+    roundNumber,
+    levelRank: managed.game.levelRank,
+    teamLevels: managed.game.teamLevels,
+    lastPromotionSteps: managed.game.lastPromotionSteps ?? null,
+    seriesMatchNumber: managed.series?.currentMatch ?? null,
+    seriesCompletedMatches: managed.series?.completedMatches ?? null,
+    seriesTeamAWins: managed.series?.teamAWins ?? null,
+    seriesTeamBWins: managed.series?.teamBWins ?? null,
     competitionPhase: competitionPhase(managed),
     currentTurn: managed.game.currentTurn,
     handCounts: managed.game.hands.map((hand) => hand.length),
-    openingDraw: finalDraw.cards.map(({ card }) => card),
-    openingDrawWinner: managed.game.openingDraw.winnerSeat,
+    openingDraw:
+      roundNumber === 1 ? finalDraw.cards.map(({ card }) => card) : [],
+    openingDrawWinner:
+      roundNumber === 1 ? managed.game.openingDraw.winnerSeat : null,
     leadingPlay:
       managed.game.trick.leadingPlay === null
         ? null
@@ -294,6 +305,7 @@ export class WebSocketService {
       if (message.type === "next_round") {
         const next = this.rooms.nextRound(context.roomId);
         this.rememberCommand(context.roomId, message);
+        await this.broadcastRoomState(next);
         await this.broadcastGameState(next);
         await this.sendPrivateHands(next);
         return next;

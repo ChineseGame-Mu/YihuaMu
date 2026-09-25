@@ -2,7 +2,7 @@ import type { ServerRuntime } from "./server-runtime.js";
 import type { SupportedPlayerCount } from "./table.js";
 
 export interface HttpRequest {
-  readonly method: "GET" | "POST" | "DELETE";
+  readonly method: "GET" | "POST";
   readonly path: string;
   readonly body?: unknown;
 }
@@ -76,13 +76,6 @@ export const routeHttp = (
         error: error instanceof Error ? error.message : "room not found",
       });
     }
-  }
-
-  if (roomMatch && request.method === "DELETE") {
-    const deleted = runtime.rooms.delete(decodeURIComponent(roomMatch[1]!));
-    return deleted
-      ? json(200, { deleted: true })
-      : json(404, { error: "room not found" });
   }
 
   return json(404, { error: "route not found" });

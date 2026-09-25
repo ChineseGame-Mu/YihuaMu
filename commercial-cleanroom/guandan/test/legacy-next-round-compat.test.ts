@@ -25,6 +25,7 @@ const game = (
 
 const room = (
   losingTeamReady: boolean,
+  losingTeamKind: "human" | "robot" = "human",
 ): Extract<ServerMessage, { readonly type: "room_state" }> => ({
   type: "room_state",
   roomId: "room-a",
@@ -36,7 +37,7 @@ const room = (
       id: "b",
       name: "B",
       seat: 1,
-      kind: "human",
+      kind: losingTeamKind,
       connected: true,
       readyForNextRound: losingTeamReady,
     },
@@ -62,6 +63,29 @@ describe("legacy next-round compatibility bridge", () => {
     expect(legacy.next_round_phase).toBe("awaiting_deal");
   });
 
+  it("advances the old UI to deal when a losing-team robot auto-shuffles", () => {
+    const legacy = gameStateToLegacy(
+      room(false, "robot"),
+      game("round-complete"),
+    );
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") return;
+    expect(legacy.next_round_phase).toBe("awaiting_deal");
+  });
+
+  it("ends the match immediately when a team wins while playing A", () => {
+    const legacy = gameStateToLegacy(room(false), {
+      ...game("round-complete"),
+      levelRank: "A",
+      finishedSeats: [0, 2, 1, 3],
+    });
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") return;
+    expect(legacy.match_winner).toBe("TeamA");
+    expect(legacy.last_game_winner_team).toBe("TeamA");
+    expect(legacy.next_round_phase).toBeNull();
+  });
+
   it("translates the old shuffle button into clean-room next-round readiness", () => {
     expect(
       toCleanroomCommand(
@@ -79,6 +103,15 @@ describe("legacy next-round compatibility bridge", () => {
     expect(
       toCleanroomCommand(
         { type: "deal_next_round" },
+        { roomId: "room-a", playerId: "legacy:A", seat: 0, privateCardIds: [] },
+      ),
+    ).toEqual({ type: "next_round" });
+  });
+
+  it("maps the match restart button to a fresh clean-room transition", () => {
+    expect(
+      toCleanroomCommand(
+        { type: "restart_match" },
         { roomId: "room-a", playerId: "legacy:A", seat: 0, privateCardIds: [] },
       ),
     ).toEqual({ type: "next_round" });

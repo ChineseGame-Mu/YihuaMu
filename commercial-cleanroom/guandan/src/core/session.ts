@@ -41,7 +41,11 @@ export const roomStateMessage = (room: RoomState): RoomStateServerMessage => ({
     ...(participant.readyForNextRound === undefined
       ? {}
       : { readyForNextRound: participant.readyForNextRound }),
+    ...(participant.leavingAfterRound === undefined
+      ? {}
+      : { leavingAfterRound: participant.leavingAfterRound }),
   })),
+  observers: room.observers.map((observer) => ({ ...observer })),
 });
 
 export const applyClientMessage = (

@@ -1,5 +1,9 @@
 import type { Card, Rank } from "./cards.js";
-import { initialTeamLevels, type TeamLevels } from "./competition.js";
+import {
+  initialTeamLevels,
+  promotionForPlacements,
+  type TeamLevels,
+} from "./competition.js";
 import {
   createDeck,
   dealHands,
@@ -47,6 +51,7 @@ export interface PlayingState {
   readonly phase: "playing";
   readonly config: TableConfig;
   readonly openingDraw: OpeningDrawResult;
+  readonly roundNumber?: number;
   readonly hands: readonly (readonly DeckCard[])[];
   readonly currentTurn: number;
   readonly trick: TrickState;
@@ -54,6 +59,7 @@ export interface PlayingState {
   readonly finishedSeats?: readonly number[];
   readonly teamLevels?: TeamLevels | undefined;
   readonly matchWinner?: Team | null;
+  readonly lastPromotionSteps?: number | null;
 }
 
 export interface RoundCompleteState extends Omit<PlayingState, "phase"> {
@@ -106,14 +112,15 @@ export const dealAfterOpeningDraw = (
     phase: "playing",
     config: opening.config,
     openingDraw: opening.openingDraw,
+    roundNumber: 1,
     hands,
     currentTurn: trick.currentTurn,
     trick,
     levelRank: FIRST_ROUND_LEVEL_RANK,
     finishedSeats: [],
-    teamLevels:
-      opening.config.playerCount === 4 ? initialTeamLevels() : undefined,
+    teamLevels: initialTeamLevels(),
     matchWinner: null,
+    lastPromotionSteps: null,
   };
 };
 
@@ -129,6 +136,7 @@ export const startNextRound = (
   nextLevelRank: Rank = completed.levelRank ?? FIRST_ROUND_LEVEL_RANK,
   nextTeamLevels: TeamLevels | undefined = completed.teamLevels,
   matchWinner: Team | null = completed.matchWinner ?? null,
+  lastPromotionSteps: number | null = completed.lastPromotionSteps ?? null,
 ): PlayingState => {
   const dealDeck = shuffleDeck(
     createDeck(completed.config.playerCount),
@@ -142,6 +150,7 @@ export const startNextRound = (
     phase: "playing",
     config: completed.config,
     openingDraw: completed.openingDraw,
+    roundNumber: (completed.roundNumber ?? 1) + 1,
     hands,
     currentTurn: trick.currentTurn,
     trick,
@@ -149,6 +158,7 @@ export const startNextRound = (
     finishedSeats: [],
     teamLevels: nextTeamLevels,
     matchWinner,
+    lastPromotionSteps,
   };
 };
 
@@ -345,6 +355,13 @@ export const completeRound = (
   if (outcome !== null && outcome.firstPlaceSeat !== winnerSeat) {
     throw new Error("winner seat must match first place");
   }
+  const lastPromotionSteps =
+    outcome === null
+      ? null
+      : promotionForPlacements(
+          placements,
+          state.teamLevels ?? initialTeamLevels(),
+        ).steps;
 
   return {
     ...state,
@@ -353,5 +370,6 @@ export const completeRound = (
     finishedSeats,
     placements,
     outcome,
+    lastPromotionSteps,
   };
 };

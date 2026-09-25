@@ -24,6 +24,26 @@ const APPROVED_GUANDAN_FRONTEND =
 const CLEANROOM_GUANDAN_WEBSOCKET =
   "wss://card-games-yihua.onrender.com/api/guandan";
 const LEGACY_PENDING_ROOM = "__legacy_guandan_pending__";
+const MAX_JSON_BODY_BYTES = 64 * 1024;
+const MAX_REQUEST_TARGET_BYTES = 4 * 1024;
+const DEFAULT_ALLOWED_WEBSOCKET_ORIGINS = [
+  "https://yihua-mu.vercel.app",
+] as const;
+
+const SECURITY_HEADERS = {
+  "cache-control": "no-store",
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-resource-policy": "same-site",
+  "permissions-policy":
+    "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "referrer-policy": "no-referrer",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+} as const;
+
+class RequestLimitError extends Error {
+  readonly status = 413;
+}
 
 const cleanroomGuandanWebsocket = (roomId: string): string => {
   const target = new URL(CLEANROOM_GUANDAN_WEBSOCKET);
@@ -32,9 +52,20 @@ const cleanroomGuandanWebsocket = (roomId: string): string => {
 };
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
+  const declaredLength = Number(request.headers["content-length"] ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_JSON_BODY_BYTES) {
+    throw new RequestLimitError("request body is too large");
+  }
+
   const chunks: Buffer[] = [];
+  let receivedBytes = 0;
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    receivedBytes += buffer.length;
+    if (receivedBytes > MAX_JSON_BODY_BYTES) {
+      throw new RequestLimitError("request body is too large");
+    }
+    chunks.push(buffer);
   }
   if (chunks.length === 0) return undefined;
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
@@ -46,13 +77,22 @@ const writeResponse = (
   headers: Readonly<Record<string, string>>,
   body: string,
 ): void => {
-  response.writeHead(status, headers);
+  response.writeHead(status, { ...SECURITY_HEADERS, ...headers });
   response.end(body);
 };
 
 const headerValue = (
   value: string | string[] | undefined,
 ): string | undefined => (Array.isArray(value) ? value[0] : value);
+
+const validWebSocketKey = (value: string | undefined): value is string => {
+  if (!value || value.length > 64) return false;
+  try {
+    return Buffer.from(value, "base64").length === 16;
+  } catch {
+    return false;
+  }
+};
 
 const approvedTableUrl = (
   runtime: ServerRuntime,
@@ -79,12 +119,46 @@ const approvedTableUrl = (
   return target.toString();
 };
 
+const productionRuntime = (): boolean =>
+  process.env.NODE_ENV === "production" || process.env.RENDER === "true";
+
+export const isAllowedWebSocketOrigin = (
+  origin: string | undefined,
+  production = productionRuntime(),
+  configuredOrigins = process.env.WS_ALLOWED_ORIGINS,
+): boolean => {
+  if (origin === undefined) return !production;
+  let normalized: string;
+  try {
+    const parsed = new URL(origin);
+    if (parsed.origin !== origin) return false;
+    normalized = parsed.origin;
+  } catch {
+    return false;
+  }
+
+  const configured: readonly string[] =
+    configuredOrigins === undefined
+      ? DEFAULT_ALLOWED_WEBSOCKET_ORIGINS
+      : configuredOrigins
+          .split(",")
+          .map((candidate) => candidate.trim())
+          .filter(Boolean);
+  if (configured.includes(normalized)) return true;
+  if (production) return false;
+
+  const host = new URL(normalized).hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "::1";
+};
+
 const rejectUpgrade = (
   socket: NodeJS.WritableStream,
   message: string,
+  status = 400,
 ): void => {
+  const reason = status === 403 ? "Forbidden" : "Bad Request";
   socket.write(
-    "HTTP/1.1 400 Bad Request\r\n" +
+    `HTTP/1.1 ${status} ${reason}\r\n` +
       "Connection: close\r\n" +
       "Content-Type: text/plain; charset=utf-8\r\n" +
       `Content-Length: ${Buffer.byteLength(message)}\r\n\r\n` +
@@ -99,7 +173,7 @@ export const createNodeHttpServer = (
   const server = createServer(async (request, response) => {
     try {
       const method = request.method;
-      if (method !== "GET" && method !== "POST" && method !== "DELETE") {
+      if (method !== "GET" && method !== "POST") {
         writeResponse(
           response,
           405,
@@ -109,7 +183,11 @@ export const createNodeHttpServer = (
         return;
       }
 
-      const url = new URL(request.url ?? "/", "http://localhost");
+      const requestTarget = request.url ?? "/";
+      if (Buffer.byteLength(requestTarget) > MAX_REQUEST_TARGET_BYTES) {
+        throw new RequestLimitError("request target is too large");
+      }
+      const url = new URL(requestTarget, "http://localhost");
       if (method === "GET") {
         const tablePage = url.pathname.match(/^\/room\/([^/]+)\/table$/);
         if (tablePage) {
@@ -153,12 +231,16 @@ export const createNodeHttpServer = (
       const result = routeHttp(runtime, routedRequest);
       writeResponse(response, result.status, result.headers, result.body);
     } catch (error) {
+      const status = error instanceof RequestLimitError ? error.status : 400;
       writeResponse(
         response,
-        400,
+        status,
         { "content-type": "application/json; charset=utf-8" },
         JSON.stringify({
-          error: error instanceof Error ? error.message : "invalid request",
+          error:
+            error instanceof RequestLimitError
+              ? error.message
+              : "invalid request",
         }),
       );
     }
@@ -168,6 +250,11 @@ export const createNodeHttpServer = (
     socket.pause();
     void (async () => {
       try {
+        const origin = headerValue(request.headers.origin);
+        if (!isAllowedWebSocketOrigin(origin)) {
+          rejectUpgrade(socket, "websocket origin is not allowed", 403);
+          return;
+        }
         const upgrade = headerValue(request.headers.upgrade)?.toLowerCase();
         const connection = headerValue(
           request.headers.connection,
@@ -179,13 +266,18 @@ export const createNodeHttpServer = (
           upgrade !== "websocket" ||
           !connection?.split(",").some((token) => token.trim() === "upgrade") ||
           version !== "13" ||
-          !clientKey
+          !validWebSocketKey(clientKey)
         ) {
           rejectUpgrade(socket, "invalid websocket upgrade");
           return;
         }
 
-        const url = new URL(request.url ?? "/", "http://localhost");
+        const requestTarget = request.url ?? "/";
+        if (Buffer.byteLength(requestTarget) > MAX_REQUEST_TARGET_BYTES) {
+          rejectUpgrade(socket, "websocket request target is too large");
+          return;
+        }
+        const url = new URL(requestTarget, "http://localhost");
         const isLegacyGuandan = url.pathname === "/api/guandan";
         const query = Object.fromEntries(url.searchParams.entries());
         const cleanroomRoom = query.cleanroomRoom?.trim();
@@ -222,6 +314,11 @@ export const createNodeHttpServer = (
       }
     })();
   });
+
+  server.maxHeadersCount = 100;
+  server.headersTimeout = 15_000;
+  server.requestTimeout = 15_000;
+  server.keepAliveTimeout = 5_000;
 
   return server;
 };

@@ -1,4 +1,5 @@
-import type { Card } from "./cards.js";
+import type { Card, Rank } from "./cards.js";
+import type { TeamLevels } from "./competition.js";
 
 export interface CommandMetadata {
   readonly expectedRevision?: number;
@@ -53,6 +54,14 @@ export type ServerMessage =
         readonly kind: "human" | "robot";
         readonly connected: boolean;
         readonly readyForNextRound?: boolean;
+        readonly leavingAfterRound?: boolean;
+      }[];
+      readonly observers?: readonly {
+        readonly id: string;
+        readonly name: string;
+        readonly connected: boolean;
+        readonly readyForNextRound: boolean;
+        readonly preferredPartnerId?: string;
       }[];
     }
   | {
@@ -60,11 +69,19 @@ export type ServerMessage =
       readonly roomId: string;
       readonly revision: number;
       readonly phase: "playing" | "round-complete";
+      readonly roundNumber?: number;
+      readonly levelRank?: Rank | undefined;
+      readonly teamLevels?: TeamLevels | undefined;
+      readonly lastPromotionSteps?: number | null | undefined;
+      readonly seriesMatchNumber?: number | null | undefined;
+      readonly seriesCompletedMatches?: number | null | undefined;
+      readonly seriesTeamAWins?: number | null | undefined;
+      readonly seriesTeamBWins?: number | null | undefined;
       readonly competitionPhase?: "playing" | "tribute" | "return" | undefined;
       readonly currentTurn: number;
       readonly handCounts: readonly number[];
       readonly openingDraw: readonly Card[];
-      readonly openingDrawWinner: number;
+      readonly openingDrawWinner: number | null;
       readonly leadingPlay: {
         readonly seat: number;
         readonly cards: readonly Card[];
@@ -95,6 +112,27 @@ export type ServerMessage =
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const MAX_ROOM_ID_LENGTH = 64;
+const MAX_PLAYER_ID_LENGTH = 128;
+const MAX_PLAYER_NAME_LENGTH = 40;
+const MAX_COMMAND_ID_LENGTH = 128;
+const MAX_CARD_ID_LENGTH = 128;
+const MAX_PLAY_CARD_IDS = 64;
+const MAX_NONCE_LENGTH = 256;
+
+const boundedString = (
+  value: unknown,
+  label: string,
+  maximumLength: number,
+): string => {
+  if (typeof value !== "string") throw new Error(`${label} must be a string`);
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || trimmed.length > maximumLength) {
+    throw new Error(`${label} has an invalid length`);
+  }
+  return trimmed;
+};
+
 const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
   const metadata: { expectedRevision?: number; commandId?: string } = {};
   if (parsed.expectedRevision !== undefined) {
@@ -107,13 +145,11 @@ const commandMetadata = (parsed: Record<string, unknown>): CommandMetadata => {
     metadata.expectedRevision = parsed.expectedRevision;
   }
   if (parsed.commandId !== undefined) {
-    if (
-      typeof parsed.commandId !== "string" ||
-      parsed.commandId.trim().length === 0
-    ) {
-      throw new Error("commandId must be a non-empty string");
-    }
-    metadata.commandId = parsed.commandId.trim();
+    metadata.commandId = boundedString(
+      parsed.commandId,
+      "commandId",
+      MAX_COMMAND_ID_LENGTH,
+    );
   }
   return metadata;
 };
@@ -123,10 +159,14 @@ const cardIdMessage = (
   type: "tribute_card" | "return_tribute",
   metadata: CommandMetadata,
 ): ClientMessage => {
-  if (typeof parsed.cardId !== "string" || parsed.cardId.length === 0) {
+  if (typeof parsed.cardId !== "string" || parsed.cardId.trim().length === 0) {
     throw new Error(`${type} requires a non-empty cardId`);
   }
-  return { type, cardId: parsed.cardId, ...metadata };
+  return {
+    type,
+    cardId: boundedString(parsed.cardId, "cardId", MAX_CARD_ID_LENGTH),
+    ...metadata,
+  };
 };
 
 export const parseClientMessage = (raw: string): ClientMessage => {
@@ -138,26 +178,41 @@ export const parseClientMessage = (raw: string): ClientMessage => {
   switch (parsed.type) {
     case "join_room":
       if (
-        typeof parsed.roomId !== "string" ||
-        typeof parsed.playerId !== "string" ||
-        typeof parsed.name !== "string" ||
-        typeof parsed.seat !== "number"
+        typeof parsed.seat !== "number" ||
+        !Number.isInteger(parsed.seat) ||
+        parsed.seat < 0 ||
+        parsed.seat > 14
       )
         throw new Error("invalid join_room message");
       return {
         type: "join_room",
-        roomId: parsed.roomId,
-        playerId: parsed.playerId,
-        name: parsed.name,
+        roomId: boundedString(parsed.roomId, "roomId", MAX_ROOM_ID_LENGTH),
+        playerId: boundedString(
+          parsed.playerId,
+          "playerId",
+          MAX_PLAYER_ID_LENGTH,
+        ),
+        name: boundedString(parsed.name, "name", MAX_PLAYER_NAME_LENGTH),
         seat: parsed.seat,
         ...metadata,
       };
     case "leave_room":
-      if (typeof parsed.playerId !== "string")
-        throw new Error("invalid leave_room message");
-      return { type: "leave_room", playerId: parsed.playerId, ...metadata };
+      return {
+        type: "leave_room",
+        playerId: boundedString(
+          parsed.playerId,
+          "playerId",
+          MAX_PLAYER_ID_LENGTH,
+        ),
+        ...metadata,
+      };
     case "set_robots":
-      if (typeof parsed.count !== "number")
+      if (
+        typeof parsed.count !== "number" ||
+        !Number.isInteger(parsed.count) ||
+        parsed.count < 0 ||
+        parsed.count > 3
+      )
         throw new Error("invalid set_robots message");
       return { type: "set_robots", count: parsed.count, ...metadata };
     case "set_next_round_ready":
@@ -176,8 +231,12 @@ export const parseClientMessage = (raw: string): ClientMessage => {
       if (
         !Array.isArray(parsed.cardIds) ||
         parsed.cardIds.length === 0 ||
+        parsed.cardIds.length > MAX_PLAY_CARD_IDS ||
         parsed.cardIds.some(
-          (cardId) => typeof cardId !== "string" || cardId.length === 0,
+          (cardId) =>
+            typeof cardId !== "string" ||
+            cardId.length === 0 ||
+            cardId.length > MAX_CARD_ID_LENGTH,
         )
       )
         throw new Error("play_cards requires non-empty cardIds");
@@ -189,7 +248,10 @@ export const parseClientMessage = (raw: string): ClientMessage => {
     case "pass_turn":
       return { type: "pass_turn", ...metadata };
     case "ping":
-      if (typeof parsed.nonce !== "string")
+      if (
+        typeof parsed.nonce !== "string" ||
+        parsed.nonce.length > MAX_NONCE_LENGTH
+      )
         throw new Error("invalid ping message");
       return { type: "ping", nonce: parsed.nonce };
     default:

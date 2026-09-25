@@ -4,7 +4,7 @@ export type SupportedPlayerCount = (typeof SUPPORTED_PLAYER_COUNTS)[number];
 
 export const CARDS_PER_PLAYER = 27;
 export const MIN_BOT_COUNT = 0;
-export const MAX_BOT_COUNT = 3;
+export const MAX_BOT_COUNT = 13;
 
 export type Team = "A" | "B";
 
@@ -18,6 +18,15 @@ export const isSupportedPlayerCount = (
   value: number,
 ): value is SupportedPlayerCount =>
   SUPPORTED_PLAYER_COUNTS.includes(value as SupportedPlayerCount);
+
+export const antiTributeBigJokerRequirement = (playerCount: number): number => {
+  if (!isSupportedPlayerCount(playerCount)) {
+    throw new Error(
+      "anti-tribute player count must be one of 4, 6, 8, 10, 12, 14",
+    );
+  }
+  return playerCount / 2;
+};
 
 export const teamForSeat = (seat: number): Team => {
   if (!Number.isInteger(seat) || seat < 0) {
@@ -61,7 +70,9 @@ export const createTableConfig = (
     botCount < MIN_BOT_COUNT ||
     botCount > MAX_BOT_COUNT
   ) {
-    throw new Error("bot count must be an integer from 0 through 3");
+    throw new Error(
+      "bot count must be a non-negative integer below player count",
+    );
   }
   if (botCount >= playerCount) {
     throw new Error("at least one human player is required");

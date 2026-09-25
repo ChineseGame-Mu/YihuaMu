@@ -3,6 +3,11 @@ import {
   initialTeamLevels,
   promotionForPlacements,
 } from "./competition.js";
+import {
+  advanceCompetitionSeries,
+  initialCompetitionSeries,
+  type CompetitionSeriesState,
+} from "./competition-series.js";
 import { passGameSeat, playGameCardIds } from "./game-actions.js";
 import {
   createLobbyState,
@@ -16,8 +21,14 @@ import {
   submitNativeTribute,
   type NativeTributeState,
 } from "./native-tribute.js";
-import { createRoom, openLateJoinWindow, type RoomState } from "./room.js";
 import {
+  applyNextRoundParticipation,
+  createRoom,
+  openLateJoinWindow,
+  type RoomState,
+} from "./room.js";
+import {
+  createTableConfig,
   isSupportedPlayerCount,
   SUPPORTED_PLAYER_COUNTS,
   type SupportedPlayerCount,
@@ -28,6 +39,7 @@ export interface ManagedRoom {
   readonly game: GameState;
   readonly revision: number;
   readonly tribute?: NativeTributeState | undefined;
+  readonly series?: CompetitionSeriesState | undefined;
 }
 
 const activeCountForNextRound = (
@@ -76,6 +88,25 @@ const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
 const tributePending = (managed: ManagedRoom): boolean =>
   managed.tribute !== undefined && managed.tribute.status !== "complete";
 
+export const robotMustYieldToTeammate = (
+  managed: ManagedRoom,
+  seat: number,
+): boolean => {
+  if (managed.game.phase !== "playing") {
+    return false;
+  }
+  const participant = managed.room.participants.find(
+    (candidate) => candidate.seat === seat,
+  );
+  const leadingSeat = managed.game.trick.leadingPlay?.seat;
+  return (
+    participant?.kind === "robot" &&
+    leadingSeat !== undefined &&
+    leadingSeat !== seat &&
+    leadingSeat % 2 === seat % 2
+  );
+};
+
 export class RoomManager {
   private readonly rooms = new Map<string, ManagedRoom>();
   private readonly restoredRoomsAwaitingReconnect = new Set<string>();
@@ -91,9 +122,41 @@ export class RoomManager {
       game: createLobbyState(playerCount, 0),
       revision: 0,
       tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
     } satisfies ManagedRoom;
     this.rooms.set(room.roomId, managed);
     return managed;
+  }
+
+  resizeLobby(roomId: string, playerCount: SupportedPlayerCount): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.room.config.playerCount === playerCount) return managed;
+    if (managed.game.phase !== "lobby") {
+      throw new Error("table size can only change before the game starts");
+    }
+    if (
+      managed.room.participants.length > playerCount ||
+      managed.room.participants.some(({ seat }) => seat >= playerCount)
+    ) {
+      throw new Error("occupied seats do not fit the selected table size");
+    }
+
+    const botCount = managed.room.participants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
+    const next = {
+      ...managed,
+      room: {
+        ...managed.room,
+        config: createTableConfig(playerCount, botCount),
+      },
+      game: createLobbyState(playerCount, botCount),
+      revision: managed.revision + 1,
+      tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
   }
 
   get(roomId: string): ManagedRoom {
@@ -111,6 +174,7 @@ export class RoomManager {
         game: createLobbyState(managed.room.config.playerCount, 0),
         revision: managed.revision + 1,
         tribute: undefined,
+        series: initialCompetitionSeries(managed.room.config.playerCount),
       } satisfies ManagedRoom;
       this.rooms.set(roomId, reset);
       return reset;
@@ -192,6 +256,7 @@ export class RoomManager {
       game: startGame(createLobbyState(participantCount, botCount), random),
       revision: managed.revision + 1,
       tribute: undefined,
+      series: managed.series ?? initialCompetitionSeries(participantCount),
     } satisfies ManagedRoom;
     this.restoredRoomsAwaitingReconnect.delete(roomId);
     this.rooms.set(roomId, next);
@@ -205,28 +270,79 @@ export class RoomManager {
     }
 
     const activeCount = activeCountForNextRound(managed);
-    const completed =
+    const nextRoom = applyNextRoundParticipation(managed.room);
+    const completedWithCount =
       activeCount === managed.game.config.playerCount
         ? managed.game
         : {
             ...managed.game,
             config: { ...managed.game.config, playerCount: activeCount },
           };
+    const completed = {
+      ...completedWithCount,
+      config: {
+        ...completedWithCount.config,
+        botCount: nextRoom.participants.filter(({ kind }) => kind === "robot")
+          .length,
+      },
+    };
+
+    // Winning while the table level is A completes the whole match.  A new
+    // request after that result is a brand-new match: scores/levels/tribute are
+    // cleared and the opening draw once again decides the first leader.
+    const completedWinnerTeam = completed.outcome?.winningTeam ?? null;
+    const completedWinnerLevel =
+      completedWinnerTeam === null
+        ? null
+        : (completed.teamLevels ?? initialTeamLevels())[completedWinnerTeam];
+    if (
+      completedWinnerLevel === "A" &&
+      completed.outcome !== null &&
+      completed.placements.length === activeCount
+    ) {
+      const currentSeries =
+        managed.series ?? initialCompetitionSeries(activeCount);
+      const advancedSeries =
+        currentSeries === undefined || completedWinnerTeam === null
+          ? undefined
+          : advanceCompetitionSeries(currentSeries, completedWinnerTeam);
+      const restarted = startGame(
+        createLobbyState(
+          activeCount,
+          nextRoom.participants.filter(({ kind }) => kind === "robot").length,
+        ),
+        random,
+      );
+      const next = {
+        ...managed,
+        room: nextRoom,
+        game: { ...restarted, matchWinner: null },
+        revision: managed.revision + 1,
+        tribute: undefined,
+        series:
+          currentSeries === undefined
+            ? undefined
+            : (advancedSeries ?? initialCompetitionSeries(activeCount)),
+      } satisfies ManagedRoom;
+      this.restoredRoomsAwaitingReconnect.delete(roomId);
+      this.rooms.set(roomId, next);
+      return next;
+    }
 
     let nextLevelRank = completed.levelRank;
     let nextTeamLevels = completed.teamLevels;
-    let matchWinner = completed.matchWinner ?? null;
+    const matchWinner = null;
+    let lastPromotionSteps: number | null = null;
 
     if (
-      activeCount === 4 &&
-      completed.placements.length === 4 &&
+      completed.placements.length === activeCount &&
       completed.outcome !== null
     ) {
       const levels = completed.teamLevels ?? initialTeamLevels();
       const promotion = promotionForPlacements(completed.placements, levels);
       nextTeamLevels = applyPromotion(levels, promotion);
       nextLevelRank = promotion.after;
-      if (promotion.passedA) matchWinner = promotion.team;
+      lastPromotionSteps = promotion.steps;
     }
 
     const nextGame = startNextRound(
@@ -235,6 +351,7 @@ export class RoomManager {
       nextLevelRank,
       nextTeamLevels,
       matchWinner,
+      lastPromotionSteps,
     );
     const tribute =
       activeCount === 4 && completed.placements.length === 4
@@ -243,6 +360,7 @@ export class RoomManager {
 
     const next = {
       ...managed,
+      room: nextRoom,
       game: nextGame,
       revision: managed.revision + 1,
       tribute,
@@ -305,6 +423,9 @@ export class RoomManager {
     }
     if (tributePending(managed)) {
       throw new Error("tribute exchange must finish before play");
+    }
+    if (robotMustYieldToTeammate(managed, seat)) {
+      throw new Error("robot must yield when its teammate is leading");
     }
 
     const next = {
