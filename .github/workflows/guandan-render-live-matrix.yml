@@ -1,0 +1,113 @@
+name: Guandan Render Live Acceptance Matrix
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  live-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      WS_URL: wss://chinesegame-yihua.onrender.com/api/guandan
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run supported-player live WebSocket matrix, three consecutive rounds
+        run: |
+          node --input-type=module <<'NODE'
+          const WS_URL = process.env.WS_URL;
+          const COUNTS = [4,6,8,10,12,14];
+          const REPETITIONS = 3;
+          const timeout = (ms,label) => new Promise((_,reject)=>setTimeout(()=>reject(new Error(`timeout: ${label}`)),ms));
+          class Client {
+            constructor(name){ this.name=name; this.ws=null; this.messages=[]; this.waiters=[]; this.seat=null; }
+            async connect(){
+              this.ws=new WebSocket(WS_URL);
+              this.ws.addEventListener('message',e=>{
+                const m=JSON.parse(String(e.data)); this.messages.push(m);
+                for(const w of [...this.waiters]) if(this.messages.length>w.after && w.pred(m)){
+                  this.waiters.splice(this.waiters.indexOf(w),1); w.resolve(m);
+                }
+              });
+              await Promise.race([
+                new Promise((resolve,reject)=>{
+                  this.ws.addEventListener('open',resolve,{once:true});
+                  this.ws.addEventListener('error',()=>reject(new Error('websocket open error')),{once:true});
+                }),
+                timeout(15000,'websocket open')
+              ]);
+              return this.waitNew(m=>m.type==='connected',0,15000);
+            }
+            send(m){ if(!this.ws || this.ws.readyState!==WebSocket.OPEN) throw new Error(`${this.name}: socket not open`); this.ws.send(JSON.stringify(m)); }
+            waitNew(pred,after=this.messages.length,ms=15000){
+              for(let i=after;i<this.messages.length;i++) if(pred(this.messages[i])) return Promise.resolve(this.messages[i]);
+              return Promise.race([new Promise(resolve=>this.waiters.push({pred,resolve,after})),timeout(ms,`${this.name} message`)]);
+            }
+            close(){ try{this.ws?.close();}catch{} }
+          }
+          async function run(playerCount, repetition){
+            const room=`matrix-${playerCount}-${repetition}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+            const clients=Array.from({length:playerCount},(_,i)=>new Client(`MATRIX-${playerCount}-R${repetition}-P${i+1}`));
+            try {
+              const protocols=[];
+              for(const c of clients) protocols.push((await c.connect()).protocol);
+              if(new Set(protocols).size!==1 || !protocols[0]) throw new Error(`protocol mismatch ${protocols}`);
+              for(let i=0;i<playerCount;i++){
+                const c=clients[i], mark=c.messages.length;
+                c.send({type:'join',room,name:c.name,player_count:playerCount,desired_seat:i});
+                const joined=await c.waitNew(m=>m.type==='joined',mark,20000);
+                c.seat=joined.seat;
+                if(joined.room!==room || joined.seat!==i) throw new Error(`join mismatch ${JSON.stringify(joined)}`);
+              }
+              const marks=clients.map(c=>c.messages.length);
+              clients[0].send({type:'start',player_count:playerCount});
+              for(let i=0;i<playerCount;i++){
+                const started=await clients[i].waitNew(m=>m.type==='started' && m.player_count===playerCount,marks[i],25000);
+                if(started.cards_per_player!==27) throw new Error(`cards_per_player ${started.cards_per_player}`);
+                const hand=await clients[i].waitNew(m=>m.type==='hand',marks[i],25000);
+                if(!Array.isArray(hand.cards)||hand.cards.length!==27) throw new Error(`hand count ${hand.cards?.length}`);
+              }
+              const trickMarks=clients.map(c=>c.messages.length);
+              clients[0].send({type:'start_trick'});
+              for(let i=0;i<playerCount;i++) await clients[i].waitNew(m=>m.type==='state'&&Number.isInteger(m.turn),trickMarks[i],20000);
+              let state=clients.flatMap(c=>c.messages).filter(m=>m.type==='state').at(-1);
+              const seatToClient=new Map(clients.map(c=>[c.seat,c]));
+              const leader=seatToClient.get(state.turn);
+              let mark=leader.messages.length;
+              leader.send({type:'play',card_indexes:[0]});
+              state=await leader.waitNew(m=>m.type==='state'&&m.hand_counts?.[leader.seat]===26,mark,25000);
+              let passes=0;
+              while(passes<playerCount-1 && !state.trick_complete){
+                const active=seatToClient.get(state.turn); mark=active.messages.length;
+                active.send({type:'pass'});
+                state=await active.waitNew(m=>m.type==='state'&&(m.trick_complete===true||m.turn!==active.seat),mark,25000);
+                passes++;
+              }
+              if(!state.trick_complete) throw new Error('trick did not complete');
+              const target=clients[Math.min(2,playerCount-1)], originalSeat=target.seat;
+              target.close(); await new Promise(r=>setTimeout(r,700));
+              const replacement=new Client(target.name); await replacement.connect(); mark=replacement.messages.length;
+              replacement.send({type:'join',room,name:replacement.name,player_count:playerCount,desired_seat:originalSeat});
+              const rejoined=await replacement.waitNew(m=>m.type==='joined',mark,25000);
+              const rehand=await replacement.waitNew(m=>m.type==='hand',mark,25000);
+              const restate=await replacement.waitNew(m=>m.type==='state',mark,25000);
+              if(rejoined.seat!==originalSeat) throw new Error('reconnect seat changed');
+              if(!Array.isArray(rehand.cards)) throw new Error('reconnect private hand missing');
+              if(!Array.isArray(restate.hand_counts)||restate.hand_counts.length!==playerCount) throw new Error('reconnect public state invalid');
+              replacement.close();
+              console.log(JSON.stringify({type:'live_matrix_pass',sha:process.env.EXPECTED_COMMIT,playerCount,repetition,room,reconnectSeat:rejoined.seat,trickComplete:true}));
+            } finally { for(const c of clients)c.close(); }
+          }
+          for(const count of COUNTS) for(let repetition=1;repetition<=REPETITIONS;repetition++) await run(count,repetition);
+          console.log(JSON.stringify({type:'live_matrix_complete',sha:process.env.EXPECTED_COMMIT,counts:COUNTS,repetitions:REPETITIONS,note:'Each repetition validates live join/start/one completed trick/reconnect state recovery. This is not yet a complete-game/complete-round waiver.'}));
+          NODE
+      - name: Preserve mandatory-gate semantics
+        run: |
+          echo 'PASS here proves live supported-count transport/trick/reconnect coverage only.'
+          echo 'It does not waive complete-game/round, Shengji/Finding Friends browser, or fault-injection requirements.'
