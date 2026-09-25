@@ -110,7 +110,7 @@ jobs:
               }
             }
             if(state.match_winner!==null)throw new Error(`unexpected match winner before three-round gate: ${JSON.stringify(state.match_winner)}`);
-            if(state.next_round_phase!=='AwaitingShuffle')throw new Error(`round ${round} did not reach AwaitingShuffle`);
+            if(state.next_round_phase!=='awaiting_shuffle')throw new Error(`round ${round} did not reach AwaitingShuffle`);
             console.log(JSON.stringify({
               type:'guandan_complete_round_pass',
               sha:process.env.EXPECTED_COMMIT,
@@ -128,7 +128,7 @@ jobs:
             const winnerTeam=state.last_game_winner_team;
             const loserSeat=winnerTeam==='A'?1:0;
             state=await mutate(bySeat.get(loserSeat),{type:'shuffle_next_round',from_position:null,to_position:null},`count ${count} round ${round} shuffle`,false,state);
-            if(state.next_round_phase!=='AwaitingDeal')throw new Error('shuffle did not reach AwaitingDeal');
+            if(state.next_round_phase!=='awaiting_deal')throw new Error('shuffle did not reach AwaitingDeal');
             const winnerSeat=state.last_game_winner;
             state=await mutate(bySeat.get(winnerSeat),{type:'deal_next_round'},`count ${count} round ${round} deal`,false,state);
             if(state.next_round_phase!==null)throw new Error('deal did not clear next_round_phase');
