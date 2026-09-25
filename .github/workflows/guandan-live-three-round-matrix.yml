@@ -56,17 +56,22 @@ jobs:
             close(){try{this.ws?.close();}catch{}}
           }
 
-          async function mutate(client,message,label,allowError=false){
+          async function mutate(client,message,label,allowError=false,previousState=null){
             const mark=client.messages.length;
+            const before=previousState===null?null:JSON.stringify(previousState);
             client.send(message);
-            const reply=await client.waitNew(m=>m.type==='state'||m.type==='error',mark,30000);
+            const reply=await client.waitNew(
+              m=>m.type==='error'||(m.type==='state'&&(before===null||JSON.stringify(m)!==before)),
+              mark,
+              30000,
+            );
             if(reply.type==='error'&&!allowError)throw new Error(`${label}: ${reply.message}`);
             return reply;
           }
 
-          async function submitFirstLegal(client,type,label){
+          async function submitFirstLegal(client,type,label,state){
             for(let index=0;index<27;index++){
-              const reply=await mutate(client,{type,card_index:index},`${label} index ${index}`,true);
+              const reply=await mutate(client,{type,card_index:index},`${label} index ${index}`,true,state);
               if(reply.type==='state')return reply;
             }
             throw new Error(`${label}: no legal card found`);
@@ -80,10 +85,10 @@ jobs:
             if(!givers||!receivers)throw new Error(`unknown tribute plan ${JSON.stringify(plan)}`);
 
             for(const seat of givers){
-              state=await submitFirstLegal(bySeat.get(seat),'tribute_card',`tribute seat ${seat}`);
+              state=await submitFirstLegal(bySeat.get(seat),'tribute_card',`tribute seat ${seat}`,state);
             }
             for(const seat of receivers){
-              state=await submitFirstLegal(bySeat.get(seat),'return_tribute',`return seat ${seat}`);
+              state=await submitFirstLegal(bySeat.get(seat),'return_tribute',`return seat ${seat}`,state);
             }
             if(state.pending_tribute!==null)throw new Error('tribute exchange did not finalize');
             return state;
@@ -98,7 +103,8 @@ jobs:
               const command=Array.isArray(state.last_play)&&state.last_play.length>0
                 ? {type:'pass'}
                 : {type:'play',card_indexes:[0]};
-              state=await mutate(active,command,`count ${count} round ${round} step ${steps}`);
+              if(steps<=12)console.log(JSON.stringify({type:'three_round_step',count,round,steps,turn:state.turn,lastPlayer:state.last_player,lastPlayCount:state.last_play?.length,passes:state.passes,finishOrder:state.finish_order}));
+              state=await mutate(active,command,`count ${count} round ${round} step ${steps}`,false,state);
               if(steps%250===0){
                 console.log(JSON.stringify({type:'three_round_progress',count,round,steps,turn:state.turn,finishOrder:state.finish_order,nextRoundPhase:state.next_round_phase}));
               }
@@ -121,10 +127,10 @@ jobs:
           async function prepareNextRound(state,bySeat,count,round){
             const winnerTeam=state.last_game_winner_team;
             const loserSeat=winnerTeam==='A'?1:0;
-            state=await mutate(bySeat.get(loserSeat),{type:'shuffle_next_round',from_position:null,to_position:null},`count ${count} round ${round} shuffle`);
+            state=await mutate(bySeat.get(loserSeat),{type:'shuffle_next_round',from_position:null,to_position:null},`count ${count} round ${round} shuffle`,false,state);
             if(state.next_round_phase!=='AwaitingDeal')throw new Error('shuffle did not reach AwaitingDeal');
             const winnerSeat=state.last_game_winner;
-            state=await mutate(bySeat.get(winnerSeat),{type:'deal_next_round'},`count ${count} round ${round} deal`);
+            state=await mutate(bySeat.get(winnerSeat),{type:'deal_next_round'},`count ${count} round ${round} deal`,false,state);
             if(state.next_round_phase!==null)throw new Error('deal did not clear next_round_phase');
             if(state.pending_tribute!==null)state=await resolveTribute(state,bySeat);
             return state;
