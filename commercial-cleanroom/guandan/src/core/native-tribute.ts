@@ -57,7 +57,8 @@ const removeCard = (
   const hand = game.hands[seat];
   if (hand === undefined) throw new Error("seat is outside the table");
   const card = hand.find(({ id }) => id === cardId);
-  if (card === undefined) throw new Error("selected card is not in seat's hand");
+  if (card === undefined)
+    throw new Error("selected card is not in seat's hand");
   return {
     game: replaceHand(
       game,
@@ -85,14 +86,17 @@ const allSelected = (
   selections: readonly NativeTributeSelection[],
   seats: readonly number[],
 ): boolean =>
-  seats.every((seat) => selections.some((selection) => selection.seat === seat));
+  seats.every((seat) =>
+    selections.some((selection) => selection.seat === seat),
+  );
 
 const selectionFor = (
   selections: readonly NativeTributeSelection[],
   seat: number,
 ): NativeTributeSelection => {
   const found = selections.find((selection) => selection.seat === seat);
-  if (found === undefined) throw new Error("required tribute selection is missing");
+  if (found === undefined)
+    throw new Error("required tribute selection is missing");
   return found;
 };
 
@@ -144,10 +148,7 @@ export const submitNativeTribute = (
     throw new Error("tribute must be the highest eligible card");
   const removed = removeCard(game, seat, cardId);
   const tributeCards = [...tribute.tributeCards, { seat, card: removed.card }];
-  const readyForReturn = allSelected(
-    tributeCards,
-    tribute.pendingTributeSeats,
-  );
+  const readyForReturn = allSelected(tributeCards, tribute.pendingTributeSeats);
   return {
     game: removed.game,
     tribute: {

@@ -234,8 +234,8 @@ export const highestTributeSelection = (
       singleStrength(left.card.card, level);
     return strengthDifference !== 0
       ? strengthDifference
-      // Public player displays render in ascending seat order from left to right.
-      : left.player - right.player;
+      : // Public player displays render in ascending seat order from left to right.
+        left.player - right.player;
   });
   const highest = ordered[0];
   if (highest === undefined) {
