@@ -11,7 +11,7 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(html).toContain("进入牌室");
   });
 
-  it("mounts the approved Guandan frontend stack without replacing GuandanTable", () => {
+  it(\n    "mounts the approved Guandan frontend stack without replacing GuandanTable",\n    () => {
     const entry = readFileSync(
       new URL("../../frontend/src/CleanroomEntry.tsx", import.meta.url),
       "utf8",
