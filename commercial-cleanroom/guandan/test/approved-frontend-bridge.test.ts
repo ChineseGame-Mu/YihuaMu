@@ -59,7 +59,10 @@ describe("approved Guandan frontend clean-room bridge", () => {
       "utf8",
     );
     const transport = readFileSync(
-      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
       "utf8",
     );
     const allowed = "wss://chinesegame-yihua.onrender.com/api/guandan";
@@ -83,11 +86,17 @@ describe("approved Guandan frontend clean-room bridge", () => {
       "utf8",
     );
     const transport = readFileSync(
-      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
       "utf8",
     );
     const adapter = readFileSync(
-      new URL("../../frontend/src/guandanCompatibilityAdapter.ts", import.meta.url),
+      new URL(
+        "../../frontend/src/guandanCompatibilityAdapter.ts",
+        import.meta.url,
+      ),
       "utf8",
     );
     expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
