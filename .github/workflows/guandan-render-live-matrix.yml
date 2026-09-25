@@ -18,9 +18,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install pinned WebSocket client
+        run: npm install --no-save ws@8.21.0
       - name: Run supported-player live WebSocket matrix, three consecutive rounds
         run: |
           node --input-type=module <<'NODE'
+          import WebSocket from 'ws';
           const WS_URL = process.env.WS_URL;
           const COUNTS = [4,6,8,10,12,14];
           const REPETITIONS = 3;
