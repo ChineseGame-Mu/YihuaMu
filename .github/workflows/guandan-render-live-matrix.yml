@@ -67,9 +67,12 @@ jobs:
               }
               const marks=clients.map(c=>c.messages.length);
               clients[0].send({type:'start',player_count:playerCount});
-              const started=await clients[0].waitNew(m=>m.type==='started' && m.player_count===playerCount,marks[0],25000);
+              const startReply=await clients[0].waitNew(m=>(m.type==='started' && m.player_count===playerCount)||m.type==='error',marks[0],25000);
+              if(startReply.type==='error') throw new Error(`start error: ${startReply.message}; recent=${JSON.stringify(clients[0].messages.slice(-8))}`);
+              const started=startReply;
               if(started.cards_per_player!==27) throw new Error(`cards_per_player ${started.cards_per_player}`);
               for(let i=0;i<playerCount;i++){
+                console.log(JSON.stringify({type:'matrix_start_seen',playerCount,repetition,client:i+1,recent:clients[i].messages.slice(-4)}));
                 await clients[i].waitNew(m=>m.type==='state' && Array.isArray(m.hand_counts) && m.hand_counts.length===playerCount,marks[i],25000);
                 const hand=await clients[i].waitNew(m=>m.type==='hand',marks[i],25000);
                 if(!Array.isArray(hand.cards)||hand.cards.length!==27) throw new Error(`hand count ${hand.cards?.length}`);
