@@ -6,6 +6,7 @@ import {
   type GuandanArrangeStrategy,
   type GuandanAutoGroup,
 } from "./guandanAutoArrange";
+import { shouldShowCompletedRoundResult } from "./guandanRoundResultVisibility";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 import type {
@@ -352,6 +353,7 @@ const GuandanTable: React.FunctionComponent = () => {
         : 14,
     );
   const playerCount = state.playerCount ?? state.players.length;
+  const showCompletedRoundResult = shouldShowCompletedRoundResult(state);
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
   const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;
@@ -371,11 +373,6 @@ const GuandanTable: React.FunctionComponent = () => {
   const leavingNextRound =
     currentPlayerName !== null &&
     state.nextRoundLeavers.includes(currentPlayerName);
-  const lastWinnerName =
-    state.lastGameWinner === null
-      ? null
-      : (state.players[state.lastGameWinner] ??
-        `玩家${state.lastGameWinner + 1}`);
   const canShuffleNextRound =
     state.seat !== null &&
     state.lastGameWinner !== null &&
@@ -1227,19 +1224,23 @@ const GuandanTable: React.FunctionComponent = () => {
               <span>公共桌面</span>
               <small>所有玩家共同可见</small>
             </div>
-            {state.lastTrickWinner !== null && (
-              <aside
-                className="guandan-round-winner-mini"
-                role="status"
-                aria-label="本轮赢家"
-              >
-                <span>本轮赢家</span>
-                <strong>
-                  {state.players[state.lastTrickWinner] ??
-                    `玩家${state.lastTrickWinner + 1}`}
-                </strong>
-              </aside>
-            )}
+            {state.lastTrickWinner !== null &&
+              state.trickComplete &&
+              state.finishOrder.length < playerCount &&
+              !nextRoundPending &&
+              serverDealt && (
+                <aside
+                  className="guandan-round-winner-mini"
+                  role="status"
+                  aria-label="本轮赢家"
+                >
+                  <span>本轮赢家</span>
+                  <strong>
+                    {state.players[state.lastTrickWinner] ??
+                      `玩家${state.lastTrickWinner + 1}`}
+                  </strong>
+                </aside>
+              )}
             <div
               className="guandan-public-player-backs"
               role="status"
@@ -1333,21 +1334,6 @@ const GuandanTable: React.FunctionComponent = () => {
                 })
               )}
             </div>
-            {state.finishOrder.length === playerCount && playerCount >= 4 && (
-              <div
-                className="guandan-notice-panel"
-                role="status"
-                aria-label="输赢顺序"
-              >
-                <strong>输赢顺序：</strong>
-                {state.finishOrder
-                  .map(
-                    (seat, index) =>
-                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
-                  )
-                  .join(" ｜ ")}
-              </div>
-            )}
             {showInitialDrawMini &&
               state.initialDraw.length === playerCount &&
               state.initialDrawWinner !== null &&
@@ -1525,40 +1511,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.finishOrder.length === playerCount && playerCount >= 4 && (
-              <section
-                className="guandan-notice-panel"
-                role="status"
-                aria-label="四位玩家输赢顺序"
-              >
-                <strong>四位玩家输赢顺序：</strong>
-                {state.finishOrder
-                  .map(
-                    (seat, index) =>
-                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
-                  )
-                  .join(" ｜ ")}
-              </section>
-            )}
-
-            {state.lastGameWinner !== null && lastWinnerName !== null && (
-              <section
-                className={`guandan-result-panel guandan-team-${
-                  state.lastGameWinner % 2 === 0 ? "a" : "b"
-                }`}
-                role="status"
-                aria-label="上一局结果"
-              >
-                <strong>上一局赢家：{lastWinnerName}</strong>
-                <span>座位 {state.lastGameWinner + 1}</span>
-                <span>本局积分：+{state.lastPromotionSteps ?? 0}</span>
-                {state.lastPromotionSteps !== null && (
-                  <span>升级 {state.lastPromotionSteps} 级</span>
-                )}
-              </section>
-            )}
-
-            {threeMatchSeriesActive && (
+            {threeMatchSeriesActive && showCompletedRoundResult && (
               <section
                 className="guandan-result-panel"
                 role="status"
@@ -1793,21 +1746,6 @@ const GuandanTable: React.FunctionComponent = () => {
 
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
-              {state.finishOrder.length > 0 && (
-                <div
-                  className="guandan-notice-panel"
-                  role="status"
-                  aria-label="本轮输赢排序"
-                >
-                  <strong>本轮输赢排序：</strong>
-                  {state.finishOrder
-                    .map(
-                      (seat, index) =>
-                        `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
-                    )
-                    .join(" ｜ ")}
-                </div>
-              )}
               {state.tablePlays.length === 0 ? (
                 <div>暂无出牌</div>
               ) : (

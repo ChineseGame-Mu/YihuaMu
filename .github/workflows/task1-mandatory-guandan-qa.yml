@@ -72,6 +72,7 @@ jobs:
           const music = fs.readFileSync("frontend/src/guandanMusic.ts", "utf8");
           const celebration = fs.readFileSync("frontend/src/guandanMatchCelebration.ts", "utf8");
           const celebrationCss = fs.readFileSync("frontend/src/guandan-match-celebration.css", "utf8");
+          const roundResultVisibility = fs.readFileSync("frontend/src/guandanRoundResultVisibility.ts", "utf8");
           const legacyGateway = fs.readFileSync("yihua-game/src/core/legacy-guandan-gateway.ts", "utf8");
           const nodeServer = fs.readFileSync("yihua-game/src/node-server.ts", "utf8");
           const nodeWebsocket = fs.readFileSync("yihua-game/src/node-websocket.ts", "utf8");
@@ -126,6 +127,7 @@ jobs:
             ["6-14 player formats run exactly three complete 2-to-A matches", /playerCount === 6/.test(competitionSeries) && /playerCount === 14/.test(competitionSeries) && /COMPETITION_SERIES_MATCHES\s*=\s*3/.test(competitionSeries) && /runs exactly three complete 2-to-A matches/.test(fs.readFileSync("yihua-game/test/competition-match-progression.test.ts", "utf8")) && /aria-label="三局赛进度"/.test(table) && /三局比赛全部结束/.test(table)],
             ["settings offer optional synthesized atmosphere music", /guandan-music-mode/.test(table) && /轻松气氛器乐/.test(table) && /中国民乐/.test(table) && /AudioContext/.test(music) && !/https?:\/\//.test(music)],
             ["A-level winners receive a ten-second full-screen trophy and fireworks finale", /GUANDAN_MATCH_CELEBRATION_MS\s*=\s*10_000/.test(celebration) && /winningTeamPlayerNames/.test(table) && /celebrationFireworks\.map/.test(table) && /guandan-match-trophy/.test(table) && /guandan-fireworks/.test(table) && /guandan-match-celebrating/.test(table) && /继续/.test(table) && /退出/.test(table) && /\.guandan-match-complete-panel\.guandan-match-celebrating/.test(celebrationCss) && /guandan-firework-burst/.test(celebrationCss)],
+            ["old rankings and winners leave the public table before the next round", /shouldShowCompletedRoundResult/.test(table) && /shouldShowCompletedRoundResult/.test(fs.readFileSync("frontend/src/GuandanRoundResultHud.tsx", "utf8")) && /nextRoundPhase === null/.test(roundResultVisibility) && /handCounts\.some/.test(roundResultVisibility) && !/aria-label="本轮输赢排序"/.test(table) && !/aria-label="上一局结果"/.test(table)],
             ["celebration shows a live date and time updated every second", /formatCelebrationDateTime/.test(celebration) && /guandan-match-celebration-time/.test(table) && /庆祝时间：/.test(table) && /setInterval\([\s\S]*?1000\)/.test(table) && /guandan-match-celebration-time/.test(celebrationCss)],
             ["test-only online celebration preview supports screenshot verification", /initial\.get\("test"\) === "1"/.test(entry) && /initial\.get\("celebrationPreview"\) === "1"/.test(entry) && /A级获胜全屏庆祝效果预览/.test(entry) && /celebrationFireworks\.map/.test(entry)],
             ["settings provide winner screenshot email and one robot count selector", /guandan-winner-screenshot-email/.test(table) && /guandan_winner_screenshot_email/.test(table) && /type="email"/.test(table) && /id="guandan-bot-count"/.test(table) && /机器人玩家数量/.test(table) && /\[1, 2, 3\]\.map/.test(table) && !/\{count\} 个机器人/.test(table)],
@@ -179,6 +181,7 @@ jobs:
           src/guandanMatchCelebration.test.ts
           src/guandanAutoArrange.test.ts
           src/guandanAutoLayoutOptions.test.ts
+          src/guandanRoundResultVisibility.test.ts
           src/guandanTributeActionVisibility.test.ts
           src/securityHeaders.test.ts
 
