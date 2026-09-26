@@ -15,14 +15,14 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
     expect(entry).toContain("<GuandanTable />");
     expect(entry).toContain(
-      'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const cleanroomWebsocket = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
 
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(transport).toContain(
-      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const CLEANROOM_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
     expect(transport).toContain("adaptGuandanClientMessage");
@@ -34,18 +34,16 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
     expect(gateway).toContain(
-      "runtime.rooms.create(roomId, supportedPlayerCount",
+      "runtime.rooms.create(roomId, playerCount",
     );
   });
 
-  it("does not allow the clean-room entry or transport to point at the old production backend", () => {
+  it("pins the clean-room entry and transport to the commercial three-game backend", () => {
     const entry = read("../../frontend/src/CleanroomEntry.tsx");
     const transport = read("../../frontend/src/GuandanWebsocketProvider.tsx");
-    expect(entry).not.toContain("chinesegame-yihua.onrender.com");
-    expect(entry).toContain("card-games-yihua.onrender.com");
+    expect(entry).toContain("chinesegame-yihua.onrender.com");
+    expect(entry).not.toContain("card-games-yihua.onrender.com");
     expect(transport).toContain("return CLEANROOM_WEBSOCKET;");
-    expect(transport).not.toContain(
-      'query.get("backend") ?? (window as any)._CLEANROOM_BACKEND',
-    );
+    expect(transport).not.toContain("_CLEANROOM_BACKEND");
   });
 });
