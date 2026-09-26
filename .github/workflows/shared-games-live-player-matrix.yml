@@ -83,7 +83,12 @@ jobs:
             while(phase(s)==='Draw'){
               if(++guard>500)throw new Error(mode+' draw guard');
               const d=ps(s);
-              if((d.deck??[]).length===0){s=await act(owner,'PickUpKitty',mode+' pickup');break;}
+              if((d.deck??[]).length===0){
+                const mark=owner.messages.length; owner.send({Action:'PickUpKitty'});
+                s=await owner.waitNew(m=>(isState(m)&&phase(m)==='Exchange')||isError(m),mark,30000);
+                if(isError(s))throw new Error(mode+' pickup '+JSON.stringify(s.Error));
+                break;
+              }
               const p=d.propagated.players[d.position];const a=byPid(cs,p.id);if(!a)throw new Error('draw actor missing');
               s=await act(a,'DrawCard',mode+' draw');
             }
