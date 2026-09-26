@@ -67,7 +67,7 @@ jobs:
           }
           function totalCards(s){const hs=ps(s)?.hands?.hands??{};let n=0;for(const h of Object.values(hs))for(const v of Object.values(h??{}))n+=Number(v);return n;}
           async function setup(mode){
-            const room=(mode==='Tractor'?'CX':'CF')+Math.random().toString(36).slice(2,6).toUpperCase();
+            const room=(mode==='Tractor'?'T':'F')+Math.random().toString(36).slice(2,5).toUpperCase();
             const cs=[];const owner=await new Client((mode==='Tractor'?'TX':'FX')+'P1',room).connect();await join(owner);cs.push(owner);
             await act(owner,mode==='Tractor'?{SetGameMode:'Tractor'}:{SetGameMode:{FindingFriends:{num_friends:1}}},mode+' mode');
             if(mode==='FindingFriends')await act(owner,{SetFriendSelectionPolicy:'TrumpsIncluded'},mode+' friend policy');
