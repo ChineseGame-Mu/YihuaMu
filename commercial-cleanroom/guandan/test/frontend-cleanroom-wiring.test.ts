@@ -6,13 +6,11 @@ const source = (relativePath: string): string =>
   readFileSync(resolve(process.cwd(), "..", relativePath), "utf8");
 
 describe("clean-room frontend wiring", () => {
-  it("keeps the clean-room entry isolated while preserving the classic root path", () => {
+  it("keeps the clean-room entry as the commercial default root", () => {
     const index = source("frontend/src/index.tsx");
-
     expect(index).toContain('params.get("cleanroom") === "1"');
-    expect(index).toContain("if (cleanroom) {");
+    expect(index).toContain('params.get("classic") !== "1"');
     expect(index).toContain("<CleanroomEntry />");
-    expect(index).toContain("<Root />");
   });
 
   it("renders the original GuandanTable through the clean-room provider", () => {
@@ -27,25 +25,12 @@ describe("clean-room frontend wiring", () => {
     const provider = source("frontend/src/GuandanWebsocketProvider.tsx");
 
     expect(provider).toContain(
-      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const CLEANROOM_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(provider).toContain('query.get("cleanroom") !== "1"');
 
-    const websocketUriStart = provider.indexOf("const websocketUri");
-    const providerStart = provider.indexOf(
-      "const GuandanWebsocketProvider",
-      websocketUriStart,
-    );
-    const websocketUriSource = provider.slice(websocketUriStart, providerStart);
-    const cleanroomOverride = websocketUriSource.indexOf(
-      "cleanroomWebsocketOverride()",
-    );
-    const testOverride = websocketUriSource.indexOf("testWebsocketOverride()");
-    const runtimeFallback = websocketUriSource.indexOf("_WEBSOCKET_HOST");
-
-    expect(cleanroomOverride).toBeGreaterThanOrEqual(0);
-    expect(testOverride).toBeGreaterThan(cleanroomOverride);
-    expect(runtimeFallback).toBeGreaterThan(testOverride);
+    expect(provider).toContain("const websocketUri = (): string =>");
+    expect(provider).not.toContain("_WEBSOCKET_HOST");
   });
 
   it("routes legacy Guandan join messages through the compatibility adapter", () => {
@@ -53,7 +38,7 @@ describe("clean-room frontend wiring", () => {
     const adapter = source("frontend/src/guandanCompatibilityAdapter.ts");
 
     expect(provider).toContain("adaptGuandanClientMessage(message, {");
-    expect(provider).toContain('cleanroom: query.get("cleanroom") === "1"');
+    expect(provider).toContain("cleanroom: true");
     expect(provider).toContain('room: query.get("cleanroomRoom")');
     expect(provider).toContain("playerCount: Number.isFinite(playerCount)");
 
