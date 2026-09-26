@@ -9,7 +9,7 @@ describe("clean-room backend route precedence", () => {
     );
 
     expect(entry).toContain(
-      'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const cleanroomWebsocket = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
@@ -25,7 +25,7 @@ describe("clean-room backend route precedence", () => {
     );
 
     expect(transport).toContain(
-      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const CLEANROOM_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(transport).toContain(
       'if (query.get("cleanroom") !== "1") return null;',
@@ -36,45 +36,15 @@ describe("clean-room backend route precedence", () => {
     );
   });
 
-  it("resolves the clean-room override before any legacy test or production fallback", () => {
+  it("keeps the clean-room websocket resolver pinned with no stale fallback chain", () => {
     const transport = readFileSync(
-      new URL(
-        "../../frontend/src/GuandanWebsocketProvider.tsx",
-        import.meta.url,
-      ),
+      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
       "utf8",
     );
-
-    const resolverStart = transport.indexOf(
-      "const websocketUri = (): string => {",
-    );
-    const cleanroomCall = transport.indexOf(
-      "const cleanroom = cleanroomWebsocketOverride();",
-      resolverStart,
-    );
-    const cleanroomReturn = transport.indexOf(
-      "if (cleanroom !== null) return cleanroom;",
-      cleanroomCall,
-    );
-    const testCall = transport.indexOf(
-      "const override = testWebsocketOverride();",
-      cleanroomReturn,
-    );
-    const runtimeFallback = transport.indexOf(
-      "const runtimeWebsocketHost = (window as any)._WEBSOCKET_HOST;",
-      testCall,
-    );
-    const vercelFallback = transport.indexOf(
-      'if (location.hostname.endsWith(".vercel.app"))',
-      runtimeFallback,
-    );
-
-    expect(resolverStart).toBeGreaterThanOrEqual(0);
-    expect(cleanroomCall).toBeGreaterThan(resolverStart);
-    expect(cleanroomReturn).toBeGreaterThan(cleanroomCall);
-    expect(testCall).toBeGreaterThan(cleanroomReturn);
-    expect(runtimeFallback).toBeGreaterThan(testCall);
-    expect(vercelFallback).toBeGreaterThan(runtimeFallback);
+    expect(transport).toContain("const websocketUri = (): string =>");
+    expect(transport).toContain("return CLEANROOM_WEBSOCKET");
+    expect(transport).not.toContain("_WEBSOCKET_HOST");
+    expect(transport).not.toContain("testWebsocketOverride");
   });
 
   it("keeps the compatibility adapter boundary outside GuandanTable", () => {
@@ -87,7 +57,7 @@ describe("clean-room backend route precedence", () => {
       "utf8",
     );
 
-    expect(table).not.toContain("card-games-yihua.onrender.com");
+    expect(table).not.toContain("chinesegame-yihua.onrender.com");
     expect(table).not.toContain("toCleanroomCommand");
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
