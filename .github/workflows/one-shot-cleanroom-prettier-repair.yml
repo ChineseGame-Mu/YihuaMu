@@ -1,0 +1,39 @@
+name: One-shot cleanroom Prettier repair
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+
+permissions:
+  contents: write
+
+jobs:
+  format-cleanroom:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: cleanroom/three-game-commercial-20260916
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Format cleanroom Guandan with locked Prettier
+        run: |
+          cd commercial-cleanroom/guandan
+          npm ci --ignore-scripts
+          npm run prettier:version
+          npm run format
+      - name: Commit formatting only when needed
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes required."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add commercial-cleanroom/guandan
+          git commit -m "format cleanroom guandan with Prettier 3.4.1"
+          git push origin HEAD:cleanroom/three-game-commercial-20260916

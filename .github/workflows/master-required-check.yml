@@ -16,4 +16,4 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify Guandan homepage target
         run: |
-          grep -F 'https://yihua-mu-git-cleanroom-yihua-game-20260826-chinese-game.vercel.app/' frontend/src/Welcome.tsx
+          grep -F 'https://yihua-mu.vercel.app/' frontend/src/Welcome.tsx

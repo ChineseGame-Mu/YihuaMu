@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root/yihua-game"
+
+npm run prettier:version
+npm run format:staged
