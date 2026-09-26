@@ -108,7 +108,12 @@ jobs:
               if(q.length===0){
                 const empty=totalCards(s)===0;
                 s=await act(owner,'EndTrick',mode+' end trick');
-                if(empty){s=await act(owner,'StartNewGame',mode+' finish game '+game);break;}
+                if(empty){
+                  const mark=owner.messages.length; owner.send({Action:'StartNewGame'});
+                  s=await owner.waitNew(m=>(isState(m)&&phase(m)==='Initialize')||isError(m),mark,30000);
+                  if(isError(s))throw new Error(mode+' finish game '+game+' '+JSON.stringify(s.Error));
+                  break;
+                }
                 continue;
               }
               const a=byPid(cs,q[0]);if(!a)throw new Error('play actor missing '+q[0]);
