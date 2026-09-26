@@ -95,43 +95,18 @@ jobs:
           }
 
           async function completeRound(state,bySeat,count,round){
-            // The legacy-compatible live endpoint models the real UI lifecycle:
-            // a human explicitly starts play, and each completed trick must be
-            // collected by that trick's winner before the next lead.
-            {
-              const starter=bySeat.get(state.turn);
-              if(!starter)throw new Error(`missing round starter seat ${state.turn}`);
-              const mark=starter.messages.length;
-              starter.send({type:'start_trick'});
-              const reply=await starter.waitNew(m=>m.type==='state'||m.type==='error',mark,30000);
-              if(reply.type==='error')throw new Error(`count ${count} round ${round} start_trick: ${reply.message}`);
-              state=reply;
-            }
-
             let steps=0;
             while(state.next_round_phase===null&&state.match_winner===null){
-              if(state.trick_complete===true){
-                const winnerSeat=state.last_trick_winner ?? state.last_player;
-                const winner=bySeat.get(winnerSeat);
-                if(!winner)throw new Error(`missing completed-trick winner seat ${winnerSeat}`);
-                const mark=winner.messages.length;
-                winner.send({type:'end_round'});
-                const reply=await winner.waitNew(m=>m.type==='state'||m.type==='error',mark,30000);
-                if(reply.type==='error')throw new Error(`count ${count} round ${round} end_round: ${reply.message}`);
-                state=reply;
-                continue;
-              }
-
               if(++steps>10000)throw new Error(`count ${count} round ${round} exceeded step limit`);
               const active=bySeat.get(state.turn);
               if(!active)throw new Error(`missing active seat ${state.turn}`);
               const command=Array.isArray(state.last_play)&&state.last_play.length>0
                 ? {type:'pass'}
                 : {type:'play',card_indexes:[0]};
-              if(steps<=12)console.log(JSON.stringify({type:'three_round_step',count,round,steps,turn:state.turn,lastPlayer:state.last_player,lastPlayCount:state.last_play?.length,passes:state.passes,finishOrder:state.finish_order,trickComplete:state.trick_complete,lastTrickWinner:state.last_trick_winner}));
+              if(steps<=12)console.log(JSON.stringify({type:'three_round_step',count,round,steps,turn:state.turn,lastPlayer:state.last_player,lastPlayCount:state.last_play?.length,passes:state.passes,finishOrder:state.finish_order,lastTrickWinner:state.last_trick_winner}));
               state=await mutate(active,command,`count ${count} round ${round} step ${steps}`,false,state);
               if(steps%250===0){
-                console.log(JSON.stringify({type:'three_round_progress',count,round,steps,turn:state.turn,finishOrder:state.finish_order,nextRoundPhase:state.next_round_phase,trickComplete:state.trick_complete}));
+                console.log(JSON.stringify({type:'three_round_progress',count,round,steps,turn:state.turn,finishOrder:state.finish_order,nextRoundPhase:state.next_round_phase,lastTrickWinner:state.last_trick_winner}));
               }
             }
             if(state.match_winner!==null)throw new Error(`unexpected match winner before three-round gate: ${JSON.stringify(state.match_winner)}`);
