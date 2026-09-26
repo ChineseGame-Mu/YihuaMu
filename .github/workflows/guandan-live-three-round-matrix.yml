@@ -1,9 +1,6 @@
-name: Guandan Live Three-Round Matrix
+name: Guandan Live Three-Round Matrix (manual legacy only)
 
 on:
-  push:
-    branches:
-      - cleanroom/three-game-commercial-20260916
   workflow_dispatch:
 
 jobs:
