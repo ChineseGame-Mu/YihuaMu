@@ -66,12 +66,12 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
 
     expect(entry).toContain(
-      'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const cleanroomWebsocket = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
     expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
     expect(transport).toContain(
-      'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
+      'const CLEANROOM_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan"',
     );
     expect(transport).toContain(
       'if (query.get("cleanroom") !== "1") return null',
@@ -128,7 +128,7 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
     expect(gateway).toContain(
-      "runtime.rooms.create(roomId, supportedPlayerCount",
+      "runtime.rooms.create(roomId, playerCount",
     );
   });
 });
