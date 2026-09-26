@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import type { GuandanRank, GuandanTeam } from "./guandanProtocol";
 import { guandanPromotionSteps } from "./guandanPromotion";
+import { shouldShowCompletedRoundResult } from "./guandanRoundResultVisibility";
 
 const rankSequence: GuandanRank[] = [
   "Two",
@@ -230,6 +231,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
   const roundStillComplete =
     state.finishOrder.length === state.players.length &&
     state.players.length >= 4;
+  const showCompletedRoundResult = shouldShowCompletedRoundResult(state);
 
   React.useEffect(() => {
     if (
@@ -275,6 +277,7 @@ const GuandanRoundResultHud = (): React.JSX.Element | null => {
       {statusTarget !== null &&
         createPortal(<TeamScoreBadge scores={teamScores} />, statusTarget)}
       {tableTarget !== null &&
+        showCompletedRoundResult &&
         model.finishOrder.length > 0 &&
         createPortal(
           <section
