@@ -2,13 +2,19 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 const repositoryRoot = resolve(process.cwd(), "..");
-const entry = (): string => readFileSync(resolve(repositoryRoot, "frontend/src/CleanroomEntry.tsx"), "utf8");
+const entry = (): string =>
+  readFileSync(
+    resolve(repositoryRoot, "frontend/src/CleanroomEntry.tsx"),
+    "utf8",
+  );
 describe("approved clean-room join-room homepage", () => {
   it("keeps the join-room form and supported player counts", () => {
     const source = entry();
     expect(source).toContain("加入牌室");
     expect(source).toContain("开始人数");
-    expect(source).toContain("const supportedCounts = [4, 6, 8, 10, 12, 14] as const");
+    expect(source).toContain(
+      "const supportedCounts = [4, 6, 8, 10, 12, 14] as const",
+    );
     expect(source).toContain("您的姓名");
     expect(source).toContain("进入牌室");
   });

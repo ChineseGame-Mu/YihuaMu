@@ -38,7 +38,10 @@ describe("clean-room backend route precedence", () => {
 
   it("keeps the clean-room websocket resolver pinned with no stale fallback chain", () => {
     const transport = readFileSync(
-      new URL("../../frontend/src/GuandanWebsocketProvider.tsx", import.meta.url),
+      new URL(
+        "../../frontend/src/GuandanWebsocketProvider.tsx",
+        import.meta.url,
+      ),
       "utf8",
     );
     expect(transport).toContain("const websocketUri = (): string =>");

@@ -127,8 +127,6 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
-    expect(gateway).toContain(
-      "runtime.rooms.create(roomId, playerCount",
-    );
+    expect(gateway).toContain("runtime.rooms.create(roomId, playerCount");
   });
 });

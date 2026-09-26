@@ -33,9 +33,7 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
-    expect(gateway).toContain(
-      "runtime.rooms.create(roomId, playerCount",
-    );
+    expect(gateway).toContain("runtime.rooms.create(roomId, playerCount");
   });
 
   it("pins the clean-room entry and transport to the commercial three-game backend", () => {

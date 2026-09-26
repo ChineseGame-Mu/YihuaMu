@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 const repositoryRoot = resolve(process.cwd(), "..");
-const readRepoFile = (path: string): string => readFileSync(resolve(repositoryRoot, path), "utf8");
+const readRepoFile = (path: string): string =>
+  readFileSync(resolve(repositoryRoot, path), "utf8");
 describe("clean-room Guandan join branding", () => {
   it("keeps the Chinese entry branding and room controls", () => {
     const entry = readRepoFile("frontend/src/CleanroomEntry.tsx");
