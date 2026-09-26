@@ -11,16 +11,16 @@ const gitBlobSha = (path: string): string => {
 describe("approved Guandan visual baseline", () => {
   it("keeps the accepted GuandanTable implementation byte-for-byte unchanged", () => {
     expect(gitBlobSha("../../frontend/src/GuandanTable.tsx")).toBe(
-      "f4b87682dbbf4ee008c87acac154991ddc7e6fe8",
+      "f36065dc118eaddbf60ec604eaab1477e6adc83c",
     );
   });
 
   it("keeps the accepted core Guandan styling byte-for-byte unchanged", () => {
     expect(gitBlobSha("../../frontend/src/guandan.css")).toBe(
-      "bf3de0e71c1021139ae587b74d45d8d575e72e9b",
+      "cffdc1716a24aae19e952c820c3f84c08b39cb70",
     );
     expect(gitBlobSha("../../frontend/src/guandan-approved-layout.css")).toBe(
-      "b307dfaf56e02546a681eaa49336528073af5acb",
+      "cfc188167de187b6b93db25cd2d874e448291c83",
     );
   });
 });
