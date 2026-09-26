@@ -122,7 +122,7 @@ jobs:
             if(phase(s)!=='Initialize')throw new Error(mode+' game '+game+' finish phase '+phase(s));
             const finished=ps(s)?.propagated?.num_games_finished??0;
             if(finished<game)throw new Error(mode+' game '+game+' num_games_finished '+finished);
-            console.log(JSON.stringify({type:'shared_complete_game_pass',sha:process.env.EXPECTED_COMMIT,mode,game,room,clients:4,numGamesFinished:finished}));
+            console.log(JSON.stringify({type:'shared_complete_game_pass',sha:process.env.EXPECTED_COMMIT,mode,game,clients:4,numGamesFinished:finished}));
           }
           async function run(mode){
             const {room,cs,owner}=await setup(mode);
