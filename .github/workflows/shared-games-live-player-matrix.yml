@@ -90,7 +90,14 @@ jobs:
                 break;
               }
               const p=d.propagated.players[d.position];const a=byPid(cs,p.id);if(!a)throw new Error('draw actor missing');
-              s=await act(a,'DrawCard',mode+' draw');
+              const before=(d.deck??[]).length, mark=owner.messages.length;
+              a.send({Action:'DrawCard'});
+              s=await owner.waitNew(m=>{
+                if(isError(m))return false;
+                if(!isState(m))return false;
+                const ph=phase(m); if(ph!=='Draw')return true;
+                return ((ps(m)?.deck??[]).length < before);
+              },mark,30000);
             }
             if(phase(s)!=='Exchange')throw new Error(mode+' expected Exchange got '+phase(s));
             await delay(100);
