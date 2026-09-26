@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+
 const repositoryRoot = resolve(process.cwd(), "..");
 const entry = (): string =>
   readFileSync(
     resolve(repositoryRoot, "frontend/src/CleanroomEntry.tsx"),
     "utf8",
   );
+
 describe("approved clean-room join-room homepage", () => {
   it("keeps the join-room form and supported player counts", () => {
     const source = entry();
@@ -18,6 +20,7 @@ describe("approved clean-room join-room homepage", () => {
     expect(source).toContain("您的姓名");
     expect(source).toContain("进入牌室");
   });
+
   it("keeps the join action on the original GuandanTable clean-room chain", () => {
     const source = entry();
     expect(source).toContain('import GuandanTable from "./GuandanTable"');
