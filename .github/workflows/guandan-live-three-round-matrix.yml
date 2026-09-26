@@ -155,8 +155,13 @@ jobs:
             state=await mutate(bySeat.get(loserSeat),{type:'shuffle_next_round',from_position:null,to_position:null},`count ${count} round ${round} shuffle`,false,state);
             if(state.next_round_phase!=='awaiting_deal')throw new Error('shuffle did not reach AwaitingDeal');
             const winnerSeat=state.last_game_winner;
+            const handMarks=new Map([...bySeat].map(([seat,client])=>[seat,client.messages.length]));
             state=await mutate(bySeat.get(winnerSeat),{type:'deal_next_round'},`count ${count} round ${round} deal`,false,state);
             if(state.next_round_phase!==null)throw new Error('deal did not clear next_round_phase');
+            for(const [seat,client] of bySeat){
+              const hand=await client.waitNew(m=>m.type==='hand'&&Array.isArray(m.cards)&&m.cards.length===27,handMarks.get(seat),30000);
+              if(hand.cards.length!==27)throw new Error(`count ${count} round ${round} seat ${seat} redeal hand count ${hand.cards.length}`);
+            }
             if(state.pending_tribute!==null)state=await resolveTribute(state,bySeat);
             return state;
           }
@@ -175,11 +180,15 @@ jobs:
                 clients.push(c);
               }
               const bySeat=new Map(clients.map(c=>[c.seat,c]));
-              const mark=clients[0].messages.length;
+              const startMarks=clients.map(c=>c.messages.length);
               clients[0].send({type:'start',player_count:count});
-              const started=await clients[0].waitNew(m=>m.type==='started'||m.type==='error',mark,30000);
+              const started=await clients[0].waitNew(m=>m.type==='started'||m.type==='error',startMarks[0],30000);
               if(started.type==='error')throw new Error(`count ${count} start: ${started.message}`);
-              let state=await clients[0].waitNew(m=>m.type==='state'&&m.hand_counts?.length===count,mark,30000);
+              let state=await clients[0].waitNew(m=>m.type==='state'&&m.hand_counts?.length===count,startMarks[0],30000);
+              for(let i=0;i<clients.length;i++){
+                const hand=await clients[i].waitNew(m=>m.type==='hand'&&Array.isArray(m.cards)&&m.cards.length===27,startMarks[i],30000);
+                if(hand.cards.length!==27)throw new Error(`count ${count} seat ${i} opening hand count ${hand.cards.length}`);
+              }
 
               for(let round=1;round<=3;round++){
                 state=await completeRound(state,bySeat,count,round);
