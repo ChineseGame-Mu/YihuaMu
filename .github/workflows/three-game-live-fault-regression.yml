@@ -127,15 +127,17 @@ jobs:
             const duplicateErrors=owner.messages.slice(mark).filter(isError);
             if(duplicateErrors.length) throw new Error(`${mode} duplicate replay produced error: ${JSON.stringify(duplicateErrors)}`);
             mark=owner.messages.length;
-            owner.send({Message:`${mode}-duplicate-survival`});
-            await owner.waitNew(m=>m?.Message?.message===`${mode}-duplicate-survival`,mark,20000);
+            owner.send(action);
+            const duplicateSurvival=await owner.waitNew(m=>isState(m)||isError(m),mark,20000);
+            if(isError(duplicateSurvival)) throw new Error(`${mode} duplicate survival check error: ${JSON.stringify(duplicateSurvival)}`);
 
             // Latency/timeout window: keep the live connection idle beyond the frontend 5s response timer,
-            // then prove a real round trip still succeeds.
+            // then prove an authoritative state round trip still succeeds.
             await sleep(6500);
             mark=clients[0].messages.length;
-            clients[0].send({Message:`${mode}-delayed-roundtrip`});
-            await clients[0].waitNew(m=>m?.Message?.message===`${mode}-delayed-roundtrip`,mark,20000);
+            clients[0].send(action);
+            const delayedRoundTrip=await clients[0].waitNew(m=>isState(m)||isError(m),mark,20000);
+            if(isError(delayedRoundTrip)) throw new Error(`${mode} delayed roundtrip error: ${JSON.stringify(delayedRoundTrip)}`);
 
             // Simulated message loss: intentionally discard local queued state, then recover from authoritative server state.
             clients[1].messages=[];
