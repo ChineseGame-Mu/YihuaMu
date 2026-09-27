@@ -128,12 +128,14 @@ jobs:
                       s=await act(owner,'BeginPlay',mode+' begin play');
                       if(phase(s)!=='Play')throw new Error(mode+' expected Play got '+phase(s));
                       guard=0;
+                      let lastActor=null;
                       while(phase(s)==='Play'){
                         if(++guard>5000)throw new Error(mode+' play guard');
                         const p=ps(s),q=p.trick?.player_queue??[];
                         if(q.length===0){
                           const empty=totalCards(s)===0;
-                          s=await act(owner,'EndTrick',mode+' end trick');
+                          const ender=lastActor??owner;
+                          s=await act(ender,'EndTrick',mode+' end trick');
                           if(empty){
                             const mark=owner.messages.length; owner.send({Action:'StartNewGame'});
                             s=await owner.waitNew(m=>(isState(m)&&phase(m)==='Initialize')||isError(m),mark,30000);
@@ -178,6 +180,7 @@ jobs:
                           if(isState(r)){accepted=r;break;}
                         }
                         if(!accepted)throw new Error(mode+' no legal '+need+'-card play for '+a.name);
+                        lastActor=a;
                         s=accepted;
                       }
                       if(phase(s)!=='Initialize')throw new Error(mode+' game '+game+' finish phase '+phase(s));
