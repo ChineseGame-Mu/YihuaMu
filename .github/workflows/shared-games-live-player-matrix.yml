@@ -127,7 +127,16 @@ jobs:
               await delay(10);
               const own=cards(a);if(!own.length)throw new Error(a.name+' no visible own cards');
               let accepted=null;
-              for(const card of [...new Set(own)]){accepted=await tryAct(a,{PlayCards:[card]});if(accepted)break;}
+              for(const card of [...new Set(own)]){
+                const mark=a.messages.length; a.send({Action:{PlayCards:[card]}});
+                const r=await a.waitNew(m=>{
+                  if(isError(m))return true;
+                  if(!isState(m)||phase(m)!=='Play')return false;
+                  const nq=ps(m)?.trick?.player_queue??[];
+                  return nq.length<q.length || nq[0]!==a.pid;
+                },mark,8000);
+                if(isState(r)){accepted=r;break;}
+              }
               if(!accepted)throw new Error(mode+' no legal single for '+a.name);
               s=accepted;
             }
