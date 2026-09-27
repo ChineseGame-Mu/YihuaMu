@@ -85,9 +85,13 @@ jobs:
                     async function setup(mode,count){
                       const room=(mode==='Tractor'?'T':'F')+Math.random().toString(36).slice(2,5).toUpperCase();
                       const cs=[];const owner=await new Client((mode==='Tractor'?'TX':'FX')+'P1',room).connect();await join(owner);cs.push(owner);
-                      await act(owner,mode==='Tractor'?{SetGameMode:'Tractor'}:{SetGameMode:{FindingFriends:{num_friends:1}}},mode+' mode');
-                      if(mode==='FindingFriends')await act(owner,{SetFriendSelectionPolicy:'TrumpsIncluded'},mode+' friend policy');
+                      await act(owner,{SetGameMode:'Tractor'},mode+' initial mode');
                       for(let i=2;i<=count;i++){const x=await new Client((mode==='Tractor'?'TX':'FX')+'P'+i,room).connect();await join(x);cs.push(x);}
+                      if(mode==='FindingFriends'){
+                        const numFriends=Math.max(1,Math.floor(count/2)-1);
+                        await act(owner,{SetGameMode:{FindingFriends:{num_friends:numFriends}}},mode+' mode');
+                        await act(owner,{SetFriendSelectionPolicy:'TrumpsIncluded'},mode+' friend policy');
+                      }
                       return {room,cs,owner};
                     }
                     async function oneGame(mode,cs,owner,game){
@@ -121,9 +125,12 @@ jobs:
                       if(phase(s)!=='Exchange')throw new Error(mode+' expected Exchange got '+phase(s));
                       await delay(100);
                       if(mode==='FindingFriends'){
-                        const source=cs.find(x=>x!==owner&&cards(x).length>0);if(!source)throw new Error('friend source hand missing');
-                        const friendCard=cards(source)[0];
-                        s=await act(owner,{SetFriends:[{card:friendCard,initial_skip:0}]},mode+' set friend');
+                        const numFriends=Math.max(1,Math.floor(cs.length/2)-1);
+                        const pool=[];
+                        for(const x of cs){if(x===owner)continue;for(const card of cards(x))if(!pool.includes(card))pool.push(card);}
+                        if(pool.length<numFriends)throw new Error('friend source hand missing');
+                        const friends=pool.slice(0,numFriends).map(card=>({card,initial_skip:0}));
+                        s=await act(owner,{SetFriends:friends},mode+' set friends');
                       }
                       s=await act(owner,'BeginPlay',mode+' begin play');
                       if(phase(s)!=='Play')throw new Error(mode+' expected Play got '+phase(s));
