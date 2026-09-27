@@ -93,7 +93,10 @@ jobs:
                     async function oneGame(mode,cs,owner,game){
                       await act(owner,{SetRank:'NT'},mode+' rank');
                       await act(owner,{SetLandlord:owner.pid},mode+' landlord');
-                      let s=await act(owner,'StartGame',mode+' start '+game);
+                      const startMark=owner.messages.length;
+                      owner.send({Action:'StartGame'});
+                      let s=await owner.waitNew(m=>(isState(m)&&phase(m)==='Draw')||isError(m),startMark,30000);
+                      if(isError(s))throw new Error(mode+' start '+game+' '+JSON.stringify(s.Error));
                       if(phase(s)!=='Draw')throw new Error(mode+' game '+game+' start phase '+phase(s));
                       let guard=0;
                       while(phase(s)==='Draw'){
@@ -143,8 +146,29 @@ jobs:
                         await delay(10);
                         const own=cards(a);if(!own.length)throw new Error(a.name+' no visible own cards');
                         let accepted=null;
-                        for(const card of [...new Set(own)]){
-                          const mark=a.messages.length; a.send({Action:{PlayCards:[card]}});
+                        const unique=[...new Set(own)];
+                        const played=p.trick?.played_cards??p.trick?.played??[];
+                        const firstPlay=Array.isArray(played)&&played.length?played[0]:null;
+                        const leadCards=Array.isArray(firstPlay)?firstPlay:(firstPlay?.cards??firstPlay?.PlayCards??[]);
+                        const need=Math.max(1,Array.isArray(leadCards)?leadCards.length:1);
+                        const candidates=[];
+                        const seen=new Set();
+                        const addCandidate=x=>{const k=JSON.stringify(x);if(x.length&&x.length===need&&!seen.has(k)){seen.add(k);candidates.push(x);}};
+                        if(need===1){for(const card of unique)addCandidate([card]);}
+                        else{
+                          const counts={};for(const card of own)counts[card]=(counts[card]??0)+1;
+                          for(const [card,n] of Object.entries(counts))if(n>=need)addCandidate(Array(need).fill(card));
+                          const limit=Math.min(unique.length,12);
+                          const choose=(start,left,acc)=>{
+                            if(candidates.length>=250)return;
+                            if(left===0){addCandidate([...acc]);return;}
+                            for(let i=start;i<=limit-left;i++){acc.push(unique[i]);choose(i+1,left-1,acc);acc.pop();}
+                          };
+                          if(need<=4)choose(0,need,[]);
+                          addCandidate(own.slice(0,need));
+                        }
+                        for(const play of candidates){
+                          const mark=a.messages.length; a.send({Action:{PlayCards:play}});
                           const r=await a.waitNew(m=>{
                             if(isError(m))return true;
                             if(!isState(m)||phase(m)!=='Play')return false;
@@ -153,7 +177,7 @@ jobs:
                           },mark,8000);
                           if(isState(r)){accepted=r;break;}
                         }
-                        if(!accepted)throw new Error(mode+' no legal single for '+a.name);
+                        if(!accepted)throw new Error(mode+' no legal '+need+'-card play for '+a.name);
                         s=accepted;
                       }
                       if(phase(s)!=='Initialize')throw new Error(mode+' game '+game+' finish phase '+phase(s));
