@@ -11,7 +11,7 @@ const gitBlobSha = (path: string): string => {
 describe("approved Guandan visual baseline", () => {
   it("keeps the accepted GuandanTable implementation byte-for-byte unchanged", () => {
     expect(gitBlobSha("../../frontend/src/GuandanTable.tsx")).toBe(
-      "5eb3483c8d3e2fbe4132feaa5e22bdd32a88cb6f",
+      "68b0b8f5904a626ea139ab447be6ee33e120883e",
     );
   });
 

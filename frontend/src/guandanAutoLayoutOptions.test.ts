@@ -23,6 +23,11 @@ describe("Guandan automatic layout options", () => {
 
   test("supports manual group editing and one-click play", () => {
     expect(table).toContain('aria-label="自动理牌手动调整"');
+    expect(table).toContain("选择组合：");
+    expect(table).not.toContain("调整组合：");
+    expect(table).toContain('id="guandan-auto-hand-layout-toolbar"');
+    expect(table).toContain("横式排列");
+    expect(table).toContain("竖式排列");
     expect(table).toContain("moveActiveAutoGroup");
     expect(table).toContain("splitActiveAutoGroup");
     expect(table).toContain("makeSelectedCustomGroup");
