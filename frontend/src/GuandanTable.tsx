@@ -1819,7 +1819,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       aria-label="自动理牌手动调整"
                     >
                       <label htmlFor="guandan-active-auto-group">
-                        调整组合：
+                        选择组合：
                       </label>
                       <select
                         id="guandan-active-auto-group"
@@ -1839,6 +1839,23 @@ const GuandanTable: React.FunctionComponent = () => {
                             {groupIndex + 1}. {group.label}
                           </option>
                         ))}
+                      </select>
+                      <label htmlFor="guandan-auto-hand-layout-toolbar">
+                        排列：
+                      </label>
+                      <select
+                        id="guandan-auto-hand-layout-toolbar"
+                        value={autoHandLayout}
+                        onChange={(event) =>
+                          setAutoHandLayout(
+                            event.target.value === "vertical"
+                              ? "vertical"
+                              : "horizontal",
+                          )
+                        }
+                      >
+                        <option value="horizontal">横式排列</option>
+                        <option value="vertical">竖式排列</option>
                       </select>
                       <button
                         type="button"
