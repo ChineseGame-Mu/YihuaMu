@@ -77,7 +77,10 @@ jobs:
           async function oneGame(mode,cs,owner,game){
             await act(owner,{SetRank:'NT'},mode+' rank');
             await act(owner,{SetLandlord:owner.pid},mode+' landlord');
-            let s=await act(owner,'StartGame',mode+' start '+game);
+            const startMark=owner.messages.length;
+            owner.send({Action:'StartGame'});
+            let s=await owner.waitNew(m=>(isState(m)&&phase(m)==='Draw')||isError(m),startMark,30000);
+            if(isError(s))throw new Error(mode+' start '+game+' '+JSON.stringify(s.Error));
             if(phase(s)!=='Draw')throw new Error(mode+' game '+game+' start phase '+phase(s));
             let guard=0;
             while(phase(s)==='Draw'){
