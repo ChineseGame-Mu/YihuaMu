@@ -12,6 +12,7 @@ import GuandanRoundResultHud from "./GuandanRoundResultHud";
 import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
 import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
+import { prepareGuandanTurnPrompt } from "./guandanTurnPrompt";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -109,6 +110,7 @@ const CleanroomEntry = (): JSX.Element => {
 
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
+    prepareGuandanTurnPrompt();
     const cleanName = name.trim();
     if (cleanName === "") return;
     const url = new URL(window.location.href);

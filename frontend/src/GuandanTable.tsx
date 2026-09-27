@@ -27,6 +27,14 @@ import {
   startGuandanMusic,
   type GuandanMusicMode,
 } from "./guandanMusic";
+import {
+  GUANDAN_TURN_PROMPT_STORAGE_KEY,
+  guandanTurnOpportunityKey,
+  normalizeGuandanTurnPromptEnabled,
+  playGuandanTurnPrompt,
+  prepareGuandanTurnPrompt,
+  shouldPlayGuandanTurnPrompt,
+} from "./guandanTurnPrompt";
 
 const rankLabel: Record<string, string> = {
   Two: "2",
@@ -263,6 +271,11 @@ const GuandanTable: React.FunctionComponent = () => {
       window.localStorage.getItem("guandan_music_mode"),
     ),
   );
+  const [turnPromptEnabled, setTurnPromptEnabled] = React.useState(() =>
+    normalizeGuandanTurnPromptEnabled(
+      window.localStorage.getItem(GUANDAN_TURN_PROMPT_STORAGE_KEY),
+    ),
+  );
   const [matchCelebrationComplete, setMatchCelebrationComplete] =
     React.useState(false);
   const [celebrationNow, setCelebrationNow] = React.useState(() => new Date());
@@ -286,6 +299,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
+  const lastTurnPromptKeyRef = React.useRef<string | null>(null);
 
   const activateMusic = React.useCallback((mode: GuandanMusicMode): void => {
     if (activeMusicModeRef.current === mode) return;
@@ -305,6 +319,7 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     const activateSavedMusic = (): void => {
       activateMusic(musicModeRef.current);
+      prepareGuandanTurnPrompt();
     };
     window.addEventListener("pointerdown", activateSavedMusic, { once: true });
     return () => {
@@ -377,6 +392,47 @@ const GuandanTable: React.FunctionComponent = () => {
     state.seat !== null &&
     state.lastGameWinner !== null &&
     state.seat % 2 !== state.lastGameWinner % 2;
+  const turnPromptEligible = shouldPlayGuandanTurnPrompt({
+    enabled: turnPromptEnabled,
+    connected: status === "connected",
+    gameStarted,
+    dealing,
+    seat: state.seat,
+    turn: state.turn,
+    handCount: state.hand.length,
+    tributePending,
+    trickComplete: state.trickComplete,
+    nextRoundPending,
+    matchComplete: state.matchWinner !== null,
+    playerFinished:
+      state.seat !== null && state.finishOrder.includes(state.seat),
+  });
+  const turnPromptOpportunity =
+    state.turn === null
+      ? null
+      : guandanTurnOpportunityKey(
+          state.tableClearId,
+          state.passes,
+          state.turn,
+          state.tablePlays,
+        );
+
+  React.useEffect(() => {
+    window.localStorage.setItem(
+      GUANDAN_TURN_PROMPT_STORAGE_KEY,
+      turnPromptEnabled ? "on" : "off",
+    );
+  }, [turnPromptEnabled]);
+
+  React.useEffect(() => {
+    if (!turnPromptEligible || turnPromptOpportunity === null) {
+      lastTurnPromptKeyRef.current = null;
+      return;
+    }
+    if (lastTurnPromptKeyRef.current === turnPromptOpportunity) return;
+    lastTurnPromptKeyRef.current = turnPromptOpportunity;
+    playGuandanTurnPrompt();
+  }, [turnPromptEligible, turnPromptOpportunity]);
 
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
@@ -939,6 +995,18 @@ const GuandanTable: React.FunctionComponent = () => {
             <option value="off">关闭音乐</option>
             <option value="relaxing">轻松气氛器乐</option>
             <option value="chinese">中国民乐</option>
+          </select>
+          <br />
+          <label htmlFor="guandan-turn-prompt">出牌声音提示：</label>{" "}
+          <select
+            id="guandan-turn-prompt"
+            value={turnPromptEnabled ? "on" : "off"}
+            onChange={(event) =>
+              setTurnPromptEnabled(event.target.value !== "off")
+            }
+          >
+            <option value="on">开启（铃声＋“请出牌”）</option>
+            <option value="off">关闭</option>
           </select>
           <br />
           <label htmlFor="guandan-hand-sort-order">手牌排列：</label>{" "}
