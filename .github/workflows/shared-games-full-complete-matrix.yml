@@ -40,6 +40,7 @@ jobs:
           NODE
       - name: Run Tractor and Finding Friends complete-game x3 full player matrix
         run: |
+          node --input-type=module <<'NODE'
                     import WebSocket from 'ws';
                     const URL=process.env.WS_URL;
                     const delay=ms=>new Promise(r=>setTimeout(r,ms));
