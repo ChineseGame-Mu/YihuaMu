@@ -23,11 +23,38 @@
 }
 
 .guandan-match-complete-panel:not(.guandan-match-celebrating) {
-  display: flex !important;
-  flex-wrap: wrap;
+  position: absolute !important;
+  z-index: 80 !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  box-sizing: border-box !important;
+  width: min(1100px, calc(100% - 40px)) !important;
+  max-width: calc(100% - 40px) !important;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  grid-template-rows: repeat(3, auto) !important;
   align-items: center;
-  justify-content: center;
-  gap: 10px !important;
+  column-gap: 14px !important;
+  row-gap: 3px !important;
+  overflow: visible !important;
+  transform: translate(-50%, -50%) !important;
+  box-shadow: 0 8px 28px rgb(0 0 0 / 32%) !important;
+}
+
+.guandan-match-complete-panel:not(.guandan-match-celebrating) > strong,
+.guandan-match-complete-panel:not(.guandan-match-celebrating) > span {
+  grid-column: 1 !important;
+  min-width: 0 !important;
+}
+
+.guandan-match-complete-panel:not(.guandan-match-celebrating)
+  > .guandan-match-actions {
+  grid-column: 2 !important;
+  grid-row: 1 / -1 !important;
+  align-self: center !important;
 }
 
 .guandan-match-trophy {
