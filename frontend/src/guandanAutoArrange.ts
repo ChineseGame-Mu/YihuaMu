@@ -79,6 +79,65 @@ const highLabel = (window: GuandanRank[]): string => {
   return rankLabels[aceLow ? "Five" : window[window.length - 1]];
 };
 
+const rankStrengthFromLabel = (label: string): number | null => {
+  const rank = ranks.find((candidate) => rankLabels[candidate] === label);
+  return rank === undefined ? null : ranks.indexOf(rank);
+};
+
+const groupDisplayStrength = (
+  group: GuandanAutoGroup,
+  hand: GuandanCard[],
+): number => {
+  if (group.kind === "joker-bomb") return ranks.length + 2;
+
+  const labelRank =
+    group.kind === "full-house"
+      ? group.label.match(/三带二（(10|[2-9JQKA])带/)?.[1]
+      : group.kind === "consecutive-triples"
+        ? group.label.match(/钢板（(?:10|[2-9JQKA])-(10|[2-9JQKA])）/)?.[1]
+        : group.kind === "straight" ||
+            group.kind === "straight-flush" ||
+            group.kind === "consecutive-pairs"
+          ? group.label.match(/到(10|[2-9JQKA])/)?.[1]
+          : group.kind === "bomb"
+            ? group.label.match(/张(10|[2-9JQKA])炸/)?.[1]
+            : group.kind === "triple"
+              ? group.label.match(/三张(10|[2-9JQKA])/)?.[1]
+              : group.kind === "pair"
+                ? group.label.match(/对子(10|[2-9JQKA])/)?.[1]
+                : group.kind === "single"
+                  ? group.label.match(/单张(10|[2-9JQKA])/)?.[1]
+                  : undefined;
+  if (labelRank !== undefined) {
+    const labelStrength = rankStrengthFromLabel(labelRank);
+    if (labelStrength !== null) return labelStrength;
+  }
+
+  return Math.max(
+    ...group.indexes.map((index) => {
+      const card = hand[index];
+      if ("Joker" in card) {
+        return card.Joker === "Big" ? ranks.length + 1 : ranks.length;
+      }
+      return ranks.indexOf(card.Suited.rank);
+    }),
+  );
+};
+
+const sortGroupsByDisplayStrength = (
+  groups: GuandanAutoGroup[],
+  hand: GuandanCard[],
+): GuandanAutoGroup[] =>
+  groups
+    .map((group, originalOrder) => ({ group, originalOrder }))
+    .sort(
+      (left, right) =>
+        groupDisplayStrength(left.group, hand) -
+          groupDisplayStrength(right.group, hand) ||
+        left.originalOrder - right.originalOrder,
+    )
+    .map(({ group }) => group);
+
 type Target = { rank: GuandanRank; count: number };
 
 /**
@@ -302,5 +361,5 @@ export const arrangeGuandanHand = (
     addGroup("single", label, [index]);
   });
 
-  return groups;
+  return sortGroupsByDisplayStrength(groups, hand);
 };
