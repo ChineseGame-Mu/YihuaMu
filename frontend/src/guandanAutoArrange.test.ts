@@ -57,9 +57,15 @@ describe("automatic Guandan hand arrangement", () => {
     ];
 
     const groups = arrangeGuandanHand(hand, "Two");
-    expect(groups[0]).toMatchObject({ kind: "joker-bomb", label: "四王炸" });
-    expect(groups[1]).toMatchObject({ kind: "bomb", label: "4张6炸" });
-    expect(groups[1].indexes).toEqual([0, 1, 2, 3]);
+    expect(groups).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "joker-bomb", label: "四王炸" }),
+        expect.objectContaining({ kind: "bomb", label: "4张6炸" }),
+      ]),
+    );
+    expect(groups.find(({ kind }) => kind === "bomb")?.indexes).toEqual([
+      0, 1, 2, 3,
+    ]);
   });
 
   test("uses a heart level card as wildcard without using a joker", () => {
@@ -114,5 +120,25 @@ describe("automatic Guandan hand arrangement", () => {
         plan.flatMap(({ indexes }) => indexes).sort((a, b) => a - b),
       ).toEqual(hand.map((_, index) => index));
     }
+  });
+
+  test("orders completed groups from lower to higher strength left-to-right", () => {
+    const hand: GuandanCard[] = [
+      suited("King", "Clubs"),
+      suited("Three", "Diamonds"),
+      { Joker: "Small" },
+      suited("Ace", "Hearts"),
+      suited("Ten", "Spades"),
+      { Joker: "Big" },
+    ];
+
+    expect(arrangeGuandanHand(hand, "Two").map(({ label }) => label)).toEqual([
+      "单张3",
+      "单张10",
+      "单张K",
+      "单张A",
+      "小王",
+      "大王",
+    ]);
   });
 });
