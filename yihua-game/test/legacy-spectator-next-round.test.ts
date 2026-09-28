@@ -40,6 +40,28 @@ const messages = (connection: FakeConnection): any[] =>
   connection.socket.sent.map((text) => JSON.parse(text));
 
 describe("legacy spectator next-round entry", () => {
+  it.each([4, 6, 8, 10, 12, 14])(
+    "removes a player immediately after an explicit leave in a %i-player lobby",
+    async (playerCount) => {
+      const runtime = createServerRuntime();
+      const roomId = `explicit-leave-${playerCount}`;
+      const connection = new FakeConnection({ roomId });
+      await attachLegacyGuandanConnection(runtime, connection);
+      await connection.receive({
+        type: "join",
+        room: roomId,
+        name: "离房玩家",
+        player_count: playerCount,
+      });
+
+      expect(runtime.rooms.get(roomId).room.participants).toHaveLength(1);
+      await connection.receive({ type: "leave" });
+
+      expect(runtime.sockets.count(roomId)).toBe(0);
+      expect(runtime.rooms.get(roomId).room.participants).toHaveLength(0);
+    },
+  );
+
   it("expands a stale four-player lobby so three humans can add three robots to a six-player table", async () => {
     const runtime = createServerRuntime();
     const roomId = "stale-four-to-six";

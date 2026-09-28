@@ -727,14 +727,17 @@ export const attachLegacyGuandanConnection = async (
       }
     | undefined;
 
-  connection.onClose(async () => {
+  const detachActiveConnection = async (): Promise<
+    LegacyAdapterSocket | undefined
+  > => {
     if (active === undefined) return;
     const closed = active;
+    active = undefined;
     runtime.sockets.unregister(closed.roomId, closed.adapter);
     if (
       runtime.sockets.playerConnectionCount(closed.roomId, closed.playerId) > 0
     ) {
-      return;
+      return closed.adapter;
     }
     try {
       const managed = runtime.rooms.get(closed.roomId);
@@ -755,6 +758,11 @@ export const attachLegacyGuandanConnection = async (
     } catch {
       // Room may have been removed while the socket was closing.
     }
+    return closed.adapter;
+  };
+
+  connection.onClose(async () => {
+    await detachActiveConnection();
   });
 
   connection.onText(async (raw) => {
@@ -954,6 +962,12 @@ export const attachLegacyGuandanConnection = async (
 
       if (active === undefined) {
         throw new Error("join is required before game commands");
+      }
+
+      if (message.type === "leave") {
+        const adapter = await detachActiveConnection();
+        await adapter?.close(1000, "left room");
+        return;
       }
 
       if (message.type === "move_seat") {

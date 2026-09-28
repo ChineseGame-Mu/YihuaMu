@@ -31,6 +31,7 @@ export type LegacyClientMessage =
       readonly player_id?: string;
       readonly resume_token?: string;
     }
+  | { readonly type: "leave" }
   | {
       readonly type: "reorder_players";
       readonly order: readonly [number, number];
@@ -215,6 +216,8 @@ export const toCleanroomCommand = (
       throw new Error(
         "legacy join requires room allocation before command translation",
       );
+    case "leave":
+      throw new Error("legacy leave is handled by the gateway");
     case "reorder_players":
       throw new Error(
         "clean-room backend does not support seat reordering yet",
