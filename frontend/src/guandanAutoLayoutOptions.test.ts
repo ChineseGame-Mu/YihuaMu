@@ -52,6 +52,13 @@ describe("Guandan automatic layout options", () => {
       ".guandan-hand.guandan-auto-layout-vertical",
     );
     expect(privateLayoutCss).toContain("display: flex !important");
-    expect(privateLayoutCss).toContain("margin-top: calc(");
+    expect(privateLayoutCss).toContain(
+      "top: var(--guandan-auto-stack-progress) !important",
+    );
+    expect(privateLayoutCss).toContain(
+      "translate: -50% var(--guandan-auto-stack-offset) !important",
+    );
+    expect(table).toContain('"--guandan-auto-stack-progress"');
+    expect(table).toContain('"--guandan-auto-stack-offset"');
   });
 });

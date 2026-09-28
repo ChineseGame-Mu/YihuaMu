@@ -2017,32 +2017,38 @@ const GuandanTable: React.FunctionComponent = () => {
                           <span className="guandan-auto-hand-group-label">
                             {group.label}
                           </span>
-                          {group.cards.map(({ card, originalIndex }) => (
-                            <button
-                              type="button"
-                              key={`${cardGlyph(card)}-${originalIndex}`}
-                              data-card-index={originalIndex}
-                              aria-pressed={selected.includes(originalIndex)}
-                              disabled={!gameStarted}
-                              onClick={() => toggleCard(originalIndex)}
-                              style={{
-                                zIndex: selected.includes(originalIndex)
-                                  ? 100
-                                  : 1,
-                                padding: 0,
-                                border: selected.includes(originalIndex)
-                                  ? "3px solid currentColor"
-                                  : "2px solid transparent",
-                                borderRadius: 8,
-                                background: "transparent",
-                                transform: selected.includes(originalIndex)
-                                  ? "translateY(-12px)"
-                                  : "none",
-                              }}
-                            >
-                              {fullCard(card)}
-                            </button>
-                          ))}
+                          {group.cards.map(
+                            ({ card, originalIndex }, cardIndex) => (
+                              <button
+                                type="button"
+                                key={`${cardGlyph(card)}-${originalIndex}`}
+                                data-card-index={originalIndex}
+                                aria-pressed={selected.includes(originalIndex)}
+                                disabled={!gameStarted}
+                                onClick={() => toggleCard(originalIndex)}
+                                style={
+                                  {
+                                    "--guandan-auto-stack-progress": `${privateHandStackProgress(cardIndex, group.cards.length) * 100}%`,
+                                    "--guandan-auto-stack-offset": `${privateHandStackProgress(cardIndex, group.cards.length) * -100}%`,
+                                    zIndex: selected.includes(originalIndex)
+                                      ? 100
+                                      : cardIndex + 1,
+                                    padding: 0,
+                                    border: selected.includes(originalIndex)
+                                      ? "3px solid currentColor"
+                                      : "2px solid transparent",
+                                    borderRadius: 8,
+                                    background: "transparent",
+                                    transform: selected.includes(originalIndex)
+                                      ? "translateY(-12px)"
+                                      : "none",
+                                  } as React.CSSProperties
+                                }
+                              >
+                                {fullCard(card)}
+                              </button>
+                            ),
+                          )}
                         </div>
                       ))
                     : stackedHand.map((stack) => (
