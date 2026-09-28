@@ -1500,12 +1500,8 @@ pub async fn websocket(
                 let cleanup_name = name.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(GUANDAN_DISCONNECT_GRACE_PERIOD).await;
-                    cleanup_disconnected_waiting_player(
-                        cleanup_storage,
-                        cleanup_key,
-                        cleanup_name,
-                    )
-                    .await;
+                    cleanup_disconnected_waiting_player(cleanup_storage, cleanup_key, cleanup_name)
+                        .await;
                 });
             }
             let _: Result<u64, ()> = storage
@@ -1539,9 +1535,7 @@ mod tests {
                 .collect();
 
             assert!(remove_disconnected_waiting_player(
-                &mut game,
-                "玩家1",
-                false
+                &mut game, "玩家1", false
             ));
             assert_eq!(game.player_names.len(), player_count - 1);
             assert!(!game.player_names.iter().any(|name| name == "玩家1"));
