@@ -26,6 +26,7 @@ use crate::guandan_serving_types::{
 const GUANDAN_MIN_PLAYER_COUNT: usize = 4;
 const GUANDAN_MAX_PLAYER_COUNT: usize = 14;
 const GUANDAN_CLASSIC_PLAYER_COUNT: usize = 4;
+const GUANDAN_DISCONNECT_GRACE_PERIOD: Duration = Duration::from_secs(10);
 
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
@@ -43,6 +44,7 @@ pub enum GuandanClientMessage {
         room: String,
         name: String,
     },
+    Leave,
     ReorderPlayers {
         order: [usize; 2],
     },
@@ -199,6 +201,52 @@ fn set_connected(key: &[u8], name: &str, connected: bool) {
     if room.is_empty() {
         rooms.remove(key);
     }
+}
+fn is_connected(key: &[u8], name: &str) -> bool {
+    GUANDAN_CONNECTIONS
+        .lock()
+        .ok()
+        .and_then(|rooms| rooms.get(key).and_then(|room| room.get(name)).copied())
+        .unwrap_or(0)
+        > 0
+}
+fn remove_disconnected_waiting_player(
+    game: &mut GuandanGameState,
+    name: &str,
+    connected: bool,
+) -> bool {
+    if connected || game.started {
+        return false;
+    }
+    let Some(seat) = game
+        .player_names
+        .iter()
+        .position(|player_name| player_name == name)
+    else {
+        return false;
+    };
+    game.player_names.remove(seat);
+    true
+}
+async fn cleanup_disconnected_waiting_player(
+    storage: HashMapStorage<VersionedGuandanGame>,
+    key: Vec<u8>,
+    name: String,
+) {
+    let key_for_state = key.clone();
+    let _: Result<u64, ()> = storage
+        .execute_operation_with_messages(key, move |mut state| {
+            if !remove_disconnected_waiting_player(
+                &mut state.game,
+                &name,
+                is_connected(&key_for_state, &name),
+            ) {
+                return Ok((state, vec![]));
+            }
+            state.bump_version();
+            Ok((state, vec![GuandanStorageMessage::StateChanged]))
+        })
+        .await;
 }
 fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
     let rooms = GUANDAN_CONNECTIONS.lock().ok();
@@ -596,6 +644,7 @@ pub async fn websocket(
     let mut joined_room: Option<Vec<u8>> = None;
     let mut joined_name: Option<String> = None;
     let mut joined_as_observer = false;
+    let mut requested_leave = false;
     let mut subscription_task = None;
     while let Some(result) = ws_rx.next().await {
         let message = match result {
@@ -795,6 +844,10 @@ pub async fn websocket(
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
+            }
+            GuandanClientMessage::Leave => {
+                requested_leave = true;
+                break;
             }
             GuandanClientMessage::SetParticipation { active } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
@@ -1438,6 +1491,22 @@ pub async fn websocket(
                         }
                     }
                 }
+            } else if requested_leave {
+                cleanup_disconnected_waiting_player(storage.clone(), key.clone(), name.clone())
+                    .await;
+            } else {
+                let cleanup_storage = storage.clone();
+                let cleanup_key = key.clone();
+                let cleanup_name = name.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(GUANDAN_DISCONNECT_GRACE_PERIOD).await;
+                    cleanup_disconnected_waiting_player(
+                        cleanup_storage,
+                        cleanup_key,
+                        cleanup_name,
+                    )
+                    .await;
+                });
             }
             let _: Result<u64, ()> = storage
                 .clone()
@@ -1460,6 +1529,48 @@ mod tests {
     use shengji_core::guandan::Suit;
     fn card(suit: Suit, rank: Rank) -> CardFace {
         CardFace::Suited { suit, rank }
+    }
+    #[test]
+    fn disconnected_waiting_players_are_removed_for_every_supported_table_size() {
+        for player_count in (GUANDAN_MIN_PLAYER_COUNT..=GUANDAN_MAX_PLAYER_COUNT).step_by(2) {
+            let mut game = GuandanGameState::default();
+            game.player_names = (1..=player_count)
+                .map(|seat| format!("玩家{seat}"))
+                .collect();
+
+            assert!(remove_disconnected_waiting_player(
+                &mut game,
+                "玩家1",
+                false
+            ));
+            assert_eq!(game.player_names.len(), player_count - 1);
+            assert!(!game.player_names.iter().any(|name| name == "玩家1"));
+        }
+    }
+    #[test]
+    fn connected_or_started_players_keep_their_seats() {
+        let mut waiting = GuandanGameState::default();
+        waiting.player_names = vec!["玩家1".into(), "玩家2".into()];
+        assert!(!remove_disconnected_waiting_player(
+            &mut waiting,
+            "玩家1",
+            true
+        ));
+        assert_eq!(waiting.player_names, vec!["玩家1", "玩家2"]);
+
+        let mut started = waiting.clone();
+        started.started = true;
+        assert!(!remove_disconnected_waiting_player(
+            &mut started,
+            "玩家1",
+            false
+        ));
+        assert_eq!(started.player_names, vec!["玩家1", "玩家2"]);
+    }
+    #[test]
+    fn explicit_leave_message_is_accepted() {
+        let leave: GuandanClientMessage = serde_json::from_str(r#"{"type":"leave"}"#).unwrap();
+        assert!(matches!(leave, GuandanClientMessage::Leave));
     }
     #[test]
     fn initial_draw_always_selects_a_real_player() {

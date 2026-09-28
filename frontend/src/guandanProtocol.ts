@@ -28,6 +28,7 @@ export type GuandanClientMessage =
       player_id?: string;
       resume_token?: string;
     }
+  | { type: "leave" }
   | { type: "reorder_players"; order: [number, number] }
   | { type: "move_seat"; direction: "left" | "right" }
   | {
