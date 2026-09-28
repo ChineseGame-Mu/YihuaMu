@@ -69,6 +69,9 @@ module.exports = {
     new HtmlWebpackPlugin({
       filename: "index.html",
       template: "static/index.html",
+      templateParameters: {
+        cleanroomCommit: process.env.VERCEL_GIT_COMMIT_SHA || "",
+      },
     }),
     new MiniCssExtractPlugin({
       filename: "style.css",
