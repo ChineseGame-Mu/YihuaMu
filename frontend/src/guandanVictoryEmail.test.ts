@@ -35,7 +35,7 @@ const makeResponse = () => {
 const validRequest = (ip: string) => ({
   method: "POST",
   headers: {
-    origin: "https://yihua-mu.vercel.app",
+    origin: "https://yihuagames.com",
     "x-forwarded-for": ip,
   },
   body: {
@@ -50,6 +50,8 @@ const validRequest = (ip: string) => ({
 describe("Guandan victory screenshot email endpoint", () => {
   const originalApiKey = process.env.RESEND_API_KEY;
   const originalSender = process.env.RESEND_FROM_EMAIL;
+  const originalAllowedOrigins = process.env.SCREENSHOT_ALLOWED_ORIGINS;
+  const originalVercelUrl = process.env.VERCEL_URL;
   const originalFetch = global.fetch;
 
   afterEach(() => {
@@ -57,6 +59,11 @@ describe("Guandan victory screenshot email endpoint", () => {
     else process.env.RESEND_API_KEY = originalApiKey;
     if (originalSender === undefined) delete process.env.RESEND_FROM_EMAIL;
     else process.env.RESEND_FROM_EMAIL = originalSender;
+    if (originalAllowedOrigins === undefined)
+      delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
+    else process.env.SCREENSHOT_ALLOWED_ORIGINS = originalAllowedOrigins;
+    if (originalVercelUrl === undefined) delete process.env.VERCEL_URL;
+    else process.env.VERCEL_URL = originalVercelUrl;
     global.fetch = originalFetch;
     jest.restoreAllMocks();
   });
@@ -117,5 +124,40 @@ describe("Guandan victory screenshot email endpoint", () => {
 
     expect(result().statusCode).toBe(400);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts the production website origin before validating the payload", async () => {
+    delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
+    delete process.env.VERCEL_URL;
+    process.env.RESEND_API_KEY = "test-api-key";
+    process.env.RESEND_FROM_EMAIL = "game@example.com";
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "email_origin_test" }),
+    });
+    global.fetch = fetchMock;
+    const request = validRequest("test-production-origin");
+    request.headers.origin = "https://yihuagames.com";
+    const { response, result } = makeResponse();
+
+    await handler(request, response);
+
+    expect(result().statusCode).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the previous site origin working during migration", async () => {
+    delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
+    delete process.env.VERCEL_URL;
+    const request = {
+      method: "POST",
+      headers: { origin: "https://yihua-mu.vercel.app" },
+      body: {},
+    };
+    const { response, result } = makeResponse();
+
+    await handler(request, response);
+
+    expect(result().statusCode).toBe(400);
   });
 });
