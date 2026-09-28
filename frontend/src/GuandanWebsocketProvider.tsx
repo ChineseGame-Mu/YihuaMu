@@ -254,6 +254,19 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       }, delay);
     };
 
+    const leaveRoom = (): void => {
+      const ws = websocketRef.current;
+      if (
+        lastJoinIdentityRef.current !== null &&
+        ws !== null &&
+        ws.readyState === WebSocket.OPEN
+      ) {
+        ws.send(JSON.stringify({ type: "leave" }));
+      }
+    };
+
+    window.addEventListener("pagehide", leaveRoom);
+
     const connect = (): void => {
       if (!mountedRef.current) return;
       clearQueuedMessages();
@@ -308,6 +321,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
     return () => {
       mountedRef.current = false;
+      window.removeEventListener("pagehide", leaveRoom);
+      leaveRoom();
       delete document.documentElement.dataset.cleanroomCommit;
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
