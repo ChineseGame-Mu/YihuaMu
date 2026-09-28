@@ -7,51 +7,61 @@ import type { JSX } from "react";
 interface IProps {
   confetti: string;
   clearConfetti: () => void;
+  durationMs?: number;
+  dismissOnClick?: boolean;
 }
 
 const Confetti = (props: IProps): JSX.Element => {
-  const duration = 30000;
-  const canvasRef = React.useCallback((canvas: any) => {
-    if (canvas !== null) {
-      const c = confetti.create(canvas, {
-        resize: true,
-      });
-      const animationEnd = Date.now() + duration;
-      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 4 };
-      const randomInRange = (min: number, max: number): number => {
-        return Math.random() * (max - min) + min;
-      };
+  const duration = props.durationMs ?? 30000;
+  const canvasRef = React.useCallback(
+    (canvas: any) => {
+      if (canvas !== null) {
+        const c = confetti.create(canvas, {
+          resize: true,
+        });
+        const animationEnd = Date.now() + duration;
+        const defaults = {
+          startVelocity: 30,
+          spread: 360,
+          ticks: 60,
+          zIndex: 4,
+        };
+        const randomInRange = (min: number, max: number): number => {
+          return Math.random() * (max - min) + min;
+        };
 
-      const interval = setInterval(() => {
-        const timeLeft = animationEnd - Date.now();
-        if (timeLeft < 0) {
-          // Don't clear the interval here; it'll get cleared when the
-          // component is unmounted.
-          return;
-        }
-        const percentDone = timeLeft / duration;
-        const particleCount = 200 * percentDone;
-        // since the particles fall down, start a bit higher than random
-        const number = Math.random() * 4 * percentDone * percentDone;
-        for (let i = 1; i < number; i++) {
-          c({
-            ...defaults,
-            particleCount: particleCount,
-            origin: { x: randomInRange(0.2, 0.8), y: Math.random() - 0.2 },
-            angle: randomInRange(65, 115),
-          })!.then(
-            () => {},
-            () => {},
-          );
-        }
-      }, 500);
+        const interval = setInterval(() => {
+          const timeLeft = animationEnd - Date.now();
+          if (timeLeft < 0) {
+            // Don't clear the interval here; it'll get cleared when the
+            // component is unmounted.
+            return;
+          }
+          const percentDone = timeLeft / duration;
+          const particleCount = 200 * percentDone;
+          // since the particles fall down, start a bit higher than random
+          const number = Math.random() * 4 * percentDone * percentDone;
+          for (let i = 1; i < number; i++) {
+            c({
+              ...defaults,
+              particleCount: particleCount,
+              origin: { x: randomInRange(0.2, 0.8), y: Math.random() - 0.2 },
+              angle: randomInRange(65, 115),
+            })!.then(
+              () => {},
+              () => {},
+            );
+          }
+        }, 500);
 
-      return () => {
-        clearInterval(interval);
-        c.reset();
-      };
-    }
-  }, []);
+        return () => {
+          clearInterval(interval);
+          c.reset();
+        };
+      }
+    },
+    [duration],
+  );
   return (
     <div
       style={{
@@ -61,7 +71,7 @@ const Confetti = (props: IProps): JSX.Element => {
         background: "rgba(255, 255, 255, 0.8)",
         zIndex: 2,
       }}
-      onClick={() => props.clearConfetti()}
+      onClick={props.dismissOnClick === false ? undefined : props.clearConfetti}
     >
       <Timeout timeout={duration} callback={() => props.clearConfetti()} />
       <canvas

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
-    compare::beats_at_level,
+    compare::{beats_at_level, compare_at_level},
     strength::strength_basic,
     team::{Team, TeamLevels},
     tribute::TributePlan,
@@ -38,6 +38,8 @@ fn default_card_count_alert_threshold() -> usize {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
+    #[serde(default)]
+    pub match_id: u64,
     #[serde(default = "default_card_count_alert_threshold")]
     pub card_count_alert_threshold: usize,
     pub player_names: Vec<String>,
@@ -77,6 +79,7 @@ impl Default for GuandanGameState {
     fn default() -> Self {
         Self {
             started: false,
+            match_id: 0,
             card_count_alert_threshold: default_card_count_alert_threshold(),
             player_names: Vec::new(),
             pending_players: Vec::new(),
@@ -196,6 +199,7 @@ impl GuandanGameState {
         match self.pending_tribute.as_ref()? {
             TributePlan::Single { giver, .. } => Some(vec![*giver]),
             TributePlan::Double { givers, .. } => Some(givers.to_vec()),
+            TributePlan::Multi { givers, .. } => Some(givers.clone()),
         }
     }
 
@@ -203,6 +207,7 @@ impl GuandanGameState {
         match self.pending_tribute.as_ref()? {
             TributePlan::Single { receiver, .. } => Some(vec![*receiver]),
             TributePlan::Double { receivers, .. } => Some(receivers.to_vec()),
+            TributePlan::Multi { receivers, .. } => Some(receivers.clone()),
         }
     }
 
@@ -382,8 +387,13 @@ impl GuandanGameState {
                     .ok_or("first tribute card has no comparable strength")?;
                 let second_strength = strength_basic(&[second.card])
                     .ok_or("second tribute card has no comparable strength")?;
+                let second_wins_tie = compare_at_level(second_strength, first_strength, self.level)
+                    == Some(std::cmp::Ordering::Equal)
+                    && second.player < first.player;
                 let (high_giver, high_card, low_giver, low_card) =
-                    if beats_at_level(second_strength, first_strength, self.level) {
+                    if beats_at_level(second_strength, first_strength, self.level)
+                        || second_wins_tie
+                    {
                         (second.player, second.card, first.player, first.card)
                     } else {
                         (first.player, first.card, second.player, second.card)
@@ -416,6 +426,52 @@ impl GuandanGameState {
                     .ok_or("low tribute giver seat is invalid")?
                     .push(second_return);
                 self.turn = high_giver;
+            }
+            TributePlan::Multi { givers, receivers } => {
+                let mut ranked_givers = givers
+                    .iter()
+                    .map(|seat| {
+                        let entry = tribute_cards
+                            .iter()
+                            .find(|entry| entry.player == *seat)
+                            .ok_or("missing expanded tribute card")?;
+                        let strength = strength_basic(&[entry.card])
+                            .ok_or("tribute card has no comparable strength")?;
+                        Ok((*seat, entry.card, strength))
+                    })
+                    .collect::<Result<Vec<_>, &'static str>>()?;
+                ranked_givers.sort_by(|left, right| {
+                    if beats_at_level(left.2, right.2, self.level) {
+                        std::cmp::Ordering::Less
+                    } else if beats_at_level(right.2, left.2, self.level) {
+                        std::cmp::Ordering::Greater
+                    } else {
+                        left.0.cmp(&right.0)
+                    }
+                });
+                let mut receiver_by_rank = receivers.iter();
+                for (giver, tribute, _) in ranked_givers.iter() {
+                    let receiver = *receiver_by_rank
+                        .next()
+                        .ok_or("expanded tribute receiver is missing")?;
+                    let returned = return_cards
+                        .iter()
+                        .find(|entry| entry.player == receiver)
+                        .ok_or("expanded return card is missing")?
+                        .card;
+                    self.hands
+                        .get_mut(receiver)
+                        .ok_or("expanded tribute receiver seat is invalid")?
+                        .push(*tribute);
+                    self.hands
+                        .get_mut(*giver)
+                        .ok_or("expanded tribute giver seat is invalid")?
+                        .push(returned);
+                }
+                self.turn = ranked_givers
+                    .first()
+                    .map(|(seat, _, _)| *seat)
+                    .ok_or("expanded tribute has no giver")?;
             }
         }
         self.clear_tribute_exchange();
@@ -452,9 +508,14 @@ pub fn new_guandan_room(room_name: Vec<u8>) -> VersionedGuandanGame {
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
-    use shengji_core::guandan::{team::Team, tribute::TributePlan, Rank, Suit};
+    use shengji_core::guandan::{
+        team::Team,
+        tribute::{tribute_plan, TributePlan},
+        Rank, Suit, TableConfig,
+    };
 
     fn card(suit: Suit, rank: Rank) -> CardFace {
         CardFace::Suited { suit, rank }
@@ -685,6 +746,71 @@ mod tests {
         state.finalize_tribute_exchange().unwrap();
         assert!(state.hands.iter().all(|hand| hand.len() == 27));
         assert_eq!(state.turn, 3);
+    }
+
+    #[test]
+    fn expanded_exchange_orders_equal_tribute_by_current_seat() {
+        for player_count in [6usize, 8, 10, 12, 14] {
+            let table = TableConfig::new(player_count).unwrap();
+            let receivers = (0..player_count).step_by(2).collect::<Vec<_>>();
+            let givers = (1..player_count).step_by(2).collect::<Vec<_>>();
+            let finish_order = receivers.iter().chain(&givers).copied().collect::<Vec<_>>();
+            let plan = tribute_plan(table, &finish_order).unwrap().unwrap();
+
+            let mut state = GuandanGameState::default();
+            state.level = Rank::Five;
+            state.hands = (0..player_count).map(|_| filler()).collect();
+
+            let best_seat = *givers.last().unwrap();
+            for &giver in &givers {
+                let rank = if giver == best_seat {
+                    Rank::Ace
+                } else {
+                    Rank::King
+                };
+                state.hands[giver][0] = card(Suit::Spades, rank);
+            }
+            let return_ranks = [
+                Rank::Ten,
+                Rank::Nine,
+                Rank::Eight,
+                Rank::Seven,
+                Rank::Six,
+                Rank::Four,
+                Rank::Three,
+            ];
+            for (index, &receiver) in receivers.iter().enumerate() {
+                state.hands[receiver][0] = card(Suit::Diamonds, return_ranks[index]);
+            }
+            state.pending_tribute = Some(plan);
+
+            for &giver in givers.iter().rev() {
+                state.submit_tribute_card(giver, 0).unwrap();
+            }
+            for &receiver in receivers.iter().rev() {
+                state.submit_return_card(receiver, 0).unwrap();
+            }
+            state.finalize_tribute_exchange().unwrap();
+
+            // The unique Ace giver opens. The remaining equal Kings are
+            // paired in current-seat order with the remaining receivers.
+            let mut ranked_givers = vec![best_seat];
+            ranked_givers.extend(givers.iter().copied().filter(|seat| *seat != best_seat));
+            assert_eq!(state.turn, best_seat, "player_count={player_count}");
+            for (index, (&receiver, &giver)) in receivers.iter().zip(&ranked_givers).enumerate() {
+                let expected_tribute = if giver == best_seat {
+                    card(Suit::Spades, Rank::Ace)
+                } else {
+                    card(Suit::Spades, Rank::King)
+                };
+                assert!(state.hands[receiver].contains(&expected_tribute));
+                assert!(state.hands[giver].contains(&card(Suit::Diamonds, return_ranks[index])));
+            }
+            assert!(state.hands.iter().all(|hand| hand.len() == 27));
+            assert!(state.pending_tribute.is_none());
+            assert!(state.tribute_cards.is_empty());
+            assert!(state.return_cards.is_empty());
+        }
     }
 
     #[test]

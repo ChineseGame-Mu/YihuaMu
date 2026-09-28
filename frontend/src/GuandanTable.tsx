@@ -1,8 +1,13 @@
 import * as React from "react";
 
 import SvgCard from "./SvgCard";
+import Confetti from "./Confetti";
+import PersonalSettingsButton from "./PersonalSettingsButton";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
+import { TimerContext } from "./TimerProvider";
+import { createGuandanVictoryScreenshot } from "./guandanVictoryScreenshot";
+import { getPersonalEmail } from "./personalSettings";
 import type {
   GuandanCard,
   GuandanRank,
@@ -143,9 +148,45 @@ const tributeRole = (
     if (plan.Single.receiver === seat) return "receiver";
     return null;
   }
-  if (plan.Double.givers.includes(seat)) return "giver";
-  if (plan.Double.receivers.includes(seat)) return "receiver";
+  if ("Double" in plan) {
+    if (plan.Double.givers.includes(seat)) return "giver";
+    if (plan.Double.receivers.includes(seat)) return "receiver";
+  }
+  if ("Multi" in plan) {
+    if (plan.Multi.givers.includes(seat)) return "giver";
+    if (plan.Multi.receivers.includes(seat)) return "receiver";
+  }
   return null;
+};
+
+const finishOrderSummary = (
+  finishOrder: number[],
+  players: string[],
+): string => {
+  const teamSize = finishOrder.length / 2;
+  const leadingTeam = finishOrder.slice(0, teamSize);
+  const doubleUp =
+    finishOrder.length >= 4 &&
+    finishOrder.length % 2 === 0 &&
+    leadingTeam.every((seat) => seat % 2 === leadingTeam[0] % 2);
+  if (!doubleUp) {
+    return finishOrder
+      .map(
+        (seat, index) =>
+          `第${index + 1}名 ${players[seat] ?? `玩家${seat + 1}`}`,
+      )
+      .join(" ｜ ");
+  }
+  const firstPlaces = leadingTeam
+    .map(
+      (seat, index) => `第${index + 1}名 ${players[seat] ?? `玩家${seat + 1}`}`,
+    )
+    .join(" ｜ ");
+  const doubleDown = finishOrder
+    .slice(teamSize)
+    .map((seat) => players[seat] ?? `玩家${seat + 1}`)
+    .join("、");
+  return `${firstPlaces}（双上） ｜ 双下（${doubleDown}，并列）`;
 };
 
 const DEAL_INTERVAL_MS = 120;
@@ -183,6 +224,7 @@ const guandanErrorLabel = (message: string): string => {
 const GuandanTable: React.FunctionComponent = () => {
   const { state, reset } = React.useContext(GuandanStateContext);
   const { status, send } = React.useContext(GuandanWebsocketContext);
+  const gameTimer = React.useContext(TimerContext);
   const query = React.useMemo(
     () => new URLSearchParams(window.location.search),
     [],
@@ -198,7 +240,15 @@ const GuandanTable: React.FunctionComponent = () => {
   const [dealStep, setDealStep] = React.useState<number | null>(null);
   const [startRequested, setStartRequested] = React.useState(false);
   const [showInitialDrawMini, setShowInitialDrawMini] = React.useState(false);
+  const [showMatchCelebration, setShowMatchCelebration] = React.useState(false);
+  const [showPostMatchChoice, setShowPostMatchChoice] = React.useState(false);
+  const [startingNextMatch, setStartingNextMatch] = React.useState(false);
+  const [screenshotEmail, setScreenshotEmail] = React.useState("");
+  const [screenshotEmailStatus, setScreenshotEmailStatus] = React.useState<
+    "idle" | "missing" | "sending" | "sent" | "failed"
+  >("idle");
   const [showSettings, setShowSettings] = React.useState(false);
+  const [settingsOpenSignal, setSettingsOpenSignal] = React.useState(0);
   const [shuffleFrom, setShuffleFrom] = React.useState("1");
   const [shuffleTo, setShuffleTo] = React.useState("108");
   const [fourColor, setFourColor] = React.useState(
@@ -222,6 +272,8 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
+  const screenshotAttemptRef = React.useRef<string | null>(null);
+  const screenshotRetryUsedRef = React.useRef(false);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -269,6 +321,56 @@ const GuandanTable: React.FunctionComponent = () => {
     state.seat !== null &&
     state.lastGameWinner !== null &&
     state.seat % 2 !== state.lastGameWinner % 2;
+
+  const sendVictoryScreenshot = React.useCallback(
+    async (savedRecipient?: string): Promise<void> => {
+      if (state.matchWinner === null) return;
+      const recipient = (savedRecipient ?? getPersonalEmail(name)).trim();
+      setScreenshotEmail(recipient);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        setScreenshotEmailStatus("missing");
+        return;
+      }
+
+      setScreenshotEmailStatus("sending");
+      try {
+        const screenshot = await createGuandanVictoryScreenshot({
+          winnerTeam: state.matchWinner,
+          players: state.players,
+          finishOrder: state.finishOrder,
+          room: state.room ?? room,
+        });
+        const response = await fetch("/api/send-guandan-victory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: recipient,
+            screenshot,
+            room: state.room ?? room,
+            matchId: state.matchId,
+            winnerTeam: state.matchWinner,
+          }),
+        });
+        if (!response.ok) throw new Error("screenshot email request failed");
+        window.localStorage.setItem(
+          `guandan_screenshot_sent:${state.room ?? room}:${state.matchId}`,
+          recipient,
+        );
+        setScreenshotEmailStatus("sent");
+      } catch {
+        setScreenshotEmailStatus("failed");
+      }
+    },
+    [
+      name,
+      room,
+      state.finishOrder,
+      state.matchId,
+      state.matchWinner,
+      state.players,
+      state.room,
+    ],
+  );
 
   React.useEffect(() => {
     window.localStorage.setItem("guandan_four_color", fourColor ? "on" : "off");
@@ -330,6 +432,62 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     if (serverDealt) setStartRequested(true);
   }, [serverDealt]);
+
+  React.useEffect(() => {
+    setShowMatchCelebration(state.matchWinner !== null);
+    if (state.matchWinner === null) {
+      screenshotAttemptRef.current = null;
+      screenshotRetryUsedRef.current = false;
+      setShowPostMatchChoice(false);
+      setStartingNextMatch(false);
+      setScreenshotEmail("");
+      setScreenshotEmailStatus("idle");
+    }
+  }, [state.matchWinner]);
+
+  React.useEffect(() => {
+    if (state.matchWinner === null) return;
+    setShowPostMatchChoice(false);
+    const timer = gameTimer.setTimeout(
+      () => setShowPostMatchChoice(true),
+      20_000,
+    );
+    return () => gameTimer.clearTimeout(timer);
+  }, [gameTimer, state.matchId, state.matchWinner]);
+
+  React.useEffect(() => {
+    if (state.error !== null) setStartingNextMatch(false);
+  }, [state.error]);
+
+  React.useEffect(() => {
+    if (state.matchWinner === null) return;
+    const matchKey = `${state.room ?? room}:${state.matchId}`;
+    const recipient = getPersonalEmail(name).trim();
+    setScreenshotEmail(recipient);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+      setScreenshotEmailStatus("missing");
+      return;
+    }
+    const attemptKey = `${matchKey}:${recipient}`;
+    if (screenshotAttemptRef.current === attemptKey) return;
+    const sentTo = window.localStorage.getItem(
+      `guandan_screenshot_sent:${matchKey}`,
+    );
+    if (sentTo === recipient && sentTo !== "") {
+      setScreenshotEmailStatus("sent");
+      screenshotAttemptRef.current = attemptKey;
+      return;
+    }
+    screenshotAttemptRef.current = attemptKey;
+    void sendVictoryScreenshot(recipient);
+  }, [
+    name,
+    room,
+    sendVictoryScreenshot,
+    state.matchId,
+    state.matchWinner,
+    state.room,
+  ]);
 
   React.useEffect(() => {
     if (
@@ -443,6 +601,32 @@ const GuandanTable: React.FunctionComponent = () => {
       hasAnimatedCurrentDealRef.current = true;
       setDealStep(0);
     }
+  };
+
+  const retryVictoryScreenshot = (): void => {
+    if (screenshotRetryUsedRef.current) return;
+    screenshotRetryUsedRef.current = true;
+    void sendVictoryScreenshot();
+  };
+
+  const startNextMatch = (): void => {
+    if (
+      startingNextMatch ||
+      state.seat === null ||
+      state.players.length !== playerCount
+    )
+      return;
+    if (send({ type: "start", player_count: playerCount })) {
+      setStartingNextMatch(true);
+      setStartRequested(true);
+      setSelected([]);
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+    }
+  };
+
+  const exitToGameSelection = (): void => {
+    window.location.href = `${window.location.origin}${window.location.pathname}`;
   };
 
   const swapSeat = (targetSeat: number): void => {
@@ -586,6 +770,77 @@ const GuandanTable: React.FunctionComponent = () => {
 
   return (
     <main className="guandan-table">
+      {showMatchCelebration && state.matchWinner !== null && (
+        <Confetti
+          confetti={`${state.matchWinner === "A" ? "A队" : "B队"}打A获胜！`}
+          clearConfetti={() => setShowMatchCelebration(false)}
+          durationMs={10_000}
+          dismissOnClick={false}
+        />
+      )}
+      {showPostMatchChoice && state.matchWinner !== null && (
+        <section
+          className="guandan-post-match-choice"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="guandan-post-match-title"
+        >
+          <div className="guandan-post-match-card">
+            <h1 id="guandan-post-match-title">本场已结束</h1>
+            <p>
+              {screenshotEmailStatus === "sent"
+                ? `胜利截图已发送到 ${screenshotEmail}`
+                : screenshotEmailStatus === "sending"
+                  ? "胜利截图正在发送……"
+                  : screenshotEmailStatus === "failed"
+                    ? "胜利截图发送失败。"
+                    : screenshotEmailStatus === "missing"
+                      ? "尚未设置有效的收件邮箱。"
+                      : "可以继续开始下一场，或退出到游戏选择页面。"}
+            </p>
+            {(screenshotEmailStatus === "failed" ||
+              screenshotEmailStatus === "missing") && (
+              <div className="guandan-post-match-actions">
+                {screenshotEmailStatus === "missing" && (
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={() => setSettingsOpenSignal((value) => value + 1)}
+                  >
+                    设置邮箱
+                  </button>
+                )}
+                {!screenshotRetryUsedRef.current && (
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={retryVictoryScreenshot}
+                  >
+                    重试发送一次
+                  </button>
+                )}
+              </div>
+            )}
+            <div className="guandan-post-match-actions">
+              <button
+                type="button"
+                className="normal"
+                onClick={startNextMatch}
+                disabled={startingNextMatch}
+              >
+                {startingNextMatch ? "正在开始……" : "继续下一局"}
+              </button>
+              <button
+                type="button"
+                className="normal"
+                onClick={exitToGameSelection}
+              >
+                退出
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
       <header className="guandan-status-bar">
         <h1>掼蛋</h1>
         <div>连接状态：{status}</div>
@@ -597,6 +852,10 @@ const GuandanTable: React.FunctionComponent = () => {
         >
           ⚙ 设置
         </button>
+        <PersonalSettingsButton
+          playerName={name}
+          openSignal={settingsOpenSignal}
+        />
       </header>
 
       {showSettings && (
@@ -876,12 +1135,7 @@ const GuandanTable: React.FunctionComponent = () => {
                 aria-label="输赢顺序"
               >
                 <strong>输赢顺序：</strong>
-                {state.finishOrder
-                  .map(
-                    (seat, index) =>
-                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
-                  )
-                  .join(" ｜ ")}
+                {finishOrderSummary(state.finishOrder, state.players)}
               </div>
             )}
             {showInitialDrawMini &&
@@ -1048,15 +1302,10 @@ const GuandanTable: React.FunctionComponent = () => {
               <section
                 className="guandan-notice-panel"
                 role="status"
-                aria-label="四位玩家输赢顺序"
+                aria-label="本局输赢顺序"
               >
-                <strong>四位玩家输赢顺序：</strong>
-                {state.finishOrder
-                  .map(
-                    (seat, index) =>
-                      `第${index + 1}名 ${state.players[seat] ?? `玩家${seat + 1}`}`,
-                  )
-                  .join(" ｜ ")}
+                <strong>本局输赢顺序：</strong>
+                {finishOrderSummary(state.finishOrder, state.players)}
               </section>
             )}
 
@@ -1073,6 +1322,48 @@ const GuandanTable: React.FunctionComponent = () => {
                 <span>本局积分：+{state.lastPromotionSteps ?? 0}</span>
                 {state.lastPromotionSteps !== null && (
                   <span>升级 {state.lastPromotionSteps} 级</span>
+                )}
+              </section>
+            )}
+
+            {state.matchWinner !== null && (
+              <section
+                className="guandan-screenshot-email-status"
+                role="status"
+                aria-live="polite"
+              >
+                {screenshotEmailStatus === "sending" &&
+                  "正在生成并发送打A胜利截图……"}
+                {screenshotEmailStatus === "sent" &&
+                  `邮件发送成功！胜利截图已发送到 ${screenshotEmail}`}
+                {screenshotEmailStatus === "missing" && (
+                  <>
+                    请在“个人设置”中填写有效邮箱，才能发送胜利截图。{" "}
+                    <button
+                      type="button"
+                      className="normal"
+                      onClick={() =>
+                        setSettingsOpenSignal((value) => value + 1)
+                      }
+                    >
+                      设置邮箱后可重试一次
+                    </button>
+                  </>
+                )}
+                {screenshotEmailStatus === "failed" && (
+                  <>
+                    截图发送失败，请检查邮箱或邮件服务配置。{" "}
+                    <button
+                      type="button"
+                      className="normal"
+                      onClick={retryVictoryScreenshot}
+                      disabled={screenshotRetryUsedRef.current}
+                    >
+                      {screenshotRetryUsedRef.current
+                        ? "已用完重试次数"
+                        : "重试发送一次"}
+                    </button>
+                  </>
                 )}
               </section>
             )}

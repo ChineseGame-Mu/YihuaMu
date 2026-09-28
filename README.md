@@ -20,6 +20,35 @@ with `nginx`).
 
 - `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins for CORS requests to the `/api/rpc` endpoint (e.g., `"https://example.com,https://app.example.com"`). Set to `"*"` to allow any origin (not recommended for production). If not set, defaults to allowing common localhost origins for development (`http://localhost:3000,http://localhost:3030,http://127.0.0.1:3000,http://127.0.0.1:3030`).
 
+### Guandan victory screenshot email (Vercel frontend)
+
+The frontend's `/api/send-guandan-victory` function sends the PNG victory
+result image using Resend. Configure these **server-side Vercel environment
+variables** for the frontend project:
+
+- `RESEND_API_KEY`: Resend API key with permission to send email.
+- `RESEND_FROM_EMAIL`: sender address on a domain verified in Resend, for
+  example `Yihua Games <games@example.com>`.
+- `SCREENSHOT_ALLOWED_ORIGIN`: production frontend origin; defaults to
+  `https://yihua-mu.vercel.app`.
+
+Players enter the recipient address in Personal Settings, available from the
+welcome page and game toolbar. This repository has no sign-in or profile
+backend, so the setting is stored in that browser's local storage under the
+player's display name and is available across games when the same name is used.
+When the match winner is set, the client creates a full-screen PNG victory
+result image and posts it to the Vercel function. It displays a sent or failed
+status and allows retrying. Without the Resend key and verified sender address,
+the function returns an error and the UI does not claim that the email was sent.
+
+### Guandan multiplayer tribute
+
+Four-player tribute keeps its single and double exchange rules. In 6–14 player
+tables, a team sweep creates one tribute and one return-card exchange per player
+in each half of the finish order. Tribute cards are ranked by card strength;
+equal values are resolved by current seat order. The highest tribute giver
+opens the next deal.
+
 # Development
 
 ```

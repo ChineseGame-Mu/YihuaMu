@@ -1,5 +1,6 @@
 import * as React from "react";
 import "./welcome.css";
+import PersonalSettingsButton from "./PersonalSettingsButton";
 
 import type { JSX } from "react";
 
@@ -7,6 +8,7 @@ type GameModeChoice = "Tractor" | "FindingFriends";
 
 type WelcomeProps = {
   connected?: boolean;
+  playerName?: string;
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
@@ -15,6 +17,7 @@ const guandanTestHref = (): string =>
 
 const Welcome = ({
   connected = false,
+  playerName = "",
   onSelectGameMode,
 }: WelcomeProps): JSX.Element => (
   <main className="welcome-page">
@@ -97,6 +100,7 @@ const Welcome = ({
       </div>
 
       <div className="welcome-actions">
+        <PersonalSettingsButton playerName={playerName} />
         <a className="welcome-rules-button" href="rules.html">
           查看游戏规则 · Game Rules
         </a>

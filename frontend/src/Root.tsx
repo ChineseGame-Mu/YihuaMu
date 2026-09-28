@@ -96,7 +96,11 @@ const Root = (): JSX.Element => {
           <div className="welcome-shell">
             {headerMessages}
             <Errors errors={state.errors} />
-            <Welcome connected onSelectGameMode={setSelectedGameMode} />
+            <Welcome
+              connected
+              playerName={state.name}
+              onSelectGameMode={setSelectedGameMode}
+            />
             <Credits />
             <TitleHandler playerName={state.name} />
           </div>
@@ -280,7 +284,7 @@ const Root = (): JSX.Element => {
 
   return (
     <div className="welcome-shell">
-      <Welcome onSelectGameMode={setSelectedGameMode} />
+      <Welcome playerName={state.name} onSelectGameMode={setSelectedGameMode} />
       <Credits />
       <TitleHandler playerName={state.name} />
     </div>

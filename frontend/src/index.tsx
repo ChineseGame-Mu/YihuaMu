@@ -72,16 +72,18 @@ const bootstrap = (): void => {
   if (game === "guandan") {
     root_.render(
       <React.Suspense fallback={fallback}>
-        <GuandanWebsocketProvider>
-          <GuandanStateProvider>
-            <ExitGameButton onClick={returnToGameSelection} />
-            <GuandanHeaderDecor />
-            <GuandanCustomSortControls />
-            <GuandanTable />
-            <GuandanNoBeatHint />
-            <GuandanNoBeatControls />
-          </GuandanStateProvider>
-        </GuandanWebsocketProvider>
+        <TimerProvider>
+          <GuandanWebsocketProvider>
+            <GuandanStateProvider>
+              <ExitGameButton onClick={returnToGameSelection} />
+              <GuandanHeaderDecor />
+              <GuandanCustomSortControls />
+              <GuandanTable />
+              <GuandanNoBeatHint />
+              <GuandanNoBeatControls />
+            </GuandanStateProvider>
+          </GuandanWebsocketProvider>
+        </TimerProvider>
       </React.Suspense>,
     );
     return;
