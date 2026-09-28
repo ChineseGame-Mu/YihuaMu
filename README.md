@@ -29,8 +29,10 @@ variables** for the frontend project:
 - `RESEND_API_KEY`: Resend API key with permission to send email.
 - `RESEND_FROM_EMAIL`: sender address on a domain verified in Resend, for
   example `Yihua Games <games@example.com>`.
-- `SCREENSHOT_ALLOWED_ORIGIN`: production frontend origin; defaults to
-  `https://yihua-mu.vercel.app`.
+- `SCREENSHOT_ALLOWED_ORIGINS`: Optional comma-separated additional frontend
+  origins. `https://yihuagames.com` is always allowed; Vercel deployments also
+  allow their own deployment URL. The retired `yihua-mu.vercel.app` hostname
+  is no longer a default production origin.
 
 Players enter the recipient address in Personal Settings, available from the
 welcome page and game toolbar. This repository has no sign-in or profile
