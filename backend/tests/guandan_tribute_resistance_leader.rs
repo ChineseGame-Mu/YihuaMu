@@ -30,6 +30,7 @@ fn single_tribute_resistance_keeps_receiver_as_opening_player() {
     let opening_player = match plan {
         TributePlan::Single { receiver, .. } => receiver,
         TributePlan::Double { receivers, .. } => receivers[0],
+        TributePlan::Multi { .. } => panic!("four-player tribute cannot be multi-player"),
     };
     assert_eq!(opening_player, 0);
 }
@@ -57,6 +58,7 @@ fn double_tribute_resistance_keeps_first_receiver_as_opening_player() {
     let opening_player = match plan {
         TributePlan::Single { receiver, .. } => receiver,
         TributePlan::Double { receivers, .. } => receivers[0],
+        TributePlan::Multi { .. } => panic!("four-player tribute cannot be multi-player"),
     };
     assert_eq!(opening_player, 0);
 }

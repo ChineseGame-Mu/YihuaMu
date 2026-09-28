@@ -38,11 +38,12 @@ export type GuandanClientMessage =
   | { type: "pass" }
   | { type: "end_round" };
 
-export type GuandanTeam = "TeamA" | "TeamB";
+export type GuandanTeam = "A" | "B";
 
 export type GuandanTributePlan =
   | { Single: { giver: number; receiver: number } }
-  | { Double: { givers: [number, number]; receivers: [number, number] } };
+  | { Double: { givers: [number, number]; receivers: [number, number] } }
+  | { Multi: { givers: number[]; receivers: number[] } };
 
 export type GuandanServerMessage =
   | { type: "connected"; protocol: string }
@@ -60,6 +61,7 @@ export type GuandanServerMessage =
   | { type: "hand"; cards: GuandanCard[] }
   | {
       type: "state";
+      match_id: number;
       players: string[];
       pending_players: string[];
       observers: string[];

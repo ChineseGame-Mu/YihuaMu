@@ -9,6 +9,7 @@ import type {
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 
 interface GuandanTableState {
+  matchId: number;
   room: string | null;
   seat: number | null;
   players: string[];
@@ -44,6 +45,7 @@ interface GuandanTableState {
 }
 
 const initialState: GuandanTableState = {
+  matchId: 0,
   room: null,
   seat: null,
   players: [],
@@ -150,6 +152,7 @@ const reduceMessage = (
           message.finish_order.includes(ownSeat));
       return {
         ...state,
+        matchId: message.match_id,
         players: message.players,
         pendingPlayers: message.pending_players,
         observers: message.observers,

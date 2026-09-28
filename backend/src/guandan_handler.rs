@@ -1,6 +1,12 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fmt,
+    sync::Mutex,
+    thread,
+    time::Duration,
+};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
@@ -8,12 +14,12 @@ use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
-    compare::beats_at_level,
+    compare::{beats_at_level, compare_at_level, PlayStrength},
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
     team::{team_for_seat, Team, TeamLevels},
-    tribute::{can_resist_tribute, four_player_tribute_plan, TributePlan},
-    CardFace, Joker, Rank, Suit, TableConfig,
+    tribute::{can_resist_tribute, tribute_plan, TributePlan},
+    CardFace, Joker, PlayPattern, Rank, Suit, TableConfig,
 };
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
@@ -101,6 +107,7 @@ pub enum GuandanServerMessage {
         cards: Vec<CardFace>,
     },
     State {
+        match_id: u64,
         players: Vec<String>,
         pending_players: Vec<String>,
         observers: Vec<String>,
@@ -161,6 +168,41 @@ pub fn validate_start(player_count: usize) -> Result<TableConfig, &'static str> 
 }
 fn validate_starting_seat(seat: Option<usize>) -> Result<usize, &'static str> {
     seat.ok_or("observers cannot start the game")
+}
+fn can_start_match(game: &GuandanGameState, player_count: usize) -> bool {
+    (!game.started || game.match_winner.is_some()) && game.player_names.len() == player_count
+}
+fn initialize_new_match(
+    game: &mut GuandanGameState,
+    hands: Vec<Vec<CardFace>>,
+    initial_draw: Vec<CardFace>,
+    draw_winner: usize,
+) {
+    game.started = true;
+    game.match_id = game.match_id.saturating_add(1);
+    game.level = Rank::Two;
+    game.team_levels = TeamLevels::default();
+    game.hands = hands;
+    game.turn = draw_winner;
+    game.initial_draw = initial_draw;
+    game.initial_draw_winner = Some(draw_winner);
+    game.last_play.clear();
+    game.last_player = None;
+    game.table_plays.clear();
+    game.passes = 0;
+    game.trick_complete = false;
+    game.last_trick_winner = None;
+    game.finish_order.clear();
+    game.last_game_winner = None;
+    game.last_game_winner_team = None;
+    game.last_promotion_steps = None;
+    game.pending_tribute = None;
+    game.tribute_cards.clear();
+    game.return_cards.clear();
+    game.tribute_resisted = false;
+    game.match_winner = None;
+    game.next_round_phase = None;
+    game.next_round_finish_order.clear();
 }
 fn encode(message: &GuandanServerMessage) -> Option<String> {
     serde_json::to_string(message).ok()
@@ -233,6 +275,7 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
 }
 fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
+        match_id: game.match_id,
         players: game.player_names.clone(),
         pending_players: game.pending_players.clone(),
         observers: observers_for(key),
@@ -275,12 +318,320 @@ fn is_robot_name(name: &str) -> bool {
     name.starts_with("机器人")
 }
 
-/// Team identity is a first-layer robot decision. If the current trick leader
-/// is the robot's teammate, the robot yields instead of searching for a
-/// beating play. This prevents wasteful teammate-overcalls, including bombs.
+/// Yield to a teammate's lead unless an opponent is about to finish and the
+/// teammate still has too many cards to be a likely finisher. In that case,
+/// the robot may make a cheap overcall to keep the opponent from going out.
 fn robot_should_yield_to_teammate(game: &GuandanGameState, seat: usize) -> bool {
-    game.last_player
-        .is_some_and(|leader| leader != seat && leader % 2 == seat % 2)
+    let Some(leader) = game
+        .last_player
+        .filter(|leader| *leader != seat && leader % 2 == seat % 2)
+    else {
+        return false;
+    };
+    let opponent_near_finish = game.hands.iter().enumerate().any(|(other, hand)| {
+        other % 2 != seat % 2
+            && !hand.is_empty()
+            && hand.len() <= 2
+            && !game.finish_order.contains(&other)
+    });
+    let teammate_near_finish = game.hands.get(leader).is_some_and(|hand| hand.len() <= 2);
+    !opponent_near_finish || teammate_near_finish
+}
+
+#[derive(Clone)]
+struct RobotPlayCandidate {
+    indexes: Vec<usize>,
+    cards: Vec<CardFace>,
+    strength: PlayStrength,
+}
+
+fn add_robot_candidate(
+    hand: &[CardFace],
+    level: Rank,
+    indexes: Vec<usize>,
+    candidates: &mut Vec<RobotPlayCandidate>,
+) {
+    let cards = indexes
+        .iter()
+        .filter_map(|index| hand.get(*index).copied())
+        .collect::<Vec<_>>();
+    for strength in strengths_at_level(&cards, level) {
+        if candidates
+            .iter()
+            .any(|candidate| candidate.indexes == indexes && candidate.strength == strength)
+        {
+            continue;
+        }
+        candidates.push(RobotPlayCandidate {
+            indexes: indexes.clone(),
+            cards: cards.clone(),
+            strength,
+        });
+    }
+}
+
+fn robot_play_candidates(hand: &[CardFace], level: Rank) -> Vec<RobotPlayCandidate> {
+    let mut candidates = Vec::new();
+    let mut rank_groups = BTreeMap::<Rank, Vec<usize>>::new();
+    let mut small_jokers = Vec::new();
+    let mut big_jokers = Vec::new();
+    for (index, card) in hand.iter().copied().enumerate() {
+        match card {
+            CardFace::Suited { rank, .. } => rank_groups.entry(rank).or_default().push(index),
+            CardFace::Joker(Joker::Small) => small_jokers.push(index),
+            CardFace::Joker(Joker::Big) => big_jokers.push(index),
+        }
+        add_robot_candidate(hand, level, vec![index], &mut candidates);
+    }
+
+    for indexes in rank_groups.values() {
+        for count in 2..=indexes.len() {
+            add_robot_candidate(
+                hand,
+                level,
+                indexes.iter().take(count).copied().collect(),
+                &mut candidates,
+            );
+        }
+    }
+    for indexes in [&small_jokers, &big_jokers] {
+        for count in 2..=indexes.len() {
+            add_robot_candidate(
+                hand,
+                level,
+                indexes.iter().take(count).copied().collect(),
+                &mut candidates,
+            );
+        }
+    }
+    if small_jokers.len() >= 2 && big_jokers.len() >= 2 {
+        let mut indexes = small_jokers.iter().take(2).copied().collect::<Vec<_>>();
+        indexes.extend(big_jokers.iter().take(2).copied());
+        add_robot_candidate(hand, level, indexes, &mut candidates);
+    }
+
+    let rank_order = [
+        Rank::Two,
+        Rank::Three,
+        Rank::Four,
+        Rank::Five,
+        Rank::Six,
+        Rank::Seven,
+        Rank::Eight,
+        Rank::Nine,
+        Rank::Ten,
+        Rank::Jack,
+        Rank::Queen,
+        Rank::King,
+        Rank::Ace,
+    ];
+    let first_of = |rank: Rank| {
+        rank_groups
+            .get(&rank)
+            .and_then(|cards| cards.first())
+            .copied()
+    };
+    for start in 0..=8 {
+        let window = &rank_order[start..start + 5];
+        if let Some(indexes) = window
+            .iter()
+            .map(|rank| first_of(*rank))
+            .collect::<Option<Vec<_>>>()
+        {
+            add_robot_candidate(hand, level, indexes, &mut candidates);
+        }
+    }
+    if let Some(indexes) = [Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five]
+        .iter()
+        .map(|rank| first_of(*rank))
+        .collect::<Option<Vec<_>>>()
+    {
+        add_robot_candidate(hand, level, indexes, &mut candidates);
+    }
+
+    let suits = [Suit::Clubs, Suit::Diamonds, Suit::Hearts, Suit::Spades];
+    for suit in suits {
+        for start in 0..=8 {
+            let indexes = rank_order[start..start + 5]
+                .iter()
+                .map(|rank| {
+                    rank_groups.get(rank).and_then(|group| {
+                        group.iter().copied().find(|index| {
+                            matches!(hand[*index], CardFace::Suited { suit: actual, .. } if actual == suit)
+                        })
+                    })
+                })
+                .collect::<Option<Vec<_>>>();
+            if let Some(indexes) = indexes {
+                add_robot_candidate(hand, level, indexes, &mut candidates);
+            }
+        }
+        let ace_low = [Rank::Ace, Rank::Two, Rank::Three, Rank::Four, Rank::Five];
+        let indexes = ace_low
+            .iter()
+            .map(|rank| {
+                rank_groups.get(rank).and_then(|group| {
+                    group.iter().copied().find(|index| {
+                        matches!(hand[*index], CardFace::Suited { suit: actual, .. } if actual == suit)
+                    })
+                })
+            })
+            .collect::<Option<Vec<_>>>();
+        if let Some(indexes) = indexes {
+            add_robot_candidate(hand, level, indexes, &mut candidates);
+        }
+    }
+
+    for triple_rank in rank_order {
+        let Some(triples) = rank_groups
+            .get(&triple_rank)
+            .filter(|cards| cards.len() >= 3)
+        else {
+            continue;
+        };
+        for (pair_rank, pairs) in &rank_groups {
+            if *pair_rank == triple_rank || pairs.len() < 2 {
+                continue;
+            }
+            let mut indexes = triples.iter().take(3).copied().collect::<Vec<_>>();
+            indexes.extend(pairs.iter().take(2).copied());
+            add_robot_candidate(hand, level, indexes, &mut candidates);
+        }
+    }
+
+    for start in 0..=10 {
+        let pair_indexes = rank_order[start..start + 3]
+            .iter()
+            .map(|rank| {
+                rank_groups
+                    .get(rank)
+                    .filter(|cards| cards.len() >= 2)
+                    .map(|cards| cards.iter().take(2).copied().collect::<Vec<_>>())
+            })
+            .collect::<Option<Vec<_>>>();
+        if let Some(groups) = pair_indexes {
+            add_robot_candidate(
+                hand,
+                level,
+                groups.into_iter().flatten().collect(),
+                &mut candidates,
+            );
+        }
+    }
+    for start in 0..=11 {
+        let triple_indexes = rank_order[start..start + 2]
+            .iter()
+            .map(|rank| {
+                rank_groups
+                    .get(rank)
+                    .filter(|cards| cards.len() >= 3)
+                    .map(|cards| cards.iter().take(3).copied().collect::<Vec<_>>())
+            })
+            .collect::<Option<Vec<_>>>();
+        if let Some(groups) = triple_indexes {
+            add_robot_candidate(
+                hand,
+                level,
+                groups.into_iter().flatten().collect(),
+                &mut candidates,
+            );
+        }
+    }
+    candidates
+}
+
+fn robot_is_bomb(candidate: &RobotPlayCandidate) -> bool {
+    matches!(
+        candidate.strength.pattern,
+        PlayPattern::Bomb | PlayPattern::StraightFlush | PlayPattern::JokerBomb
+    )
+}
+
+fn robot_choose_play(game: &GuandanGameState, seat: usize) -> Option<Vec<usize>> {
+    if robot_should_yield_to_teammate(game, seat) {
+        return None;
+    }
+    let hand = game.hands.get(seat)?;
+    let is_leading = game.last_player.is_none();
+    let candidates = robot_play_candidates(hand, game.level);
+    let legal = candidates
+        .into_iter()
+        .filter(|candidate| {
+            validate_play_against_table(&candidate.cards, &game.last_play, game.level).is_ok()
+        })
+        .collect::<Vec<_>>();
+    if legal.is_empty() {
+        return None;
+    }
+
+    let opponent_near_finish = game.hands.iter().enumerate().any(|(other, other_hand)| {
+        other % 2 != seat % 2
+            && !other_hand.is_empty()
+            && other_hand.len() <= 2
+            && !game.finish_order.contains(&other)
+    });
+    let non_bombs = legal
+        .iter()
+        .filter(|candidate| !robot_is_bomb(candidate))
+        .cloned()
+        .collect::<Vec<_>>();
+    if is_leading {
+        if let Some(finishing_play) = legal
+            .iter()
+            .find(|candidate| candidate.cards.len() == hand.len() && !robot_is_bomb(candidate))
+        {
+            return Some(finishing_play.indexes.clone());
+        }
+        if let Some(finishing_bomb) = legal
+            .iter()
+            .find(|candidate| candidate.cards.len() == hand.len() && robot_is_bomb(candidate))
+        {
+            return Some(finishing_bomb.indexes.clone());
+        }
+        let lead = non_bombs
+            .iter()
+            .max_by_key(|candidate| {
+                (
+                    candidate.cards.len(),
+                    usize::MAX - candidate.strength.main_rank as usize,
+                )
+            })
+            .or_else(|| {
+                legal.iter().find(|candidate| {
+                    robot_is_bomb(candidate)
+                        && (candidate.cards.len() == hand.len() || opponent_near_finish)
+                })
+            })?;
+        return Some(lead.indexes.clone());
+    }
+
+    if let Some(finishing_play) = legal
+        .iter()
+        .find(|candidate| candidate.cards.len() == hand.len() && !robot_is_bomb(candidate))
+    {
+        return Some(finishing_play.indexes.clone());
+    }
+    if let Some(finishing_bomb) = legal
+        .iter()
+        .find(|candidate| candidate.cards.len() == hand.len() && robot_is_bomb(candidate))
+    {
+        return Some(finishing_bomb.indexes.clone());
+    }
+
+    let bombs = legal
+        .iter()
+        .filter(|candidate| robot_is_bomb(candidate))
+        .collect::<Vec<_>>();
+    let response_pool = if opponent_near_finish && non_bombs.is_empty() {
+        bombs
+    } else {
+        non_bombs.iter().collect()
+    };
+    let chosen = response_pool.iter().min_by(|left, right| {
+        compare_at_level(left.strength, right.strength, game.level)
+            .unwrap_or_else(|| left.cards.len().cmp(&right.cards.len()))
+    })?;
+    Some(chosen.indexes.clone())
 }
 
 fn initial_draw_value(card: CardFace) -> usize {
@@ -331,6 +682,24 @@ fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &
         || !player_count.is_multiple_of(2)
     {
         return Err("expanded Guandan settlement requires 6 to 14 even players");
+    }
+    // In expanded tables, once every player on one team has finished, every
+    // remaining hand belongs to the other team. End the deal immediately;
+    // players on the losing team do not need to play out their internal order.
+    let team_size = player_count / 2;
+    if game.finish_order.len() >= team_size {
+        let first_team = game.finish_order[..team_size]
+            .iter()
+            .map(|seat| seat % 2)
+            .collect::<std::collections::HashSet<_>>();
+        if first_team.len() == 1 {
+            for seat in 0..player_count {
+                if !game.finish_order.contains(&seat) {
+                    game.finish_order.push(seat);
+                    game.hands[seat].clear();
+                }
+            }
+        }
     }
     if game.finish_order.len() == player_count - 1 {
         let last_seat = (0..player_count)
@@ -487,7 +856,10 @@ fn validate_play_against_table(
 }
 
 fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
-    for _ in 0..1 {
+    // Resolve consecutive bot seats after each human action, but cap one pass
+    // through the table so an all-bot room cannot monopolize the server loop.
+    let max_bot_turns = game.player_names.len();
+    for _ in 0..max_bot_turns {
         if game.normal_play_blocked() || !game.started || game.trick_complete {
             break;
         }
@@ -504,21 +876,18 @@ fn run_robot_turns(game: &mut GuandanGameState) -> Result<(), &'static str> {
         // Strategic gate BEFORE card-strength evaluation: never compete with
         // a teammate who currently owns the trick. Only when an opponent leads
         // (or the table is empty) do we search for a legal beating play.
-        let chosen = if robot_should_yield_to_teammate(game, seat) {
-            None
-        } else {
-            game.hands[seat]
+        // Rebuild possible combinations from the current hand on every bot
+        // turn, so earlier plays continuously change its available plans.
+        let chosen = robot_choose_play(game, seat);
+        if let Some(mut indexes) = chosen {
+            indexes.sort_unstable();
+            let cards = indexes
                 .iter()
-                .enumerate()
-                .find_map(|(index, card)| {
-                    validate_play_against_table(&[*card], &game.last_play, game.level)
-                        .is_ok()
-                        .then_some(index)
-                })
-        };
-        if let Some(index) = chosen {
-            let card = game.hands[seat].remove(index);
-            let cards = vec![card];
+                .rev()
+                .map(|index| game.hands[seat].remove(*index))
+                .collect::<Vec<_>>();
+            let mut cards = cards;
+            cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
             game.table_plays.push(GuandanTablePlay {
@@ -1086,8 +1455,7 @@ pub async fn websocket(
                 let result = storage
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
-                        if state.game.started || state.game.player_names.len() != table.player_count
-                        {
+                        if !can_start_match(&state.game, table.player_count) {
                             return Err(());
                         }
                         let mut rng = thread_rng();
@@ -1100,28 +1468,7 @@ pub async fn websocket(
                         let mut draw_deck = build_deck(table);
                         let (initial_draw, draw_winner) =
                             draw_starting_seat(&mut draw_deck, table.player_count);
-                        state.game.started = true;
-                        state.game.hands = hands;
-                        state.game.turn = draw_winner;
-                        state.game.initial_draw = initial_draw;
-                        state.game.initial_draw_winner = Some(draw_winner);
-                        state.game.last_play.clear();
-                        state.game.last_player = None;
-                        state.game.table_plays.clear();
-                        state.game.passes = 0;
-                        state.game.trick_complete = false;
-                        state.game.last_trick_winner = None;
-                        state.game.finish_order.clear();
-                        state.game.last_game_winner = None;
-                        state.game.last_game_winner_team = None;
-                        state.game.last_promotion_steps = None;
-                        state.game.pending_tribute = None;
-                        state.game.tribute_cards.clear();
-                        state.game.return_cards.clear();
-                        state.game.tribute_resisted = false;
-                        state.game.match_winner = None;
-                        state.game.next_round_phase = None;
-                        state.game.next_round_finish_order.clear();
+                        initialize_new_match(&mut state.game, hands, initial_draw, draw_winner);
                         run_robot_turns(&mut state.game).map_err(|_| ())?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
@@ -1246,12 +1593,9 @@ pub async fn websocket(
                         }
                         let table = validate_start(state.game.player_names.len())
                             .map_err(PlayError::Invalid)?;
-                        if table.player_count == GUANDAN_CLASSIC_PLAYER_COUNT {
-                            let plan = four_player_tribute_plan(
-                                table,
-                                &state.game.next_round_finish_order,
-                            )
-                            .map_err(PlayError::Invalid)?;
+                        if let Some(plan) = tribute_plan(table, &state.game.next_round_finish_order)
+                            .map_err(PlayError::Invalid)?
+                        {
                             if can_resist_tribute(&plan, &state.game.hands) {
                                 state.game.tribute_resisted = true;
                             } else {
@@ -1562,6 +1906,7 @@ pub async fn websocket(
 }
 
 #[cfg(test)]
+#[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
     use shengji_core::guandan::Suit;
@@ -1597,6 +1942,47 @@ mod tests {
             validate_starting_seat(None),
             Err("observers cannot start the game")
         );
+    }
+    #[test]
+    fn starting_a_new_match_is_allowed_only_after_the_previous_match_ends() {
+        let mut game = GuandanGameState {
+            started: true,
+            player_names: vec!["A".into(), "B".into(), "C".into(), "D".into()],
+            ..GuandanGameState::default()
+        };
+        assert!(!can_start_match(&game, 4));
+        game.match_winner = Some(Team::A);
+        assert!(can_start_match(&game, 4));
+        assert!(!can_start_match(&game, 6));
+    }
+    #[test]
+    fn new_match_resets_the_previous_result_and_starts_at_two() {
+        let mut game = GuandanGameState {
+            started: true,
+            match_id: 12,
+            level: Rank::Ace,
+            finish_order: vec![0, 2, 1, 3],
+            match_winner: Some(Team::A),
+            next_round_phase: Some(GuandanNextRoundPhase::AwaitingShuffle),
+            next_round_finish_order: vec![0, 2, 1],
+            ..GuandanGameState::default()
+        };
+        let new_hands = (0..4).map(|_| vec![card(Suit::Clubs, Rank::Two)]).collect();
+        let draw = vec![card(Suit::Diamonds, Rank::Ace); 4];
+
+        initialize_new_match(&mut game, new_hands, draw.clone(), 2);
+
+        assert_eq!(game.match_id, 13);
+        assert_eq!(game.level, Rank::Two);
+        assert_eq!(game.team_levels, TeamLevels::default());
+        assert_eq!(game.turn, 2);
+        assert_eq!(game.initial_draw, draw);
+        assert!(game.started);
+        assert!(game.match_winner.is_none());
+        assert!(game.finish_order.is_empty());
+        assert!(game.next_round_phase.is_none());
+        assert!(game.next_round_finish_order.is_empty());
+        assert!(game.hands.iter().all(|hand| hand.len() == 1));
     }
     #[test]
     fn seat_reorder_command_deserializes() {
@@ -1745,6 +2131,64 @@ mod tests {
         assert!(game.table_plays.is_empty());
     }
     #[test]
+    fn expanded_table_ends_when_one_team_finishes_all_players() {
+        for player_count in (6..=14).step_by(2) {
+            let mut game = GuandanGameState::default();
+            game.started = true;
+            game.player_names = (0..player_count).map(|seat| format!("P{seat}")).collect();
+            game.hands = (0..player_count)
+                .map(|seat| {
+                    if seat % 2 == 0 {
+                        vec![]
+                    } else {
+                        vec![card(Suit::Clubs, Rank::Two)]
+                    }
+                })
+                .collect();
+            game.finish_order = (0..player_count).step_by(2).collect();
+
+            assert!(settle_and_redeal_if_complete(&mut game).unwrap());
+            let expected_order = (0..player_count)
+                .step_by(2)
+                .chain((1..player_count).step_by(2))
+                .collect::<Vec<_>>();
+            assert_eq!(game.finish_order, expected_order);
+            assert!(game.hands.iter().all(Vec::is_empty));
+            assert_eq!(game.last_game_winner, Some(0));
+            assert_eq!(game.last_promotion_steps, Some(1));
+            assert_eq!(game.team_levels.team_a, Rank::Three);
+            assert_eq!(
+                game.next_round_finish_order,
+                expected_order[..player_count - 1].to_vec()
+            );
+            assert_eq!(
+                game.next_round_phase,
+                Some(GuandanNextRoundPhase::AwaitingShuffle)
+            );
+        }
+    }
+
+    #[test]
+    fn expanded_table_keeps_playing_until_a_team_is_fully_out() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = (0..6).map(|seat| format!("P{seat}")).collect();
+        game.hands = vec![
+            vec![],
+            vec![card(Suit::Clubs, Rank::Two)],
+            vec![],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.finish_order = vec![0, 2, 1];
+
+        assert!(!settle_and_redeal_if_complete(&mut game).unwrap());
+        assert_eq!(game.finish_order, vec![0, 2, 1]);
+        assert_eq!(game.team_levels.team_a, Rank::Two);
+        assert!(game.next_round_phase.is_none());
+    }
+    #[test]
     fn robot_team_identity_is_a_first_layer_decision() {
         let mut game = GuandanGameState::default();
         game.player_names = vec![
@@ -1763,6 +2207,168 @@ mod tests {
 
         game.last_player = None;
         assert!(!robot_should_yield_to_teammate(&game, 0));
+    }
+
+    #[test]
+    fn robot_yields_to_a_near_finishing_teammate_despite_opponent_threat() {
+        let mut game = GuandanGameState::default();
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Queen)],
+            vec![card(Suit::Clubs, Rank::Two)],
+            vec![card(Suit::Clubs, Rank::Three); 2],
+            vec![card(Suit::Clubs, Rank::Four); 6],
+        ];
+        game.last_player = Some(2);
+        game.last_play = vec![card(Suit::Diamonds, Rank::Ten)];
+
+        assert!(robot_should_yield_to_teammate(&game, 0));
+        assert!(robot_choose_play(&game, 0).is_none());
+    }
+
+    #[test]
+    fn robot_can_overcall_teammate_with_a_cheap_card_to_block_finishing_opponent() {
+        let mut game = GuandanGameState::default();
+        game.level = Rank::Two;
+        game.hands = vec![
+            vec![
+                card(Suit::Spades, Rank::Queen),
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                card(Suit::Hearts, Rank::Three),
+                card(Suit::Spades, Rank::Three),
+            ],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Six); 8],
+            vec![card(Suit::Clubs, Rank::Seven); 6],
+        ];
+        game.last_player = Some(2);
+        game.last_play = vec![card(Suit::Clubs, Rank::Ten)];
+
+        assert!(!robot_should_yield_to_teammate(&game, 0));
+        let chosen = robot_choose_play(&game, 0).unwrap();
+        assert_eq!(
+            chosen,
+            vec![0],
+            "play the Queen and keep the four-card bomb"
+        );
+    }
+
+    #[test]
+    fn robot_rebuilds_a_multi_card_play_from_its_current_hand() {
+        let mut game = GuandanGameState::default();
+        game.level = Rank::Two;
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Diamonds, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Diamonds, Rank::Eight),
+            ],
+            vec![],
+            vec![],
+            vec![],
+        ];
+        let first = robot_choose_play(&game, 0).unwrap();
+        assert_eq!(first.len(), 2);
+        let first_cards = first
+            .iter()
+            .map(|index| game.hands[0][*index])
+            .collect::<Vec<_>>();
+        for index in first.iter().rev() {
+            game.hands[0].remove(*index);
+        }
+        let next = robot_choose_play(&game, 0).unwrap();
+        assert_eq!(next.len(), 2);
+        let next_cards = next
+            .iter()
+            .map(|index| game.hands[0][*index])
+            .collect::<Vec<_>>();
+        assert_ne!(next_cards, first_cards);
+    }
+
+    #[test]
+    fn robot_saves_bomb_when_a_non_bomb_can_block_a_threat() {
+        let hand = vec![
+            CardFace::Joker(Joker::Small),
+            CardFace::Joker(Joker::Big),
+            card(Suit::Clubs, Rank::Three),
+            card(Suit::Diamonds, Rank::Three),
+            card(Suit::Hearts, Rank::Three),
+            card(Suit::Spades, Rank::Three),
+        ];
+        let mut game = GuandanGameState::default();
+        game.level = Rank::Two;
+        game.hands = vec![
+            hand.clone(),
+            vec![card(Suit::Clubs, Rank::Four); 5],
+            vec![],
+            vec![],
+        ];
+        game.last_player = Some(1);
+        game.last_play = vec![card(Suit::Clubs, Rank::Ace)];
+        assert_eq!(robot_choose_play(&game, 0).unwrap().len(), 1);
+
+        game.hands[1] = vec![card(Suit::Clubs, Rank::Four)];
+        assert_eq!(robot_choose_play(&game, 0).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn robot_uses_bomb_to_block_a_threat_when_no_regular_response_can_win() {
+        let mut game = GuandanGameState::default();
+        game.level = Rank::Two;
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                card(Suit::Hearts, Rank::Three),
+                card(Suit::Spades, Rank::Three),
+            ],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Six); 8],
+            vec![card(Suit::Clubs, Rank::Seven); 6],
+        ];
+        game.last_player = Some(1);
+        game.last_play = vec![card(Suit::Spades, Rank::Ace)];
+
+        let chosen = robot_choose_play(&game, 0).unwrap();
+        assert_eq!(chosen.len(), 4);
+    }
+
+    #[test]
+    fn consecutive_robot_seats_both_act_before_the_next_human_turn() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.level = Rank::Two;
+        game.player_names = vec![
+            "机器人1".into(),
+            "机器人2".into(),
+            "玩家3".into(),
+            "玩家4".into(),
+        ];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Spades, Rank::King),
+            ],
+            vec![
+                card(Suit::Clubs, Rank::Ace),
+                card(Suit::Diamonds, Rank::Three),
+            ],
+            vec![
+                card(Suit::Clubs, Rank::Two),
+                card(Suit::Diamonds, Rank::Six),
+            ],
+            vec![
+                card(Suit::Clubs, Rank::Four),
+                card(Suit::Diamonds, Rank::Seven),
+            ],
+        ];
+
+        run_robot_turns(&mut game).unwrap();
+
+        assert_eq!(game.table_plays.len(), 2);
+        assert_eq!(game.turn, 2);
+        assert!(game.table_plays.iter().all(|play| play.cards.len() == 1));
     }
 
     #[test]
