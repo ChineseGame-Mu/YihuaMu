@@ -146,15 +146,18 @@ describe("Guandan victory screenshot email endpoint", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not use the retired Vercel hostname as a production origin", async () => {
+  it("keeps the previous site origin working during migration", async () => {
     delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
     delete process.env.VERCEL_URL;
-    const request = validRequest("test-retired-origin");
-    request.headers.origin = "https://yihua-mu.vercel.app";
+    const request = {
+      method: "POST",
+      headers: { origin: "https://yihua-mu.vercel.app" },
+      body: {},
+    };
     const { response, result } = makeResponse();
 
     await handler(request, response);
 
-    expect(result().statusCode).toBe(403);
+    expect(result().statusCode).toBe(400);
   });
 });

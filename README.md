@@ -30,9 +30,12 @@ variables** for the frontend project:
 - `RESEND_FROM_EMAIL`: sender address on a domain verified in Resend, for
   example `Yihua Games <games@example.com>`.
 - `SCREENSHOT_ALLOWED_ORIGINS`: Optional comma-separated additional frontend
-  origins. `https://yihuagames.com` is always allowed; Vercel deployments also
-  allow their own deployment URL. The retired `yihua-mu.vercel.app` hostname
-  is no longer a default production origin.
+  origins. `https://yihuagames.com` is the canonical URL. Both the previous
+  `yihua-mu.vercel.app` origin and Vercel's current production alias remain
+  accepted during migration. Vercel deployments also allow their own deployment
+  URL. Browser settings are origin-scoped, so players need to re-enter their
+  email on the canonical domain; the previous site's local settings remain on
+  that previous origin.
 
 Players enter the recipient address in Personal Settings, available from the
 welcome page and game toolbar. This repository has no sign-in or profile
