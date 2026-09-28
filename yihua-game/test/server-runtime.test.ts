@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { routeHttp } from "../src/core/http-router.js";
 import { createServerRuntime } from "../src/core/server-runtime.js";
+import { addHuman, disconnectHuman } from "../src/core/room.js";
 import {
   attachUpgradedConnection,
   websocketContextFromRequest,
@@ -41,6 +42,44 @@ describe("independent server runtime", () => {
       ok: true,
       service: "yihua-game",
     });
+  });
+
+  it("publishes privacy-safe online counts for cleanroom rooms 0001-0010", () => {
+    const runtime = createServerRuntime();
+    const first = runtime.rooms.create("cr-release-0001", 4);
+    runtime.rooms.set("cr-release-0001", {
+      ...first,
+      room: addHuman(first.room, { id: "secret-id", name: "甲", seat: 0 }),
+    });
+    const tenth = runtime.rooms.create("cr-release-0010", 4);
+    const occupiedTenth = addHuman(tenth.room, {
+      id: "left-player",
+      name: "乙",
+      seat: 0,
+    });
+    runtime.rooms.set("cr-release-0010", {
+      ...tenth,
+      room: disconnectHuman(occupiedTenth, "left-player"),
+    });
+    runtime.rooms.create("private-room", 4);
+
+    const response = routeHttp(runtime, {
+      method: "GET",
+      path: "/api/guandan/rooms",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers["access-control-allow-origin"]).toBe("*");
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(JSON.parse(response.body)).toEqual({
+      rooms: [
+        { roomId: "cr-release-0001", humanCount: 1, phase: "lobby" },
+        { roomId: "cr-release-0010", humanCount: 0, phase: "lobby" },
+      ],
+    });
+    expect(response.body).not.toContain("secret-id");
+    expect(response.body).not.toContain("甲");
+    expect(response.body).not.toContain("private-room");
   });
 
   it("maps websocket upgrade requests to room contexts", () => {

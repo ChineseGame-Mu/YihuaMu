@@ -19,6 +19,17 @@ const json = (status: number, value: unknown): HttpResponse => ({
   body: JSON.stringify(value),
 });
 
+const publicJson = (status: number, value: unknown): HttpResponse => ({
+  ...json(status, value),
+  headers: {
+    "content-type": "application/json; charset=utf-8",
+    "access-control-allow-origin": "*",
+    "cache-control": "no-store",
+  },
+});
+
+const publicCleanroomId = /^cr-[a-z0-9-]+-(?:000[1-9]|0010)$/i;
+
 const supportedPlayerCounts = new Set([4, 6, 8, 10, 12, 14]);
 
 const isSupportedPlayerCount = (
@@ -36,6 +47,21 @@ export const routeHttp = (
 
   if (request.method === "GET" && request.path === "/api/rooms") {
     return json(200, { rooms: runtime.rooms.listRoomIds() });
+  }
+
+  if (request.method === "GET" && request.path === "/api/guandan/rooms") {
+    return publicJson(200, {
+      rooms: runtime.rooms
+        .list()
+        .filter(({ room }) => publicCleanroomId.test(room.roomId))
+        .map(({ room, game }) => ({
+          roomId: room.roomId,
+          humanCount: room.participants.filter(
+            ({ kind, connected }) => kind === "human" && connected,
+          ).length,
+          phase: game.phase,
+        })),
+    });
   }
 
   if (request.method === "POST" && request.path === "/api/rooms") {

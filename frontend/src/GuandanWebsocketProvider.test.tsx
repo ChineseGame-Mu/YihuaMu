@@ -1,7 +1,19 @@
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
+  shouldCoalesceGuandanServerMessage,
 } from "./GuandanWebsocketProvider";
+
+describe("Guandan server message queue", () => {
+  test("never coalesces state transitions that clear and replace table cards", () => {
+    expect(shouldCoalesceGuandanServerMessage({ type: "state" })).toBe(false);
+  });
+
+  test("still coalesces replaceable lobby and private-hand snapshots", () => {
+    expect(shouldCoalesceGuandanServerMessage({ type: "waiting" })).toBe(true);
+    expect(shouldCoalesceGuandanServerMessage({ type: "hand" })).toBe(true);
+  });
+});
 
 describe("cleanroom deployment room isolation", () => {
   test("isolates the same visible room across immutable Vercel deployments", () => {

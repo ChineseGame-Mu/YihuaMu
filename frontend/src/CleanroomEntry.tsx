@@ -1,6 +1,9 @@
 import * as React from "react";
 import type { JSX } from "react";
-import GuandanWebsocketProvider, { cleanroomBuildCommit } from "./GuandanWebsocketProvider";
+import GuandanWebsocketProvider, {
+  cleanroomBuildCommit,
+  cleanroomDeploymentRoom,
+} from "./GuandanWebsocketProvider";
 import GuandanStateProvider, { GuandanStateContext } from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
 import GuandanStartGate from "./GuandanStartGate";
@@ -14,6 +17,14 @@ import ExitGameButton from "./ExitGameButton";
 import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
 import { prepareGuandanTurnPrompt } from "./guandanTurnPrompt";
 import {
+  CLEANROOM_ROOM_IDS,
+  availabilityByVisibleRoom,
+  cleanroomRoomOptionLabel,
+  type CleanroomRoomAvailability,
+  type CleanroomRoomId,
+  type CleanroomRoomSummary,
+} from "./cleanroomRoomAvailability";
+import {
   celebrationFireworks,
   formatCelebrationDateTime,
 } from "./guandanMatchCelebration";
@@ -25,9 +36,11 @@ import "./cleanroom-public-player-names.css";
 import "./guandan-real-test-20260916.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
-const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
-type SelectableRoom = (typeof selectableRooms)[number];
+const selectableRooms = CLEANROOM_ROOM_IDS;
+type SelectableRoom = CleanroomRoomId;
 const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
+const cleanroomRoomAvailabilityUrl =
+  "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = (value: string | null): value is SelectableRoom => value !== null && selectableRooms.includes(value as SelectableRoom);
 const roomFromLocation = (): SelectableRoom => {
@@ -104,7 +117,39 @@ const CleanroomEntry = (): JSX.Element => {
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
   const [name, setName] = React.useState(initial.get("playerName") ?? "");
   const [joined, setJoined] = React.useState(false);
+  const [roomAvailability, setRoomAvailability] = React.useState<
+    Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
+  >({});
   React.useEffect(() => { document.documentElement.dataset.cleanroomCommit = cleanroomBuildCommit; return () => { delete document.documentElement.dataset.cleanroomCommit; }; }, []);
+  React.useEffect(() => {
+    if (joined) return undefined;
+    let active = true;
+    const refresh = async (): Promise<void> => {
+      try {
+        const response = await fetch(cleanroomRoomAvailabilityUrl, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          readonly rooms?: readonly CleanroomRoomSummary[];
+        };
+        if (!active || !Array.isArray(payload.rooms)) return;
+        setRoomAvailability(
+          availabilityByVisibleRoom(payload.rooms, (room) =>
+            cleanroomDeploymentRoom(room, window.location.hostname) ?? room,
+          ),
+        );
+      } catch {
+        // Keep the room selector usable if the read-only status service is unavailable.
+      }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [joined]);
   if (showCelebrationPreview) return <CelebrationPreview />;
   if (joined) return <CleanroomTable />;
 
@@ -134,7 +179,7 @@ const CleanroomEntry = (): JSX.Element => {
       <div className="cleanroom-final-stage">
         <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
-          <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{room}</option>)}</select>
+          <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room])}</option>)}</select>
           <select id="cleanroom-player-count" className="cleanroom-final-control cleanroom-final-players" aria-label="开始人数" value={playerCount} onChange={(event) => setPlayerCount(Number(event.target.value))}>{supportedCounts.map((count) => <option key={count} value={count}>{count} 人</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
           <button id="cleanroom-enter-room" className="cleanroom-final-enter" type="submit" disabled={name.trim() === ""} aria-label="进入牌室"><span>进入牌室</span><small>ENTER ROOM</small></button>
