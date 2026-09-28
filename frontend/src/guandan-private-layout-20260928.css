@@ -114,6 +114,7 @@ html
   .guandan-table:has(.guandan-public-zone)
   .guandan-hand.guandan-auto-layout-vertical
   .guandan-auto-hand-group {
+  position: relative !important;
   box-sizing: border-box !important;
   display: flex !important;
   flex: 0 0 var(--guandan-private-card-width, 72px) !important;
@@ -135,17 +136,11 @@ html
   .guandan-auto-hand-group
   > button {
   flex: 0 0 auto !important;
-  margin-left: 0 !important;
-}
-
-html
-  body
-  .guandan-table:has(.guandan-public-zone)
-  .guandan-hand.guandan-auto-layout-vertical
-  .guandan-auto-hand-group
-  > button
-  + button {
-  margin-top: calc(30px - var(--guandan-private-card-height, 126px)) !important;
+  position: absolute !important;
+  top: var(--guandan-auto-stack-progress) !important;
+  left: 50% !important;
+  margin: 0 !important;
+  translate: -50% var(--guandan-auto-stack-offset) !important;
 }
 
 html
