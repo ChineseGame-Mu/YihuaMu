@@ -103,11 +103,17 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   }
 
   const normalPlayStarted = message.last_play.length > 0;
-  const visiblePlays = tableWasAuthoritativelyCleared
-    ? []
-    : normalPlayStarted && tributePublicCount > 0
-      ? message.table_plays.slice(tributePublicCount)
-      : message.table_plays;
+  const activePlayArrivedWithClear =
+    tableWasAuthoritativelyCleared &&
+    !message.trick_complete &&
+    message.last_player !== null &&
+    normalPlayStarted;
+  const visiblePlays =
+    tableWasAuthoritativelyCleared && !activePlayArrivedWithClear
+      ? []
+      : normalPlayStarted && tributePublicCount > 0
+        ? message.table_plays.slice(tributePublicCount)
+        : message.table_plays;
 
   const tablePlays = visiblePlays.map((play) => ({
     ...play,

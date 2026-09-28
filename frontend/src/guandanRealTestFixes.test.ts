@@ -99,6 +99,37 @@ describe("2026-09-16 mandatory real-test regressions", () => {
     expect(next.tableClearId).toBe(8);
   });
 
+  test("shows the first new play immediately when its state follows a coalesced clear", () => {
+    const current = {
+      ...initialGuandanTableState,
+      tablePlays: [{ player: 0, cards: [suited("Four")] }],
+      lastPlay: [suited("Four")],
+      lastPlayer: 0,
+      trickComplete: true,
+      tableClearId: 7,
+    };
+    const firstNewPlay = {
+      player: 1,
+      cards: [suited("King", "Hearts")],
+    };
+
+    const next = adaptGuandanServerMessageWithRealTestFixes(
+      current,
+      stateMessage({
+        turn: 2,
+        table_clear_id: 8,
+        table_plays: [firstNewPlay],
+        last_play: firstNewPlay.cards,
+        last_player: firstNewPlay.player,
+        trick_complete: false,
+      }),
+    );
+
+    expect(next.tablePlays).toEqual([firstNewPlay]);
+    expect(next.tablePlays).not.toContainEqual(current.tablePlays[0]);
+    expect(next.tableClearId).toBe(8);
+  });
+
   test("clears a finished player's stale private hand", () => {
     const current = {
       ...initialGuandanTableState,

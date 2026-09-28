@@ -30,6 +30,10 @@ interface GuandanWebsocketProviderProps {
   children: JSX.Element[] | JSX.Element;
 }
 
+export const shouldCoalesceGuandanServerMessage = (
+  message: { readonly type: GuandanServerMessage["type"] },
+): boolean => ["waiting", "started", "hand"].includes(message.type);
+
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
 const PLAYER_SESSION_PREFIX = "guandan-player-session:";
@@ -217,9 +221,10 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     };
 
     const enqueueMessage = (message: GuandanServerMessage): void => {
-      const coalescible = ["waiting", "started", "state", "hand"].includes(
-        message.type,
-      );
+      // State snapshots carry transition edges such as table_clear_id and
+      // trick_complete. Dropping an intermediate state can leave the previous
+      // trick visible and hide the first play of the next trick.
+      const coalescible = shouldCoalesceGuandanServerMessage(message);
       if (coalescible) {
         const pendingStart = messageQueueIndexRef.current;
         const existing = messageQueueRef.current.findIndex(
@@ -232,7 +237,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
         messageQueueRef.current = messageQueueRef.current.filter(
           (queued, index) =>
             index < messageQueueIndexRef.current ||
-            !["waiting", "started", "state", "hand"].includes(queued.type),
+            !shouldCoalesceGuandanServerMessage(queued),
         );
       }
       messageQueueRef.current.push(message);

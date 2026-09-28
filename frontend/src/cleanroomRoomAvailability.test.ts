@@ -1,0 +1,42 @@
+import {
+  CLEANROOM_ROOM_IDS,
+  availabilityByVisibleRoom,
+  cleanroomRoomOptionLabel,
+} from "./cleanroomRoomAvailability";
+
+describe("cleanroom room availability", () => {
+  test("offers exactly rooms 0001 through 0010", () => {
+    expect(CLEANROOM_ROOM_IDS).toEqual([
+      "0001",
+      "0002",
+      "0003",
+      "0004",
+      "0005",
+      "0006",
+      "0007",
+      "0008",
+      "0009",
+      "0010",
+    ]);
+  });
+
+  test("maps deployment room summaries back to visible room numbers", () => {
+    const availability = availabilityByVisibleRoom(
+      [
+        { roomId: "cr-release-0002", humanCount: 2, phase: "lobby" },
+        { roomId: "cr-release-0010", humanCount: 3, phase: "playing" },
+      ],
+      (room) => `cr-release-${room}`,
+    );
+
+    expect(cleanroomRoomOptionLabel("0001", availability["0001"])).toBe(
+      "0001（空房）",
+    );
+    expect(cleanroomRoomOptionLabel("0002", availability["0002"])).toBe(
+      "0002（已有 2 人）",
+    );
+    expect(cleanroomRoomOptionLabel("0010", availability["0010"])).toBe(
+      "0010（游戏中，3 人在线）",
+    );
+  });
+});
