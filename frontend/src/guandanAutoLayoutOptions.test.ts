@@ -7,6 +7,10 @@ describe("Guandan automatic layout options", () => {
     join(__dirname, "guandan-auto-layout-options.css"),
     "utf8",
   );
+  const privateLayoutCss = readFileSync(
+    join(__dirname, "guandan-private-layout-20260928.css"),
+    "utf8",
+  );
 
   test("offers three automatic grouping plans and horizontal or vertical layout", () => {
     expect(table).toContain('id="guandan-auto-arrange-strategy"');
@@ -36,5 +40,18 @@ describe("Guandan automatic layout options", () => {
     expect(table).toContain("effectiveTurn !== state.seat");
     expect(table).toContain("tributePending");
     expect(table).toContain("state.trickComplete");
+  });
+
+  test("places the grouping tools on the right and stacks cards vertically", () => {
+    expect(privateLayoutCss).toContain(
+      "grid-template-columns: minmax(0, 1fr) clamp(154px, 12vw, 190px)",
+    );
+    expect(privateLayoutCss).toContain("grid-column: 2 !important");
+    expect(privateLayoutCss).toContain("flex-direction: column !important");
+    expect(privateLayoutCss).toContain(
+      ".guandan-hand.guandan-auto-layout-vertical",
+    );
+    expect(privateLayoutCss).toContain("display: flex !important");
+    expect(privateLayoutCss).toContain("margin-top: calc(");
   });
 });

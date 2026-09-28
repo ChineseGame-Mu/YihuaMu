@@ -1,0 +1,172 @@
+/* Final private-table controls: keep arrangement tools in a narrow right-side
+ * column and make the vertical choice stack the cards inside every group. */
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section:has(.guandan-auto-hand-toolbar) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) clamp(154px, 12vw, 190px) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  column-gap: 7px !important;
+  align-items: stretch !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section:has(.guandan-auto-hand-toolbar)
+  > h2 {
+  grid-column: 1 / -1 !important;
+  grid-row: 1 !important;
+  min-width: 0 !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section
+  > .guandan-auto-hand-toolbar {
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  align-self: stretch !important;
+  gap: 4px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 6px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-auto-hand-toolbar
+  label,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-auto-hand-toolbar
+  select,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-auto-hand-toolbar
+  button,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-auto-hand-toolbar
+  button.normal {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand-section:has(.guandan-auto-hand-toolbar)
+  > .guandan-hand {
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-horizontal {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  justify-content: flex-start !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 5px !important;
+  padding-right: 4px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex: 0 0 var(--guandan-private-card-width, 72px) !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-width: var(--guandan-private-card-width, 72px) !important;
+  height: calc(100% - 23px) !important;
+  min-height: 0 !important;
+  margin: 23px 0 0 !important;
+  padding: 3px 2px !important;
+  overflow: visible !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group
+  > button {
+  flex: 0 0 auto !important;
+  margin-left: 0 !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group
+  > button
+  + button {
+  margin-top: calc(30px - var(--guandan-private-card-height, 126px)) !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-hand.guandan-auto-layout-vertical
+  .guandan-auto-hand-group-label {
+  top: -22px !important;
+  right: auto !important;
+  left: 1px !important;
+  max-width: none !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+@media (max-width: 720px) {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    .guandan-hand-section:has(.guandan-auto-hand-toolbar) {
+    grid-template-columns: minmax(0, 1fr) 128px !important;
+    column-gap: 4px !important;
+  }
+}

@@ -34,6 +34,7 @@ import "./cleanroom-lobby-artwork.css";
 import "./cleanroom-device-layout.css";
 import "./cleanroom-public-player-names.css";
 import "./guandan-real-test-20260916.css";
+import "./guandan-private-layout-20260928.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = CLEANROOM_ROOM_IDS;
