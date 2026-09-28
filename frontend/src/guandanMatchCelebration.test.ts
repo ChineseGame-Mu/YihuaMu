@@ -64,6 +64,11 @@ describe("Guandan A-level match celebration", () => {
     expect(css).toContain(
       ".guandan-match-complete-panel:not(.guandan-match-celebrating)",
     );
+    expect(css).toContain("z-index: 80 !important");
+    expect(css).toContain("top: 50% !important");
+    expect(css).toContain("left: 50% !important");
+    expect(css).toContain("transform: translate(-50%, -50%) !important");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr) auto");
   });
 
   test("provides a test-only online preview for screenshot verification", () => {
