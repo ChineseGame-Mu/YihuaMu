@@ -24,7 +24,7 @@ describe("Guandan turn prompt", () => {
     jest.restoreAllMocks();
   });
 
-  test("plays a quiet beep and speaks the Chinese prompt", () => {
+  test("unlocks audio and plays a quiet beep with the Chinese prompt", () => {
     const oscillator = {
       type: "",
       frequency: { setValueAtTime: jest.fn() },
@@ -39,13 +39,24 @@ describe("Guandan turn prompt", () => {
       },
       connect: jest.fn(),
     };
-    const context = {
-      state: "running",
+    const resume = jest.fn(() => {
+      context.state = "running";
+      return Promise.resolve();
+    });
+    const context: {
+      state: string;
+      currentTime: number;
+      destination: object;
+      createOscillator: jest.Mock;
+      createGain: jest.Mock;
+      resume: jest.Mock;
+    } = {
+      state: "suspended",
       currentTime: 3,
       destination: {},
       createOscillator: jest.fn(() => oscillator),
       createGain: jest.fn(() => gain),
-      resume: jest.fn(),
+      resume,
     };
     Object.defineProperty(window, "AudioContext", {
       configurable: true,
@@ -67,32 +78,14 @@ describe("Guandan turn prompt", () => {
       }),
     });
 
+    unlockGuandanTurnPromptAudio();
     playGuandanTurnPrompt();
 
+    expect(resume).toHaveBeenCalledTimes(1);
     expect(oscillator.start).toHaveBeenCalledWith(3);
     expect(oscillator.stop).toHaveBeenCalledWith(3.15);
     expect(speak).toHaveBeenCalledWith(utterances[0]);
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(utterances[0]).toMatchObject({ text: "请出牌", lang: "zh-CN" });
-  });
-
-  test("unlocks suspended audio after a player gesture", () => {
-    const resume = jest.fn();
-    const context = {
-      state: "suspended",
-      currentTime: 0,
-      destination: {},
-      createOscillator: jest.fn(),
-      createGain: jest.fn(),
-      resume,
-    };
-    Object.defineProperty(window, "AudioContext", {
-      configurable: true,
-      value: jest.fn(() => context),
-    });
-
-    unlockGuandanTurnPromptAudio();
-
-    expect(resume).toHaveBeenCalledTimes(1);
   });
 });
