@@ -73,7 +73,10 @@ describe("Guandan turn prompt", () => {
     });
     const speak = jest.fn();
     const cancel = jest.fn();
-    Object.assign(window, { speechSynthesis: { speak, cancel } });
+    Object.assign(window, {
+      speechSynthesis: { speak, cancel },
+      setTimeout: globalThis.setTimeout,
+    });
     const utterances: Array<{ text: string; lang?: string }> = [];
     Object.defineProperty(globalThis, "SpeechSynthesisUtterance", {
       configurable: true,
