@@ -83,8 +83,8 @@ jobs:
           grep -q "expectedRooms = \['0001','0002','0003','0004'\]" .github/workflows/cleanroom-short-link-gate.yml
           grep -q "free-text room input detected" .github/workflows/cleanroom-short-link-gate.yml
 
-          echo "[5/5] production short link gate must protect master and yihua-mu.vercel.app"
-          grep -q 'https://yihua-mu.vercel.app' .github/workflows/cleanroom-short-link-gate.yml
+          echo "[5/5] production short link gate must protect master and yihuagames.com"
+          grep -q 'https://yihuagames.com' .github/workflows/cleanroom-short-link-gate.yml
           grep -q '^      - master$' .github/workflows/cleanroom-short-link-gate.yml
 
           echo "Guandan forced regression QA: PASS (5/5)"

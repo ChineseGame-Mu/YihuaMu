@@ -1,7 +1,6 @@
 import * as React from "react";
 import "./welcome.css";
 import PersonalSettingsButton from "./PersonalSettingsButton";
-import { guandanEntryHref } from "./guandanEntryRoute";
 
 import type { JSX } from "react";
 
@@ -12,6 +11,8 @@ type WelcomeProps = {
   playerName?: string;
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
+
+const guandanTestHref = (): string => "/?cleanroom=1";
 
 const Welcome = ({
   connected = false,
@@ -78,7 +79,7 @@ const Welcome = ({
         </button>
         <a
           className="welcome-mode"
-          href={guandanEntryHref()}
+          href={guandanTestHref()}
           style={{
             font: "inherit",
             color: "inherit",

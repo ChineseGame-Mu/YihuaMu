@@ -20,4 +20,19 @@ describe("Guandan homepage entry route", () => {
       shouldRenderDedicatedGuandanEntry("other.example", "?cleanroom=1"),
     ).toBe(true);
   });
+
+  it("sends explicit Guandan game links straight to the table", () => {
+    expect(
+      shouldRenderDedicatedGuandanEntry(
+        "yihua-mu.vercel.app",
+        "?cleanroom=1&game=guandan&room=0004",
+      ),
+    ).toBe(false);
+    expect(
+      shouldRenderDedicatedGuandanEntry(
+        "preview.example",
+        "?cleanroom=1&game=guandan&room=0004",
+      ),
+    ).toBe(false);
+  });
 });
