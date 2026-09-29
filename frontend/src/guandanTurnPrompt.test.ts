@@ -4,23 +4,30 @@ import {
 } from "./guandanTurnPrompt";
 
 describe("Guandan turn prompt", () => {
-  const originalAudioContext = window.AudioContext;
-  const originalSpeechSynthesis = window.speechSynthesis;
-  const originalUtterance = globalThis.SpeechSynthesisUtterance;
+  const originalWindowDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "window",
+  );
+  const originalUtteranceDescriptor = Object.getOwnPropertyDescriptor(
+    globalThis,
+    "SpeechSynthesisUtterance",
+  );
 
   afterEach(() => {
-    Object.defineProperty(window, "AudioContext", {
-      configurable: true,
-      value: originalAudioContext,
-    });
-    Object.defineProperty(window, "speechSynthesis", {
-      configurable: true,
-      value: originalSpeechSynthesis,
-    });
-    Object.defineProperty(globalThis, "SpeechSynthesisUtterance", {
-      configurable: true,
-      value: originalUtterance,
-    });
+    if (originalWindowDescriptor) {
+      Object.defineProperty(globalThis, "window", originalWindowDescriptor);
+    } else {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+    if (originalUtteranceDescriptor) {
+      Object.defineProperty(
+        globalThis,
+        "SpeechSynthesisUtterance",
+        originalUtteranceDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(globalThis, "SpeechSynthesisUtterance");
+    }
     jest.restoreAllMocks();
   });
 
@@ -58,16 +65,13 @@ describe("Guandan turn prompt", () => {
       createGain: jest.fn(() => gain),
       resume,
     };
-    Object.defineProperty(window, "AudioContext", {
+    Object.defineProperty(globalThis, "window", {
       configurable: true,
-      value: jest.fn(() => context),
+      value: { AudioContext: jest.fn(() => context) },
     });
     const speak = jest.fn();
     const cancel = jest.fn();
-    Object.defineProperty(window, "speechSynthesis", {
-      configurable: true,
-      value: { speak, cancel },
-    });
+    Object.assign(window, { speechSynthesis: { speak, cancel } });
     const utterances: Array<{ text: string; lang?: string }> = [];
     Object.defineProperty(globalThis, "SpeechSynthesisUtterance", {
       configurable: true,
