@@ -1,0 +1,170 @@
+import { describe, expect, it } from "vitest";
+import { transitionGame } from "../src/core/game-machine.js";
+import { completeRound, createLobbyState } from "../src/core/game-state.js";
+
+const fixedRandom = () => 0.25;
+
+describe("explicit table game state machine", () => {
+  it("keeps opening draw independent from dealing and starts with its winner", () => {
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
+    expect(opening.phase).toBe("opening-draw");
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+
+    const drawSnapshot = JSON.stringify(opening.openingDraw);
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      fixedRandom,
+    );
+    expect(playing.phase).toBe("playing");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(JSON.stringify(playing.openingDraw)).toBe(drawSnapshot);
+    expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
+    expect(playing.trick.leaderSeat).toBe(opening.openingDraw.winnerSeat);
+    expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
+  });
+
+  it("consumes randomness separately for the opening draw and first deal", () => {
+    const samples = [0, 0.2, 0.4, 0.6, 0.8];
+    let calls = 0;
+    const countedRandom = () => samples[calls++ % samples.length] ?? 0;
+    const lobby = createLobbyState(4, 0);
+
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      countedRandom,
+    );
+    const callsAfterDraw = calls;
+    expect(callsAfterDraw).toBeGreaterThan(0);
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+    const drawSnapshot = JSON.stringify(opening.openingDraw);
+
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      countedRandom,
+    );
+    expect(calls).toBeGreaterThan(callsAfterDraw);
+    expect(playing.phase).toBe("playing");
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(JSON.stringify(playing.openingDraw)).toBe(drawSnapshot);
+    expect(playing.currentTurn).toBe(opening.openingDraw.winnerSeat);
+    expect(playing.hands.every((hand) => hand.length === 27)).toBe(true);
+  });
+
+  it("rejects actions that do not belong to the current phase", () => {
+    const lobby = createLobbyState(4, 0);
+    expect(() =>
+      transitionGame(lobby, { type: "deal-after-opening-draw" }, fixedRandom),
+    ).toThrow("cannot deal-after-opening-draw while game is lobby");
+    expect(() =>
+      transitionGame(lobby, { type: "pass-turn", seat: 0 }, fixedRandom),
+    ).toThrow("cannot pass-turn while game is lobby");
+  });
+
+  it("rejects repeated opening draw and premature next-round transitions", () => {
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
+    expect(() =>
+      transitionGame(opening, { type: "begin-opening-draw" }, fixedRandom),
+    ).toThrow("cannot begin-opening-draw while game is opening-draw");
+
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      fixedRandom,
+    );
+    expect(() =>
+      transitionGame(playing, { type: "next-round" }, fixedRandom),
+    ).toThrow("cannot next-round while game is playing");
+  });
+
+  it("moves round-complete back to playing with a fresh 27-card deal", () => {
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      fixedRandom,
+    );
+    const playing = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      fixedRandom,
+    );
+    if (playing.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+
+    const completed = completeRound(playing, playing.currentTurn);
+    const next = transitionGame(completed, { type: "next-round" }, fixedRandom);
+    expect(next.phase).toBe("playing");
+    if (next.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(next.hands.every((hand) => hand.length === 27)).toBe(true);
+    expect(next.openingDraw).toEqual(completed.openingDraw);
+    expect(next.currentTurn).toBe(completed.winnerSeat);
+  });
+
+  it("never repeats the first-round draw when later rounds begin", () => {
+    let calls = 0;
+    const countedRandom = () => {
+      calls += 1;
+      return 0.25;
+    };
+    const lobby = createLobbyState(4, 0);
+    const opening = transitionGame(
+      lobby,
+      { type: "begin-opening-draw" },
+      countedRandom,
+    );
+    if (opening.phase !== "opening-draw") {
+      throw new Error("opening phase expected");
+    }
+    const drawSnapshot = JSON.stringify(opening.openingDraw);
+
+    const firstRound = transitionGame(
+      opening,
+      { type: "deal-after-opening-draw" },
+      countedRandom,
+    );
+    if (firstRound.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    const completed = completeRound(firstRound, firstRound.currentTurn);
+    const callsBeforeNextRound = calls;
+
+    const nextRound = transitionGame(
+      completed,
+      { type: "next-round" },
+      countedRandom,
+    );
+    expect(nextRound.phase).toBe("playing");
+    if (nextRound.phase !== "playing") {
+      throw new Error("playing phase expected");
+    }
+    expect(calls).toBeGreaterThan(callsBeforeNextRound);
+    expect(JSON.stringify(nextRound.openingDraw)).toBe(drawSnapshot);
+    expect(nextRound.currentTurn).toBe(completed.winnerSeat);
+    expect(nextRound.trick.leaderSeat).toBe(completed.winnerSeat);
+    expect(nextRound.hands.every((hand) => hand.length === 27)).toBe(true);
+  });
+});

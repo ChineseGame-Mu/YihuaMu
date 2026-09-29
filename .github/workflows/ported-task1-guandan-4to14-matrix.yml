@@ -1,0 +1,100 @@
+name: Ported Task1 Proven Guandan 4-14 Matrix
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  expert-bot-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: commercial-cleanroom/guandan
+    strategy:
+      fail-fast: false
+      matrix:
+        player_count: [4, 6, 8, 10, 12, 14]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - name: Build standalone server
+        run: npm run build
+      - name: Expert bot soak - ${{ matrix.player_count }} players
+        env:
+          SOAK_DURATION_MS: "180000"
+          SOAK_PLAYER_COUNTS: "${{ matrix.player_count }}"
+          SOAK_RECONNECT_EVERY: "350"
+          SOAK_ACTION_LIMIT: "300000"
+          QA_STANDARD: "${{ matrix.player_count == 4 && 'association-expert' || '' }}"
+          QA_REPORT_JSON: "/tmp/expert-${{ matrix.player_count }}.json"
+          QA_REPORT_MD: "/tmp/expert-${{ matrix.player_count }}.md"
+        run: |
+          set -euo pipefail
+          node scripts/soak-websocket.mjs | tee /tmp/expert-${{ matrix.player_count }}.log
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const pc = Number(process.env.SOAK_PLAYER_COUNTS);
+          const raw = fs.readFileSync(`/tmp/expert-${pc}.log`, "utf8");
+          const parsed = raw.trim().split(/\n+/).map(line => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean);
+          const final = [...parsed].reverse().find(v => Array.isArray(v?.tables));
+          if (!final) throw new Error(`EXPERT MATRIX FAIL ${pc}: no terminal soak telemetry`);
+          const table = final.tables.find(v => Number(v?.playerCount) === pc);
+          if (!table) throw new Error(`EXPERT MATRIX FAIL ${pc}: no telemetry for requested player count`);
+          const failures = [];
+          const fail = (m) => failures.push(m);
+          const rounds = Number(table.rounds ?? 0);
+          if (rounds < 3) fail(`only ${rounds} complete rounds; require >=3`);
+          if (Number(table.playerCount) !== pc) fail(`wrong player count: ${table.playerCount}`);
+          if (Number(table.deadlocks ?? 0) !== 0) fail(`deadlocks=${table.deadlocks}`);
+          if (Number(table.stateErrors ?? 0) !== 0) fail(`stateErrors=${table.stateErrors}`);
+          if (Number(table.crashes ?? 0) !== 0) fail(`crashes=${table.crashes}`);
+          if (!(Number(table.reconnects ?? 0) > 0)) fail("reconnect coverage missing");
+          if (!(Number(table.staleErrors ?? 0) > 0)) fail("stale-revision rejection coverage missing");
+
+          if (pc === 4) {
+            const q = [...parsed].reverse().find(v => v?.strategyQa)?.strategyQa;
+            if (!q) {
+              fail("dedicated strategyQa evidence missing");
+            } else {
+              if (q.hiddenInformationIsolation !== true) fail("hidden information isolation failed");
+              if (q.illegalSignallingProtection !== true) fail("illegal signalling protection failed");
+              if (q.associationCompliance !== true) fail("association compliance failed");
+              if (q.deterministicRuleCoverage?.allRequiredRulesPassed !== true) fail("deterministic full-rule coverage failed");
+              if (q.teamStrategyChecks?.passed !== true) fail("team strategy coverage failed");
+              if (q.heartLevelWildcardChecks?.passed !== true) fail("heart-level wildcard coverage failed");
+              if (q.cardConservationChecks?.passed !== true) fail("card conservation coverage failed");
+              if (q.expertTacticalChecks?.passed !== true) fail("expert tactical coverage failed");
+              const coverage = q.playTypeCoverage ?? {};
+              for (const type of ["single","pair","triple","fullHouse","straight","consecutivePairs","consecutiveTriples","straightFlush","bomb4","bomb5","bomb6Plus","jokerBomb","heartLevelWildcardPlay"]) {
+                if (!(Number(coverage[type]) > 0)) fail(`missing play type ${type}`);
+              }
+              const tactics = q.expertTacticalCoverage ?? {};
+              for (const tactic of ["handStructureAssessment","roleSelectionFromLegalInformation","dynamicRoleSwitch","partnerFeeding","partnerYielding","minimumSufficientOvertake","opponentSprintBlock","bombConservation","bombForControlWithFollowup","wildcardValueOptimization","playedCardMemory","remainingCardInferenceWithoutHiddenInfo","endgameModeSwitch","partnerCatchLeadExploitation","upgradeOutcomeOptimization","tributeReturnStrategy"]) {
+                if (tactics[tactic] !== true) fail(`missing tactic ${tactic}`);
+              }
+            }
+          }
+
+          if (failures.length) {
+            console.error(`EXPERT MATRIX ROOT CAUSES ${pc}:`);
+            for (const f of failures) console.error(` - ${f}`);
+            process.exit(1);
+          }
+          console.log(JSON.stringify({type:"expert_bot_matrix_pass",playerCount:pc,completedRounds:rounds,deadlocks:table.deadlocks,stateErrors:table.stateErrors,crashes:table.crashes,reconnects:table.reconnects,staleErrors:table.staleErrors,dedicatedExpertQa:pc===4}));
+          NODE
+      - name: Publish ${{ matrix.player_count }} player report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ported-task1-expert-${{ matrix.player_count }}-player-report
+          if-no-files-found: ignore
+          path: |
+            /tmp/expert-${{ matrix.player_count }}.json
+            /tmp/expert-${{ matrix.player_count }}.md
+            /tmp/expert-${{ matrix.player_count }}.log

@@ -1,0 +1,107 @@
+name: Three-Game Render Cleanroom Gate
+
+on:
+  push:
+    branches:
+      - fix/unified-websocket-reconnect-20260915
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  render-cleanroom-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FRONTEND_URL: https://chinesegame-pr18-qa.onrender.com/
+      SHENGJI_WS_URL: wss://chinesegame-pr18-qa.onrender.com/api
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install proven Cleanroom browser runtime
+        run: |
+          npm install --no-save playwright@1.55.0 ws@8.21.0
+          npx playwright install --with-deps chromium
+
+      - name: Render-only frontend origin contract
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage();
+          const response = await page.goto(process.env.FRONTEND_URL, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000,
+          });
+          if (!response || !response.ok()) {
+            throw new Error(`Render frontend HTTP ${response?.status()}`);
+          }
+          const finalUrl = new URL(page.url());
+          if (finalUrl.hostname.endsWith('.vercel.app')) {
+            throw new Error(`Render-only QA escaped to Vercel: ${finalUrl.href}`);
+          }
+          if (finalUrl.hostname !== 'chinesegame-pr18-qa.onrender.com') {
+            throw new Error(`unexpected frontend origin: ${finalUrl.href}`);
+          }
+          console.log(JSON.stringify({
+            type: 'render_origin_gate_pass',
+            requested: process.env.FRONTEND_URL,
+            finalUrl: finalUrl.href,
+            expectedCommit: process.env.EXPECTED_COMMIT,
+          }));
+          await browser.close();
+          NODE
+
+      - name: Shared Shengji/Finding Friends reconnect implementation contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const path = 'frontend/src/WebsocketProvider.tsx';
+          const source = fs.readFileSync(path, 'utf8');
+          const required = [
+            'Math.min(1000 * 2 ** reconnectAttemptRef.current, 10000)',
+            'reconnectAttemptRef.current = 0',
+            'ws.readyState === WebSocket.OPEN',
+            '}, 5000)',
+            'scheduleReconnect()',
+          ];
+          for (const needle of required) {
+            if (!source.includes(needle)) throw new Error(`missing reconnect contract: ${needle}`);
+          }
+          if (!source.includes('chinesegame-yihua.onrender.com/api')) {
+            throw new Error('shared Shengji/Finding Friends production WebSocket target missing');
+          }
+          console.log(JSON.stringify({
+            type: 'shared_reconnect_contract_pass',
+            games: ['shengji','finding-friends'],
+            backoffCapMs: 10000,
+            responseTimeoutMs: 5000,
+            qaTarget: process.env.SHENGJI_WS_URL,
+          }));
+          NODE
+
+      - name: External Guandan entry contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const source = fs.readFileSync('frontend/src/Welcome.tsx', 'utf8');
+          const target = 'https://yihua-mu.vercel.app/';
+          if (!source.includes(target)) throw new Error('Guandan entry does not target the existing production site');
+          if (source.includes('yihua-mu-git-cleanroom-yihua-game-20260826-chinese-game.vercel.app')) {
+            throw new Error('obsolete clean-room Guandan preview link is still present');
+          }
+          console.log(JSON.stringify({
+            type: 'external_guandan_entry_pass',
+            target,
+            policy: 'link-only-no-reimplementation',
+            historicalGuandanSiteModified: false,
+          }));
+          NODE
+
+      - name: Mandatory remaining three-game QA is not yet waived
+        run: |
+          echo 'Foundation gate complete. Guandan is link-only to the existing production site and is outside this project QA. Shengji/Finding Friends real-browser complete-game x3, 4+ client gameplay, in-progress state recovery, repeated reconnect, abnormal-close, latency/timeout, message loss/duplicate delivery remain mandatory before merge.'

@@ -1,0 +1,190 @@
+name: Guandan Live Three-Round Matrix (manual legacy only)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  three-round-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      WS_URL: wss://chinesegame-pr18-qa.onrender.com/api/guandan
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install WebSocket client
+        run: npm install --no-save ws@8.21.0
+      - name: Run 4-14 supported Guandan matrix for three consecutive complete rounds
+        run: |
+          node --input-type=module <<'NODE'
+          import WebSocket from 'ws';
+
+          const URL=process.env.WS_URL;
+          const timeout=(ms,label)=>new Promise((_,reject)=>setTimeout(()=>reject(new Error(`timeout: ${label}`)),ms));
+          const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+          class Client {
+            constructor(name){this.name=name;this.ws=null;this.messages=[];this.waiters=[];this.seat=null;}
+            async connect(){
+              this.ws=new WebSocket(URL,{handshakeTimeout:15000});
+              this.ws.on('error',error=>console.log(JSON.stringify({type:'three_round_socket_error',name:this.name,error:String(error)})));
+              this.ws.on('message',data=>{
+                let m; try{m=JSON.parse(Buffer.from(data).toString('utf8'));}catch{return;}
+                this.messages.push(m);
+                for(const w of [...this.waiters]) if(this.messages.length>w.after&&w.pred(m)){
+                  this.waiters.splice(this.waiters.indexOf(w),1);w.resolve(m);
+                }
+              });
+              await Promise.race([
+                new Promise((resolve,reject)=>{this.ws.once('open',resolve);this.ws.once('error',reject);}),
+                timeout(15000,`${this.name} open`)
+              ]);
+              await this.waitNew(m=>m.type==='connected',0,15000);
+              return this;
+            }
+            send(m){if(this.ws?.readyState!==WebSocket.OPEN)throw new Error(`${this.name} socket not open`);this.ws.send(JSON.stringify(m));}
+            waitNew(pred,after=this.messages.length,ms=30000){
+              for(let i=after;i<this.messages.length;i++)if(pred(this.messages[i]))return Promise.resolve(this.messages[i]);
+              return Promise.race([new Promise(resolve=>this.waiters.push({pred,resolve,after})),timeout(ms,`${this.name} message`)]);
+            }
+            close(){try{this.ws?.close();}catch{}}
+          }
+
+          async function mutate(client,message,label,allowError=false,previousState=null){
+            const mark=client.messages.length;
+            const before=previousState===null?null:JSON.stringify(previousState);
+            client.send(message);
+            const reply=await client.waitNew(
+              m=>m.type==='error'||(m.type==='state'&&(before===null||JSON.stringify(m)!==before)),
+              mark,
+              30000,
+            );
+            if(reply.type==='error'&&!allowError)throw new Error(`${label}: ${reply.message}`);
+            return reply;
+          }
+
+          async function submitFirstLegal(client,type,label,state){
+            for(let index=0;index<27;index++){
+              const reply=await mutate(client,{type,card_index:index},`${label} index ${index}`,true,state);
+              if(reply.type==='state')return reply;
+            }
+            throw new Error(`${label}: no legal card found`);
+          }
+
+          async function resolveTribute(state,bySeat){
+            const plan=state.pending_tribute;
+            if(!plan)return state;
+            const givers=plan.Single?[plan.Single.giver]:plan.Double?.givers;
+            const receivers=plan.Single?[plan.Single.receiver]:plan.Double?.receivers;
+            if(!givers||!receivers)throw new Error(`unknown tribute plan ${JSON.stringify(plan)}`);
+
+            for(const seat of givers){
+              state=await submitFirstLegal(bySeat.get(seat),'tribute_card',`tribute seat ${seat}`,state);
+            }
+            for(const seat of receivers){
+              state=await submitFirstLegal(bySeat.get(seat),'return_tribute',`return seat ${seat}`,state);
+            }
+            if(state.pending_tribute!==null)throw new Error('tribute exchange did not finalize');
+            return state;
+          }
+
+          async function completeRound(state,bySeat,count,round){
+            let steps=0;
+            while(state.next_round_phase===null&&state.match_winner===null){
+              if(++steps>10000)throw new Error(`count ${count} round ${round} exceeded step limit`);
+              const active=bySeat.get(state.turn);
+              if(!active)throw new Error(`missing active seat ${state.turn}`);
+              const command=Array.isArray(state.last_play)&&state.last_play.length>0
+                ? {type:'pass'}
+                : {type:'play',card_indexes:[0]};
+              if(steps<=12)console.log(JSON.stringify({type:'three_round_step',count,round,steps,turn:state.turn,lastPlayer:state.last_player,lastPlayCount:state.last_play?.length,passes:state.passes,finishOrder:state.finish_order,lastTrickWinner:state.last_trick_winner}));
+              state=await mutate(active,command,`count ${count} round ${round} step ${steps}`,false,state);
+              if(steps%250===0){
+                console.log(JSON.stringify({type:'three_round_progress',count,round,steps,turn:state.turn,finishOrder:state.finish_order,nextRoundPhase:state.next_round_phase,lastTrickWinner:state.last_trick_winner}));
+              }
+            }
+            if(state.match_winner!==null)throw new Error(`unexpected match winner before three-round gate: ${JSON.stringify(state.match_winner)}`);
+            if(state.next_round_phase!=='awaiting_shuffle')throw new Error(`round ${round} did not reach AwaitingShuffle`);
+            console.log(JSON.stringify({
+              type:'guandan_complete_round_pass',
+              sha:process.env.EXPECTED_COMMIT,
+              playerCount:count,
+              round,
+              steps,
+              finishOrder:state.finish_order,
+              winner:state.last_game_winner,
+              winnerTeam:state.last_game_winner_team
+            }));
+            return state;
+          }
+
+          async function prepareNextRound(state,bySeat,count,round){
+            const winnerTeam=state.last_game_winner_team;
+            const loserSeat=winnerTeam==='A'?1:0;
+            state=await mutate(bySeat.get(loserSeat),{type:'shuffle_next_round',from_position:null,to_position:null},`count ${count} round ${round} shuffle`,false,state);
+            if(state.next_round_phase!=='awaiting_deal')throw new Error('shuffle did not reach AwaitingDeal');
+            const winnerSeat=state.last_game_winner;
+            const handMarks=new Map([...bySeat].map(([seat,client])=>[seat,client.messages.length]));
+            state=await mutate(bySeat.get(winnerSeat),{type:'deal_next_round'},`count ${count} round ${round} deal`,false,state);
+            if(state.next_round_phase!==null)throw new Error('deal did not clear next_round_phase');
+            for(const [seat,client] of bySeat){
+              const hand=await client.waitNew(m=>m.type==='hand'&&Array.isArray(m.cards)&&m.cards.length===27,handMarks.get(seat),30000);
+              if(hand.cards.length!==27)throw new Error(`count ${count} round ${round} seat ${seat} redeal hand count ${hand.cards.length}`);
+            }
+            if(state.pending_tribute!==null)state=await resolveTribute(state,bySeat);
+            return state;
+          }
+
+          async function run(count){
+            const room=`three-round-${count}-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+            const clients=[];
+            try{
+              for(let i=0;i<count;i++){
+                const c=await new Client(`G${count}P${i+1}`).connect();
+                const mark=c.messages.length;
+                c.send({type:'join',room,name:c.name});
+                const joined=await c.waitNew(m=>m.type==='joined',mark,30000);
+                if(joined.seat!==i)throw new Error(`count ${count} seat mismatch ${joined.seat} != ${i}`);
+                c.seat=joined.seat;
+                clients.push(c);
+              }
+              const bySeat=new Map(clients.map(c=>[c.seat,c]));
+              const startMarks=clients.map(c=>c.messages.length);
+              clients[0].send({type:'start',player_count:count});
+              const started=await clients[0].waitNew(m=>m.type==='started'||m.type==='error',startMarks[0],30000);
+              if(started.type==='error')throw new Error(`count ${count} start: ${started.message}`);
+              let state=await clients[0].waitNew(m=>m.type==='state'&&m.hand_counts?.length===count,startMarks[0],30000);
+              for(let i=0;i<clients.length;i++){
+                const hand=await clients[i].waitNew(m=>m.type==='hand'&&Array.isArray(m.cards)&&m.cards.length===27,startMarks[i],30000);
+                if(hand.cards.length!==27)throw new Error(`count ${count} seat ${i} opening hand count ${hand.cards.length}`);
+              }
+
+              for(let round=1;round<=3;round++){
+                state=await completeRound(state,bySeat,count,round);
+                if(round<3)state=await prepareNextRound(state,bySeat,count,round);
+              }
+
+              console.log(JSON.stringify({
+                type:'guandan_three_round_matrix_pass',
+                sha:process.env.EXPECTED_COMMIT,
+                playerCount:count,
+                rounds:3,
+                room
+              }));
+            } finally {
+              for(const c of clients)c.close();
+              await sleep(100);
+            }
+          }
+
+          for(const count of [4,6,8,10,12,14])await run(count);
+          console.log(JSON.stringify({
+            type:'guandan_three_round_matrix_complete',
+            sha:process.env.EXPECTED_COMMIT,
+            counts:[4,6,8,10,12,14],
+            roundsPerCount:3
+          }));
+          NODE

@@ -1,0 +1,459 @@
+import {
+  applyPromotion,
+  initialTeamLevels,
+  promotionForPlacements,
+} from "./competition.js";
+import {
+  advanceCompetitionSeries,
+  initialCompetitionSeries,
+  type CompetitionSeriesState,
+} from "./competition-series.js";
+import { passGameSeat, playGameCardIds } from "./game-actions.js";
+import {
+  createLobbyState,
+  startGame,
+  startNextRound,
+  type GameState,
+} from "./game-state.js";
+import {
+  prepareNativeTribute,
+  submitNativeReturnTribute,
+  submitNativeTribute,
+  type NativeTributeState,
+} from "./native-tribute.js";
+import {
+  applyNextRoundParticipation,
+  createRoom,
+  openLateJoinWindow,
+  type RoomState,
+} from "./room.js";
+import {
+  createTableConfig,
+  isSupportedPlayerCount,
+  SUPPORTED_PLAYER_COUNTS,
+  type SupportedPlayerCount,
+} from "./table.js";
+
+export interface ManagedRoom {
+  readonly room: RoomState;
+  readonly game: GameState;
+  readonly revision: number;
+  readonly tribute?: NativeTributeState | undefined;
+  readonly series?: CompetitionSeriesState | undefined;
+}
+
+const activeCountForNextRound = (
+  managed: ManagedRoom,
+): SupportedPlayerCount => {
+  const currentCount = managed.game.config.playerCount;
+  const target = managed.room.config.playerCount;
+  const participantsBySeat = new Map(
+    managed.room.participants.map((participant) => [
+      participant.seat,
+      participant,
+    ]),
+  );
+
+  let contiguousEligibleCount = currentCount;
+  while (contiguousEligibleCount < target) {
+    const participant = participantsBySeat.get(contiguousEligibleCount);
+    if (
+      participant === undefined ||
+      participant.kind !== "human" ||
+      !participant.connected ||
+      participant.readyForNextRound !== true
+    ) {
+      break;
+    }
+    contiguousEligibleCount += 1;
+  }
+
+  const eligible = SUPPORTED_PLAYER_COUNTS.filter(
+    (count) =>
+      count >= currentCount &&
+      count <= contiguousEligibleCount &&
+      count <= target,
+  );
+  return eligible.at(-1) ?? currentCount;
+};
+
+const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
+  if (managed.game.phase === "lobby") return false;
+  const humans = managed.room.participants.filter(
+    ({ kind }) => kind === "human",
+  );
+  return humans.length > 0 && humans.every(({ connected }) => !connected);
+};
+
+const tributePending = (managed: ManagedRoom): boolean =>
+  managed.tribute !== undefined && managed.tribute.status !== "complete";
+
+export const robotMustYieldToTeammate = (
+  managed: ManagedRoom,
+  seat: number,
+): boolean => {
+  if (managed.game.phase !== "playing") {
+    return false;
+  }
+  const participant = managed.room.participants.find(
+    (candidate) => candidate.seat === seat,
+  );
+  const leadingSeat = managed.game.trick.leadingPlay?.seat;
+  return (
+    participant?.kind === "robot" &&
+    leadingSeat !== undefined &&
+    leadingSeat !== seat &&
+    leadingSeat % 2 === seat % 2
+  );
+};
+
+export class RoomManager {
+  private readonly rooms = new Map<string, ManagedRoom>();
+  private readonly restoredRoomsAwaitingReconnect = new Set<string>();
+
+  create(roomId: string, playerCount: SupportedPlayerCount): ManagedRoom {
+    if (this.rooms.has(roomId)) {
+      throw new Error(`room ${roomId} already exists`);
+    }
+
+    const room = createRoom(roomId, playerCount);
+    const managed = {
+      room,
+      game: createLobbyState(playerCount, 0),
+      revision: 0,
+      tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
+    } satisfies ManagedRoom;
+    this.rooms.set(room.roomId, managed);
+    return managed;
+  }
+
+  resizeLobby(roomId: string, playerCount: SupportedPlayerCount): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.room.config.playerCount === playerCount) return managed;
+    if (managed.game.phase !== "lobby") {
+      throw new Error("table size can only change before the game starts");
+    }
+    if (
+      managed.room.participants.length > playerCount ||
+      managed.room.participants.some(({ seat }) => seat >= playerCount)
+    ) {
+      throw new Error("occupied seats do not fit the selected table size");
+    }
+
+    const botCount = managed.room.participants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
+    const next = {
+      ...managed,
+      room: {
+        ...managed.room,
+        config: createTableConfig(playerCount, botCount),
+      },
+      game: createLobbyState(playerCount, botCount),
+      revision: managed.revision + 1,
+      tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  get(roomId: string): ManagedRoom {
+    const managed = this.rooms.get(roomId);
+    if (!managed) {
+      throw new Error(`room ${roomId} does not exist`);
+    }
+
+    if (
+      isAbandonedActiveRoom(managed) &&
+      !this.restoredRoomsAwaitingReconnect.has(roomId)
+    ) {
+      const reset = {
+        room: createRoom(roomId, managed.room.config.playerCount),
+        game: createLobbyState(managed.room.config.playerCount, 0),
+        revision: managed.revision + 1,
+        tribute: undefined,
+        series: initialCompetitionSeries(managed.room.config.playerCount),
+      } satisfies ManagedRoom;
+      this.rooms.set(roomId, reset);
+      return reset;
+    }
+
+    return managed;
+  }
+
+  set(roomId: string, managed: ManagedRoom): ManagedRoom {
+    if (managed.room.roomId !== roomId) {
+      throw new Error("managed room id mismatch");
+    }
+    const current = this.get(roomId);
+    const next = { ...managed, revision: current.revision + 1 };
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  restore(managed: ManagedRoom): ManagedRoom {
+    const roomId = managed.room.roomId;
+    if (this.rooms.has(roomId)) {
+      throw new Error(`room ${roomId} already exists`);
+    }
+    if (!Number.isInteger(managed.revision) || managed.revision < 0) {
+      throw new Error("room revision must be a non-negative integer");
+    }
+    this.rooms.set(roomId, managed);
+    if (isAbandonedActiveRoom(managed)) {
+      this.restoredRoomsAwaitingReconnect.add(roomId);
+    }
+    return managed;
+  }
+
+  delete(roomId: string): boolean {
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    return this.rooms.delete(roomId);
+  }
+
+  listRoomIds(): readonly string[] {
+    return [...this.rooms.keys()].sort();
+  }
+
+  list(): readonly ManagedRoom[] {
+    return this.listRoomIds().map((roomId) => this.rooms.get(roomId)!);
+  }
+
+  start(
+    roomId: string,
+    random: () => number = Math.random,
+    now: () => number = Date.now,
+  ): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "lobby") {
+      throw new Error("game has already started");
+    }
+    if (
+      managed.room.participants.some(
+        ({ kind, connected }) => kind === "human" && !connected,
+      )
+    ) {
+      throw new Error("all seated humans must be connected to start");
+    }
+
+    const participantCount = managed.room.participants.length;
+    if (!isSupportedPlayerCount(participantCount)) {
+      throw new Error("start requires 4, 6, 8, 10, 12, or 14 seated players");
+    }
+    if (participantCount > managed.room.config.playerCount) {
+      throw new Error("player count exceeds tonight's selected player count");
+    }
+
+    const botCount = managed.room.participants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
+    const startedRoom = openLateJoinWindow(managed.room, now());
+    const next = {
+      room: startedRoom,
+      game: startGame(createLobbyState(participantCount, botCount), random),
+      revision: managed.revision + 1,
+      tribute: undefined,
+      series: managed.series ?? initialCompetitionSeries(participantCount),
+    } satisfies ManagedRoom;
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  nextRound(roomId: string, random: () => number = Math.random): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "round-complete") {
+      throw new Error("round is not complete");
+    }
+
+    const activeCount = activeCountForNextRound(managed);
+    const nextRoom = applyNextRoundParticipation(managed.room);
+    const completedWithCount =
+      activeCount === managed.game.config.playerCount
+        ? managed.game
+        : {
+            ...managed.game,
+            config: { ...managed.game.config, playerCount: activeCount },
+          };
+    const completed = {
+      ...completedWithCount,
+      config: {
+        ...completedWithCount.config,
+        botCount: nextRoom.participants.filter(({ kind }) => kind === "robot")
+          .length,
+      },
+    };
+
+    // Winning while the table level is A completes the whole match.  A new
+    // request after that result is a brand-new match: scores/levels/tribute are
+    // cleared and the opening draw once again decides the first leader.
+    const completedWinnerTeam = completed.outcome?.winningTeam ?? null;
+    const completedWinnerLevel =
+      completedWinnerTeam === null
+        ? null
+        : (completed.teamLevels ?? initialTeamLevels())[completedWinnerTeam];
+    if (
+      completedWinnerLevel === "A" &&
+      completed.outcome !== null &&
+      completed.placements.length === activeCount
+    ) {
+      const currentSeries =
+        managed.series ?? initialCompetitionSeries(activeCount);
+      const advancedSeries =
+        currentSeries === undefined || completedWinnerTeam === null
+          ? undefined
+          : advanceCompetitionSeries(currentSeries, completedWinnerTeam);
+      const restarted = startGame(
+        createLobbyState(
+          activeCount,
+          nextRoom.participants.filter(({ kind }) => kind === "robot").length,
+        ),
+        random,
+      );
+      const next = {
+        ...managed,
+        room: nextRoom,
+        game: { ...restarted, matchWinner: null },
+        revision: managed.revision + 1,
+        tribute: undefined,
+        series:
+          currentSeries === undefined
+            ? undefined
+            : (advancedSeries ?? initialCompetitionSeries(activeCount)),
+      } satisfies ManagedRoom;
+      this.restoredRoomsAwaitingReconnect.delete(roomId);
+      this.rooms.set(roomId, next);
+      return next;
+    }
+
+    let nextLevelRank = completed.levelRank;
+    let nextTeamLevels = completed.teamLevels;
+    const matchWinner = null;
+    let lastPromotionSteps: number | null = null;
+
+    if (
+      completed.placements.length === activeCount &&
+      completed.outcome !== null
+    ) {
+      const levels = completed.teamLevels ?? initialTeamLevels();
+      const promotion = promotionForPlacements(completed.placements, levels);
+      nextTeamLevels = applyPromotion(levels, promotion);
+      nextLevelRank = promotion.after;
+      lastPromotionSteps = promotion.steps;
+    }
+
+    const nextGame = startNextRound(
+      completed,
+      random,
+      nextLevelRank,
+      nextTeamLevels,
+      matchWinner,
+      lastPromotionSteps,
+    );
+    const tribute =
+      activeCount === 4 && completed.placements.length === 4
+        ? prepareNativeTribute(completed.placements, nextGame)
+        : undefined;
+
+    const next = {
+      ...managed,
+      room: nextRoom,
+      game: nextGame,
+      revision: managed.revision + 1,
+      tribute,
+    } satisfies ManagedRoom;
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  submitTribute(roomId: string, seat: number, cardId: string): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing" || managed.tribute === undefined) {
+      throw new Error("no native tribute exchange is active");
+    }
+    const mutation = submitNativeTribute(
+      managed.game,
+      managed.tribute,
+      seat,
+      cardId,
+    );
+    const next = {
+      ...managed,
+      game: mutation.game,
+      tribute: mutation.tribute,
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  submitReturnTribute(
+    roomId: string,
+    seat: number,
+    cardId: string,
+  ): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing" || managed.tribute === undefined) {
+      throw new Error("no native tribute exchange is active");
+    }
+    const mutation = submitNativeReturnTribute(
+      managed.game,
+      managed.tribute,
+      seat,
+      cardId,
+    );
+    const next = {
+      ...managed,
+      game: mutation.game,
+      tribute: mutation.tribute,
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  play(roomId: string, seat: number, cardIds: readonly string[]): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing") {
+      throw new Error("game is not accepting plays");
+    }
+    if (tributePending(managed)) {
+      throw new Error("tribute exchange must finish before play");
+    }
+    if (robotMustYieldToTeammate(managed, seat)) {
+      throw new Error("robot must yield when its teammate is leading");
+    }
+
+    const next = {
+      ...managed,
+      game: playGameCardIds(managed.game, seat, cardIds),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
+  pass(roomId: string, seat: number): ManagedRoom {
+    const managed = this.get(roomId);
+    if (managed.game.phase !== "playing") {
+      throw new Error("game is not accepting passes");
+    }
+    if (tributePending(managed)) {
+      throw new Error("tribute exchange must finish before play");
+    }
+
+    const next = {
+      ...managed,
+      game: passGameSeat(managed.game, seat),
+      revision: managed.revision + 1,
+    } satisfies ManagedRoom;
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+}

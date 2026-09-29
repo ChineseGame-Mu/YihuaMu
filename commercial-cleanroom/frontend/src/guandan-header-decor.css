@@ -1,0 +1,240 @@
+.guandan-status-bar::after {
+  content: none !important;
+}
+
+.guandan-topbar > .guandan-header-decor {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  transform: none;
+  pointer-events: none;
+}
+
+.guandan-header-brand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translate(-50%, -50%);
+}
+
+.guandan-header-title {
+  color: #ffe69a;
+  font-family: "STKaiti", "KaiTi", "Noto Serif CJK SC", serif;
+  font-size: clamp(24px, 2.4vw, 36px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 3px;
+  text-shadow:
+    0 2px 0 #7b1f13,
+    0 0 5px rgb(255 215 110 / 65%);
+}
+
+.guandan-header-cards {
+  position: relative;
+  width: 54px;
+  height: 42px;
+}
+
+.guandan-header-card {
+  position: absolute;
+  top: 1px;
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 40px;
+  border: 1px solid #c59b49;
+  border-radius: 5px;
+  background: #fffbed;
+  box-shadow: 0 2px 3px rgb(0 0 0 / 25%);
+  font-style: normal;
+  line-height: 1;
+}
+
+.guandan-header-card b {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 11px;
+}
+
+.guandan-header-card i {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-style: normal;
+}
+
+.guandan-header-card--black {
+  color: #111;
+}
+
+.guandan-header-card--red {
+  color: #c51f28;
+}
+
+.guandan-header-cards--left .guandan-header-card:first-child,
+.guandan-header-cards--right .guandan-header-card:first-child {
+  left: 3px;
+  transform: rotate(-10deg);
+}
+
+.guandan-header-cards--left .guandan-header-card:last-child,
+.guandan-header-cards--right .guandan-header-card:last-child {
+  right: 3px;
+  transform: rotate(10deg);
+}
+
+.guandan-header-clock {
+  position: absolute;
+  top: 4px;
+  right: 34px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 154px;
+  height: 44px;
+  padding: 4px 12px 8px 48px;
+  overflow: visible;
+  border: 2px solid #d6a43c;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 2px 5px rgb(0 0 0 / 20%);
+  pointer-events: none;
+}
+
+.guandan-stopwatch {
+  position: absolute;
+  top: 9px;
+  left: 13px;
+  box-sizing: border-box;
+  width: 27px;
+  height: 27px;
+  border: 3px solid #d6a43c;
+  border-radius: 50%;
+}
+
+.guandan-stopwatch-crown {
+  position: absolute;
+  top: -8px;
+  left: 7px;
+  width: 8px;
+  height: 5px;
+  border: 3px solid #d6a43c;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+}
+
+.guandan-stopwatch-hand {
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  width: 3px;
+  height: 9px;
+  border-radius: 2px;
+  background: #d6a43c;
+  transform-origin: 50% 8px;
+  transform: rotate(8deg);
+}
+
+.guandan-header-clock time {
+  color: #092d25;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.guandan-header-clock-label {
+  position: absolute;
+  right: 22px;
+  bottom: -8px;
+  left: 52px;
+  padding: 2px 6px;
+  color: #3f2a08;
+  border: 1px solid #c58a20;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #ffe49a, #d79a2d);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .guandan-header-brand {
+    gap: 5px;
+  }
+
+  .guandan-header-title {
+    font-size: 20px;
+    letter-spacing: 1px;
+  }
+
+  .guandan-header-cards {
+    width: 40px;
+    height: 34px;
+  }
+
+  .guandan-header-card {
+    width: 24px;
+    height: 32px;
+  }
+
+  .guandan-header-card b {
+    top: 2px;
+    left: 3px;
+    font-size: 8px;
+  }
+
+  .guandan-header-card i {
+    font-size: 14px;
+  }
+
+  .guandan-header-clock {
+    top: 5px;
+    right: 22px;
+    width: 118px;
+    height: 39px;
+    padding: 4px 8px 7px 38px;
+    border-radius: 13px;
+  }
+
+  .guandan-stopwatch {
+    top: 8px;
+    left: 10px;
+    width: 23px;
+    height: 23px;
+  }
+
+  .guandan-stopwatch-crown {
+    top: -7px;
+    left: 5px;
+  }
+
+  .guandan-stopwatch-hand {
+    top: 4px;
+    left: 8px;
+    height: 8px;
+  }
+
+  .guandan-header-clock time {
+    font-size: 15px;
+  }
+
+  .guandan-header-clock-label {
+    right: 14px;
+    bottom: -7px;
+    left: 40px;
+    padding: 1px 4px;
+    font-size: 7px;
+  }
+}

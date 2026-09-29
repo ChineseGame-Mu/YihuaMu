@@ -1,0 +1,63 @@
+/* Final review-area proportions approved from the layout mockup.
+ * The review panel occupies the right third of My Table and shares its border.
+ */
+.guandan-hand-section {
+  padding-right: calc(33.333333% + 8px) !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions {
+  right: 0 !important;
+  width: 33.333333% !important;
+  min-width: 33.333333% !important;
+  max-width: 33.333333% !important;
+  border-left: 3px solid #d5a438 !important;
+  border-top: 0 !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border-radius: 0 0 11px 0 !important;
+}
+
+/* Keep the two equal-sized action buttons side by side at the top of review area. */
+.guandan-private-zone > section.guandan-play-actions > button {
+  width: calc(50% - 18px) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.guandan-private-zone
+  > section.guandan-play-actions
+  > button:nth-last-child(2) {
+  left: 12px !important;
+  right: auto !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button:last-child {
+  left: auto !important;
+  right: 12px !important;
+}
+
+@media (max-width: 760px) {
+  .guandan-hand-section {
+    padding-right: calc(33.333333% + 5px) !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions {
+    width: 33.333333% !important;
+    min-width: 33.333333% !important;
+    max-width: 33.333333% !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button {
+    width: calc(50% - 10px) !important;
+  }
+
+  .guandan-private-zone
+    > section.guandan-play-actions
+    > button:nth-last-child(2) {
+    left: 7px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:last-child {
+    right: 7px !important;
+  }
+}

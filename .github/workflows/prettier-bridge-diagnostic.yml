@@ -1,0 +1,25 @@
+name: Prettier Bridge Diagnostic
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  prettier-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Show exact Prettier 3.4.1 bridge diff
+        run: |
+          cd commercial-cleanroom/guandan
+          npm ci
+          npm run prettier:version
+          npx prettier --write test/approved-frontend-bridge.test.ts
+          git diff -- test/approved-frontend-bridge.test.ts
+          git diff --exit-code -- test/approved-frontend-bridge.test.ts
