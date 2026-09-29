@@ -1,53 +1,92 @@
-jest.mock("html2canvas", () => ({ __esModule: true, default: jest.fn() }));
-
-import html2canvas from "html2canvas";
 import { createGuandanVictoryScreenshot } from "./guandanVictoryScreenshot";
 
-const capture = html2canvas as jest.Mock;
-
-describe("Guandan victory screenshot capture", () => {
+describe("Guandan victory screenshot", () => {
   afterEach(() => {
-    jest.resetAllMocks();
-    delete (globalThis as { document?: Document }).document;
-    delete (globalThis as { window?: Window }).window;
+    jest.restoreAllMocks();
   });
 
-  it("captures the rendered fullscreen victory layer as PNG bytes", async () => {
-    const target = {} as HTMLElement;
+  it("renders the victory image to a PNG and returns its base64 payload", async () => {
+    const drawImage = jest.fn();
+    const toDataURL = jest.fn(() => "data:image/png;base64,c2NyZWVuc2hvdA==");
     const canvas = {
-      toDataURL: jest.fn(() => "data:image/png;base64,c2NyZWVuc2hvdA=="),
-    };
-    Object.defineProperty(globalThis, "document", {
-      configurable: true,
-      value: { querySelector: jest.fn(() => target) },
-    });
-    Object.defineProperty(globalThis, "window", {
-      configurable: true,
-      value: { devicePixelRatio: 3 },
-    });
-    capture.mockResolvedValue(canvas);
+      width: 0,
+      height: 0,
+      getContext: jest.fn(() => ({ drawImage })),
+      toDataURL,
+    } as unknown as HTMLCanvasElement;
+    jest.spyOn(document, "createElement").mockReturnValue(canvas);
 
-    await expect(createGuandanVictoryScreenshot()).resolves.toBe(
-      "c2NyZWVuc2hvdA==",
-    );
-    expect(document.querySelector).toHaveBeenCalledWith(
-      "[data-victory-capture='true']",
-    );
-    expect(capture).toHaveBeenCalledWith(
-      target,
-      expect.objectContaining({ scale: 2 }),
-    );
-    expect(canvas.toDataURL).toHaveBeenCalledWith("image/png");
+    const image = {
+      onload: null as ((event: Event) => void) | null,
+      onerror: null as ((event: Event) => void) | null,
+      set src(_url: string) {
+        this.onload?.(new Event("load"));
+      },
+    } as unknown as HTMLImageElement;
+    Object.defineProperty(globalThis, "Image", {
+      configurable: true,
+      value: jest.fn(() => image),
+    });
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: jest.fn(() => "blob:guandan-victory"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: jest.fn(),
+    });
+
+    await expect(
+      createGuandanVictoryScreenshot({
+        winnerTeam: "A",
+        players: ["Alice", "Bob", "Carol", "Dave"],
+        finishOrder: [0, 2, 1, 3],
+        room: "0001",
+      }),
+    ).resolves.toBe("c2NyZWVuc2hvdA==");
+
+    expect(canvas.width).toBe(1600);
+    expect(canvas.height).toBe(1000);
+    expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 1600, 1000);
+    expect(toDataURL).toHaveBeenCalledWith("image/png");
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:guandan-victory");
   });
 
-  it("fails when the fullscreen victory layer is not mounted", async () => {
-    Object.defineProperty(globalThis, "document", {
+  it("rejects when the browser cannot create a 2D canvas context", async () => {
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: jest.fn(() => null),
+    } as unknown as HTMLCanvasElement;
+    jest.spyOn(document, "createElement").mockReturnValue(canvas);
+
+    const image = {
+      onload: null as ((event: Event) => void) | null,
+      onerror: null as ((event: Event) => void) | null,
+      set src(_url: string) {
+        this.onload?.(new Event("load"));
+      },
+    } as unknown as HTMLImageElement;
+    Object.defineProperty(globalThis, "Image", {
       configurable: true,
-      value: { querySelector: jest.fn(() => null) },
+      value: jest.fn(() => image),
     });
-    await expect(createGuandanVictoryScreenshot()).rejects.toThrow(
-      "胜利画面尚未显示",
-    );
-    expect(capture).not.toHaveBeenCalled();
+    Object.defineProperty(URL, "createObjectURL", {
+      configurable: true,
+      value: jest.fn(() => "blob:guandan-victory"),
+    });
+    Object.defineProperty(URL, "revokeObjectURL", {
+      configurable: true,
+      value: jest.fn(),
+    });
+
+    await expect(
+      createGuandanVictoryScreenshot({
+        winnerTeam: "B",
+        players: ["Alice", "Bob", "Carol", "Dave"],
+        finishOrder: [1, 3, 0, 2],
+        room: "0001",
+      }),
+    ).rejects.toThrow("浏览器无法创建截图");
   });
 });
