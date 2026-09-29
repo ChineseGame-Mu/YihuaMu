@@ -274,7 +274,10 @@ const GuandanTable: React.FunctionComponent = () => {
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const screenshotAttemptRef = React.useRef<string | null>(null);
   const screenshotRetryUsedRef = React.useRef(false);
-  const victoryScreenshotRef = React.useRef<{ key: string; data: string } | null>(null);
+  const victoryScreenshotRef = React.useRef<{
+    key: string;
+    data: string;
+  } | null>(null);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -336,9 +339,10 @@ const GuandanTable: React.FunctionComponent = () => {
       setScreenshotEmailStatus("sending");
       try {
         const matchKey = `${state.room ?? room}:${state.matchId}`;
-        let screenshot = victoryScreenshotRef.current?.key === matchKey
-          ? victoryScreenshotRef.current.data
-          : "";
+        let screenshot =
+          victoryScreenshotRef.current?.key === matchKey
+            ? victoryScreenshotRef.current.data
+            : "";
         if (!screenshot) {
           screenshot = await createGuandanVictoryScreenshot();
           victoryScreenshotRef.current = { key: matchKey, data: screenshot };

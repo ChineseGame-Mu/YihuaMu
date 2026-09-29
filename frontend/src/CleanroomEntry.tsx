@@ -5,6 +5,7 @@ import GuandanStateProvider, {
   GuandanStateContext,
 } from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
+import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
 import GuandanNoBeatHint from "./GuandanNoBeatHint";
 import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
@@ -46,23 +47,6 @@ const roomFromLocation = (): SelectableRoom => {
   if (isSelectableRoom(fromQuery)) return fromQuery;
   return defaultCleanroomRoom;
 };
-
-const GuandanJoinBrand = (): JSX.Element => (
-  <header className="cleanroom-brand" aria-label="掼蛋游戏 Guandan Game">
-    <div className="cleanroom-emblem" aria-hidden="true">
-      <div className="cleanroom-card-fan">
-        <span className="cleanroom-fan-card cleanroom-fan-card-10">10♦</span>
-        <span className="cleanroom-fan-card cleanroom-fan-card-j">J♣</span>
-        <span className="cleanroom-fan-card cleanroom-fan-card-q">Q♥</span>
-        <span className="cleanroom-fan-card cleanroom-fan-card-k">K♠</span>
-      </div>
-      <div className="cleanroom-emblem-title">掼蛋</div>
-    </div>
-    <h1 className="cleanroom-game-title">掼蛋游戏</h1>
-    <div className="cleanroom-game-title-en">GUANDAN GAME</div>
-    <p className="cleanroom-game-tagline">经典掼蛋 · 智慧对决 · 乐在其中</p>
-  </header>
-);
 
 const PublicPlayerCountMarker = (): null => {
   const { state } = React.useContext(GuandanStateContext);
@@ -186,84 +170,73 @@ const CleanroomEntry = (): JSX.Element => {
   };
 
   return (
-    <main className="cleanroom-join-shell cleanroom-join-shell-artwork">
+    <main className="cleanroom-final-shell">
       <img
-        className="cleanroom-lobby-background"
-        src="/guandan-cleanroom-lobby.png"
+        className="cleanroom-final-backdrop"
+        src={cleanroomLobbyFinalImage}
         alt=""
         aria-hidden="true"
       />
-      <div className="cleanroom-bamboo" aria-hidden="true" />
-      <div className="cleanroom-plum" aria-hidden="true" />
-      <div className="cleanroom-lantern" aria-hidden="true" />
-      <div
-        className="cleanroom-mountains cleanroom-mountains-left"
-        aria-hidden="true"
-      />
-      <div
-        className="cleanroom-mountains cleanroom-mountains-right"
-        aria-hidden="true"
-      />
-      <div className="cleanroom-waves" aria-hidden="true" />
-
-      <div className="cleanroom-join-content">
-        <GuandanJoinBrand />
-        <section className="cleanroom-join-card">
-          <div className="cleanroom-card-corner cleanroom-card-corner-tl" />
-          <div className="cleanroom-card-corner cleanroom-card-corner-tr" />
-          <div className="cleanroom-card-corner cleanroom-card-corner-bl" />
-          <div className="cleanroom-card-corner cleanroom-card-corner-br" />
-          <h2>加入牌室</h2>
-          <form onSubmit={submit}>
-            <label htmlFor="cleanroom-room">牌室</label>
-            <select
-              id="cleanroom-room"
-              value={roomId}
-              onChange={(event) =>
-                setRoomId(event.target.value as SelectableRoom)
-              }
-            >
-              {selectableRooms.map((room) => (
-                <option key={room} value={room}>
-                  {cleanroomRoomOptionLabel(room, roomAvailability[room])}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="cleanroom-player-count">开始人数：4–14 人</label>
-            <select
-              id="cleanroom-player-count"
-              value={playerCount}
-              onChange={(event) => setPlayerCount(Number(event.target.value))}
-            >
-              {supportedCounts.map((count) => (
-                <option key={count} value={count}>
-                  {count} 人
-                </option>
-              ))}
-            </select>
-            <p className="cleanroom-note">
-              第一位进入的玩家确定开始人数；之后可继续增加到 14 人。
-            </p>
-            <label htmlFor="cleanroom-player-name">您的姓名</label>
-            <input
-              id="cleanroom-player-name"
-              value={name}
-              maxLength={10}
-              placeholder="请输入姓名"
-              autoFocus
-              onChange={(event) => setName(event.target.value)}
-            />
-            <button type="submit" disabled={name.trim() === ""}>
-              <span>进入牌室</span>
-              <small>ENTER ROOM</small>
-            </button>
-          </form>
-          <p className="cleanroom-hint">
-            共开放十个牌室：0001–0010。列表会显示空房、已有玩家或游戏中人数；
-            固定公开链接可在任何时间打开。人数按 6→8→10→12→14
-            逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
-          </p>
-        </section>
+      <div className="cleanroom-final-stage">
+        <img
+          className="cleanroom-final-art"
+          src={cleanroomLobbyFinalImage}
+          alt="掼蛋游戏山水牌室"
+        />
+        <form
+          className="cleanroom-final-form"
+          onSubmit={submit}
+          aria-label="加入牌室"
+        >
+          <select
+            id="cleanroom-room"
+            className="cleanroom-final-control cleanroom-final-room"
+            aria-label="牌室（显示在线人数）"
+            value={roomId}
+            onChange={(event) =>
+              setRoomId(event.target.value as SelectableRoom)
+            }
+          >
+            {selectableRooms.map((room) => (
+              <option key={room} value={room}>
+                {cleanroomRoomOptionLabel(room, roomAvailability[room])}
+              </option>
+            ))}
+          </select>
+          <select
+            id="cleanroom-player-count"
+            className="cleanroom-final-control cleanroom-final-players"
+            aria-label="开始人数"
+            value={playerCount}
+            onChange={(event) => setPlayerCount(Number(event.target.value))}
+          >
+            {supportedCounts.map((count) => (
+              <option key={count} value={count}>
+                {count} 人
+              </option>
+            ))}
+          </select>
+          <input
+            id="cleanroom-player-name"
+            className="cleanroom-final-control cleanroom-final-name"
+            aria-label="您的姓名"
+            value={name}
+            maxLength={32}
+            placeholder="请输入姓名"
+            autoFocus
+            onChange={(event) => setName(event.target.value)}
+          />
+          <button
+            id="cleanroom-enter-room"
+            className="cleanroom-final-enter"
+            type="submit"
+            disabled={name.trim() === ""}
+            aria-label="进入牌室"
+          >
+            <span>进入牌室</span>
+            <small>ENTER ROOM</small>
+          </button>
+        </form>
       </div>
     </main>
   );

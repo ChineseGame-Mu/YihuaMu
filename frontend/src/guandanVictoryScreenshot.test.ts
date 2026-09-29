@@ -14,7 +14,9 @@ describe("Guandan victory screenshot capture", () => {
 
   it("captures the rendered fullscreen victory layer as PNG bytes", async () => {
     const target = {} as HTMLElement;
-    const canvas = { toDataURL: jest.fn(() => "data:image/png;base64,c2NyZWVuc2hvdA==") };
+    const canvas = {
+      toDataURL: jest.fn(() => "data:image/png;base64,c2NyZWVuc2hvdA=="),
+    };
     Object.defineProperty(globalThis, "document", {
       configurable: true,
       value: { querySelector: jest.fn(() => target) },
@@ -25,9 +27,16 @@ describe("Guandan victory screenshot capture", () => {
     });
     capture.mockResolvedValue(canvas);
 
-    await expect(createGuandanVictoryScreenshot()).resolves.toBe("c2NyZWVuc2hvdA==");
-    expect(document.querySelector).toHaveBeenCalledWith("[data-victory-capture='true']");
-    expect(capture).toHaveBeenCalledWith(target, expect.objectContaining({ scale: 2 }));
+    await expect(createGuandanVictoryScreenshot()).resolves.toBe(
+      "c2NyZWVuc2hvdA==",
+    );
+    expect(document.querySelector).toHaveBeenCalledWith(
+      "[data-victory-capture='true']",
+    );
+    expect(capture).toHaveBeenCalledWith(
+      target,
+      expect.objectContaining({ scale: 2 }),
+    );
     expect(canvas.toDataURL).toHaveBeenCalledWith("image/png");
   });
 
@@ -36,7 +45,9 @@ describe("Guandan victory screenshot capture", () => {
       configurable: true,
       value: { querySelector: jest.fn(() => null) },
     });
-    await expect(createGuandanVictoryScreenshot()).rejects.toThrow("胜利画面尚未显示");
+    await expect(createGuandanVictoryScreenshot()).rejects.toThrow(
+      "胜利画面尚未显示",
+    );
     expect(capture).not.toHaveBeenCalled();
   });
 });
