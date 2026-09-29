@@ -239,6 +239,7 @@ const CleanroomEntry = (): JSX.Element => {
         </form>
       </div>
     </main>
+  );
 };
 
 export default CleanroomEntry;
