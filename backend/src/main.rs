@@ -321,7 +321,11 @@ async fn handle_guandan_rooms(
         rooms.push(GuandanRoomSummary {
             room_id,
             human_count: guandan_handler::online_human_count(&key, &versioned.game),
-            phase: if versioned.game.started { "playing" } else { "lobby" },
+            phase: if versioned.game.started {
+                "playing"
+            } else {
+                "lobby"
+            },
         });
     }
     rooms.sort_by(|left, right| left.room_id.cmp(&right.room_id));
