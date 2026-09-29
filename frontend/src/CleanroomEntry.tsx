@@ -149,6 +149,12 @@ const CleanroomEntry = (): JSX.Element => {
 
   return (
     <main className="cleanroom-join-shell cleanroom-join-shell-artwork">
+      <img
+        className="cleanroom-lobby-background"
+        src="/guandan-cleanroom-lobby.png"
+        alt=""
+        aria-hidden="true"
+      />
       <div className="cleanroom-bamboo" aria-hidden="true" />
       <div className="cleanroom-plum" aria-hidden="true" />
       <div className="cleanroom-lantern" aria-hidden="true" />
