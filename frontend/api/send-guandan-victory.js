@@ -2,6 +2,8 @@ const { createHash } = require("node:crypto");
 
 function getAllowedOrigins() {
   const origins = new Set([
+    "https://yihuagames.com",
+    "https://yihua-mu-chinese-game.vercel.app",
     "https://yihua-mu.vercel.app",
   ]);
   const deploymentHost = process.env.VERCEL_URL;

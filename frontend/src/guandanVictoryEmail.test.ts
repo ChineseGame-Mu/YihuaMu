@@ -35,7 +35,7 @@ const makeResponse = () => {
 const validRequest = (ip: string) => ({
   method: "POST",
   headers: {
-    origin: "https://yihua-mu.vercel.app",
+    origin: "https://yihuagames.com",
     "x-forwarded-for": ip,
   },
   body: {
@@ -126,7 +126,7 @@ describe("Guandan victory screenshot email endpoint", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("accepts the old production website origin", async () => {
+  it("accepts the production website origin before validating the payload", async () => {
     delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
     delete process.env.VERCEL_URL;
     process.env.RESEND_API_KEY = "test-api-key";
@@ -137,7 +137,7 @@ describe("Guandan victory screenshot email endpoint", () => {
     });
     global.fetch = fetchMock;
     const request = validRequest("test-production-origin");
-    request.headers.origin = "https://yihua-mu.vercel.app";
+    request.headers.origin = "https://yihuagames.com";
     const { response, result } = makeResponse();
 
     await handler(request, response);
@@ -146,18 +146,18 @@ describe("Guandan victory screenshot email endpoint", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects an unconfigured origin", async () => {
+  it("keeps the previous site origin working during migration", async () => {
     delete process.env.SCREENSHOT_ALLOWED_ORIGINS;
     delete process.env.VERCEL_URL;
     const request = {
       method: "POST",
-      headers: { origin: "https://attacker.example" },
+      headers: { origin: "https://yihua-mu.vercel.app" },
       body: {},
     };
     const { response, result } = makeResponse();
 
     await handler(request, response);
 
-    expect(result().statusCode).toBe(403);
+    expect(result().statusCode).toBe(400);
   });
 });

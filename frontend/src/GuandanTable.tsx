@@ -279,10 +279,6 @@ const GuandanTable: React.FunctionComponent = () => {
   const lastPromptTurnRef = React.useRef<string | null>(null);
   const screenshotAttemptRef = React.useRef<string | null>(null);
   const screenshotRetryUsedRef = React.useRef(false);
-  const victoryScreenshotRef = React.useRef<{
-    key: string;
-    data: string;
-  } | null>(null);
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
@@ -331,6 +327,44 @@ const GuandanTable: React.FunctionComponent = () => {
     state.lastGameWinner !== null &&
     state.seat % 2 !== state.lastGameWinner % 2;
 
+  React.useEffect(() => {
+    if (
+      !joined ||
+      observing ||
+      !gameStarted ||
+      state.seat === null ||
+      tributePending ||
+      nextRoundPending ||
+      state.trickComplete ||
+      state.matchWinner !== null ||
+      state.finishOrder.includes(state.seat) ||
+      effectiveTurn !== state.seat
+    ) {
+      lastPromptTurnRef.current = null;
+      return;
+    }
+    const turnKey = `${state.matchId}:${state.seat}:${state.turn}:${
+      state.tablePlays.length
+    }`;
+    if (lastPromptTurnRef.current === turnKey) return;
+    lastPromptTurnRef.current = turnKey;
+    playGuandanTurnPrompt();
+  }, [
+    effectiveTurn,
+    gameStarted,
+    joined,
+    observing,
+    nextRoundPending,
+    state.matchId,
+    state.matchWinner,
+    state.finishOrder,
+    state.seat,
+    state.tablePlays.length,
+    tributePending,
+    state.trickComplete,
+    state.turn,
+  ]);
+
   const sendVictoryScreenshot = React.useCallback(
     async (savedRecipient?: string): Promise<void> => {
       if (state.matchWinner === null) return;
@@ -343,15 +377,12 @@ const GuandanTable: React.FunctionComponent = () => {
 
       setScreenshotEmailStatus("sending");
       try {
-        const matchKey = `${state.room ?? room}:${state.matchId}`;
-        let screenshot =
-          victoryScreenshotRef.current?.key === matchKey
-            ? victoryScreenshotRef.current.data
-            : "";
-        if (!screenshot) {
-          screenshot = await createGuandanVictoryScreenshot();
-          victoryScreenshotRef.current = { key: matchKey, data: screenshot };
-        }
+        const screenshot = await createGuandanVictoryScreenshot({
+          winnerTeam: state.matchWinner,
+          players: state.players,
+          finishOrder: state.finishOrder,
+          room: state.room ?? room,
+        });
         const response = await fetch("/api/send-guandan-victory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -429,42 +460,6 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [joined]);
 
   React.useEffect(() => {
-    if (
-      !joined ||
-      observing ||
-      !gameStarted ||
-      state.seat === null ||
-      tributePending ||
-      nextRoundPending ||
-      state.trickComplete ||
-      state.matchWinner !== null ||
-      state.finishOrder.includes(state.seat) ||
-      effectiveTurn !== state.seat
-    ) {
-      lastPromptTurnRef.current = null;
-      return;
-    }
-    const turnKey = `${state.matchId}:${state.seat}:${state.turn}:${state.tablePlays.length}`;
-    if (lastPromptTurnRef.current === turnKey) return;
-    lastPromptTurnRef.current = turnKey;
-    playGuandanTurnPrompt();
-  }, [
-    effectiveTurn,
-    gameStarted,
-    joined,
-    observing,
-    nextRoundPending,
-    state.matchId,
-    state.matchWinner,
-    state.finishOrder,
-    state.seat,
-    state.tablePlays.length,
-    tributePending,
-    state.trickComplete,
-    state.turn,
-  ]);
-
-  React.useEffect(() => {
     if (status !== "connected") {
       autoJoinKeyRef.current = null;
       joinPendingRef.current = false;
@@ -486,7 +481,6 @@ const GuandanTable: React.FunctionComponent = () => {
     if (state.matchWinner === null) {
       screenshotAttemptRef.current = null;
       screenshotRetryUsedRef.current = false;
-      victoryScreenshotRef.current = null;
       setShowPostMatchChoice(false);
       setStartingNextMatch(false);
       setScreenshotEmail("");
@@ -495,21 +489,21 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [state.matchWinner]);
 
   React.useEffect(() => {
-    if (state.matchWinner === null || !showMatchCelebration) return;
+    if (state.matchWinner === null) return;
     setShowPostMatchChoice(false);
     const timer = gameTimer.setTimeout(
       () => setShowPostMatchChoice(true),
       20_000,
     );
     return () => gameTimer.clearTimeout(timer);
-  }, [gameTimer, showMatchCelebration, state.matchId, state.matchWinner]);
+  }, [gameTimer, state.matchId, state.matchWinner]);
 
   React.useEffect(() => {
     if (state.error !== null) setStartingNextMatch(false);
   }, [state.error]);
 
   React.useEffect(() => {
-    if (state.matchWinner === null || !showMatchCelebration) return;
+    if (state.matchWinner === null) return;
     const matchKey = `${state.room ?? room}:${state.matchId}`;
     const recipient = getPersonalEmail(name).trim();
     setScreenshotEmail(recipient);
@@ -536,7 +530,6 @@ const GuandanTable: React.FunctionComponent = () => {
     state.matchId,
     state.matchWinner,
     state.room,
-    showMatchCelebration,
   ]);
 
   React.useEffect(() => {
@@ -830,7 +823,6 @@ const GuandanTable: React.FunctionComponent = () => {
           clearConfetti={() => setShowMatchCelebration(false)}
           durationMs={10_000}
           dismissOnClick={false}
-          captureTarget="guandan-victory"
         />
       )}
       {showPostMatchChoice && state.matchWinner !== null && (

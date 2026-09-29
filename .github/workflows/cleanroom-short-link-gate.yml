@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
-      SHORT_URL: https://yihua-mu.vercel.app
+      SHORT_URL: https://yihuagames.com
       EXPECTED_COMMIT: ${{ github.sha }}
     steps:
       - uses: actions/setup-node@v4
