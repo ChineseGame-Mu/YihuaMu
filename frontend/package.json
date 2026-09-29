@@ -17,6 +17,7 @@
     "canvas-confetti": "^1.2.0",
     "classnames": "^2.2.6",
     "emoji-picker-react": "^4.4.7",
+    "html2canvas": "1.4.1",
     "jest": "^29.7.0",
     "json-schema-to-typescript": "^15.0.4",
     "react": "19.1.0",

@@ -9,6 +9,7 @@ interface IProps {
   clearConfetti: () => void;
   durationMs?: number;
   dismissOnClick?: boolean;
+  captureTarget?: string;
 }
 
 const Confetti = (props: IProps): JSX.Element => {
@@ -71,6 +72,7 @@ const Confetti = (props: IProps): JSX.Element => {
         background: "rgba(255, 255, 255, 0.8)",
         zIndex: 2,
       }}
+      data-victory-capture={props.captureTarget ? "true" : undefined}
       onClick={props.dismissOnClick === false ? undefined : props.clearConfetti}
     >
       <Timeout timeout={duration} callback={() => props.clearConfetti()} />

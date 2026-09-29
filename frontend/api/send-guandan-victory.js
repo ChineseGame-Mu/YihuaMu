@@ -1,7 +1,21 @@
 const { createHash } = require("node:crypto");
 
-const allowedOrigin =
-  process.env.SCREENSHOT_ALLOWED_ORIGIN || "https://yihua-mu.vercel.app";
+function getAllowedOrigins() {
+  const origins = new Set([
+    "https://yihua-mu.vercel.app",
+  ]);
+  const deploymentHost = process.env.VERCEL_URL;
+  if (deploymentHost) origins.add(`https://${deploymentHost}`);
+
+  for (const origin of (process.env.SCREENSHOT_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)) {
+    origins.add(origin);
+  }
+
+  return origins;
+}
 const maxImageCharacters = 8 * 1024 * 1024;
 const sendWindowMs = 10 * 60 * 1000;
 const sendsByIp = new Map();
@@ -17,7 +31,7 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 405, { error: "仅支持 POST 请求。" });
   }
 
-  if (req.headers.origin !== allowedOrigin) {
+  if (!getAllowedOrigins().has(req.headers.origin)) {
     return sendJson(res, 403, { error: "请求来源未获准。" });
   }
 

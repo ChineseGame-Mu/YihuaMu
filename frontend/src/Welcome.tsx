@@ -13,7 +13,7 @@ type WelcomeProps = {
 };
 
 const guandanTestHref = (): string =>
-  "https://yihua-mu-git-cleanroom-yihua-game-20260826-chinese-game.vercel.app/";
+  "https://yihua-mu.vercel.app/";
 
 const Welcome = ({
   connected = false,
