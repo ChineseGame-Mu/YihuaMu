@@ -7,6 +7,10 @@ import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 import { TimerContext } from "./TimerProvider";
 import { createGuandanVictoryScreenshot } from "./guandanVictoryScreenshot";
+import {
+  playGuandanTurnPrompt,
+  unlockGuandanTurnPromptAudio,
+} from "./guandanTurnPrompt";
 import { getPersonalEmail } from "./personalSettings";
 import type {
   GuandanCard,
@@ -272,6 +276,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
+  const lastPromptTurnRef = React.useRef<string | null>(null);
   const screenshotAttemptRef = React.useRef<string | null>(null);
   const screenshotRetryUsedRef = React.useRef(false);
   const victoryScreenshotRef = React.useRef<{
@@ -422,6 +427,32 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     if (joined) joinPendingRef.current = false;
   }, [joined]);
+
+  React.useEffect(() => {
+    if (
+      !joined ||
+      observing ||
+      !gameStarted ||
+      state.seat === null ||
+      effectiveTurn !== state.seat
+    ) {
+      lastPromptTurnRef.current = null;
+      return;
+    }
+    const turnKey = `${state.matchId}:${state.seat}:${state.turn}:${state.tablePlays.length}`;
+    if (lastPromptTurnRef.current === turnKey) return;
+    lastPromptTurnRef.current = turnKey;
+    playGuandanTurnPrompt();
+  }, [
+    effectiveTurn,
+    gameStarted,
+    joined,
+    observing,
+    state.matchId,
+    state.seat,
+    state.tablePlays.length,
+    state.turn,
+  ]);
 
   React.useEffect(() => {
     if (status !== "connected") {
@@ -778,7 +809,11 @@ const GuandanTable: React.FunctionComponent = () => {
   );
 
   return (
-    <main className="guandan-table">
+    <main
+      className="guandan-table"
+      onPointerDownCapture={unlockGuandanTurnPromptAudio}
+      onKeyDownCapture={unlockGuandanTurnPromptAudio}
+    >
       {showMatchCelebration && state.matchWinner !== null && (
         <Confetti
           confetti={`${state.matchWinner === "A" ? "A队" : "B队"}打A获胜！`}
