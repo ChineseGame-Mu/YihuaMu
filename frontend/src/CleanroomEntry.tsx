@@ -16,6 +16,7 @@ import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
 import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
 import { prepareGuandanTurnPrompt } from "./guandanTurnPrompt";
+import { shouldAutoJoinCleanroom } from "./cleanroomAutoJoin";
 import {
   CLEANROOM_ROOM_IDS,
   availabilityByVisibleRoom,
@@ -116,8 +117,12 @@ const CleanroomEntry = (): JSX.Element => {
   const initialCount = supportedCounts.includes(requested as (typeof supportedCounts)[number]) ? requested : 4;
   const [roomId, setRoomId] = React.useState<SelectableRoom>(initialRoom);
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
-  const [name, setName] = React.useState(initial.get("playerName") ?? "");
-  const [joined, setJoined] = React.useState(false);
+  const [name, setName] = React.useState(
+    initial.get("playerName") ?? initial.get("name") ?? "",
+  );
+  const [joined, setJoined] = React.useState(() =>
+    shouldAutoJoinCleanroom(window.location.search),
+  );
   const [roomAvailability, setRoomAvailability] = React.useState<
     Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
   >({});
