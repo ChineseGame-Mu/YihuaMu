@@ -11,13 +11,23 @@ import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import ExitGameButton from "./ExitGameButton";
 import TimerProvider from "./TimerProvider";
+import {
+  availabilityByVisibleRoom,
+  CLEANROOM_ROOM_IDS,
+  cleanroomRoomOptionLabel,
+  type CleanroomRoomAvailability,
+  type CleanroomRoomId,
+  type CleanroomRoomSummary,
+} from "./cleanroomRoomAvailability";
 import "./cleanroom-join.css";
 import "./cleanroom-lobby-artwork.css";
 
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
-const selectableRooms = ["0001", "0002", "0003", "0004"] as const;
-type SelectableRoom = (typeof selectableRooms)[number];
+const selectableRooms = CLEANROOM_ROOM_IDS;
+type SelectableRoom = CleanroomRoomId;
 const cleanroomWebsocket = "wss://chinesegame-yihua.onrender.com/api/guandan";
+const cleanroomRoomsApi =
+  "https://chinesegame-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 
 const isSelectableRoom = (value: string | null): value is SelectableRoom =>
@@ -124,6 +134,34 @@ const CleanroomEntry = (): JSX.Element => {
   const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
   const [name, setName] = React.useState(initial.get("playerName") ?? "");
   const [joined, setJoined] = React.useState(false);
+  const [roomAvailability, setRoomAvailability] = React.useState<
+    Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
+  >({});
+
+  React.useEffect(() => {
+    if (joined) return;
+    let active = true;
+    const refreshAvailability = async (): Promise<void> => {
+      try {
+        const response = await fetch(cleanroomRoomsApi, { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          rooms?: CleanroomRoomSummary[];
+        };
+        if (active && Array.isArray(payload.rooms)) {
+          setRoomAvailability(availabilityByVisibleRoom(payload.rooms));
+        }
+      } catch {
+        // Keep the room list usable if the status endpoint is temporarily unavailable.
+      }
+    };
+    void refreshAvailability();
+    const timer = window.setInterval(() => void refreshAvailability(), 10_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [joined]);
 
   if (joined) return <CleanroomTable />;
 
@@ -187,7 +225,7 @@ const CleanroomEntry = (): JSX.Element => {
             >
               {selectableRooms.map((room) => (
                 <option key={room} value={room}>
-                  {room}
+                  {cleanroomRoomOptionLabel(room, roomAvailability[room])}
                 </option>
               ))}
             </select>
@@ -221,8 +259,8 @@ const CleanroomEntry = (): JSX.Element => {
             </button>
           </form>
           <p className="cleanroom-hint">
-            最多四个牌室：0001、0002、0003、0004。固定公开链接可在任何时间打开；
-            系统会自动使用当前可加入的牌室会话。人数按 6→8→10→12→14
+            共开放十个牌室：0001–0010。列表会显示空房、已有玩家或游戏中人数；
+            固定公开链接可在任何时间打开。人数按 6→8→10→12→14
             逐步增加，当前一局不中断，新玩家从满足偶数人数后的下一局开始参赛。
           </p>
         </section>

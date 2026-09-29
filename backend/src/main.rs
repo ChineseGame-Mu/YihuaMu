@@ -127,6 +127,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let app = Router::new()
         .route("/api", get(handle_websocket))
         .route("/api/guandan", get(handle_guandan_websocket))
+        .route("/api/guandan/rooms", get(handle_guandan_rooms))
         .route(
             "/guandan",
             get(|| async {
@@ -276,6 +277,97 @@ async fn handle_guandan_websocket(
 ) -> impl IntoResponse {
     let subscriber_id = NEXT_USER_ID.fetch_add(1, Ordering::Relaxed);
     ws.on_upgrade(move |socket| guandan_handler::websocket(socket, guandan_storage, subscriber_id))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct GuandanRoomSummary {
+    room_id: String,
+    human_count: usize,
+    phase: &'static str,
+}
+
+#[derive(Serialize)]
+struct GuandanRoomsResponse {
+    rooms: Vec<GuandanRoomSummary>,
+}
+
+fn is_visible_cleanroom_room_id(room_id: &str) -> bool {
+    matches!(
+        room_id,
+        "0001" | "0002" | "0003" | "0004" | "0005" | "0006" | "0007" | "0008" | "0009" | "0010"
+    )
+}
+
+async fn handle_guandan_rooms(
+    Extension(guandan_storage): Extension<HashMapStorage<VersionedGuandanGame>>,
+) -> Result<Json<GuandanRoomsResponse>, &'static str> {
+    let keys = guandan_storage
+        .clone()
+        .get_all_keys()
+        .await
+        .map_err(|_| "failed to list Guandan rooms")?;
+    let mut rooms = Vec::new();
+    for key in keys {
+        let Ok(room_id) = String::from_utf8(key.clone()) else {
+            continue;
+        };
+        if !is_visible_cleanroom_room_id(&room_id) {
+            continue;
+        }
+        let Ok(versioned) = guandan_storage.clone().get(key.clone()).await else {
+            continue;
+        };
+        rooms.push(GuandanRoomSummary {
+            room_id,
+            human_count: guandan_handler::online_human_count(&key, &versioned.game),
+            phase: if versioned.game.started {
+                "playing"
+            } else {
+                "lobby"
+            },
+        });
+    }
+    rooms.sort_by(|left, right| left.room_id.cmp(&right.room_id));
+    Ok(Json(GuandanRoomsResponse { rooms }))
+}
+
+#[cfg(test)]
+mod guandan_room_endpoint_tests {
+    use super::{is_visible_cleanroom_room_id, GuandanRoomSummary, GuandanRoomsResponse};
+
+    #[test]
+    fn only_exposes_the_ten_public_cleanroom_ids() {
+        for number in 1..=10 {
+            assert!(is_visible_cleanroom_room_id(&format!("{number:04}")));
+        }
+        assert!(!is_visible_cleanroom_room_id("0011"));
+        assert!(!is_visible_cleanroom_room_id("private-room"));
+        assert!(!is_visible_cleanroom_room_id("cr-release-0001"));
+    }
+
+    #[test]
+    fn room_status_response_contains_only_public_room_metadata() {
+        let response = GuandanRoomsResponse {
+            rooms: vec![GuandanRoomSummary {
+                room_id: "0002".to_string(),
+                human_count: 2,
+                phase: "lobby",
+            }],
+        };
+        let json = serde_json::to_value(response).unwrap();
+
+        assert_eq!(
+            json,
+            serde_json::json!({
+                "rooms": [{
+                    "roomId": "0002",
+                    "humanCount": 2,
+                    "phase": "lobby"
+                }]
+            })
+        );
+    }
 }
 
 async fn handle_websocket(
