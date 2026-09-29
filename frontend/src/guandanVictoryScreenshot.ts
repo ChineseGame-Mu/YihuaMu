@@ -1,7 +1,9 @@
 import html2canvas from "html2canvas";
 
 export const createGuandanVictoryScreenshot = async (): Promise<string> => {
-  const target = document.querySelector<HTMLElement>("[data-victory-capture='true']");
+  const target = document.querySelector<HTMLElement>(
+    "[data-victory-capture='true']",
+  );
   if (target === null) throw new Error("胜利画面尚未显示，无法截图");
   const canvas = await html2canvas(target, {
     backgroundColor: "#ffffff",
