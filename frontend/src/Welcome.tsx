@@ -12,8 +12,7 @@ type WelcomeProps = {
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
-const guandanTestHref = (): string =>
-  "https://yihua-mu-git-cleanroom-yihua-game-20260826-chinese-game.vercel.app/";
+const guandanTestHref = (): string => "/?cleanroom=1";
 
 const Welcome = ({
   connected = false,
