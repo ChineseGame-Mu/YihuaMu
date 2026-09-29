@@ -434,6 +434,11 @@ const GuandanTable: React.FunctionComponent = () => {
       observing ||
       !gameStarted ||
       state.seat === null ||
+      tributePending ||
+      nextRoundPending ||
+      state.trickComplete ||
+      state.matchWinner !== null ||
+      state.finishOrder.includes(state.seat) ||
       effectiveTurn !== state.seat
     ) {
       lastPromptTurnRef.current = null;
@@ -448,9 +453,14 @@ const GuandanTable: React.FunctionComponent = () => {
     gameStarted,
     joined,
     observing,
+    nextRoundPending,
     state.matchId,
+    state.matchWinner,
+    state.finishOrder,
     state.seat,
     state.tablePlays.length,
+    tributePending,
+    state.trickComplete,
     state.turn,
   ]);
 

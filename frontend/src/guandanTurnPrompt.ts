@@ -7,32 +7,42 @@ const getAudioContext = (): AudioContext | null => {
     (window as typeof window & { webkitAudioContext?: typeof AudioContext })
       .webkitAudioContext;
   if (!AudioContextConstructor) return null;
-  audioContext ??= new AudioContextConstructor();
-  return audioContext;
+  try {
+    audioContext ??= new AudioContextConstructor();
+    return audioContext;
+  } catch {
+    return null;
+  }
 };
 
 /** Resume audio synchronously from a player's gesture for mobile browser policies. */
 export const unlockGuandanTurnPromptAudio = (): void => {
   const context = getAudioContext();
-  if (context?.state === "suspended") void context.resume();
+  if (context?.state === "suspended") {
+    void context.resume().catch(() => undefined);
+  }
 };
 
 /** Notify only the player whose turn it is: a soft beep followed by speech. */
 export const playGuandanTurnPrompt = (): void => {
   const context = getAudioContext();
-  if (context) {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = context.currentTime;
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(880, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.08, start + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(start + 0.15);
+  if (context !== null) {
+    try {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(880, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.08, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.14);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.15);
+    } catch {
+      // Sound is best-effort; continue to the voice prompt if audio is unavailable.
+    }
   }
 
   if (
@@ -45,6 +55,6 @@ export const playGuandanTurnPrompt = (): void => {
     utterance.rate = 1;
     utterance.pitch = 1;
     window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
+    window.setTimeout(() => window.speechSynthesis.speak(utterance), 140);
   }
 };

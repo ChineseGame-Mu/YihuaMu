@@ -29,9 +29,11 @@ describe("Guandan turn prompt", () => {
       Reflect.deleteProperty(globalThis, "SpeechSynthesisUtterance");
     }
     jest.restoreAllMocks();
+    jest.useRealTimers();
   });
 
-  test("unlocks audio and plays a quiet beep with the Chinese prompt", () => {
+  test("unlocks audio and plays a quiet beep before the Chinese prompt", () => {
+    jest.useFakeTimers();
     const oscillator = {
       type: "",
       frequency: { setValueAtTime: jest.fn() },
@@ -71,7 +73,10 @@ describe("Guandan turn prompt", () => {
     });
     const speak = jest.fn();
     const cancel = jest.fn();
-    Object.assign(window, { speechSynthesis: { speak, cancel } });
+    Object.assign(window, {
+      speechSynthesis: { speak, cancel },
+      setTimeout: globalThis.setTimeout,
+    });
     const utterances: Array<{ text: string; lang?: string }> = [];
     Object.defineProperty(globalThis, "SpeechSynthesisUtterance", {
       configurable: true,
@@ -88,6 +93,8 @@ describe("Guandan turn prompt", () => {
     expect(resume).toHaveBeenCalledTimes(1);
     expect(oscillator.start).toHaveBeenCalledWith(3);
     expect(oscillator.stop).toHaveBeenCalledWith(3.15);
+    expect(speak).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(140);
     expect(speak).toHaveBeenCalledWith(utterances[0]);
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(utterances[0]).toMatchObject({ text: "请出牌", lang: "zh-CN" });
