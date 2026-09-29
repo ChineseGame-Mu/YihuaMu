@@ -78,7 +78,7 @@ const Welcome = ({
         </button>
         <a
           className="welcome-mode"
-          href={guandanEntryHref(window.location.href)}
+          href={guandanEntryHref()}
           style={{
             font: "inherit",
             color: "inherit",

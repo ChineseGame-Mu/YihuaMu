@@ -30,6 +30,8 @@ import GuandanNoBeatControls from "./GuandanNoBeatControls";
 import ExitGameButton from "./ExitGameButton";
 import GuandanHeaderDecor from "./GuandanHeaderDecor";
 import GuandanCustomSortControls from "./GuandanCustomSortControls";
+import CleanroomEntry from "./CleanroomEntry";
+import { shouldRenderDedicatedGuandanEntry } from "./guandanEntryRoute";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
@@ -68,6 +70,20 @@ const bootstrap = (): void => {
 
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
+
+  if (
+    shouldRenderDedicatedGuandanEntry(
+      window.location.hostname,
+      window.location.search,
+    )
+  ) {
+    root_.render(
+      <React.Suspense fallback={fallback}>
+        <CleanroomEntry />
+      </React.Suspense>,
+    );
+    return;
+  }
 
   if (game === "guandan") {
     root_.render(
