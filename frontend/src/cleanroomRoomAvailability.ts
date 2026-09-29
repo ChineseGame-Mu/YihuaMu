@@ -13,6 +13,11 @@ export const CLEANROOM_ROOM_IDS = [
 
 export type CleanroomRoomId = (typeof CLEANROOM_ROOM_IDS)[number];
 
+export const isCleanroomRoomId = (
+  value: string | null,
+): value is CleanroomRoomId =>
+  value !== null && CLEANROOM_ROOM_IDS.includes(value as CleanroomRoomId);
+
 export interface CleanroomRoomSummary {
   readonly roomId: string;
   readonly humanCount: number;

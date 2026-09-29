@@ -21,6 +21,7 @@ import {
   CLEANROOM_ROOM_IDS,
   availabilityByVisibleRoom,
   cleanroomRoomOptionLabel,
+  isCleanroomRoomId,
   type CleanroomRoomAvailability,
   type CleanroomRoomId,
   type CleanroomRoomSummary,
@@ -44,7 +45,7 @@ const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
 const cleanroomRoomAvailabilityUrl =
   "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
-const isSelectableRoom = (value: string | null): value is SelectableRoom => value !== null && selectableRooms.includes(value as SelectableRoom);
+const isSelectableRoom = isCleanroomRoomId;
 const roomFromLocation = (): SelectableRoom => {
   const query = new URLSearchParams(window.location.search);
   const cleanroomRoom = query.get("cleanroomRoom");
