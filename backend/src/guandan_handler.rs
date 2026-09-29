@@ -244,6 +244,19 @@ fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
         .map(|name| room.and_then(|room| room.get(name)).copied().unwrap_or(0) > 0)
         .collect()
 }
+pub fn online_human_count(key: &[u8], game: &GuandanGameState) -> usize {
+    let rooms = GUANDAN_CONNECTIONS.lock().ok();
+    let Some(room) = rooms.as_ref().and_then(|rooms| rooms.get(key)) else {
+        return 0;
+    };
+    game.player_names
+        .iter()
+        .chain(game.pending_players.iter())
+        .filter(|name| !is_robot_name(name))
+        .filter(|name| room.get(*name).copied().unwrap_or(0) > 0)
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+}
 fn normalize_room_name(room: &str) -> String {
     room.trim().trim_end_matches('/').trim_end().to_string()
 }
@@ -2067,6 +2080,27 @@ mod tests {
     fn normalizes_room_names_for_reconnect() {
         assert_eq!(normalize_room_name(" test415/ "), "test415");
         assert_eq!(normalize_room_name("test415///"), "test415");
+    }
+
+    #[test]
+    fn cleanroom_occupancy_counts_connected_humans_once_and_hides_bots() {
+        let key = b"occupancy-test-room-0001";
+        set_connected(key, "Alice", true);
+        set_connected(key, "Alice", true);
+        set_connected(key, "Bob", true);
+        set_connected(key, "机器人1", true);
+        let game = GuandanGameState {
+            player_names: vec!["Alice".to_string(), "机器人1".to_string()],
+            pending_players: vec!["Bob".to_string(), "Offline".to_string()],
+            ..GuandanGameState::default()
+        };
+
+        assert_eq!(online_human_count(key, &game), 2);
+
+        set_connected(key, "Alice", false);
+        set_connected(key, "Alice", false);
+        set_connected(key, "Bob", false);
+        set_connected(key, "机器人1", false);
     }
     #[test]
     fn one_two_finish_auto_assigns_fourth_then_loser_shuffle() {
