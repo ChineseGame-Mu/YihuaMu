@@ -101,6 +101,10 @@ module.exports = {
           from: "static/434472_dersuperanton_taking-card.mp3",
           to: "434472_dersuperanton_taking-card.mp3",
         },
+        {
+          from: "static/guandan-cleanroom-lobby.png",
+          to: "guandan-cleanroom-lobby.png",
+        },
       ],
     }),
   ],
