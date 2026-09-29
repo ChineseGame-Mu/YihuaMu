@@ -11,7 +11,7 @@
 
 .cleanroom-lobby-background {
   position: absolute;
-  z-index: 0;
+  z-index: 1;
   top: 0;
   left: 50%;
   width: min(100vw, 1105px);
