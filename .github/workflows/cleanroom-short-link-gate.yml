@@ -44,7 +44,7 @@ jobs:
           await room.waitFor({state:'visible',timeout:30000});
           if (await room.evaluate(el => el.tagName) !== 'SELECT') throw new Error('room control is not SELECT');
           const options = await room.locator('option').evaluateAll(nodes => nodes.map(n => n.value));
-          const expectedRooms = ['0001','0002','0003','0004'];
+          const expectedRooms = ['0001','0002','0003','0004','0005','0006','0007','0008','0009','0010'];
           if (JSON.stringify(options) !== JSON.stringify(expectedRooms)) throw new Error(`room options mismatch: ${options.join(',')}`);
           if (await page.locator('input#cleanroom-room, input[name="room"], input[name="cleanroomRoom"]').count()) throw new Error('free-text room input detected');
           console.log(JSON.stringify({type:'short_link_gate_pass',url:process.env.SHORT_URL,commit:actual,rooms:options}));
