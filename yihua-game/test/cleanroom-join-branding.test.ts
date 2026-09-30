@@ -10,10 +10,10 @@ describe("clean-room Guandan join branding", () => {
   it("keeps the approved bilingual Chinese entry branding and room controls", () => {
     const entry = readRepoFile("frontend/src/CleanroomEntry.tsx");
 
-    expect(entry).toContain("掼蛋游戏");
-    expect(entry).toContain("GUANDAN GAME");
-    expect(entry).toContain("经典掼蛋 · 智慧对决 · 乐在其中");
-    expect(entry).toContain("cleanroom-emblem");
+    expect(entry).toContain('alt="掼蛋游戏山水牌室"');
+    expect(entry).toContain("cleanroomLobbyFinalImage");
+    expect(entry).toContain('className="cleanroom-final-art"');
+    expect(entry).toContain('className="cleanroom-final-form"');
     expect(entry).toContain('id="cleanroom-player-count"');
     expect(entry).toContain('id="cleanroom-player-name"');
     expect(entry).toContain("进入牌室");

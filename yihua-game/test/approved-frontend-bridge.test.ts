@@ -37,9 +37,7 @@ describe("approved Guandan frontend clean-room bridge", () => {
     );
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
-    expect(entry).toContain(
-      'import GuandanWebsocketProvider from "./GuandanWebsocketProvider"',
-    );
+    expect(entry).toContain("import GuandanWebsocketProvider, {");
     expect(entry).toContain("<GuandanWebsocketProvider>");
     expect(entry).toContain("<GuandanStateProvider>");
     expect(entry).toContain("<GuandanTable />");
@@ -68,8 +66,8 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(entry).toContain(
       'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
-    expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
-    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+    expect(entry).toContain('url.searchParams.set("cleanroom","1")');
+    expect(entry).toContain('url.searchParams.set("ws",cleanroomWebsocket)');
     expect(transport).toContain(
       'const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
@@ -102,9 +100,12 @@ describe("approved Guandan frontend clean-room bridge", () => {
       "utf8",
     );
 
-    expect(entry).toContain('url.searchParams.set("cleanroomRoom", roomId)');
-    expect(entry).toContain('url.searchParams.set("room", roomId)');
-    expect(transport).toContain('room: query.get("cleanroomRoom")');
+    expect(entry).toContain('url.searchParams.set("cleanroomRoom",roomId)');
+    expect(entry).toContain('url.searchParams.set("room",roomId)');
+    expect(transport).toContain(
+      'const visibleRoom = query.get("cleanroomRoom")',
+    );
+    expect(transport).toContain("room: wireRoom");
     expect(adapter).toContain("const room = options.room?.trim()");
     expect(adapter).toContain("room: room || message.room");
   });
@@ -127,8 +128,6 @@ describe("approved Guandan frontend clean-room bridge", () => {
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
-    expect(gateway).toContain(
-      "runtime.rooms.create(roomId, supportedPlayerCount",
-    );
+    expect(gateway).toContain("runtime.rooms.create(roomId, playerCount)");
   });
 });

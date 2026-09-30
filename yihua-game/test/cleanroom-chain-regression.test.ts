@@ -17,8 +17,8 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(entry).toContain(
       'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
-    expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
-    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+    expect(entry).toContain('url.searchParams.set("cleanroom","1")');
+    expect(entry).toContain('url.searchParams.set("ws",cleanroomWebsocket)');
 
     expect(table).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(transport).toContain(
@@ -33,9 +33,7 @@ describe("approved clean-room end-to-end chain regression", () => {
     expect(gateway).toContain("toCleanroomCommand");
     expect(gateway).toContain("gameStateToLegacy");
     expect(gateway).toContain("requestedPlayerCount");
-    expect(gateway).toContain(
-      "runtime.rooms.create(roomId, supportedPlayerCount",
-    );
+    expect(gateway).toContain("runtime.rooms.create(roomId, playerCount)");
   });
 
   it("does not allow the clean-room entry or transport to point at the old production backend", () => {
