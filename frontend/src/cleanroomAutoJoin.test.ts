@@ -12,9 +12,7 @@ describe("cleanroom direct room links", () => {
   it("keeps the room-entry form for ordinary links", () => {
     expect(shouldAutoJoinCleanroom("?cleanroom=1&room=0004")).toBe(false);
     expect(
-      shouldAutoJoinCleanroom(
-        "?cleanroom=1&game=guandan&autoJoin=1&room=0004",
-      ),
+      shouldAutoJoinCleanroom("?cleanroom=1&game=guandan&autoJoin=1&room=0004"),
     ).toBe(false);
   });
 });
