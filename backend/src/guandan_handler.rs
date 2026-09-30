@@ -103,6 +103,7 @@ pub enum GuandanServerMessage {
         cards: Vec<CardFace>,
     },
     State {
+        match_id: u64,
         players: Vec<String>,
         observers: Vec<String>,
         online_players: Vec<bool>,
@@ -256,6 +257,18 @@ fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
         .map(|name| room.and_then(|room| room.get(name)).copied().unwrap_or(0) > 0)
         .collect()
 }
+pub fn online_human_count(key: &[u8], game: &GuandanGameState) -> usize {
+    let rooms = GUANDAN_CONNECTIONS.lock().ok();
+    let Some(room) = rooms.as_ref().and_then(|rooms| rooms.get(key)) else {
+        return 0;
+    };
+    game.player_names
+        .iter()
+        .filter(|name| !is_robot_name(name))
+        .filter(|name| room.get(*name).copied().unwrap_or(0) > 0)
+        .collect::<std::collections::HashSet<_>>()
+        .len()
+}
 fn normalize_room_name(room: &str) -> String {
     room.trim().trim_end_matches('/').trim_end().to_string()
 }
@@ -285,6 +298,7 @@ fn waiting_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage 
 }
 fn state_message(key: &[u8], game: &GuandanGameState) -> GuandanServerMessage {
     GuandanServerMessage::State {
+        match_id: game.match_id,
         players: game.player_names.clone(),
         observers: observers_for(key),
         online_players: online_players(key, game),
@@ -1064,6 +1078,7 @@ pub async fn websocket(
                         let (initial_draw, draw_winner) =
                             draw_starting_seat(&mut draw_deck, table.player_count);
                         state.game.started = true;
+                        state.game.match_id = state.game.match_id.saturating_add(1);
                         state.game.hands = hands;
                         state.game.turn = draw_winner;
                         state.game.initial_draw = initial_draw;
