@@ -8,6 +8,7 @@ import type {
 import { guandanPromotionSteps } from "./guandanPromotion";
 
 export interface GuandanTableState {
+  matchId: number;
   room: string | null;
   seat: number | null;
   players: string[];
@@ -54,6 +55,7 @@ export interface GuandanTableState {
 }
 
 export const initialGuandanTableState: GuandanTableState = {
+  matchId: 0,
   room: null,
   seat: null,
   players: [],
@@ -252,6 +254,7 @@ export const adaptGuandanServerMessage = (
 
       return {
         ...state,
+        matchId: message.match_id ?? state.matchId,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,

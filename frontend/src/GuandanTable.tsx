@@ -7,6 +7,7 @@ import {
   type GuandanAutoGroup,
 } from "./guandanAutoArrange";
 import { shouldShowCompletedRoundResult } from "./guandanRoundResultVisibility";
+import { createGuandanVictoryScreenshot } from "./guandanVictoryScreenshot";
 import { GuandanStateContext } from "./GuandanStateProvider";
 import { GuandanWebsocketContext } from "./GuandanWebsocketProvider";
 import type {
@@ -15,6 +16,10 @@ import type {
   GuandanTributePlan,
 } from "./guandanProtocol";
 import { privateHandStackProgress } from "./guandanHandLayout";
+import {
+  guandanDealPresentation,
+  guandanDealtCardsForSeat,
+} from "./guandanDealPresentation";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -176,14 +181,13 @@ const tributeRole = (
   return null;
 };
 
-const DEAL_INTERVAL_MS = 120;
+const DEAL_INTERVAL_MS = 45;
 const TRICK_CLEAR_DELAY_MS = 8000;
 const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
   value.replace(/\D/g, "").slice(0, ROOM_CODE_LENGTH);
-const isValidRoomCode = (value: string): boolean =>
-  isCleanroomRoomId(value);
+const isValidRoomCode = (value: string): boolean => isCleanroomRoomId(value);
 
 const guandanErrorLabel = (message: string): string => {
   const labels: Record<string, string> = {
@@ -286,6 +290,9 @@ const GuandanTable: React.FunctionComponent = () => {
       window.localStorage.getItem("guandan_winner_screenshot_email"),
     ),
   );
+  const [screenshotEmailStatus, setScreenshotEmailStatus] = React.useState<
+    "idle" | "missing" | "sending" | "sent" | "failed"
+  >("idle");
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -302,6 +309,8 @@ const GuandanTable: React.FunctionComponent = () => {
   const lastAnimatedHandSizeRef = React.useRef(0);
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const lastTurnPromptKeyRef = React.useRef<string | null>(null);
+  const screenshotAttemptRef = React.useRef<string | null>(null);
+  const screenshotRetryUsedRef = React.useRef(false);
 
   const activateMusic = React.useCallback((mode: GuandanMusicMode): void => {
     if (activeMusicModeRef.current === mode) return;
@@ -351,10 +360,8 @@ const GuandanTable: React.FunctionComponent = () => {
 
   const joined = state.room !== null;
   const observing = joined && state.seat === null;
-  const role = tributeRole(
-    state.pendingTribute as GuandanTributePlan | null,
-    state.seat,
-  );
+  const tributePlan = state.pendingTribute as GuandanTributePlan | null;
+  const role = tributeRole(tributePlan, state.seat);
   const tributePending = state.pendingTribute !== null;
   const tributePhase = state.tributePhase ?? "tribute";
   const nextRoundPending = state.nextRoundPhase !== null;
@@ -373,11 +380,29 @@ const GuandanTable: React.FunctionComponent = () => {
   const showCompletedRoundResult = shouldShowCompletedRoundResult(state);
   const cardsPerPlayer =
     state.cardsPerPlayer ?? (state.hand.length > 0 ? state.hand.length : 27);
-  const totalDealSteps = playerCount > 0 ? cardsPerPlayer : 0;
+  const totalDealCards = playerCount > 0 ? playerCount * cardsPerPlayer : 0;
   const effectiveTableSize =
     playerCount > 0 ? playerCount : requestedPlayerCount;
   const deckSize = Math.max(108, effectiveTableSize * cardsPerPlayer);
-  const dealing = dealStep !== null && dealStep < totalDealSteps;
+  const dealPresentation = guandanDealPresentation(
+    dealStep,
+    playerCount,
+    cardsPerPlayer,
+  );
+  const dealing = dealStep !== null && dealStep < totalDealCards;
+  const dealTargetSeat = dealPresentation.targetSeat;
+  const dealTargetName =
+    dealTargetSeat === null
+      ? null
+      : (state.players[dealTargetSeat] ?? `玩家${dealTargetSeat + 1}`);
+  const dealTargetAngle =
+    dealTargetSeat === null || playerCount <= 0
+      ? -Math.PI / 2
+      : (dealTargetSeat / playerCount) * Math.PI * 2 - Math.PI / 2;
+  const dealFlightStyle = {
+    "--guandan-deal-x": `${Math.cos(dealTargetAngle) * 170}px`,
+    "--guandan-deal-y": `${Math.sin(dealTargetAngle) * 105}px`,
+  } as React.CSSProperties;
   const serverDealt =
     state.hand.length > 0 || state.handCounts.some((count) => count > 0);
   const gameStarted = serverDealt || startRequested;
@@ -418,6 +443,83 @@ const GuandanTable: React.FunctionComponent = () => {
           state.turn,
           state.tablePlays,
         );
+
+  const sendVictoryScreenshot = React.useCallback(async (): Promise<void> => {
+    if (state.matchWinner === null) return;
+    const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+      setScreenshotEmailStatus("missing");
+      return;
+    }
+
+    setScreenshotEmailStatus("sending");
+    try {
+      const screenshot = await createGuandanVictoryScreenshot({
+        winnerTeam: state.matchWinner,
+        players: state.players,
+        finishOrder: state.finishOrder,
+        room,
+      });
+      const response = await fetch("/api/send-guandan-victory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipient,
+          screenshot,
+          room,
+          matchId: state.matchId,
+          winnerTeam: state.matchWinner,
+        }),
+      });
+      if (!response.ok) throw new Error("screenshot email request failed");
+      window.localStorage.setItem(
+        `guandan_screenshot_sent:${room}:${state.matchId}`,
+        recipient,
+      );
+      setScreenshotEmailStatus("sent");
+    } catch {
+      setScreenshotEmailStatus("failed");
+    }
+  }, [
+    room,
+    state.finishOrder,
+    state.matchId,
+    state.matchWinner,
+    state.players,
+    winnerScreenshotEmail,
+  ]);
+
+  React.useEffect(() => {
+    if (state.matchWinner === null) {
+      screenshotAttemptRef.current = null;
+      screenshotRetryUsedRef.current = false;
+      setScreenshotEmailStatus("idle");
+      return;
+    }
+    const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+      setScreenshotEmailStatus("missing");
+      return;
+    }
+    const matchKey = `${room}:${state.matchId}`;
+    const attemptKey = `${matchKey}:${recipient}`;
+    if (screenshotAttemptRef.current === attemptKey) return;
+    const sentTo = window.localStorage.getItem(
+      `guandan_screenshot_sent:${matchKey}`,
+    );
+    screenshotAttemptRef.current = attemptKey;
+    if (sentTo === recipient) {
+      setScreenshotEmailStatus("sent");
+      return;
+    }
+    void sendVictoryScreenshot();
+  }, [
+    room,
+    sendVictoryScreenshot,
+    state.matchId,
+    state.matchWinner,
+    winnerScreenshotEmail,
+  ]);
 
   React.useEffect(() => {
     window.localStorage.setItem(
@@ -577,20 +679,20 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [state.hand.length, state.lastPlay.length, nextRoundPending, playerCount]);
 
   React.useEffect(() => {
-    if (dealStep === null || totalDealSteps <= 0) return;
-    if (dealStep >= totalDealSteps) {
+    if (dealStep === null || totalDealCards <= 0) return;
+    if (dealStep >= totalDealCards) {
       setDealStep(null);
       return;
     }
     const timer = window.setTimeout(
       () =>
         setDealStep((current) =>
-          current === null ? null : Math.min(current + 1, totalDealSteps),
+          current === null ? null : Math.min(current + 1, totalDealCards),
         ),
       DEAL_INTERVAL_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [dealStep, totalDealSteps]);
+  }, [dealStep, totalDealCards]);
 
   React.useEffect(() => {
     if (
@@ -760,15 +862,11 @@ const GuandanTable: React.FunctionComponent = () => {
     return url.toString();
   };
 
-  const dealtCount = (): number => {
-    if (dealStep === null || playerCount <= 0) {
-      return state.cardsPerPlayer ?? 0;
-    }
-    return Math.max(0, Math.min(cardsPerPlayer, dealStep));
-  };
+  const dealtCountForSeat = (seat: number): number =>
+    guandanDealtCardsForSeat(dealStep, playerCount, cardsPerPlayer, seat);
 
   const remainingCountForSeat = (seat: number): number => {
-    if (dealStep !== null) return dealtCount();
+    if (dealStep !== null) return dealtCountForSeat(seat);
     const explicit = state.handCounts[seat];
     if (explicit !== undefined) return explicit;
     if (seat === state.seat && state.hand.length > 0) return state.hand.length;
@@ -779,7 +877,7 @@ const GuandanTable: React.FunctionComponent = () => {
     const count =
       dealStep === null || state.seat === null
         ? state.hand.length
-        : dealtCount();
+        : dealtCountForSeat(state.seat);
     const direction = handSortOrder === "asc" ? 1 : -1;
     return state.hand
       .map((card, originalIndex) => ({ card, originalIndex }))
@@ -940,6 +1038,13 @@ const GuandanTable: React.FunctionComponent = () => {
     if (gameStarted && selected.length > 0) {
       send({ type: "play", card_indexes: selected });
     }
+  };
+
+  const retryVictoryScreenshot = (): void => {
+    if (screenshotRetryUsedRef.current) return;
+    screenshotRetryUsedRef.current = true;
+    screenshotAttemptRef.current = null;
+    void sendVictoryScreenshot();
   };
 
   const sendSingleSelected = (
@@ -1485,7 +1590,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       !nextRoundPending
                         ? " ← 当前出牌"
                         : dealing
-                          ? ` ← 发牌中 ${dealtCount()}/${cardsPerPlayer}`
+                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
                           : ""}
                     </span>
                     <div>
@@ -1636,6 +1741,32 @@ const GuandanTable: React.FunctionComponent = () => {
                 <span className="guandan-match-winners">
                   获胜队员：{winningPlayerNames.join(" ｜ ")}
                 </span>
+                <span
+                  className="guandan-screenshot-email-status"
+                  aria-live="polite"
+                >
+                  {screenshotEmailStatus === "sending" &&
+                    "正在生成并发送打A胜利截图……"}
+                  {screenshotEmailStatus === "sent" &&
+                    `胜利截图已发送到 ${normalizeWinnerScreenshotEmail(winnerScreenshotEmail)}`}
+                  {screenshotEmailStatus === "missing" &&
+                    "请在“设置”中填写有效邮箱，才能发送胜利截图。"}
+                  {screenshotEmailStatus === "failed" &&
+                    "胜利截图发送失败，可重试一次。"}
+                </span>
+                {(screenshotEmailStatus === "failed" ||
+                  screenshotEmailStatus === "missing") && (
+                  <button
+                    type="button"
+                    className="normal"
+                    onClick={retryVictoryScreenshot}
+                    disabled={screenshotRetryUsedRef.current}
+                  >
+                    {screenshotRetryUsedRef.current
+                      ? "已用完重试次数"
+                      : "重试发送一次"}
+                  </button>
+                )}
                 {!matchCelebrationComplete ? (
                   <>
                     <time
@@ -1816,6 +1947,123 @@ const GuandanTable: React.FunctionComponent = () => {
 
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
+              {dealing && (
+                <div
+                  className="guandan-deal-ceremony"
+                  role="progressbar"
+                  aria-label="正在发牌"
+                  aria-valuemin={0}
+                  aria-valuemax={dealPresentation.totalCards}
+                  aria-valuenow={dealPresentation.dealtCards}
+                  aria-valuetext={`剩余 ${dealPresentation.remainingCards} 张，正在发给 ${dealTargetName ?? "最后一位玩家"}`}
+                >
+                  <div className="guandan-deal-deck" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                    {dealTargetSeat !== null && (
+                      <span
+                        key={`deal-flight-${dealStep}`}
+                        className="guandan-deal-flight"
+                        style={dealFlightStyle}
+                      >
+                        掼蛋
+                      </span>
+                    )}
+                  </div>
+                  <strong>正在发牌</strong>
+                  <span className="guandan-deal-target">
+                    {dealTargetName === null
+                      ? "发牌完成"
+                      : `正在发给：${dealTargetName}`}
+                  </span>
+                  <span className="guandan-deal-remaining">
+                    剩余 <b>{dealPresentation.remainingCards}</b> 张
+                  </span>
+                  <small>
+                    已发 {dealPresentation.dealtCards}/
+                    {dealPresentation.totalCards} 张
+                  </small>
+                </div>
+              )}
+              {tributePending && (
+                <div
+                  className={`guandan-exchange-ceremony guandan-exchange-${tributePhase}`}
+                  role="status"
+                  aria-live="polite"
+                  aria-label={
+                    tributePhase === "tribute"
+                      ? "公共桌面进贡过程"
+                      : "公共桌面还贡过程"
+                  }
+                >
+                  <strong>
+                    {tributePhase === "tribute" ? "进贡进行中" : "还贡进行中"}
+                  </strong>
+                  <div className="guandan-exchange-list">
+                    {state.tributeCards.map((play, index) => (
+                      <div
+                        className="guandan-exchange-move is-tribute"
+                        key={`table-tribute-${play.player}-${index}`}
+                      >
+                        <span>
+                          {state.players[play.player] ??
+                            `玩家${play.player + 1}`}
+                        </span>
+                        <span className="guandan-exchange-card">
+                          {play.cards.map((card, cardIndex) => (
+                            <span key={`table-tribute-card-${cardIndex}`}>
+                              {fullCard(card, 74)}
+                            </span>
+                          ))}
+                        </span>
+                        <span className="guandan-exchange-arrow">进贡 →</span>
+                        <span>
+                          {tributePlan !== null && "Single" in tributePlan
+                            ? (state.players[tributePlan.Single.receiver] ??
+                              `玩家${tributePlan.Single.receiver + 1}`)
+                            : "胜方接收"}
+                        </span>
+                      </div>
+                    ))}
+                    {state.returnTributeCards.map((play, index) => (
+                      <div
+                        className="guandan-exchange-move is-return"
+                        key={`table-return-${play.player}-${index}`}
+                      >
+                        <span>
+                          {state.players[play.player] ??
+                            `玩家${play.player + 1}`}
+                        </span>
+                        <span className="guandan-exchange-card">
+                          {play.cards.map((card, cardIndex) => (
+                            <span key={`table-return-card-${cardIndex}`}>
+                              {fullCard(card, 74)}
+                            </span>
+                          ))}
+                        </span>
+                        <span className="guandan-exchange-arrow">还贡 →</span>
+                        <span>
+                          {tributePlan !== null && "Single" in tributePlan
+                            ? (state.players[tributePlan.Single.giver] ??
+                              `玩家${tributePlan.Single.giver + 1}`)
+                            : "输方接收"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {state.tributeCards.length === 0 &&
+                    state.returnTributeCards.length === 0 && (
+                      <small>
+                        等待玩家选择贡牌，选定后将在这里显示移动过程。
+                      </small>
+                    )}
+                  {tributePhase === "return" &&
+                    state.returnTributeCards.length === 0 && (
+                      <small>进贡完成，等待胜方选择还贡牌。</small>
+                    )}
+                </div>
+              )}
               {state.tablePlays.length === 0 ? (
                 <div>暂无出牌</div>
               ) : (
