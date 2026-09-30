@@ -213,6 +213,8 @@ export const adaptGuandanServerMessage = (
     case "hand":
       return { ...state, hand: message.cards, error: null };
     case "state": {
+      const startedNewRound =
+        state.nextRoundPhase !== null && message.next_round_phase === null;
       const roundComplete =
         message.players.length >= 4 &&
         message.finish_order.length === message.players.length;
@@ -279,7 +281,12 @@ export const adaptGuandanServerMessage = (
         seriesTeamAWins: message.series_team_a_wins ?? null,
         seriesTeamBWins: message.series_team_b_wins ?? null,
         pendingTribute: message.pending_tribute,
-        tributeResisted: message.tribute_resisted,
+        // Keep the anti-tribute notice visible for the whole round.  A late
+        // state snapshot must not make it flash away; only the transition
+        // from a completed round into the next round may clear it.
+        tributeResisted: startedNewRound
+          ? message.tribute_resisted
+          : message.tribute_resisted || state.tributeResisted,
         tributePhase: message.tribute_phase ?? null,
         tributeCards: message.tribute_cards ?? [],
         returnTributeCards: message.return_tribute_cards ?? [],

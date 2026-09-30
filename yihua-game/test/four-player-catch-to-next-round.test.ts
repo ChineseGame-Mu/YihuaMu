@@ -61,23 +61,11 @@ describe("four-player catch through next round", () => {
     expect(state.trick.leadingPlay).toBeNull();
 
     const afterSeat3 = playGameCards(state, 3, seat3Pair);
-    expect(afterSeat3.phase).toBe("playing");
-    if (afterSeat3.phase !== "playing") throw new Error("expected playing");
-    state = afterSeat3;
-    expect(state.finishedSeats).toEqual([1, 3]);
-    expect(state.currentTurn).toBe(0);
-
-    state = passGameTurn(state, 0);
-    expect(state.currentTurn).toBe(2);
-    state = passGameTurn(state, 2);
-    expect(state.currentTurn).toBe(0);
-    expect(state.trick.leadingPlay).toBeNull();
-
-    const completed = playGameCards(state, 0, [seat0Card]);
-    expect(completed.phase).toBe("round-complete");
-    if (completed.phase !== "round-complete") {
-      throw new Error("expected round completion");
+    expect(afterSeat3.phase).toBe("round-complete");
+    if (afterSeat3.phase !== "round-complete") {
+      throw new Error("expected double-down round completion");
     }
+    const completed = afterSeat3;
 
     expect(completed.finishedSeats).toEqual([1, 3, 0, 2]);
     expect(completed.winnerSeat).toBe(1);

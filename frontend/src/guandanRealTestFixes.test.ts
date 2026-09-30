@@ -179,4 +179,31 @@ describe("2026-09-16 mandatory real-test regressions", () => {
 
     expect(next.hand).toEqual(secondRoundHand);
   });
+
+  test("keeps the anti-tribute notice visible until the next round starts", () => {
+    const resisted = adaptGuandanServerMessageWithRealTestFixes(
+      initialGuandanTableState,
+      stateMessage({ tribute_resisted: true }),
+    );
+    expect(resisted.tributeResisted).toBe(true);
+
+    const laterSnapshot = adaptGuandanServerMessageWithRealTestFixes(
+      resisted,
+      stateMessage({ tribute_resisted: false }),
+    );
+    expect(laterSnapshot.tributeResisted).toBe(true);
+
+    const completedRound = adaptGuandanServerMessageWithRealTestFixes(
+      laterSnapshot,
+      stateMessage({
+        tribute_resisted: true,
+        next_round_phase: "awaiting_shuffle",
+      }),
+    );
+    const nextRound = adaptGuandanServerMessageWithRealTestFixes(
+      completedRound,
+      stateMessage({ tribute_resisted: false, next_round_phase: null }),
+    );
+    expect(nextRound.tributeResisted).toBe(false);
+  });
 });

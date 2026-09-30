@@ -40,6 +40,8 @@ describe("Guandan automatic layout options", () => {
     expect(table).toContain("effectiveTurn !== state.seat");
     expect(table).toContain("tributePending");
     expect(table).toContain("state.trickComplete");
+    expect(table.indexOf("选中此组")).toBeLessThan(table.indexOf("前移"));
+    expect(table.indexOf("一键出此组")).toBeLessThan(table.indexOf("前移"));
   });
 
   test("places the grouping tools on the right and stacks cards vertically", () => {

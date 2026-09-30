@@ -1930,6 +1930,29 @@ const GuandanTable: React.FunctionComponent = () => {
                       <button
                         type="button"
                         className="normal"
+                        disabled={activeAutoGroup === null}
+                        onClick={selectActiveAutoGroup}
+                      >
+                        选中此组
+                      </button>
+                      <button
+                        type="button"
+                        className="guandan-auto-play-group"
+                        disabled={
+                          activeAutoGroup === null ||
+                          !gameStarted ||
+                          state.seat === null ||
+                          effectiveTurn !== state.seat ||
+                          tributePending ||
+                          state.trickComplete
+                        }
+                        onClick={playActiveAutoGroup}
+                      >
+                        一键出此组
+                      </button>
+                      <button
+                        type="button"
+                        className="normal"
                         disabled={activeAutoGroupIndex === 0}
                         onClick={() => moveActiveAutoGroup(-1)}
                       >
@@ -1970,29 +1993,6 @@ const GuandanTable: React.FunctionComponent = () => {
                         onClick={restoreAutoArrangement}
                       >
                         恢复方案
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={activeAutoGroup === null}
-                        onClick={selectActiveAutoGroup}
-                      >
-                        选中此组
-                      </button>
-                      <button
-                        type="button"
-                        className="guandan-auto-play-group"
-                        disabled={
-                          activeAutoGroup === null ||
-                          !gameStarted ||
-                          state.seat === null ||
-                          effectiveTurn !== state.seat ||
-                          tributePending ||
-                          state.trickComplete
-                        }
-                        onClick={playActiveAutoGroup}
-                      >
-                        一键出此组
                       </button>
                     </div>
                   )}
