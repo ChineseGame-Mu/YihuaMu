@@ -61,6 +61,13 @@ const pendingLegacyTricks = new Map<string, PendingLegacyTrick>();
 const legacyTableClearIds = new Map<string, number>();
 const startedLegacyGames = new Set<string>();
 
+const clearLegacyRoundBoundary = (roomId: string): void => {
+  if (pendingLegacyTricks.delete(roomId)) {
+    legacyTableClearIds.set(roomId, (legacyTableClearIds.get(roomId) ?? 0) + 1);
+  }
+  startedLegacyGames.delete(roomId);
+};
+
 const sleep = async (milliseconds: number): Promise<void> => {
   await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 };
@@ -260,7 +267,7 @@ export const legacyNextRoundRobotState = (
   };
 };
 
-const advanceLegacyRobotNextRound = async (
+export const advanceLegacyRobotNextRound = async (
   runtime: ServerRuntime,
   roomId: string,
 ): Promise<boolean> => {
@@ -281,8 +288,8 @@ const advanceLegacyRobotNextRound = async (
     return false;
 
   prepareLegacyTribute(roomId, current.game.finishedSeats);
+  clearLegacyRoundBoundary(roomId);
   const next = runtime.rooms.nextRound(roomId);
-  startedLegacyGames.delete(roomId);
   await runtime.websocket.broadcastRoomState(next);
   await runtime.websocket.broadcastGameState(next);
   await runtime.websocket.sendPrivateHands(next);
@@ -411,6 +418,16 @@ const startLegacyPlayWhenTributeComplete = async (
   if (hasPendingLegacyTribute(roomId)) return false;
   const managed = runtime.rooms.get(roomId);
   if (managed.game.phase !== "playing") return false;
+  // A completed trick from the prior deal must never block the new leader.
+  // This matters when the prior first-place winner is a robot: after an
+  // automatic deal or anti-tribute, that robot must immediately make the
+  // opening play without waiting for a human to clear the old table.
+  if (
+    managed.game.trick.completedTricks === 0 &&
+    managed.game.trick.leadingPlay === null
+  ) {
+    clearLegacyRoundBoundary(roomId);
+  }
   startedLegacyGames.add(roomId);
   await runtime.websocket.broadcastGameState(managed);
   await runLegacyRobots(runtime, roomId);
@@ -957,6 +974,10 @@ export const attachLegacyGuandanConnection = async (
           }),
         });
         await runtime.websocket.sendSnapshot(adapter, roomId, playerId);
+        // Recover a completed deal after a refresh or brief disconnect.  When
+        // the first-place winner is a robot, no human "首家发牌" click exists,
+        // so reconnecting must resume the same automatic next-round path.
+        await advanceLegacyRobotNextRound(runtime, roomId);
         return;
       }
 
@@ -1169,7 +1190,7 @@ export const attachLegacyGuandanConnection = async (
         message.type === "deal_next_round" ||
         message.type === "restart_match"
       ) {
-        startedLegacyGames.delete(active.roomId);
+        clearLegacyRoundBoundary(active.roomId);
       }
 
       if (message.type === "play" || message.type === "pass") {
