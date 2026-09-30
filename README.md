@@ -20,6 +20,22 @@ with `nginx`).
 
 - `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins for CORS requests to the `/api/rpc` endpoint (e.g., `"https://example.com,https://app.example.com"`). Set to `"*"` to allow any origin (not recommended for production). If not set, defaults to allowing common localhost origins for development (`http://localhost:3000,http://localhost:3030,http://127.0.0.1:3000,http://127.0.0.1:3030`).
 
+### Guandan victory screenshot email (Vercel frontend)
+
+The frontend's `/api/send-guandan-victory` function sends the PNG victory
+result image through Resend. Configure these server-side Vercel variables:
+
+- `RESEND_API_KEY`: Resend API key with permission to send email.
+- `RESEND_FROM_EMAIL`: sender address on a domain verified in Resend.
+- `SCREENSHOT_ALLOWED_ORIGINS`: optional comma-separated additional frontend
+  origins. `https://yihua-mu.vercel.app` is the dedicated production entry;
+  `https://yihuagames.com`, the previous Vercel production alias, and the
+  current deployment URL remain accepted for migration and preview testing.
+
+The recipient is stored only in the player's browser. When a team wins while
+playing A, the browser generates a PNG result image, sends it once, reports the
+result, and permits one manual retry after a failure.
+
 # Development
 
 ```
