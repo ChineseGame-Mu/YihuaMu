@@ -7,6 +7,13 @@ on:
     paths:
       - "backend/src/guandan_handler.rs"
       - "backend/src/main.rs"
+      - "yihua-game/src/core/http-router.ts"
+      - "yihua-game/src/core/legacy-guandan-gateway.ts"
+      - "yihua-game/src/node-server.ts"
+      - "yihua-game/src/node-websocket.ts"
+      - "yihua-game/test/node-websocket.test.ts"
+      - "yihua-game/test/security-guardrails.test.ts"
+      - "yihua-game/test/server-runtime.test.ts"
       - "frontend/src/CleanroomEntry.tsx"
       - "frontend/src/GuandanWebsocketProvider.tsx"
       - "frontend/src/GuandanWebsocketProvider.test.tsx"
@@ -19,6 +26,13 @@ on:
     paths:
       - "backend/src/guandan_handler.rs"
       - "backend/src/main.rs"
+      - "yihua-game/src/core/http-router.ts"
+      - "yihua-game/src/core/legacy-guandan-gateway.ts"
+      - "yihua-game/src/node-server.ts"
+      - "yihua-game/src/node-websocket.ts"
+      - "yihua-game/test/node-websocket.test.ts"
+      - "yihua-game/test/security-guardrails.test.ts"
+      - "yihua-game/test/server-runtime.test.ts"
       - "frontend/src/CleanroomEntry.tsx"
       - "frontend/src/GuandanWebsocketProvider.tsx"
       - "frontend/src/GuandanWebsocketProvider.test.tsx"
@@ -82,3 +96,12 @@ jobs:
           cargo test -p shengji heartbeat_detects_dead_clients_before_room_cleanup_can_stall_forever
           cargo test -p shengji room_counts_exclude_disconnected_players_and_do_not_cross_rooms
           cargo test -p shengji guandan_room_endpoint_tests
+
+      - name: Mandatory deployed Node backend presence and origin regressions
+        working-directory: yihua-game
+        run: |
+          npm ci
+          npm run format:check
+          npm run typecheck
+          npm test -- --run test/node-websocket.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts test/player-session-security.test.ts
+          npm run build
