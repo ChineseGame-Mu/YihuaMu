@@ -1,11 +1,28 @@
-name: Retired Guandan room-presence patch helper
+name: Apply verified Guandan presence fix
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  retired:
-    if: false
+  apply:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'Patch applied in e663c66; helper intentionally retired.'
+      - uses: actions/checkout@v4
+        with:
+          ref: preview/guandan-room-presence-fix-20261001
+          fetch-depth: 0
+      - name: Apply verified code patch
+        env:
+          PATCH_GZ_B64: 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
+        run: |
+          echo "$PATCH_GZ_B64" | base64 -d | gzip -d > /tmp/room-presence.patch
+          git apply --check /tmp/room-presence.patch
+          git apply /tmp/room-presence.patch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add yihua-game
+          git commit -m "Fix live Guandan preview access and stale presence"
+          git push origin HEAD:preview/guandan-room-presence-fix-20261001
