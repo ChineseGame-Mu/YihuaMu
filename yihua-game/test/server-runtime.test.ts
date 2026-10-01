@@ -46,6 +46,11 @@ describe("independent server runtime", () => {
 
   it("publishes privacy-safe online counts for cleanroom rooms 0001-0010", () => {
     const runtime = createServerRuntime();
+    const stable = runtime.rooms.create("0004", 4);
+    runtime.rooms.set("0004", {
+      ...stable,
+      room: addHuman(stable.room, { id: "stable-id", name: "丙", seat: 0 }),
+    });
     const first = runtime.rooms.create("cr-release-0001", 4);
     runtime.rooms.set("cr-release-0001", {
       ...first,
@@ -73,12 +78,14 @@ describe("independent server runtime", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(JSON.parse(response.body)).toEqual({
       rooms: [
+        { roomId: "0004", humanCount: 1, phase: "lobby" },
         { roomId: "cr-release-0001", humanCount: 1, phase: "lobby" },
         { roomId: "cr-release-0010", humanCount: 0, phase: "lobby" },
       ],
     });
     expect(response.body).not.toContain("secret-id");
     expect(response.body).not.toContain("甲");
+    expect(response.body).not.toContain("stable-id");
     expect(response.body).not.toContain("private-room");
   });
 

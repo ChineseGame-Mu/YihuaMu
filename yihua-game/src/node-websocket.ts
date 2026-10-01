@@ -12,6 +12,8 @@ const MAX_PENDING_FRAMES = 64;
 const MAX_PENDING_BYTES = 2 * 1024 * 1024;
 const MAX_INCOMING_BUFFER_BYTES = 2 * 1024 * 1024;
 const MAX_QUEUED_TEXT_FRAMES = 128;
+export const WEBSOCKET_HEARTBEAT_INTERVAL_MS = 5_000;
+export const WEBSOCKET_HEARTBEAT_TIMEOUT_MS = 15_000;
 
 interface PendingServerFrame {
   readonly frame: Buffer;
@@ -137,11 +139,25 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
   private pendingBytes = 0;
   private pendingFrames: PendingServerFrame[] = [];
   private queuedTextFrames = 0;
+  private lastPongAt = Date.now();
+  private readonly heartbeatTimer: NodeJS.Timeout;
 
   constructor(
     private readonly rawSocket: Duplex,
     readonly context: ConnectionContext,
   ) {
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.canWrite()) {
+        clearInterval(this.heartbeatTimer);
+        return;
+      }
+      if (Date.now() - this.lastPongAt >= WEBSOCKET_HEARTBEAT_TIMEOUT_MS) {
+        this.rawSocket.destroy();
+        return;
+      }
+      this.rawSocket.write(encodeServerFrame(0x09, Buffer.alloc(0)));
+    }, WEBSOCKET_HEARTBEAT_INTERVAL_MS);
+    this.heartbeatTimer.unref();
     rawSocket.on("drain", () => this.flushPendingFrames());
     // Browser tabs, mobile networks, proxies, and test clients may reset a TCP
     // connection without completing a WebSocket close handshake. Node treats an
@@ -154,6 +170,7 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
       this.writeBlocked = false;
     });
     rawSocket.once("close", () => {
+      clearInterval(this.heartbeatTimer);
       this.pendingFrames = [];
       this.pendingBytes = 0;
       for (const handler of this.closeHandlers) {
@@ -289,7 +306,10 @@ export class NodeWebSocketConnection implements UpgradedConnection, TextSocket {
       }
       return;
     }
-    if (opcode === 0x0a) return;
+    if (opcode === 0x0a) {
+      this.lastPongAt = Date.now();
+      return;
+    }
 
     throw new Error(`unsupported websocket opcode: ${opcode}`);
   }
