@@ -27,6 +27,8 @@ const GUANDAN_MIN_PLAYER_COUNT: usize = 4;
 const GUANDAN_MAX_PLAYER_COUNT: usize = 14;
 const GUANDAN_CLASSIC_PLAYER_COUNT: usize = 4;
 const GUANDAN_DISCONNECT_GRACE_PERIOD: Duration = Duration::from_secs(10);
+const GUANDAN_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
+const GUANDAN_CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 
 lazy_static::lazy_static! {
     static ref GUANDAN_OBSERVERS: Mutex<HashMap<Vec<u8>, Vec<String>>> =
@@ -643,9 +645,22 @@ pub async fn websocket(
     let (mut ws_tx, mut ws_rx) = socket.split();
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let writer = tokio::spawn(async move {
-        while let Some(text) = rx.recv().await {
-            if ws_tx.send(Message::Text(text)).await.is_err() {
-                break;
+        let mut heartbeat = tokio::time::interval(GUANDAN_HEARTBEAT_INTERVAL);
+        heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        heartbeat.tick().await;
+        loop {
+            tokio::select! {
+                text = rx.recv() => {
+                    let Some(text) = text else { break };
+                    if ws_tx.send(Message::Text(text)).await.is_err() {
+                        break;
+                    }
+                }
+                _ = heartbeat.tick() => {
+                    if ws_tx.send(Message::Ping(Vec::new())).await.is_err() {
+                        break;
+                    }
+                }
             }
         }
     });
@@ -660,7 +675,11 @@ pub async fn websocket(
     let mut joined_as_observer = false;
     let mut requested_leave = false;
     let mut subscription_task = None;
-    while let Some(result) = ws_rx.next().await {
+    loop {
+        let result = match tokio::time::timeout(GUANDAN_CONNECTION_TIMEOUT, ws_rx.next()).await {
+            Ok(Some(result)) => result,
+            Ok(None) | Err(_) => break,
+        };
         let message = match result {
             Ok(message) => message,
             Err(_) => break,
@@ -1580,6 +1599,31 @@ mod tests {
     fn explicit_leave_message_is_accepted() {
         let leave: GuandanClientMessage = serde_json::from_str(r#"{"type":"leave"}"#).unwrap();
         assert!(matches!(leave, GuandanClientMessage::Leave));
+    }
+    #[test]
+    fn heartbeat_detects_dead_clients_before_room_cleanup_can_stall_forever() {
+        assert!(GUANDAN_HEARTBEAT_INTERVAL < GUANDAN_CONNECTION_TIMEOUT);
+        assert!(GUANDAN_CONNECTION_TIMEOUT <= Duration::from_secs(15));
+        assert_eq!(GUANDAN_DISCONNECT_GRACE_PERIOD, Duration::from_secs(10));
+    }
+    #[test]
+    fn room_counts_exclude_disconnected_players_and_do_not_cross_rooms() {
+        let room_a = b"qa-room-a";
+        let room_b = b"qa-room-b";
+        let mut game_a = GuandanGameState::default();
+        game_a.player_names = vec!["玩家1".into(), "机器人1".into()];
+        let mut game_b = GuandanGameState::default();
+        game_b.player_names = vec!["玩家2".into()];
+
+        set_connected(room_a, "玩家1", true);
+        set_connected(room_b, "玩家2", true);
+        assert_eq!(online_human_count(room_a, &game_a), 1);
+        assert_eq!(online_human_count(room_b, &game_b), 1);
+
+        set_connected(room_a, "玩家1", false);
+        assert_eq!(online_human_count(room_a, &game_a), 0);
+        assert_eq!(online_human_count(room_b, &game_b), 1);
+        set_connected(room_b, "玩家2", false);
     }
     #[test]
     fn initial_draw_always_selects_a_real_player() {

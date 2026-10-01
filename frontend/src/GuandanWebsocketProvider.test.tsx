@@ -1,6 +1,7 @@
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
+  sendGuandanLeave,
   shouldCoalesceGuandanServerMessage,
 } from "./GuandanWebsocketProvider";
 
@@ -29,6 +30,12 @@ describe("cleanroom deployment room isolation", () => {
     expect(cleanroomDeploymentRoom("0002", "example.com")).toBe("0002");
   });
 
+  test("keeps production room ids stable across deployments", () => {
+    expect(cleanroomDeploymentRoom("0004", "yihua-mu.vercel.app")).toBe(
+      "0004",
+    );
+  });
+
   test("rejects an empty visible room", () => {
     expect(cleanroomDeploymentRoom(null, "yihua-example.vercel.app")).toBeNull();
     expect(cleanroomDeploymentRoom("   ", "yihua-example.vercel.app")).toBeNull();
@@ -55,5 +62,26 @@ describe("cleanroom player-session reconnect", () => {
   test("does not add empty credentials to a first-time join", () => {
     const join = { type: "join" as const, room: "0004", name: "玩家一" };
     expect(addPlayerSessionToJoin(join, null)).toBe(join);
+  });
+});
+
+describe("cleanroom room departure", () => {
+  test("sends an explicit leave before navigating away", () => {
+    const send = jest.fn();
+    expect(
+      sendGuandanLeave({ readyState: WebSocket.OPEN, send }, true),
+    ).toBe(true);
+    expect(send).toHaveBeenCalledWith('{"type":"leave"}');
+  });
+
+  test("does not emit leave for a socket that never joined or is already closed", () => {
+    const send = jest.fn();
+    expect(
+      sendGuandanLeave({ readyState: WebSocket.OPEN, send }, false),
+    ).toBe(false);
+    expect(
+      sendGuandanLeave({ readyState: WebSocket.CLOSED, send }, true),
+    ).toBe(false);
+    expect(send).not.toHaveBeenCalled();
   });
 });

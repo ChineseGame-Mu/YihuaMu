@@ -16,6 +16,7 @@ interface GuandanWebsocketContextValue {
   lastMessage: GuandanServerMessage | null;
   messageSequence: number;
   send: (message: GuandanClientMessage) => boolean;
+  leave: () => boolean;
 }
 
 export const GuandanWebsocketContext =
@@ -24,6 +25,7 @@ export const GuandanWebsocketContext =
     lastMessage: null,
     messageSequence: 0,
     send: () => false,
+    leave: () => false,
   });
 
 interface GuandanWebsocketProviderProps {
@@ -49,6 +51,21 @@ interface JoinWireMessage {
   readonly name: string;
   readonly [key: string]: unknown;
 }
+
+export const sendGuandanLeave = (
+  socket: Pick<WebSocket, "readyState" | "send"> | null,
+  hasJoinedRoom: boolean,
+): boolean => {
+  if (
+    !hasJoinedRoom ||
+    socket === null ||
+    socket.readyState !== WebSocket.OPEN
+  ) {
+    return false;
+  }
+  socket.send(JSON.stringify({ type: "leave" }));
+  return true;
+};
 
 export const addPlayerSessionToJoin = (
   message: JoinWireMessage,
@@ -112,13 +129,14 @@ export const cleanroomDeploymentRoom = (
   const room = visibleRoom?.trim();
   if (!room) return null;
 
+  const normalizedHost = hostname.trim().toLowerCase();
+  if (normalizedHost === "yihua-mu.vercel.app") return room;
+  if (!normalizedHost.endsWith(".vercel.app")) return room;
+
   const commitKey = /^[0-9a-f]{7,40}$/i.test(cleanroomBuildCommit)
     ? cleanroomBuildCommit.slice(0, 12).toLowerCase()
     : null;
   if (commitKey !== null) return `cr-${commitKey}-${room}`;
-
-  const normalizedHost = hostname.trim().toLowerCase();
-  if (!normalizedHost.endsWith(".vercel.app")) return room;
 
   const firstLabel = normalizedHost.split(".")[0] ?? "";
   const immutableMatch = firstLabel.match(/-([a-z0-9]{8,16})$/);
@@ -191,6 +209,13 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     name: string;
   } | null>(null);
 
+  const leave = React.useCallback((): boolean => {
+    const ws = websocketRef.current;
+    if (!sendGuandanLeave(ws, lastJoinIdentityRef.current !== null)) return false;
+    lastJoinIdentityRef.current = null;
+    return true;
+  }, []);
+
   React.useEffect(() => {
     document.documentElement.dataset.cleanroomCommit = cleanroomBuildCommit;
     mountedRef.current = true;
@@ -259,18 +284,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       }, delay);
     };
 
-    const leaveRoom = (): void => {
-      const ws = websocketRef.current;
-      if (
-        lastJoinIdentityRef.current !== null &&
-        ws !== null &&
-        ws.readyState === WebSocket.OPEN
-      ) {
-        ws.send(JSON.stringify({ type: "leave" }));
-      }
-    };
-
-    window.addEventListener("pagehide", leaveRoom);
+    window.addEventListener("pagehide", leave);
 
     const connect = (): void => {
       if (!mountedRef.current) return;
@@ -326,8 +340,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
     return () => {
       mountedRef.current = false;
-      window.removeEventListener("pagehide", leaveRoom);
-      leaveRoom();
+      window.removeEventListener("pagehide", leave);
+      leave();
       delete document.documentElement.dataset.cleanroomCommit;
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
@@ -336,7 +350,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       websocketRef.current?.close();
       websocketRef.current = null;
     };
-  }, []);
+  }, [leave]);
 
   const send = React.useCallback((message: GuandanClientMessage): boolean => {
     const ws = websocketRef.current;
@@ -374,8 +388,9 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       lastMessage: delivery.message,
       messageSequence: delivery.sequence,
       send,
+      leave,
     }),
-    [status, delivery, send],
+    [status, delivery, send, leave],
   );
 
   return (

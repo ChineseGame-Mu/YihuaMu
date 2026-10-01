@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import GuandanWebsocketProvider, {
   cleanroomBuildCommit,
   cleanroomDeploymentRoom,
+  GuandanWebsocketContext,
 } from "./GuandanWebsocketProvider";
 import GuandanStateProvider, { GuandanStateContext } from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
@@ -64,13 +65,19 @@ const PublicPlayerCountMarker = (): null => {
   return null;
 };
 
-const CleanroomTable = (): JSX.Element => {
+const CleanroomTableContents = (): JSX.Element => {
+  const { leave } = React.useContext(GuandanWebsocketContext);
   const exit = (): void => {
+    leave();
     const url = new URL(window.location.href); const actualRoom = url.searchParams.get("cleanroomRoom");
-    ["game","name","players","test","ws","room"].forEach((key) => url.searchParams.delete(key));
+    ["autoJoin","game","name","players","test","ws","room"].forEach((key) => url.searchParams.delete(key));
     url.searchParams.set("cleanroomRoom", isSelectableRoom(actualRoom) ? actualRoom : defaultCleanroomRoom); window.location.href = url.toString();
   };
-  return <GuandanWebsocketProvider><GuandanStateProvider><PublicPlayerCountMarker /><ExitGameButton onClick={exit} /><GuandanHeaderDecor /><GuandanCustomSortControls /><GuandanTable /><GuandanStartGate /><GuandanRoundResultHud /><GuandanHookToBottomSetting /><GuandanNoBeatHint /><GuandanNoBeatControls /></GuandanStateProvider></GuandanWebsocketProvider>;
+  return <GuandanStateProvider><PublicPlayerCountMarker /><ExitGameButton onClick={exit} /><GuandanHeaderDecor /><GuandanCustomSortControls /><GuandanTable /><GuandanStartGate /><GuandanRoundResultHud /><GuandanHookToBottomSetting /><GuandanNoBeatHint /><GuandanNoBeatControls /></GuandanStateProvider>;
+};
+
+const CleanroomTable = (): JSX.Element => {
+  return <GuandanWebsocketProvider><CleanroomTableContents /></GuandanWebsocketProvider>;
 };
 
 const CelebrationPreview = (): JSX.Element => {
@@ -168,6 +175,7 @@ const CleanroomEntry = (): JSX.Element => {
     const url = new URL(window.location.href);
     url.searchParams.set("cleanroom","1");
     url.searchParams.set("game","guandan");
+    url.searchParams.set("autoJoin","1");
     url.searchParams.set("cleanroomRoom",roomId);
     url.searchParams.set("room",roomId);
     url.searchParams.set("name",cleanName);

@@ -292,11 +292,28 @@ struct GuandanRoomsResponse {
     rooms: Vec<GuandanRoomSummary>,
 }
 
-fn is_visible_cleanroom_room_id(room_id: &str) -> bool {
-    matches!(
-        room_id,
-        "0001" | "0002" | "0003" | "0004" | "0005" | "0006" | "0007" | "0008" | "0009" | "0010"
-    )
+fn visible_cleanroom_room_id(room_id: &str) -> Option<&str> {
+    let visible_id = room_id.rsplit_once('-').map_or(room_id, |(_, suffix)| suffix);
+    let valid_namespace = room_id == visible_id
+        || (room_id.starts_with("cr-")
+            && room_id
+                .strip_suffix(visible_id)
+                .is_some_and(|prefix| prefix.len() > 3));
+    valid_namespace.then_some(visible_id).filter(|visible_id| {
+        matches!(
+            *visible_id,
+            "0001"
+                | "0002"
+                | "0003"
+                | "0004"
+                | "0005"
+                | "0006"
+                | "0007"
+                | "0008"
+                | "0009"
+                | "0010"
+        )
+    })
 }
 
 async fn handle_guandan_rooms(
@@ -312,7 +329,7 @@ async fn handle_guandan_rooms(
         let Ok(room_id) = String::from_utf8(key.clone()) else {
             continue;
         };
-        if !is_visible_cleanroom_room_id(&room_id) {
+        if visible_cleanroom_room_id(&room_id).is_none() {
             continue;
         }
         let Ok(versioned) = guandan_storage.clone().get(key.clone()).await else {
@@ -334,15 +351,24 @@ async fn handle_guandan_rooms(
 
 #[cfg(test)]
 mod guandan_room_endpoint_tests {
-    use super::{is_visible_cleanroom_room_id, GuandanRoomSummary, GuandanRoomsResponse};
+    use super::{visible_cleanroom_room_id, GuandanRoomSummary, GuandanRoomsResponse};
 
     #[test]
     fn only_exposes_the_ten_public_cleanroom_ids() {
         for number in 1..=10 {
-            assert!(is_visible_cleanroom_room_id(&format!("{number:04}")));
+            let room_id = format!("{number:04}");
+            assert_eq!(
+                visible_cleanroom_room_id(&room_id),
+                Some(room_id.as_str())
+            );
         }
-        assert!(!is_visible_cleanroom_room_id("0011"));
-        assert!(!is_visible_cleanroom_room_id("private-room"));
+        assert_eq!(
+            visible_cleanroom_room_id("cr-1aa2ee885dde-0004"),
+            Some("0004")
+        );
+        assert_eq!(visible_cleanroom_room_id("0011"), None);
+        assert_eq!(visible_cleanroom_room_id("private-room"), None);
+        assert_eq!(visible_cleanroom_room_id("private-0004"), None);
     }
 
     #[test]
