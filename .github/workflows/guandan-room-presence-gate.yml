@@ -52,7 +52,7 @@ concurrency:
 
 jobs:
   room-presence-regression:
-    name: Entry, leave, reconnect, and room-count gate
+    name: Entry, leave, reconnect, stale-cleanup, and room-count gate
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
