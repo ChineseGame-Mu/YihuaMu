@@ -28,7 +28,8 @@ const publicJson = (status: number, value: unknown): HttpResponse => ({
   },
 });
 
-const publicCleanroomId = /^cr-[a-z0-9-]+-(?:000[1-9]|0010)$/i;
+const publicCleanroomId =
+  /^(?:(?:000[1-9]|0010)|cr-[a-z0-9-]+-(?:000[1-9]|0010))$/i;
 
 const supportedPlayerCounts = new Set([4, 6, 8, 10, 12, 14]);
 

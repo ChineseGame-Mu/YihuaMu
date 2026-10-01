@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Duplex, PassThrough, type TransformCallback } from "node:stream";
 import {
   decodeClientFrame,
   NodeWebSocketConnection,
+  WEBSOCKET_HEARTBEAT_INTERVAL_MS,
+  WEBSOCKET_HEARTBEAT_TIMEOUT_MS,
   websocketAcceptKey,
 } from "../src/node-websocket.js";
 
@@ -22,6 +24,13 @@ const maskedTextFrame = (text: string): Buffer => {
   }
   return frame;
 };
+
+const maskedControlFrame = (opcode: number): Buffer => {
+  const mask = Buffer.from([0x11, 0x22, 0x33, 0x44]);
+  return Buffer.from([0x80 | opcode, 0x80, ...mask]);
+};
+
+afterEach(() => vi.useRealTimers());
 
 class BackpressuredSocket extends Duplex {
   readonly writes: Buffer[] = [];
@@ -126,5 +135,23 @@ describe("native websocket transport", () => {
     expect(rawSocket.writes).toHaveLength(2);
     expect(rawSocket.writes[1]!.toString("utf8")).toContain('"revision":3');
     rawSocket.destroy();
+  });
+
+  it("pings browsers and destroys a half-open socket after the deadline", async () => {
+    vi.useFakeTimers();
+    const rawSocket = new PassThrough();
+    const connection = new NodeWebSocketConnection(rawSocket, {
+      roomId: "heartbeat-room",
+    });
+
+    await vi.advanceTimersByTimeAsync(WEBSOCKET_HEARTBEAT_INTERVAL_MS);
+    const ping = rawSocket.read() as Buffer;
+    expect(ping[0]! & 0x0f).toBe(0x09);
+
+    connection.feed(maskedControlFrame(0x0a));
+    await vi.advanceTimersByTimeAsync(WEBSOCKET_HEARTBEAT_TIMEOUT_MS - 1);
+    expect(rawSocket.destroyed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(rawSocket.destroyed).toBe(true);
   });
 });

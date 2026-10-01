@@ -91,6 +91,18 @@ describe("network security guardrails", () => {
       ),
     ).toBe(true);
     expect(
+      isAllowedWebSocketOrigin(
+        "https://yihua-lfdn5tfdg-chinese-game.vercel.app",
+        true,
+      ),
+    ).toBe(true);
+    expect(
+      isAllowedWebSocketOrigin(
+        "https://yihua-mu-git-preview-room-fix-chinese-game.vercel.app",
+        true,
+      ),
+    ).toBe(true);
+    expect(
       isAllowedWebSocketOrigin("https://evil.example", true, configured),
     ).toBe(false);
     expect(
@@ -99,6 +111,9 @@ describe("network security guardrails", () => {
         true,
         configured,
       ),
+    ).toBe(false);
+    expect(
+      isAllowedWebSocketOrigin("https://yihua-attacker.vercel.app", true),
     ).toBe(false);
     expect(isAllowedWebSocketOrigin(undefined, true, configured)).toBe(false);
   });

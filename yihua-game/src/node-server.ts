@@ -29,6 +29,8 @@ const MAX_REQUEST_TARGET_BYTES = 4 * 1024;
 const DEFAULT_ALLOWED_WEBSOCKET_ORIGINS = [
   "https://yihua-mu.vercel.app",
 ] as const;
+const YIHUA_VERCEL_PREVIEW_ORIGIN =
+  /^https:\/\/yihua-[a-z0-9-]+-chinese-game\.vercel\.app$/;
 
 const SECURITY_HEADERS = {
   "cache-control": "no-store",
@@ -145,6 +147,7 @@ export const isAllowedWebSocketOrigin = (
           .map((candidate) => candidate.trim())
           .filter(Boolean);
   if (configured.includes(normalized)) return true;
+  if (YIHUA_VERCEL_PREVIEW_ORIGIN.test(normalized)) return true;
   if (production) return false;
 
   const host = new URL(normalized).hostname;
