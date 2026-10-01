@@ -1,30 +1,11 @@
-name: Apply Guandan Rust formatting fix
+name: Retired Guandan presence patch helper
 
 on:
-  push:
-    branches:
-      - preview/guandan-room-presence-fix-20261001
-
-permissions:
-  contents: write
+  workflow_dispatch:
 
 jobs:
-  apply:
+  retired:
+    if: false
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: preview/guandan-room-presence-fix-20261001
-          fetch-depth: 0
-      - name: Apply rustfmt patch
-        env:
-          PATCH_GZ_B64: H4sIAAAAAAACA6VUy5KbMBC88xWzHLwQHhY2+LGJt/aW41ZtPkAlQKxVAUGQnDhl779HgBF2bFKuig481NJ0j6ZHKcsy8Lx3JoFMY5J8pzydijqZFoRxvxYQ35o1GE/pHsIFSrLVmvo+WUTrOJ1FECC0CEPD87zb8QzHcUZivryAN1vP3SU4zWsNakLIepdI+LojPCX8rSwL8UZFVXJB4WDAhwEGZBx+MsHinOIkp4TXahVuHyy1Tu8nmKhQNnjP8FpJVvIvzf+ziuGBGjmVOgZLYQOnbUpWlTOJS55Q69F7tP2CVLis+7AuHC3sgthlGdvbx/7js+H8K2qHNuMq/hl0JxNoJpKzFHNSqPMhCR3oYLM5k2H0BHA8Qh/dF5LUUuBfTG4tM6k90x7WNWMy0eKbMs3RzA0W4MxRqMqlZv6vBi3FX/p9uaUci7Kg1iDe9jOWS1pbx2Hu2AdoRkFksqXiwbqU/2lY7nYV74eJEArMy7n2cFpkNorMR5FwFIlGkcUoshxFVqPIegwJkDkYbMheJ6tz06lo5Vqo1qVlaNaBRBOcbPRhN73aOidaugFSzolQ55yiTOG9a+/OMOpaqErGJZZUSNEXVxms5PlvTPdVKajAyh1qAcfVLs5ZcmY6lgrLPrdEVtbAd0VMa2AcAt/fKP7DpT+a/tHd0uxQPnqwzEO37wmFH6ZqtYtDJULQWmL6Q3nt6rTHe2Fy+rDd613fGrP3HUkEVt1h2fbluv5uuSHjHtIRjv4eaWtl3MzxzvyayyMgZEbpahWlKfVaG6ls/wBtFCAVaQYAAA==
-        run: |
-          echo "$PATCH_GZ_B64" | base64 -d | gzip -d > /tmp/rustfmt.patch
-          git apply --check /tmp/rustfmt.patch
-          git apply /tmp/rustfmt.patch
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/src/main.rs
-          git commit -m "Format Guandan room presence guard"
-          git push origin HEAD:preview/guandan-room-presence-fix-20261001
+      - run: echo 'Presence fix applied; helper intentionally retired.'
