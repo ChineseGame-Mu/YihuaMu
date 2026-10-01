@@ -1,0 +1,84 @@
+name: Guandan Room Presence Mandatory Gate
+
+on:
+  push:
+    branches-ignore:
+      - "backup/**"
+    paths:
+      - "backend/src/guandan_handler.rs"
+      - "backend/src/main.rs"
+      - "frontend/src/CleanroomEntry.tsx"
+      - "frontend/src/GuandanWebsocketProvider.tsx"
+      - "frontend/src/GuandanWebsocketProvider.test.tsx"
+      - "frontend/src/cleanroomAutoJoin.ts"
+      - "frontend/src/cleanroomAutoJoin.test.ts"
+      - "frontend/src/cleanroomRoomAvailability.ts"
+      - "frontend/src/cleanroomRoomAvailability.test.ts"
+      - ".github/workflows/guandan-room-presence-gate.yml"
+  pull_request:
+    paths:
+      - "backend/src/guandan_handler.rs"
+      - "backend/src/main.rs"
+      - "frontend/src/CleanroomEntry.tsx"
+      - "frontend/src/GuandanWebsocketProvider.tsx"
+      - "frontend/src/GuandanWebsocketProvider.test.tsx"
+      - "frontend/src/cleanroomAutoJoin.ts"
+      - "frontend/src/cleanroomAutoJoin.test.ts"
+      - "frontend/src/cleanroomRoomAvailability.ts"
+      - "frontend/src/cleanroomRoomAvailability.test.ts"
+      - ".github/workflows/guandan-room-presence-gate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: guandan-room-presence-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  room-presence-regression:
+    name: Entry, leave, reconnect, and room-count gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --non-interactive
+
+      - name: Mandatory legacy-entry and departure regressions
+        working-directory: frontend
+        run: >-
+          yarn test --runInBand
+          cleanroomAutoJoin.test.ts
+          GuandanWebsocketProvider.test.tsx
+          cleanroomRoomAvailability.test.ts
+
+      - name: Mandatory frontend static checks and production build
+        working-directory: frontend
+        run: |
+          yarn lint --quiet
+          yarn build
+
+      - name: Mandatory Rust formatting and room lifecycle regressions
+        run: |
+          cargo fmt --all -- --check
+          cargo test -p shengji disconnected_waiting_players_are_removed_for_every_supported_table_size
+          cargo test -p shengji connected_or_started_players_keep_their_seats
+          cargo test -p shengji heartbeat_detects_dead_clients_before_room_cleanup_can_stall_forever
+          cargo test -p shengji room_counts_exclude_disconnected_players_and_do_not_cross_rooms
+          cargo test -p shengji guandan_room_endpoint_tests
