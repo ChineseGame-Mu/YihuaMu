@@ -11,8 +11,8 @@ describe("clean-room backend route precedence", () => {
     expect(entry).toContain(
       'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
-    expect(entry).toContain('url.searchParams.set("cleanroom", "1")');
-    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+    expect(entry).toContain('url.searchParams.set("cleanroom","1")');
+    expect(entry).toContain('url.searchParams.set("ws",cleanroomWebsocket)');
   });
 
   it("pins clean-room transport to card-games-yihua even when stale overrides exist", () => {

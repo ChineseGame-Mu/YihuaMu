@@ -53,8 +53,13 @@ describe("clean-room frontend wiring", () => {
     const adapter = source("frontend/src/guandanCompatibilityAdapter.ts");
 
     expect(provider).toContain("adaptGuandanClientMessage(message, {");
-    expect(provider).toContain('cleanroom: query.get("cleanroom") === "1"');
-    expect(provider).toContain('room: query.get("cleanroomRoom")');
+    expect(provider).toContain(
+      'const cleanroom = query.get("cleanroom") === "1"',
+    );
+    expect(provider).toContain(
+      'const visibleRoom = query.get("cleanroomRoom")',
+    );
+    expect(provider).toContain("room: wireRoom");
     expect(provider).toContain("playerCount: Number.isFinite(playerCount)");
 
     expect(adapter).toContain(

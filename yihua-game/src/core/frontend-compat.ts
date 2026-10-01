@@ -89,6 +89,7 @@ export type LegacyServerMessage =
   | { readonly type: "hand"; readonly cards: readonly LegacyGuandanCard[] }
   | {
       readonly type: "state";
+      readonly match_id: number;
       readonly players: readonly string[];
       readonly observers: readonly string[];
       readonly online_players: readonly boolean[];
@@ -338,6 +339,7 @@ export const gameStateToLegacy = (
 
   return {
     type: "state",
+    match_id: game.revision,
     players: participants.map(({ name }) => name),
     observers: (room.observers ?? []).map(({ name }) => name),
     online_players: participants.map(({ connected }) => connected),

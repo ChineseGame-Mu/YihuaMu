@@ -293,6 +293,23 @@ export const playGameCards = (
     trick,
   };
 
+  const fourPlayerDoubleDown =
+    state.config.playerCount === 4 &&
+    finishedSeats.length === 2 &&
+    teamForSeat(finishedSeats[0]!) === teamForSeat(finishedSeats[1]!);
+  if (fourPlayerDoubleDown) {
+    const remainingSeats = [...activeSeats].sort(
+      (left, right) =>
+        (hands[left]?.length ?? 0) - (hands[right]?.length ?? 0) ||
+        left - right,
+    );
+    const finishOrder = [...finishedSeats, ...remainingSeats];
+    return completeRound(
+      { ...nextState, finishedSeats: finishOrder },
+      finishOrder[0] ?? seat,
+    );
+  }
+
   if (finishedSeats.length < state.config.playerCount - 1) return nextState;
 
   const lastSeat = activeSeats[0];

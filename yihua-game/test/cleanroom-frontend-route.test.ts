@@ -11,14 +11,12 @@ describe("clean-room approved GuandanTable routing", () => {
     const entry = readRepoFile("frontend/src/CleanroomEntry.tsx");
 
     expect(entry).toContain('import GuandanTable from "./GuandanTable"');
-    expect(entry).toContain(
-      'import GuandanWebsocketProvider from "./GuandanWebsocketProvider"',
-    );
+    expect(entry).toContain("import GuandanWebsocketProvider, {");
     expect(entry).not.toContain("CleanroomGuandanWebsocketProvider");
     expect(entry).toContain(
       'const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan"',
     );
-    expect(entry).toContain('url.searchParams.set("ws", cleanroomWebsocket)');
+    expect(entry).toContain('url.searchParams.set("ws",cleanroomWebsocket)');
   });
 
   it("routes the Vercel Guandan alias through the clean-room compatibility adapter", () => {

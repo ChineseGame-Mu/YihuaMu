@@ -69,12 +69,12 @@ describe("table machine finished-leader catch integration", () => {
       seat: 2,
       cards: [partner],
     });
-    expect(afterPartnerLead.phase).toBe("playing");
-    if (afterPartnerLead.phase !== "playing") {
-      throw new Error("expected playing state after partner lead");
+    expect(afterPartnerLead.phase).toBe("round-complete");
+    if (afterPartnerLead.phase !== "round-complete") {
+      throw new Error("expected double-down round completion");
     }
-    expect(afterPartnerLead.finishedSeats).toEqual([0, 2]);
-    expect(afterPartnerLead.trick.leadingPlay?.seat).toBe(2);
-    expect(afterPartnerLead.currentTurn).toBe(3);
+    expect(afterPartnerLead.finishedSeats).toEqual([0, 2, 1, 3]);
+    expect(afterPartnerLead.outcome?.winningTeam).toBe("A");
+    expect(afterPartnerLead.lastPromotionSteps).toBe(3);
   });
 });

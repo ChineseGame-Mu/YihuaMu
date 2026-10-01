@@ -16,6 +16,7 @@ export interface Participant {
   readonly kind: ParticipantKind;
   readonly seat: number;
   readonly connected: boolean;
+  readonly disconnectedAt?: number;
   readonly readyForNextRound?: boolean;
   readonly leavingAfterRound?: boolean;
 }
@@ -339,11 +340,15 @@ export const replaceRobotWithHuman = (
   };
 };
 
-export const disconnectHuman = (room: RoomState, id: string): RoomState => ({
+export const disconnectHuman = (
+  room: RoomState,
+  id: string,
+  now: number = Date.now(),
+): RoomState => ({
   ...room,
   participants: room.participants.map((participant) =>
     participant.id === id && participant.kind === "human"
-      ? { ...participant, connected: false }
+      ? { ...participant, connected: false, disconnectedAt: now }
       : participant,
   ),
 });
@@ -357,11 +362,14 @@ export const disconnectObserver = (room: RoomState, id: string): RoomState => ({
 
 export const reconnectHuman = (room: RoomState, id: string): RoomState => ({
   ...room,
-  participants: room.participants.map((participant) =>
-    participant.id === id && participant.kind === "human"
-      ? { ...participant, connected: true }
-      : participant,
-  ),
+  participants: room.participants.map((participant) => {
+    if (participant.id !== id || participant.kind !== "human") {
+      return participant;
+    }
+    const { disconnectedAt: _disconnectedAt, ...connectedParticipant } =
+      participant;
+    return { ...connectedParticipant, connected: true };
+  }),
 });
 
 export const removeParticipant = (room: RoomState, id: string): RoomState => ({
