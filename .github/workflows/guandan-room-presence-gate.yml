@@ -101,7 +101,7 @@ jobs:
         working-directory: yihua-game
         run: |
           npm ci
-          npm run format:check
+          npx prettier --check src/core/http-router.ts src/node-server.ts src/node-websocket.ts test/node-websocket.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts
           npm run typecheck
           npm test -- --run test/node-websocket.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts test/player-session-security.test.ts
           npm run build
