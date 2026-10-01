@@ -48,6 +48,11 @@ describe("Guandan A-level match celebration", () => {
       "utf8",
     );
     expect(table).toContain('className="guandan-match-trophy"');
+    expect(table).toContain('className="guandan-victory-image-preview"');
+    expect(table).toContain('aria-label="放大胜利截图"');
+    expect(table).toContain('aria-label="胜利截图大图"');
+    expect(table).toContain("result?.error");
+    expect(table).toContain("胜利截图发送失败，可重试一次。");
     expect(table).toContain('className="guandan-fireworks"');
     expect(table).toContain('className="guandan-match-celebration-time"');
     expect(table).toContain("庆祝时间：");
@@ -69,6 +74,8 @@ describe("Guandan A-level match celebration", () => {
     expect(css).toContain("left: 50% !important");
     expect(css).toContain("transform: translate(-50%, -50%) !important");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) auto");
+    expect(css).toContain(".guandan-victory-image-lightbox");
+    expect(css).toContain("max-height: 92vh");
   });
 
   test("provides a test-only online preview for screenshot verification", () => {

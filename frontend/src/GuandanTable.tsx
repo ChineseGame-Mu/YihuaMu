@@ -293,6 +293,11 @@ const GuandanTable: React.FunctionComponent = () => {
   const [screenshotEmailStatus, setScreenshotEmailStatus] = React.useState<
     "idle" | "missing" | "sending" | "sent" | "failed"
   >("idle");
+  const [screenshotEmailError, setScreenshotEmailError] = React.useState("");
+  const [victoryScreenshotDataUrl, setVictoryScreenshotDataUrl] =
+    React.useState<string | null>(null);
+  const [victoryScreenshotExpanded, setVictoryScreenshotExpanded] =
+    React.useState(false);
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -453,6 +458,7 @@ const GuandanTable: React.FunctionComponent = () => {
     }
 
     setScreenshotEmailStatus("sending");
+    setScreenshotEmailError("");
     try {
       const screenshot = await createGuandanVictoryScreenshot({
         winnerTeam: state.matchWinner,
@@ -460,6 +466,8 @@ const GuandanTable: React.FunctionComponent = () => {
         finishOrder: state.finishOrder,
         room,
       });
+      const screenshotDataUrl = `data:image/png;base64,${screenshot}`;
+      setVictoryScreenshotDataUrl(screenshotDataUrl);
       const response = await fetch("/api/send-guandan-victory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -471,13 +479,28 @@ const GuandanTable: React.FunctionComponent = () => {
           winnerTeam: state.matchWinner,
         }),
       });
-      if (!response.ok) throw new Error("screenshot email request failed");
+      const result = (await response.json().catch(() => null)) as
+        | { error?: unknown }
+        | null;
+      if (!response.ok) {
+        const errorMessage =
+          typeof result?.error === "string"
+            ? result.error
+            : `邮件接口返回错误（${response.status}），请稍后重试。`;
+        setScreenshotEmailError(errorMessage);
+        throw new Error(errorMessage);
+      }
       window.localStorage.setItem(
         `guandan_screenshot_sent:${room}:${state.matchId}`,
         recipient,
       );
       setScreenshotEmailStatus("sent");
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        setScreenshotEmailError(error.message);
+      } else {
+        setScreenshotEmailError("截图生成或邮件发送失败，请稍后重试。");
+      }
       setScreenshotEmailStatus("failed");
     }
   }, [
@@ -494,6 +517,9 @@ const GuandanTable: React.FunctionComponent = () => {
       screenshotAttemptRef.current = null;
       screenshotRetryUsedRef.current = false;
       setScreenshotEmailStatus("idle");
+      setScreenshotEmailError("");
+      setVictoryScreenshotDataUrl(null);
+      setVictoryScreenshotExpanded(false);
       return;
     }
     const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
@@ -1752,8 +1778,47 @@ const GuandanTable: React.FunctionComponent = () => {
                   {screenshotEmailStatus === "missing" &&
                     "请在“设置”中填写有效邮箱，才能发送胜利截图。"}
                   {screenshotEmailStatus === "failed" &&
-                    "胜利截图发送失败，可重试一次。"}
+                    (screenshotEmailError || "胜利截图发送失败，可重试一次。")}
                 </span>
+                {victoryScreenshotDataUrl !== null && (
+                  <button
+                    type="button"
+                    className="guandan-victory-image-button"
+                    aria-label="放大胜利截图"
+                    onClick={() => setVictoryScreenshotExpanded(true)}
+                  >
+                    <img
+                      className="guandan-victory-image-preview"
+                      src={victoryScreenshotDataUrl}
+                      alt="本局胜利截图，点击放大查看"
+                    />
+                    <span>胜利截图 · 点击放大</span>
+                  </button>
+                )}
+                {victoryScreenshotExpanded &&
+                  victoryScreenshotDataUrl !== null && (
+                    <div
+                      className="guandan-victory-image-lightbox"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="胜利截图大图"
+                      onClick={() => setVictoryScreenshotExpanded(false)}
+                    >
+                      <button
+                        type="button"
+                        className="guandan-victory-image-close"
+                        aria-label="关闭胜利截图大图"
+                        onClick={() => setVictoryScreenshotExpanded(false)}
+                      >
+                        ×
+                      </button>
+                      <img
+                        src={victoryScreenshotDataUrl}
+                        alt="本局胜利截图大图"
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    </div>
+                  )}
                 {(screenshotEmailStatus === "failed" ||
                   screenshotEmailStatus === "missing") && (
                   <button
