@@ -1,11 +1,22 @@
-name: Retired Guandan presence patch helper
+name: Create critical Guandan room-presence recovery branches
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - preview/guandan-room-presence-fix-20261001
+
+permissions:
+  contents: write
 
 jobs:
-  retired:
-    if: false
+  backup:
     runs-on: ubuntu-latest
     steps:
-      - run: echo 'Presence fix applied; helper intentionally retired.'
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create immutable recovery branches
+        run: |
+          git branch -f backup/IMPORTANT-pre-room-presence-fix-20261001-9635657 9635657f3ba5bd74c756ee1ba3e74ba4a00ef206
+          git branch -f backup/IMPORTANT-post-room-presence-production-20261001-e78135e e78135e541c5ab008c75380a12b86c7d7e765908
+          git push origin backup/IMPORTANT-pre-room-presence-fix-20261001-9635657 backup/IMPORTANT-post-room-presence-production-20261001-e78135e
