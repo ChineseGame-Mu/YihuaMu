@@ -293,7 +293,9 @@ struct GuandanRoomsResponse {
 }
 
 fn visible_cleanroom_room_id(room_id: &str) -> Option<&str> {
-    let visible_id = room_id.rsplit_once('-').map_or(room_id, |(_, suffix)| suffix);
+    let visible_id = room_id
+        .rsplit_once('-')
+        .map_or(room_id, |(_, suffix)| suffix);
     let valid_namespace = room_id == visible_id
         || (room_id.starts_with("cr-")
             && room_id
@@ -302,16 +304,7 @@ fn visible_cleanroom_room_id(room_id: &str) -> Option<&str> {
     valid_namespace.then_some(visible_id).filter(|visible_id| {
         matches!(
             *visible_id,
-            "0001"
-                | "0002"
-                | "0003"
-                | "0004"
-                | "0005"
-                | "0006"
-                | "0007"
-                | "0008"
-                | "0009"
-                | "0010"
+            "0001" | "0002" | "0003" | "0004" | "0005" | "0006" | "0007" | "0008" | "0009" | "0010"
         )
     })
 }
@@ -357,10 +350,7 @@ mod guandan_room_endpoint_tests {
     fn only_exposes_the_ten_public_cleanroom_ids() {
         for number in 1..=10 {
             let room_id = format!("{number:04}");
-            assert_eq!(
-                visible_cleanroom_room_id(&room_id),
-                Some(room_id.as_str())
-            );
+            assert_eq!(visible_cleanroom_room_id(&room_id), Some(room_id.as_str()));
         }
         assert_eq!(
             visible_cleanroom_room_id("cr-1aa2ee885dde-0004"),
