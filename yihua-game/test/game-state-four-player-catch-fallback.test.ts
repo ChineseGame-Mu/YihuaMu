@@ -55,10 +55,7 @@ describe("four-player double-down completion", () => {
       config: createTableConfig(4, 0),
       openingDraw: { attempts: [], winnerSeat: 1 },
       hands: [
-        [
-          deckCard("seat-0-three", card("3")),
-          deckCard("seat-0-four", four),
-        ],
+        [deckCard("seat-0-three", card("3")), deckCard("seat-0-four", four)],
         [deckCard("seat-1", eight)],
         [deckCard("seat-2-five", five)],
         [],
