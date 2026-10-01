@@ -1,6 +1,9 @@
 name: Apply verified Guandan presence fix
 
 on:
+  push:
+    branches:
+      - preview/guandan-room-presence-fix-20261001
   workflow_dispatch:
 
 permissions:
