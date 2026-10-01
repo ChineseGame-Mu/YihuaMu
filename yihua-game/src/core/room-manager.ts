@@ -77,12 +77,26 @@ const activeCountForNextRound = (
   return eligible.at(-1) ?? currentCount;
 };
 
-const isAbandonedActiveRoom = (managed: ManagedRoom): boolean => {
+export const ABANDONED_ROOM_RECONNECT_GRACE_MS = 30 * 60 * 1000;
+
+const isAbandonedActiveRoom = (managed: ManagedRoom, now: number): boolean => {
   if (managed.game.phase === "lobby") return false;
   const humans = managed.room.participants.filter(
     ({ kind }) => kind === "human",
   );
-  return humans.length > 0 && humans.every(({ connected }) => !connected);
+  if (
+    humans.length === 0 ||
+    humans.some(
+      ({ connected, disconnectedAt }) =>
+        connected || disconnectedAt === undefined,
+    )
+  ) {
+    return false;
+  }
+  const latestDisconnect = Math.max(
+    ...humans.map(({ disconnectedAt }) => disconnectedAt!),
+  );
+  return now - latestDisconnect >= ABANDONED_ROOM_RECONNECT_GRACE_MS;
 };
 
 const tributePending = (managed: ManagedRoom): boolean =>
@@ -159,14 +173,14 @@ export class RoomManager {
     return next;
   }
 
-  get(roomId: string): ManagedRoom {
+  get(roomId: string, now: number = Date.now()): ManagedRoom {
     const managed = this.rooms.get(roomId);
     if (!managed) {
       throw new Error(`room ${roomId} does not exist`);
     }
 
     if (
-      isAbandonedActiveRoom(managed) &&
+      isAbandonedActiveRoom(managed, now) &&
       !this.restoredRoomsAwaitingReconnect.has(roomId)
     ) {
       const reset = {
@@ -203,7 +217,7 @@ export class RoomManager {
       throw new Error("room revision must be a non-negative integer");
     }
     this.rooms.set(roomId, managed);
-    if (isAbandonedActiveRoom(managed)) {
+    if (isAbandonedActiveRoom(managed, Date.now())) {
       this.restoredRoomsAwaitingReconnect.add(roomId);
     }
     return managed;

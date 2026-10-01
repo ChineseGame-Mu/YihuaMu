@@ -82,6 +82,14 @@ export const addPlayerSessionToJoin = (
 const playerSessionKey = (room: string, name: string): string =>
   `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
 
+export const isRecoverablePlayerSessionError = (message: string): boolean =>
+  [
+    "player session is invalid or expired",
+    "player session identity does not match",
+    "player session no longer belongs to this room",
+    "player session role does not match",
+  ].includes(message);
+
 const readPlayerSession = (
   room: string,
   name: string,
@@ -114,6 +122,14 @@ const storePlayerSession = (
   } catch {
     // The game remains usable when browser storage is unavailable, but a page
     // refresh will require a new player identity.
+  }
+};
+
+const clearPlayerSession = (room: string, name: string): void => {
+  try {
+    window.sessionStorage.removeItem(playerSessionKey(room, name));
+  } catch {
+    // A retry can still proceed without browser storage access.
   }
 };
 
@@ -208,6 +224,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     room: string;
     name: string;
   } | null>(null);
+  const lastJoinMessageRef = React.useRef<JoinWireMessage | null>(null);
+  const sessionRecoveryAttemptedRef = React.useRef(false);
 
   const leave = React.useCallback((): boolean => {
     const ws = websocketRef.current;
@@ -308,12 +326,27 @@ const GuandanWebsocketProvider: React.FunctionComponent<
             typeof message.player_id === "string" &&
             typeof message.resume_token === "string"
           ) {
+            sessionRecoveryAttemptedRef.current = false;
             const identity = lastJoinIdentityRef.current;
             if (identity !== null && identity.room === message.room) {
               storePlayerSession(identity.room, identity.name, {
                 playerId: message.player_id,
                 resumeToken: message.resume_token,
               });
+            }
+          }
+          if (
+            message.type === "error" &&
+            isRecoverablePlayerSessionError(message.message) &&
+            !sessionRecoveryAttemptedRef.current
+          ) {
+            const identity = lastJoinIdentityRef.current;
+            const lastJoin = lastJoinMessageRef.current;
+            if (identity !== null && lastJoin !== null) {
+              sessionRecoveryAttemptedRef.current = true;
+              clearPlayerSession(identity.room, identity.name);
+              ws.send(JSON.stringify(lastJoin));
+              return;
             }
           }
           enqueueMessage(message);
@@ -374,6 +407,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       const joinRoom = adapted.room.trim();
       const joinName = adapted.name.trim();
       lastJoinIdentityRef.current = { room: joinRoom, name: joinName };
+      lastJoinMessageRef.current = adapted;
+      sessionRecoveryAttemptedRef.current = false;
       const stored = readPlayerSession(joinRoom, joinName);
       ws.send(JSON.stringify(addPlayerSessionToJoin(adapted, stored)));
       return true;

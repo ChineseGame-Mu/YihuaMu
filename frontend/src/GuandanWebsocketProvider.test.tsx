@@ -1,6 +1,7 @@
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
+  isRecoverablePlayerSessionError,
   sendGuandanLeave,
   shouldCoalesceGuandanServerMessage,
 } from "./GuandanWebsocketProvider";
@@ -43,6 +44,17 @@ describe("cleanroom deployment room isolation", () => {
 });
 
 describe("cleanroom player-session reconnect", () => {
+  test("recognizes a stale room-bound session as recoverable", () => {
+    expect(
+      isRecoverablePlayerSessionError(
+        "player session no longer belongs to this room",
+      ),
+    ).toBe(true);
+    expect(isRecoverablePlayerSessionError("resume token is required")).toBe(
+      false,
+    );
+  });
+
   test("adds a stored player id and resume token to the join message body", () => {
     expect(
       addPlayerSessionToJoin(

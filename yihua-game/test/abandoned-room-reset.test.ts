@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { RoomManager } from "../src/core/room-manager.js";
+import {
+  ABANDONED_ROOM_RECONNECT_GRACE_MS,
+  RoomManager,
+} from "../src/core/room-manager.js";
 import { addHuman, disconnectHuman } from "../src/core/room.js";
 
 describe("abandoned active room reset", () => {
-  it("clears old players after every human has disconnected", () => {
+  it("preserves disconnected players during the reconnect grace period", () => {
     const rooms = new RoomManager();
     let managed = rooms.create("0004", 4);
 
@@ -28,11 +31,21 @@ describe("abandoned active room reset", () => {
     for (let seat = 0; seat < 4; seat += 1) {
       managed = rooms.set("0004", {
         ...managed,
-        room: disconnectHuman(managed.room, `legacy:old${seat + 1}`),
+        room: disconnectHuman(managed.room, `legacy:old${seat + 1}`, 2_000),
       });
     }
 
-    const reset = rooms.get("0004");
+    const preserved = rooms.get(
+      "0004",
+      2_000 + ABANDONED_ROOM_RECONNECT_GRACE_MS - 1,
+    );
+    expect(preserved.game.phase).not.toBe("lobby");
+    expect(preserved.room.participants).toHaveLength(4);
+    expect(
+      preserved.room.participants.every(({ connected }) => !connected),
+    ).toBe(true);
+
+    const reset = rooms.get("0004", 2_000 + ABANDONED_ROOM_RECONNECT_GRACE_MS);
     expect(reset.game.phase).toBe("lobby");
     expect(reset.room.participants).toEqual([]);
     expect(reset.room.roomId).toBe("0004");
