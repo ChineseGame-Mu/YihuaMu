@@ -1997,7 +1997,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.tributeResisted && (
+            {state.tributeResisted && state.lastGameWinner !== null && (
               <section
                 className="guandan-tribute-panel guandan-panel"
                 role="status"
@@ -2194,121 +2194,125 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
-                {handArrangeMode === "auto" &&
-                  editableAutoGroups.length > 0 && (
-                    <div
-                      className="guandan-auto-hand-toolbar"
-                      role="group"
-                      aria-label="自动理牌手动调整"
+                {editableAutoGroups.length > 0 && (
+                  <div
+                    className="guandan-auto-hand-toolbar"
+                    role="group"
+                    aria-label="手牌组合选择与调整"
+                  >
+                    <label htmlFor="guandan-active-auto-group">
+                      选择组合：
+                    </label>
+                    <select
+                      id="guandan-active-auto-group"
+                      value={Math.min(
+                        activeAutoGroupIndex,
+                        editableAutoGroups.length - 1,
+                      )}
+                      onChange={(event) =>
+                        setActiveAutoGroupIndex(Number(event.target.value))
+                      }
                     >
-                      <label htmlFor="guandan-active-auto-group">
-                        选择组合：
-                      </label>
-                      <select
-                        id="guandan-active-auto-group"
-                        value={Math.min(
-                          activeAutoGroupIndex,
-                          editableAutoGroups.length - 1,
-                        )}
-                        onChange={(event) =>
-                          setActiveAutoGroupIndex(Number(event.target.value))
-                        }
-                      >
-                        {editableAutoGroups.map((group, groupIndex) => (
-                          <option
-                            key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
-                            value={groupIndex}
-                          >
-                            {groupIndex + 1}. {group.label}
-                          </option>
-                        ))}
-                      </select>
-                      <label htmlFor="guandan-auto-hand-layout-toolbar">
-                        排列：
-                      </label>
-                      <select
-                        id="guandan-auto-hand-layout-toolbar"
-                        value={autoHandLayout}
-                        onChange={(event) =>
-                          setAutoHandLayout(
-                            event.target.value === "vertical"
-                              ? "vertical"
-                              : "horizontal",
-                          )
-                        }
-                      >
-                        <option value="horizontal">横式排列</option>
-                        <option value="vertical">竖式排列</option>
-                      </select>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={activeAutoGroup === null}
-                        onClick={selectActiveAutoGroup}
-                      >
-                        选中此组
-                      </button>
-                      <button
-                        type="button"
-                        className="guandan-auto-play-group"
-                        disabled={
-                          activeAutoGroup === null ||
-                          !gameStarted ||
-                          state.seat === null ||
-                          effectiveTurn !== state.seat ||
-                          tributePending ||
-                          state.trickComplete
-                        }
-                        onClick={playActiveAutoGroup}
-                      >
-                        一键出此组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={activeAutoGroupIndex === 0}
-                        onClick={() => moveActiveAutoGroup(-1)}
-                      >
-                        前移
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={
-                          activeAutoGroupIndex >= editableAutoGroups.length - 1
-                        }
-                        onClick={() => moveActiveAutoGroup(1)}
-                      >
-                        后移
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={
-                          activeAutoGroup === null ||
-                          activeAutoGroup.indexes.length < 2
-                        }
-                        onClick={splitActiveAutoGroup}
-                      >
-                        拆开此组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={selected.length === 0}
-                        onClick={makeSelectedCustomGroup}
-                      >
-                        选中牌组成一组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={restoreAutoArrangement}
-                      >
-                        恢复方案
-                      </button>
-                    </div>
-                  )}
+                      {editableAutoGroups.map((group, groupIndex) => (
+                        <option
+                          key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
+                          value={groupIndex}
+                        >
+                          {groupIndex + 1}. {group.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={activeAutoGroup === null}
+                      onClick={selectActiveAutoGroup}
+                    >
+                      选中此组
+                    </button>
+                    {handArrangeMode === "auto" && (
+                      <>
+                        <label htmlFor="guandan-auto-hand-layout-toolbar">
+                          排列：
+                        </label>
+                        <select
+                          id="guandan-auto-hand-layout-toolbar"
+                          value={autoHandLayout}
+                          onChange={(event) =>
+                            setAutoHandLayout(
+                              event.target.value === "vertical"
+                                ? "vertical"
+                                : "horizontal",
+                            )
+                          }
+                        >
+                          <option value="horizontal">横式排列</option>
+                          <option value="vertical">竖式排列</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="guandan-auto-play-group"
+                          disabled={
+                            activeAutoGroup === null ||
+                            !gameStarted ||
+                            state.seat === null ||
+                            effectiveTurn !== state.seat ||
+                            tributePending ||
+                            state.trickComplete
+                          }
+                          onClick={playActiveAutoGroup}
+                        >
+                          一键出此组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={activeAutoGroupIndex === 0}
+                          onClick={() => moveActiveAutoGroup(-1)}
+                        >
+                          前移
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={
+                            activeAutoGroupIndex >=
+                            editableAutoGroups.length - 1
+                          }
+                          onClick={() => moveActiveAutoGroup(1)}
+                        >
+                          后移
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={
+                            activeAutoGroup === null ||
+                            activeAutoGroup.indexes.length < 2
+                          }
+                          onClick={splitActiveAutoGroup}
+                        >
+                          拆开此组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={selected.length === 0}
+                          onClick={makeSelectedCustomGroup}
+                        >
+                          选中牌组成一组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={restoreAutoArrangement}
+                        >
+                          恢复方案
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div
                   className={`guandan-hand${
                     handArrangeMode === "auto"
