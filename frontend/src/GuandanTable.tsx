@@ -455,14 +455,11 @@ const GuandanTable: React.FunctionComponent = () => {
   const sendVictoryScreenshot = React.useCallback(async (): Promise<void> => {
     if (state.matchWinner === null) return;
     const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-      setScreenshotEmailStatus("missing");
-      return;
-    }
 
     setScreenshotEmailStatus("sending");
     setScreenshotEmailError("");
     try {
+      // Always create and keep the victory screenshot first. Email is optional.
       const screenshot = await createGuandanVictoryScreenshot({
         winnerTeam: state.matchWinner,
         players: state.players,
@@ -471,6 +468,12 @@ const GuandanTable: React.FunctionComponent = () => {
       });
       const screenshotDataUrl = `data:image/png;base64,${screenshot}`;
       setVictoryScreenshotDataUrl(screenshotDataUrl);
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        setScreenshotEmailStatus("missing");
+        return;
+      }
+
       const response = await fetch("/api/send-guandan-victory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
