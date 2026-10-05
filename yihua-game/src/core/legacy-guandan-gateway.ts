@@ -744,9 +744,9 @@ export const attachLegacyGuandanConnection = async (
       }
     | undefined;
 
-  const detachActiveConnection = async (): Promise<
-    LegacyAdapterSocket | undefined
-  > => {
+  const detachActiveConnection = async (
+    explicitLeave = false,
+  ): Promise<LegacyAdapterSocket | undefined> => {
     if (active === undefined) return;
     const closed = active;
     active = undefined;
@@ -764,10 +764,10 @@ export const attachLegacyGuandanConnection = async (
       const next = runtime.rooms.set(closed.roomId, {
         ...managed,
         room: isObserver
-          ? managed.game.phase === "lobby"
+          ? explicitLeave && managed.game.phase === "lobby"
             ? removeObserver(managed.room, closed.playerId)
             : disconnectObserver(managed.room, closed.playerId)
-          : managed.game.phase === "lobby"
+          : explicitLeave && managed.game.phase === "lobby"
             ? removeParticipant(managed.room, closed.playerId)
             : disconnectHuman(managed.room, closed.playerId),
       });
@@ -986,7 +986,7 @@ export const attachLegacyGuandanConnection = async (
       }
 
       if (message.type === "leave") {
-        const adapter = await detachActiveConnection();
+        const adapter = await detachActiveConnection(true);
         await adapter?.close(1000, "left room");
         return;
       }
