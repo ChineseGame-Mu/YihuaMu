@@ -8,6 +8,7 @@ import type {
 import { guandanPromotionSteps } from "./guandanPromotion";
 
 export interface GuandanTableState {
+  matchId: number;
   room: string | null;
   seat: number | null;
   players: string[];
@@ -54,6 +55,7 @@ export interface GuandanTableState {
 }
 
 export const initialGuandanTableState: GuandanTableState = {
+  matchId: 0,
   room: null,
   seat: null,
   players: [],
@@ -205,22 +207,36 @@ export const adaptGuandanServerMessage = (
         initialDraw: [],
         initialDrawWinner: null,
         finishOrder: [],
+        lastGameWinner: null,
+        lastGameWinnerTeam: null,
+        lastPromotionSteps: null,
         pendingTribute: null,
         tributeResisted: false,
+        matchWinner: null,
         nextRoundPhase: null,
         error: null,
       };
     case "hand":
       return { ...state, hand: message.cards, error: null };
     case "state": {
+      // Room broadcasts may already have queued an older match snapshot when a
+      // new match starts. Never let it resurrect a prior round's UI state.
+      if (message.match_id !== undefined && message.match_id < state.matchId) {
+        return state;
+      }
+      const startedNewRound =
+        state.nextRoundPhase !== null && message.next_round_phase === null;
+      const startedNewMatch =
+        message.match_id !== undefined && message.match_id > state.matchId;
       const roundComplete =
         message.players.length >= 4 &&
         message.finish_order.length === message.players.length;
       const inferredWinner = roundComplete
         ? (message.finish_order[0] ?? null)
         : null;
-      const winner =
-        message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
+      const winner = startedNewMatch
+        ? (message.last_game_winner ?? inferredWinner)
+        : (message.last_game_winner ?? inferredWinner ?? state.lastGameWinner);
       const inferredTeam: GuandanTeam | null =
         winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
       const promotionSteps =
@@ -250,6 +266,7 @@ export const adaptGuandanServerMessage = (
 
       return {
         ...state,
+        matchId: message.match_id ?? state.matchId,
         players: message.players,
         observers: message.observers,
         onlinePlayers: message.online_players,
@@ -268,18 +285,26 @@ export const adaptGuandanServerMessage = (
         teamLevels: message.team_levels,
         finishOrder: message.finish_order,
         lastGameWinner: winner,
-        lastGameWinnerTeam:
-          message.last_game_winner_team ??
-          inferredTeam ??
-          state.lastGameWinnerTeam,
-        lastPromotionSteps: promotionSteps,
+        lastGameWinnerTeam: startedNewMatch
+          ? (message.last_game_winner_team ?? inferredTeam)
+          : (message.last_game_winner_team ??
+            inferredTeam ??
+            state.lastGameWinnerTeam),
+        lastPromotionSteps: startedNewMatch
+          ? (message.last_promotion_steps ?? null)
+          : promotionSteps,
         seriesMatchNumber: message.series_match_number ?? null,
         seriesTotalMatches: message.series_total_matches ?? null,
         seriesCompletedMatches: message.series_completed_matches ?? null,
         seriesTeamAWins: message.series_team_a_wins ?? null,
         seriesTeamBWins: message.series_team_b_wins ?? null,
         pendingTribute: message.pending_tribute,
-        tributeResisted: message.tribute_resisted,
+        // Keep the anti-tribute notice visible for the whole round.  A late
+        // state snapshot must not make it flash away; only the transition
+        // from a completed round into the next round may clear it.
+        tributeResisted: startedNewRound || startedNewMatch
+          ? message.tribute_resisted
+          : message.tribute_resisted || state.tributeResisted,
         tributePhase: message.tribute_phase ?? null,
         tributeCards: message.tribute_cards ?? [],
         returnTributeCards: message.return_tribute_cards ?? [],

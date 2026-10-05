@@ -34,6 +34,8 @@ pub enum GuandanNextRoundPhase {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GuandanGameState {
     pub started: bool,
+    #[serde(default)]
+    pub match_id: u64,
     pub player_names: Vec<String>,
     pub hands: Vec<Vec<CardFace>>,
     pub turn: usize,
@@ -69,6 +71,7 @@ impl Default for GuandanGameState {
     fn default() -> Self {
         Self {
             started: false,
+            match_id: 0,
             player_names: Vec::new(),
             hands: Vec::new(),
             turn: 0,

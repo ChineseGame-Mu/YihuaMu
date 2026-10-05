@@ -1,0 +1,228 @@
+/* Public-table dealing and tribute ceremonies.  This file is loaded last so
+ * the approved desktop/mobile layout remains unchanged underneath it. */
+html body .guandan-table:has(.guandan-public-zone) .guandan-table-stage {
+  position: relative !important;
+}
+
+.guandan-deal-ceremony,
+.guandan-exchange-ceremony {
+  position: absolute;
+  z-index: 48;
+  top: 54%;
+  left: 50%;
+  display: flex;
+  box-sizing: border-box;
+  width: min(520px, calc(100% - 28px));
+  min-height: 168px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 15px 20px;
+  border: 3px solid #f1cf72;
+  border-radius: 18px;
+  background: radial-gradient(
+      circle at center,
+      rgb(27 129 68 / 94%),
+      rgb(3 68 37 / 97%)
+    ),
+    #064b2b;
+  color: #fff6cf;
+  text-align: center;
+  text-shadow: 0 2px 2px rgb(0 0 0 / 42%);
+  transform: translate(-50%, -50%);
+  box-shadow:
+    inset 0 0 0 2px rgb(255 245 191 / 24%),
+    0 12px 28px rgb(0 0 0 / 38%);
+  pointer-events: none;
+}
+
+.guandan-deal-ceremony > strong,
+.guandan-exchange-ceremony > strong {
+  color: #ffe28a;
+  font-size: 1.28rem;
+  letter-spacing: 0.12em;
+}
+
+.guandan-deal-deck {
+  position: relative;
+  width: 62px;
+  height: 78px;
+  margin-bottom: 2px;
+}
+
+.guandan-deal-deck > i,
+.guandan-deal-flight {
+  position: absolute;
+  display: grid;
+  width: 52px;
+  height: 70px;
+  place-items: center;
+  box-sizing: border-box;
+  border: 3px solid #fff0b4;
+  border-radius: 7px;
+  background: repeating-linear-gradient(45deg, #9b211f 0 6px, #6f1413 6px 12px);
+  color: #fff1bd;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 36%);
+}
+
+.guandan-deal-deck > i:nth-child(1) {
+  top: 6px;
+  left: 8px;
+  transform: rotate(-5deg);
+}
+
+.guandan-deal-deck > i:nth-child(2) {
+  top: 3px;
+  left: 5px;
+  transform: rotate(2deg);
+}
+
+.guandan-deal-deck > i:nth-child(3) {
+  top: 0;
+  left: 2px;
+}
+
+.guandan-deal-flight {
+  z-index: 4;
+  top: 0;
+  left: 2px;
+  font-size: 0.68rem;
+  animation: guandan-real-deal-flight 45ms ease-out forwards;
+}
+
+@keyframes guandan-real-deal-flight {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(1);
+  }
+  to {
+    opacity: 0.28;
+    transform: translate(var(--guandan-deal-x, 0), var(--guandan-deal-y, -90px))
+      rotate(16deg) scale(0.74);
+  }
+}
+
+.guandan-deal-target {
+  font-weight: 850;
+}
+
+.guandan-deal-remaining {
+  padding: 4px 13px;
+  border: 1px solid rgb(255 230 141 / 72%);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 20%);
+  font-size: 1rem;
+}
+
+.guandan-deal-remaining b {
+  color: #ffe16e;
+  font-size: 1.3rem;
+}
+
+.guandan-deal-ceremony small,
+.guandan-exchange-ceremony small {
+  color: #fff4ce;
+  font-weight: 700;
+}
+
+.guandan-exchange-ceremony {
+  width: min(650px, calc(100% - 28px));
+  min-height: 190px;
+  background: radial-gradient(
+      circle at center,
+      rgb(130 81 19 / 94%),
+      rgb(61 33 3 / 97%)
+    ),
+    #533000;
+}
+
+.guandan-exchange-list {
+  display: flex;
+  width: 100%;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.guandan-exchange-move {
+  display: grid;
+  min-width: 230px;
+  align-items: center;
+  grid-template-columns: minmax(54px, 1fr) 58px auto minmax(54px, 1fr);
+  gap: 7px;
+  padding: 7px 9px;
+  border: 2px solid #edc864;
+  border-radius: 12px;
+  background: rgb(255 250 220 / 12%);
+  font-weight: 850;
+}
+
+.guandan-exchange-move.is-return {
+  border-color: #91d6ff;
+  background: rgb(50 151 207 / 18%);
+}
+
+.guandan-exchange-card {
+  display: flex;
+  min-width: 52px;
+  justify-content: center;
+}
+
+.guandan-exchange-card > span {
+  display: inline-block;
+  margin-right: -23px;
+}
+
+.guandan-exchange-card > span:last-child {
+  margin-right: 0;
+}
+
+.guandan-exchange-arrow {
+  color: #ffe58d;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .guandan-deal-ceremony,
+  .guandan-exchange-ceremony {
+    top: 58%;
+    width: calc(100% - 16px);
+    min-height: 148px;
+    padding: 10px 9px;
+  }
+
+  .guandan-deal-deck {
+    transform: scale(0.8);
+    margin: -8px 0 -6px;
+  }
+
+  .guandan-deal-ceremony > strong,
+  .guandan-exchange-ceremony > strong {
+    font-size: 1rem;
+  }
+
+  .guandan-exchange-list {
+    max-height: 190px;
+    overflow-y: auto;
+  }
+
+  .guandan-exchange-move {
+    min-width: 0;
+    width: 100%;
+    grid-template-columns: minmax(48px, 1fr) 50px auto minmax(48px, 1fr);
+    gap: 4px;
+    padding: 5px;
+    font-size: 0.78rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guandan-deal-flight {
+    animation-duration: 1ms;
+  }
+}

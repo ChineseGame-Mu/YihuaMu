@@ -26,7 +26,7 @@ describe("Guandan automatic layout options", () => {
   });
 
   test("supports manual group editing and one-click play", () => {
-    expect(table).toContain('aria-label="自动理牌手动调整"');
+    expect(table).toContain('aria-label="手牌组合选择与调整"');
     expect(table).toContain("选择组合：");
     expect(table).not.toContain("调整组合：");
     expect(table).toContain('id="guandan-auto-hand-layout-toolbar"');
@@ -40,6 +40,8 @@ describe("Guandan automatic layout options", () => {
     expect(table).toContain("effectiveTurn !== state.seat");
     expect(table).toContain("tributePending");
     expect(table).toContain("state.trickComplete");
+    expect(table.indexOf("选中此组")).toBeLessThan(table.indexOf("前移"));
+    expect(table.indexOf("一键出此组")).toBeLessThan(table.indexOf("前移"));
   });
 
   test("places the grouping tools on the right and stacks cards vertically", () => {

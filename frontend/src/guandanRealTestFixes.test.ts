@@ -12,6 +12,7 @@ const suited = (
 const stateMessage = (overrides: Record<string, unknown> = {}) =>
   ({
     type: "state",
+    match_id: 1,
     players: ["A", "B", "C", "D"],
     observers: [],
     online_players: [true, true, true, true],
@@ -178,5 +179,96 @@ describe("2026-09-16 mandatory real-test regressions", () => {
     });
 
     expect(next.hand).toEqual(secondRoundHand);
+  });
+
+  test("keeps the anti-tribute notice visible until the next round starts", () => {
+    const resisted = adaptGuandanServerMessageWithRealTestFixes(
+      initialGuandanTableState,
+      stateMessage({ tribute_resisted: true }),
+    );
+    expect(resisted.tributeResisted).toBe(true);
+
+    const laterSnapshot = adaptGuandanServerMessageWithRealTestFixes(
+      resisted,
+      stateMessage({ tribute_resisted: false }),
+    );
+    expect(laterSnapshot.tributeResisted).toBe(true);
+
+    const completedRound = adaptGuandanServerMessageWithRealTestFixes(
+      laterSnapshot,
+      stateMessage({
+        tribute_resisted: true,
+        next_round_phase: "awaiting_shuffle",
+      }),
+    );
+    const nextRound = adaptGuandanServerMessageWithRealTestFixes(
+      completedRound,
+      stateMessage({ tribute_resisted: false, next_round_phase: null }),
+    );
+    expect(nextRound.tributeResisted).toBe(false);
+  });
+
+  test("clears a stale anti-tribute notice when a new match id starts", () => {
+    const previousMatch = {
+      ...initialGuandanTableState,
+      matchId: 8,
+      tributeResisted: true,
+      lastGameWinner: 0,
+    };
+
+    const firstStateOfNextMatch = adaptGuandanServerMessageWithRealTestFixes(
+      previousMatch,
+      stateMessage({
+        match_id: 9,
+        tribute_resisted: false,
+        last_game_winner: null,
+      }),
+    );
+
+    expect(firstStateOfNextMatch.matchId).toBe(9);
+    expect(firstStateOfNextMatch.tributeResisted).toBe(false);
+    expect(firstStateOfNextMatch.lastGameWinner).toBeNull();
+  });
+
+  test("clears previous result data as soon as the server starts a new match", () => {
+    const previousMatch = {
+      ...initialGuandanTableState,
+      tributeResisted: true,
+      lastGameWinner: 0,
+      lastGameWinnerTeam: "TeamA" as const,
+      lastPromotionSteps: 3,
+    };
+
+    const started = adaptGuandanServerMessageWithRealTestFixes(previousMatch, {
+      type: "started",
+      player_count: 4,
+      cards_per_player: 27,
+    });
+
+    expect(started.tributeResisted).toBe(false);
+    expect(started.lastGameWinner).toBeNull();
+    expect(started.lastGameWinnerTeam).toBeNull();
+    expect(started.lastPromotionSteps).toBeNull();
+  });
+
+  test("ignores delayed snapshots from the previous match", () => {
+    const currentMatch = {
+      ...initialGuandanTableState,
+      matchId: 9,
+      tributeResisted: false,
+      lastGameWinner: null,
+    };
+
+    const delayedOldMatch = adaptGuandanServerMessageWithRealTestFixes(
+      currentMatch,
+      stateMessage({
+        match_id: 8,
+        tribute_resisted: true,
+        last_game_winner: 0,
+      }),
+    );
+
+    expect(delayedOldMatch).toBe(currentMatch);
+    expect(delayedOldMatch.tributeResisted).toBe(false);
   });
 });

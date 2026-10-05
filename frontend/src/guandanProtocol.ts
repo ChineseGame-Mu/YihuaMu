@@ -86,6 +86,7 @@ export type GuandanServerMessage =
   | { type: "hand"; cards: GuandanCard[] }
   | {
       type: "state";
+      match_id?: number;
       players: string[];
       observers: string[];
       online_players: boolean[];

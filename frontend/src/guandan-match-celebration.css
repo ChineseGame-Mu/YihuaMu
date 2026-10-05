@@ -103,6 +103,82 @@
   text-align: center;
 }
 
+.guandan-victory-image-button {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: min(72vw, 700px);
+  max-height: min(42vh, 420px);
+  padding: 6px 10px;
+  border: 2px solid #e5c05b;
+  border-radius: 14px;
+  background: rgb(255 248 220 / 92%);
+  color: #4f3100;
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: zoom-in;
+}
+
+.guandan-victory-image-preview {
+  display: block;
+  max-width: 100%;
+  max-height: min(35vh, 350px);
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.guandan-match-complete-panel:not(.guandan-match-celebrating)
+  .guandan-victory-image-button {
+  grid-column: 1;
+  width: min(100%, 520px);
+  max-width: 100%;
+  max-height: 220px;
+  justify-self: center;
+}
+
+.guandan-match-complete-panel:not(.guandan-match-celebrating)
+  .guandan-victory-image-preview {
+  max-height: 175px;
+}
+
+.guandan-victory-image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 4vw;
+  background: rgb(0 0 0 / 88%);
+  cursor: zoom-out;
+}
+
+.guandan-victory-image-lightbox img {
+  display: block;
+  max-width: 92vw;
+  max-height: 92vh;
+  object-fit: contain;
+  box-shadow: 0 12px 48px rgb(0 0 0 / 55%);
+}
+
+.guandan-victory-image-close {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: max(16px, env(safe-area-inset-right));
+  width: 48px;
+  height: 48px;
+  border: 1px solid #fff4ad;
+  border-radius: 50%;
+  background: #075130;
+  color: #fff4ad;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .guandan-match-actions {
   display: flex;
   gap: 18px;

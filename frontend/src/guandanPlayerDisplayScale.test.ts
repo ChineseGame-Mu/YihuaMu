@@ -7,6 +7,10 @@ describe("Guandan enlarged player displays", () => {
     "utf8",
   );
   const table = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
+  const positions = readFileSync(
+    join(__dirname, "guandan-public-player-position.css"),
+    "utf8",
+  );
   const layout = readFileSync(
     join(__dirname, "guandan-approved-layout.css"),
     "utf8",
@@ -27,7 +31,7 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
-  test("doubles public player displays with no gap", () => {
+  test("keeps wide public player displays, reduces their height by thirty percent, and shows names", () => {
     expect(css).toMatch(/gap:\s*0\s*!important/);
     expect(css).toMatch(/flex:\s*0 0 96px\s*!important/);
     expect(css).toMatch(
@@ -36,12 +40,38 @@ describe("Guandan enlarged player displays", () => {
     expect(css).toMatch(
       /\.guandan-public-card-back[\s\S]*?margin:\s*0\s*!important/,
     );
-    expect(css).toMatch(/height:\s*96px\s*!important/);
+    expect(css).toMatch(/height:\s*67\.2px\s*!important/);
+    expect(table).toContain('className="guandan-public-card-player-name"');
+    expect(table).toContain("{player}");
+    expect(table).not.toContain("<span>掼蛋</span>");
+    expect(table).not.toContain('className="guandan-public-player-seat"');
+    expect(table).not.toContain("<strong title={player}>{player}</strong>");
   });
 
   test("reserves space so enlarged displays cannot cover played cards", () => {
     expect(css).toMatch(
-      /\.guandan-table-stage\s*\{[\s\S]*?padding-top:\s*154px\s*!important/,
+      /\.guandan-table-stage\s*\{[\s\S]*?padding-top:\s*125\.2px\s*!important/,
+    );
+  });
+
+  test("places four players on opposite table edges and centers every played-card group", () => {
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?nth-child\(1\)[\s\S]*?top:\s*34px[\s\S]*?left:\s*50%/,
+    );
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?nth-child\(2\)[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
+    );
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?nth-child\(3\)[\s\S]*?bottom:\s*8px[\s\S]*?left:\s*50%/,
+    );
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?nth-child\(4\)[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
+    );
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?\.guandan-table-stage\s*\{[\s\S]*?align-items:\s*center[\s\S]*?justify-content:\s*center/,
+    );
+    expect(positions).toMatch(
+      /data-guandan-player-count="4"[\s\S]*?\.guandan-trick-plays\s*\{[\s\S]*?justify-content:\s*center/,
     );
   });
 

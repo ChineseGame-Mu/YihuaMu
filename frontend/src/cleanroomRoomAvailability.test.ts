@@ -2,6 +2,7 @@ import {
   CLEANROOM_ROOM_IDS,
   availabilityByVisibleRoom,
   cleanroomRoomOptionLabel,
+  isCleanroomRoomId,
 } from "./cleanroomRoomAvailability";
 
 describe("cleanroom room availability", () => {
@@ -18,6 +19,15 @@ describe("cleanroom room availability", () => {
       "0009",
       "0010",
     ]);
+  });
+
+  test("validates every selectable room inside the table", () => {
+    for (const room of CLEANROOM_ROOM_IDS) {
+      expect(isCleanroomRoomId(room)).toBe(true);
+    }
+    expect(isCleanroomRoomId("0000")).toBe(false);
+    expect(isCleanroomRoomId("0011")).toBe(false);
+    expect(isCleanroomRoomId("1000")).toBe(false);
   });
 
   test("maps deployment room summaries back to visible room numbers", () => {

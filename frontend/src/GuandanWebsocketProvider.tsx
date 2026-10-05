@@ -16,6 +16,7 @@ interface GuandanWebsocketContextValue {
   lastMessage: GuandanServerMessage | null;
   messageSequence: number;
   send: (message: GuandanClientMessage) => boolean;
+  leave: () => boolean;
 }
 
 export const GuandanWebsocketContext =
@@ -24,6 +25,7 @@ export const GuandanWebsocketContext =
     lastMessage: null,
     messageSequence: 0,
     send: () => false,
+    leave: () => false,
   });
 
 interface GuandanWebsocketProviderProps {
@@ -50,6 +52,21 @@ interface JoinWireMessage {
   readonly [key: string]: unknown;
 }
 
+export const sendGuandanLeave = (
+  socket: Pick<WebSocket, "readyState" | "send"> | null,
+  hasJoinedRoom: boolean,
+): boolean => {
+  if (
+    !hasJoinedRoom ||
+    socket === null ||
+    socket.readyState !== WebSocket.OPEN
+  ) {
+    return false;
+  }
+  socket.send(JSON.stringify({ type: "leave" }));
+  return true;
+};
+
 export const addPlayerSessionToJoin = (
   message: JoinWireMessage,
   session: StoredPlayerSession | null,
@@ -64,6 +81,14 @@ export const addPlayerSessionToJoin = (
 
 const playerSessionKey = (room: string, name: string): string =>
   `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
+
+export const isRecoverablePlayerSessionError = (message: string): boolean =>
+  [
+    "player session is invalid or expired",
+    "player session identity does not match",
+    "player session no longer belongs to this room",
+    "player session role does not match",
+  ].includes(message);
 
 const readPlayerSession = (
   room: string,
@@ -100,6 +125,14 @@ const storePlayerSession = (
   }
 };
 
+const clearPlayerSession = (room: string, name: string): void => {
+  try {
+    window.sessionStorage.removeItem(playerSessionKey(room, name));
+  } catch {
+    // A retry can still proceed without browser storage access.
+  }
+};
+
 export const cleanroomBuildCommit =
   typeof __CLEANROOM_BUILD_COMMIT__ === "string"
     ? __CLEANROOM_BUILD_COMMIT__
@@ -112,13 +145,14 @@ export const cleanroomDeploymentRoom = (
   const room = visibleRoom?.trim();
   if (!room) return null;
 
+  const normalizedHost = hostname.trim().toLowerCase();
+  if (normalizedHost === "yihua-mu.vercel.app") return room;
+  if (!normalizedHost.endsWith(".vercel.app")) return room;
+
   const commitKey = /^[0-9a-f]{7,40}$/i.test(cleanroomBuildCommit)
     ? cleanroomBuildCommit.slice(0, 12).toLowerCase()
     : null;
   if (commitKey !== null) return `cr-${commitKey}-${room}`;
-
-  const normalizedHost = hostname.trim().toLowerCase();
-  if (!normalizedHost.endsWith(".vercel.app")) return room;
 
   const firstLabel = normalizedHost.split(".")[0] ?? "";
   const immutableMatch = firstLabel.match(/-([a-z0-9]{8,16})$/);
@@ -190,6 +224,15 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     room: string;
     name: string;
   } | null>(null);
+  const lastJoinMessageRef = React.useRef<JoinWireMessage | null>(null);
+  const sessionRecoveryAttemptedRef = React.useRef(false);
+
+  const leave = React.useCallback((): boolean => {
+    const ws = websocketRef.current;
+    if (!sendGuandanLeave(ws, lastJoinIdentityRef.current !== null)) return false;
+    lastJoinIdentityRef.current = null;
+    return true;
+  }, []);
 
   React.useEffect(() => {
     document.documentElement.dataset.cleanroomCommit = cleanroomBuildCommit;
@@ -259,19 +302,6 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       }, delay);
     };
 
-    const leaveRoom = (): void => {
-      const ws = websocketRef.current;
-      if (
-        lastJoinIdentityRef.current !== null &&
-        ws !== null &&
-        ws.readyState === WebSocket.OPEN
-      ) {
-        ws.send(JSON.stringify({ type: "leave" }));
-      }
-    };
-
-    window.addEventListener("pagehide", leaveRoom);
-
     const connect = (): void => {
       if (!mountedRef.current) return;
       clearQueuedMessages();
@@ -294,12 +324,27 @@ const GuandanWebsocketProvider: React.FunctionComponent<
             typeof message.player_id === "string" &&
             typeof message.resume_token === "string"
           ) {
+            sessionRecoveryAttemptedRef.current = false;
             const identity = lastJoinIdentityRef.current;
             if (identity !== null && identity.room === message.room) {
               storePlayerSession(identity.room, identity.name, {
                 playerId: message.player_id,
                 resumeToken: message.resume_token,
               });
+            }
+          }
+          if (
+            message.type === "error" &&
+            isRecoverablePlayerSessionError(message.message) &&
+            !sessionRecoveryAttemptedRef.current
+          ) {
+            const identity = lastJoinIdentityRef.current;
+            const lastJoin = lastJoinMessageRef.current;
+            if (identity !== null && lastJoin !== null) {
+              sessionRecoveryAttemptedRef.current = true;
+              clearPlayerSession(identity.room, identity.name);
+              ws.send(JSON.stringify(lastJoin));
+              return;
             }
           }
           enqueueMessage(message);
@@ -326,9 +371,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
     return () => {
       mountedRef.current = false;
-      window.removeEventListener("pagehide", leaveRoom);
-      leaveRoom();
-      delete document.documentElement.dataset.cleanroomCommit;
+      // Closing, refreshing, suspending, or losing the page is not an explicit\n      // table departure. The server keeps the human seat reserved so the same\n      // room/name can recover its original hand and game state. Only the\n      // dedicated Exit control sends the explicit `leave` command.\n      delete document.documentElement.dataset.cleanroomCommit;
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
@@ -360,6 +403,8 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       const joinRoom = adapted.room.trim();
       const joinName = adapted.name.trim();
       lastJoinIdentityRef.current = { room: joinRoom, name: joinName };
+      lastJoinMessageRef.current = adapted;
+      sessionRecoveryAttemptedRef.current = false;
       const stored = readPlayerSession(joinRoom, joinName);
       ws.send(JSON.stringify(addPlayerSessionToJoin(adapted, stored)));
       return true;
@@ -374,8 +419,9 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       lastMessage: delivery.message,
       messageSequence: delivery.sequence,
       send,
+      leave,
     }),
-    [status, delivery, send],
+    [status, delivery, send, leave],
   );
 
   return (

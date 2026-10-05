@@ -141,4 +141,22 @@ describe("automatic Guandan hand arrangement", () => {
       "大王",
     ]);
   });
+
+  test("places the current level rank after aces and before jokers", () => {
+    const hand: GuandanCard[] = [
+      suited("Two", "Diamonds"),
+      suited("Three", "Clubs"),
+      suited("Ace", "Spades"),
+      { Joker: "Small" },
+      { Joker: "Big" },
+    ];
+
+    expect(arrangeGuandanHand(hand, "Two").map(({ label }) => label)).toEqual([
+      "单张3",
+      "单张A",
+      "单张2",
+      "小王",
+      "大王",
+    ]);
+  });
 });
