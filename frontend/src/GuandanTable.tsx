@@ -298,7 +298,7 @@ const GuandanTable: React.FunctionComponent = () => {
     "idle" | "missing" | "sending" | "sent" | "failed"
   >("idle");
   const [screenshotEmailError, setScreenshotEmailError] = React.useState("");
-  const [victoryScreenshotDataUrl, setVictoryScreenshotDataUrl] =
+  const [, setVictoryScreenshotDataUrl] =
     React.useState<string | null>(null);
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
@@ -862,10 +862,6 @@ const GuandanTable: React.FunctionComponent = () => {
     window.setTimeout(() => window.location.replace("about:blank"), 50);
   };
 
-  const winningPlayerNames =
-    state.matchWinner === null
-      ? []
-      : winningTeamPlayerNames(state.players, state.matchWinner);
   const victoryFirstPlaceName =
     state.finishOrder[0] === undefined
       ? null
