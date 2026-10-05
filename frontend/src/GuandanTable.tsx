@@ -203,7 +203,7 @@ const guandanErrorLabel = (message: string): string => {
     "the next round is not ready to shuffle": "现在还不能洗牌。",
     "only a player on the losing team may shuffle": "只能由输方玩家洗牌。",
     "the next round is not ready to deal": "请先由输方完成洗牌。",
-    "only the previous winner may deal": "只能由上一局赢家发牌。",
+    "only the previous winner may deal": "只能由上一局赢家发牌。",\n    "player names cannot use the reserved robot prefix":\n      "真人姓名不能以“机器人”开头，请使用真实姓名。",
     "shuffle positions must both be between 1 and 108":
       "抽牌位置和插入位置都必须在1到108之间。",
   };
