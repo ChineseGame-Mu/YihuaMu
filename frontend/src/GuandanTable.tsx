@@ -1476,7 +1476,12 @@ const GuandanTable: React.FunctionComponent = () => {
                         玩家{index + 1}
                       </span>
                       <span className="guandan-public-card-back">
-                        <span>掼蛋</span>
+                        <span
+                          className="guandan-public-card-player-name"
+                          title={player}
+                        >
+                          {player}
+                        </span>
                         <span
                           className="guandan-public-seat-move-controls"
                           aria-label={`${player}的换位及参与按钮`}
