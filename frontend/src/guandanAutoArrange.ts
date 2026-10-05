@@ -87,6 +87,7 @@ const rankStrengthFromLabel = (label: string): number | null => {
 const groupDisplayStrength = (
   group: GuandanAutoGroup,
   hand: GuandanCard[],
+  level: GuandanRank | null,
 ): number => {
   if (group.kind === "joker-bomb") return ranks.length + 2;
 
@@ -110,7 +111,18 @@ const groupDisplayStrength = (
                   : undefined;
   if (labelRank !== undefined) {
     const labelStrength = rankStrengthFromLabel(labelRank);
-    if (labelStrength !== null) return labelStrength;
+    if (labelStrength !== null) {
+      const rankBasedGroup =
+        group.kind === "single" ||
+        group.kind === "pair" ||
+        group.kind === "triple" ||
+        group.kind === "full-house" ||
+        group.kind === "bomb";
+      if (rankBasedGroup && level !== null && labelRank === rankLabels[level]) {
+        return ranks.length - 0.5;
+      }
+      return labelStrength;
+    }
   }
 
   return Math.max(
@@ -119,7 +131,9 @@ const groupDisplayStrength = (
       if ("Joker" in card) {
         return card.Joker === "Big" ? ranks.length + 1 : ranks.length;
       }
-      return ranks.indexOf(card.Suited.rank);
+      return level !== null && card.Suited.rank === level
+        ? ranks.length - 0.5
+        : ranks.indexOf(card.Suited.rank);
     }),
   );
 };
@@ -127,13 +141,14 @@ const groupDisplayStrength = (
 const sortGroupsByDisplayStrength = (
   groups: GuandanAutoGroup[],
   hand: GuandanCard[],
+  level: GuandanRank | null,
 ): GuandanAutoGroup[] =>
   groups
     .map((group, originalOrder) => ({ group, originalOrder }))
     .sort(
       (left, right) =>
-        groupDisplayStrength(left.group, hand) -
-          groupDisplayStrength(right.group, hand) ||
+        groupDisplayStrength(left.group, hand, level) -
+          groupDisplayStrength(right.group, hand, level) ||
         left.originalOrder - right.originalOrder,
     )
     .map(({ group }) => group);
@@ -361,5 +376,5 @@ export const arrangeGuandanHand = (
     addGroup("single", label, [index]);
   });
 
-  return sortGroupsByDisplayStrength(groups, hand);
+  return sortGroupsByDisplayStrength(groups, hand, level);
 };

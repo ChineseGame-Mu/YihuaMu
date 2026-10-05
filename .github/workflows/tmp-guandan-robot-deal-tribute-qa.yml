@@ -1,0 +1,25 @@
+name: Guandan robot deal and tribute QA
+
+on:
+  push:
+    branches:
+      - preview/fix-guandan-anti-tribute-toolbar-20261004
+  workflow_dispatch:
+
+jobs:
+  robot-deal-tribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: yihua-game/package-lock.json
+      - run: npm ci
+      - run: npx vitest run test/frontend-compat.test.ts test/legacy-tribute-four-client-acceptance.test.ts
+      - run: npm run build

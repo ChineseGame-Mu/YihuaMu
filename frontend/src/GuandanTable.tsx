@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 
 import SvgCard from "./SvgCard";
 import {
@@ -20,12 +21,12 @@ import {
   guandanDealPresentation,
   guandanDealtCardsForSeat,
 } from "./guandanDealPresentation";
+import { shouldAnimateGuandanDeal } from "./guandanDealLifecycle";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
   GUANDAN_MATCH_CELEBRATION_MS,
   normalizeWinnerScreenshotEmail,
-  winningTeamPlayerNames,
 } from "./guandanMatchCelebration";
 import {
   normalizeGuandanMusicMode,
@@ -203,6 +204,8 @@ const guandanErrorLabel = (message: string): string => {
     "only a player on the losing team may shuffle": "只能由输方玩家洗牌。",
     "the next round is not ready to deal": "请先由输方完成洗牌。",
     "only the previous winner may deal": "只能由上一局赢家发牌。",
+    "player names cannot use the reserved robot prefix":
+      "真人姓名不能以“机器人”开头，请使用真实姓名。",
     "shuffle positions must both be between 1 and 108":
       "抽牌位置和插入位置都必须在1到108之间。",
   };
@@ -293,6 +296,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const [screenshotEmailStatus, setScreenshotEmailStatus] = React.useState<
     "idle" | "missing" | "sending" | "sent" | "failed"
   >("idle");
+  const [screenshotEmailError, setScreenshotEmailError] = React.useState("");
+  const [, setVictoryScreenshotDataUrl] =
+    React.useState<string | null>(null);
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -307,6 +313,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
+  const previousNextRoundPhaseRef = React.useRef(state.nextRoundPhase);
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const lastTurnPromptKeyRef = React.useRef<string | null>(null);
   const screenshotAttemptRef = React.useRef<string | null>(null);
@@ -447,19 +454,25 @@ const GuandanTable: React.FunctionComponent = () => {
   const sendVictoryScreenshot = React.useCallback(async (): Promise<void> => {
     if (state.matchWinner === null) return;
     const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-      setScreenshotEmailStatus("missing");
-      return;
-    }
 
     setScreenshotEmailStatus("sending");
+    setScreenshotEmailError("");
     try {
+      // Always create and keep the victory screenshot first. Email is optional.
       const screenshot = await createGuandanVictoryScreenshot({
         winnerTeam: state.matchWinner,
         players: state.players,
         finishOrder: state.finishOrder,
         room,
       });
+      const screenshotDataUrl = `data:image/png;base64,${screenshot}`;
+      setVictoryScreenshotDataUrl(screenshotDataUrl);
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+        setScreenshotEmailStatus("missing");
+        return;
+      }
+
       const response = await fetch("/api/send-guandan-victory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -471,13 +484,28 @@ const GuandanTable: React.FunctionComponent = () => {
           winnerTeam: state.matchWinner,
         }),
       });
-      if (!response.ok) throw new Error("screenshot email request failed");
+      const result = (await response.json().catch(() => null)) as {
+        error?: unknown;
+      } | null;
+      if (!response.ok) {
+        const errorMessage =
+          typeof result?.error === "string"
+            ? result.error
+            : `邮件接口返回错误（${response.status}），请稍后重试。`;
+        setScreenshotEmailError(errorMessage);
+        throw new Error(errorMessage);
+      }
       window.localStorage.setItem(
         `guandan_screenshot_sent:${room}:${state.matchId}`,
         recipient,
       );
       setScreenshotEmailStatus("sent");
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message) {
+        setScreenshotEmailError(error.message);
+      } else {
+        setScreenshotEmailError("截图生成或邮件发送失败，请稍后重试。");
+      }
       setScreenshotEmailStatus("failed");
     }
   }, [
@@ -494,6 +522,8 @@ const GuandanTable: React.FunctionComponent = () => {
       screenshotAttemptRef.current = null;
       screenshotRetryUsedRef.current = false;
       setScreenshotEmailStatus("idle");
+      setScreenshotEmailError("");
+      setVictoryScreenshotDataUrl(null);
       return;
     }
     const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
@@ -658,25 +688,26 @@ const GuandanTable: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     const previousHandSize = lastAnimatedHandSizeRef.current;
-    const handSizeChanged = state.hand.length !== previousHandSize;
     if (state.hand.length < previousHandSize) {
       setSelected([]);
     }
-    if (state.lastPlay.length > 0) {
+    if (state.nextRoundPhase !== null) {
       hasAnimatedCurrentDealRef.current = false;
     }
-    const shouldAnimate =
-      state.hand.length > 0 &&
-      handSizeChanged &&
-      state.lastPlay.length === 0 &&
-      !nextRoundPending &&
-      !hasAnimatedCurrentDealRef.current &&
-      playerCount >= 4;
+    const shouldAnimate = shouldAnimateGuandanDeal({
+      previousHandSize,
+      currentHandSize: state.hand.length,
+      previousNextRoundPhase: previousNextRoundPhaseRef.current,
+      nextRoundPhase: state.nextRoundPhase,
+      playerCount,
+      alreadyAnimated: hasAnimatedCurrentDealRef.current,
+    });
     lastAnimatedHandSizeRef.current = state.hand.length;
+    previousNextRoundPhaseRef.current = state.nextRoundPhase;
     if (!shouldAnimate) return;
     hasAnimatedCurrentDealRef.current = true;
     setDealStep(0);
-  }, [state.hand.length, state.lastPlay.length, nextRoundPending, playerCount]);
+  }, [state.hand.length, state.nextRoundPhase, playerCount]);
 
   React.useEffect(() => {
     if (dealStep === null || totalDealCards <= 0) return;
@@ -830,10 +861,17 @@ const GuandanTable: React.FunctionComponent = () => {
     window.setTimeout(() => window.location.replace("about:blank"), 50);
   };
 
-  const winningPlayerNames =
-    state.matchWinner === null
-      ? []
-      : winningTeamPlayerNames(state.players, state.matchWinner);
+  const victoryFirstPlaceName =
+    state.finishOrder[0] === undefined
+      ? null
+      : (state.players[state.finishOrder[0]] ?? `玩家${state.finishOrder[0] + 1}`);
+  const victorySecondPlaceName =
+    state.finishOrder[1] === undefined
+      ? null
+      : (state.players[state.finishOrder[1]] ?? `玩家${state.finishOrder[1] + 1}`);
+  const victoryRemainingNames = state.finishOrder
+    .slice(2)
+    .map((seat) => state.players[seat] ?? `玩家${seat + 1}`);
   const threeMatchSeriesActive =
     state.seriesMatchNumber !== null && state.seriesTotalMatches === 3;
   const threeMatchSeriesComplete =
@@ -1443,11 +1481,13 @@ const GuandanTable: React.FunctionComponent = () => {
                         shouldReport ? `，剩余${remaining}张` : ""
                       }`}
                     >
-                      <span className="guandan-public-player-seat">
-                        玩家{index + 1}
-                      </span>
                       <span className="guandan-public-card-back">
-                        <span>掼蛋</span>
+                        <span
+                          className="guandan-public-card-player-name"
+                          title={player}
+                        >
+                          {player}
+                        </span>
                         <span
                           className="guandan-public-seat-move-controls"
                           aria-label={`${player}的换位及参与按钮`}
@@ -1495,7 +1535,6 @@ const GuandanTable: React.FunctionComponent = () => {
                           </button>
                         </span>
                       </span>
-                      <strong title={player}>{player}</strong>
                       {shouldReport && (
                         <span
                           className="guandan-public-card-count"
@@ -1702,126 +1741,287 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.matchWinner !== null && (
-              <section
-                className={`guandan-notice-panel guandan-match-complete-panel${
-                  matchCelebrationComplete ? "" : " guandan-match-celebrating"
-                }`}
-                role="status"
-                aria-label="本局结束"
-              >
-                {!matchCelebrationComplete && (
-                  <>
-                    <div className="guandan-match-trophy" aria-hidden="true">
-                      🏆
-                    </div>
-                    <div className="guandan-fireworks" aria-hidden="true">
-                      {celebrationFireworks.map(([x, y, color, delay]) => (
-                        <i
-                          key={`${x}-${y}`}
-                          className="guandan-firework"
-                          style={
-                            {
-                              "--firework-x": x,
-                              "--firework-y": y,
-                              "--firework-color": color,
-                              "--firework-delay": delay,
-                            } as React.CSSProperties
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-                <strong>
-                  本局结束：
-                  {state.matchWinner === "TeamA" ? "A队" : "B队"}
-                  打A获胜
-                </strong>
-                <span className="guandan-match-winners">
-                  获胜队员：{winningPlayerNames.join(" ｜ ")}
-                </span>
-                <span
-                  className="guandan-screenshot-email-status"
-                  aria-live="polite"
+            {state.matchWinner !== null &&
+              createPortal(
+                <section
+                  className={`guandan-match-complete-panel${
+                    matchCelebrationComplete ? "" : " guandan-match-celebrating"
+                  }`}
+                  role="status"
+                  aria-label="本局结束"
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 2147483000,
+                    width: "100vw",
+                    height: "100vh",
+                    margin: 0,
+                    padding: 0,
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    boxSizing: "border-box",
+                    background:
+                      "radial-gradient(circle at 50% 42%, rgba(255,221,88,0.58) 0%, rgba(255,191,0,0.22) 18%, rgba(20,145,76,0.92) 48%, rgba(0,86,52,0.98) 75%, #003d28 100%)",
+                    color: "#fff8dc",
+                  }}
                 >
-                  {screenshotEmailStatus === "sending" &&
-                    "正在生成并发送打A胜利截图……"}
-                  {screenshotEmailStatus === "sent" &&
-                    `胜利截图已发送到 ${normalizeWinnerScreenshotEmail(winnerScreenshotEmail)}`}
-                  {screenshotEmailStatus === "missing" &&
-                    "请在“设置”中填写有效邮箱，才能发送胜利截图。"}
-                  {screenshotEmailStatus === "failed" &&
-                    "胜利截图发送失败，可重试一次。"}
-                </span>
-                {(screenshotEmailStatus === "failed" ||
-                  screenshotEmailStatus === "missing") && (
-                  <button
-                    type="button"
-                    className="normal"
-                    onClick={retryVictoryScreenshot}
-                    disabled={screenshotRetryUsedRef.current}
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      inset: "-12%",
+                      background:
+                        "radial-gradient(circle at 18% 24%, rgba(255,70,55,.22), transparent 18%), radial-gradient(circle at 82% 20%, rgba(255,218,70,.22), transparent 18%), radial-gradient(circle at 22% 80%, rgba(80,210,255,.18), transparent 19%), radial-gradient(circle at 80% 78%, rgba(255,80,170,.18), transparent 18%)",
+                      filter: "blur(8px)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <div
+                    className="guandan-match-trophy"
+                    aria-hidden="true"
+                    style={{
+                      position: "absolute",
+                      top: "6vh",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      fontSize: "clamp(110px, 18vw, 250px)",
+                      lineHeight: 1,
+                      filter:
+                        "drop-shadow(0 0 18px rgba(255,221,72,.9)) drop-shadow(0 18px 24px rgba(0,0,0,.28))",
+                      opacity: 0.96,
+                      zIndex: 1,
+                    }}
                   >
-                    {screenshotRetryUsedRef.current
-                      ? "已用完重试次数"
-                      : "重试发送一次"}
-                  </button>
-                )}
-                {!matchCelebrationComplete ? (
-                  <>
-                    <time
-                      className="guandan-match-celebration-time"
-                      dateTime={celebrationNow.toISOString()}
+                    🏆
+                  </div>
+
+                  <div className="guandan-fireworks" aria-hidden="true">
+                    {celebrationFireworks.map(([x, y, color, delay]) => (
+                      <i
+                        key={`${x}-${y}`}
+                        className="guandan-firework"
+                        style={
+                          {
+                            "--firework-x": x,
+                            "--firework-y": y,
+                            "--firework-color": color,
+                            "--firework-delay": delay,
+                          } as React.CSSProperties
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 3,
+                      width: "min(92vw, 980px)",
+                      marginTop: "12vh",
+                      padding: "34px 44px 30px",
+                      borderRadius: 28,
+                      textAlign: "center",
+                      background:
+                        "linear-gradient(180deg, rgba(0,74,47,.64), rgba(0,45,31,.48))",
+                      border: "2px solid rgba(255,220,102,.74)",
+                      boxShadow:
+                        "0 0 60px rgba(255,210,70,.26), 0 24px 70px rgba(0,0,0,.35)",
+                      backdropFilter: "blur(3px)",
+                    }}
+                  >
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: "clamp(48px, 7.2vw, 102px)",
+                        lineHeight: 1,
+                        color: "#b41414",
+                        textShadow:
+                          "0 2px 0 #ffd66d, 0 0 16px rgba(255,215,70,.65), 0 5px 16px rgba(0,0,0,.32)",
+                        letterSpacing: "0.04em",
+                      }}
                     >
-                      庆祝时间：{formatCelebrationDateTime(celebrationNow)}
-                    </time>
-                    <span>🏆 庆祝焰花播放中（10秒）</span>
-                  </>
-                ) : (
-                  <>
-                    {threeMatchSeriesComplete ? (
-                      <span>
-                        三局比赛全部结束，{seriesChampion}以{" "}
-                        {Math.max(
-                          state.seriesTeamAWins ?? 0,
-                          state.seriesTeamBWins ?? 0,
-                        )}
-                        比
-                        {Math.min(
-                          state.seriesTeamAWins ?? 0,
-                          state.seriesTeamBWins ?? 0,
-                        )}{" "}
-                        获得总冠军。继续后开始新的三局赛。
-                      </span>
-                    ) : threeMatchSeriesActive ? (
-                      <span>
-                        第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
-                        重新抽牌并从打2开始第{" "}
-                        {(state.seriesMatchNumber ?? 0) + 1}/3 局。
-                      </span>
-                    ) : (
-                      <span>全局结束。继续后清零并重新抽牌决定首家。</span>
-                    )}
-                    <div className="guandan-match-actions">
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={restartMatch}
-                      >
-                        继续
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={exitCompletedMatch}
-                      >
-                        退出
-                      </button>
+                      {state.matchWinner === "TeamA" ? "A队" : "B队"}获胜！
+                    </strong>
+                    <div
+                      style={{
+                        marginTop: 16,
+                        fontSize: "clamp(26px, 3.2vw, 46px)",
+                        fontWeight: 800,
+                        color: "#ffe6a0",
+                        textShadow: "0 2px 10px rgba(0,0,0,.45)",
+                      }}
+                    >
+                      恭喜打A成功
                     </div>
-                  </>
-                )}
-              </section>
-            )}
+
+                    <div
+                      style={{
+                        marginTop: 32,
+                        display: "grid",
+                        gap: 12,
+                        fontSize: "clamp(22px, 2.6vw, 38px)",
+                        fontWeight: 750,
+                        color: "#fff7d6",
+                        textShadow: "0 2px 8px rgba(0,0,0,.5)",
+                      }}
+                    >
+                      {victoryFirstPlaceName !== null && (
+                        <div>第1名 {victoryFirstPlaceName}</div>
+                      )}
+                      {victorySecondPlaceName !== null && (
+                        <div>第2名 {victorySecondPlaceName}</div>
+                      )}
+                      {victoryRemainingNames.length > 0 && (
+                        <div
+                          style={{
+                            marginTop: 8,
+                            color: "#ffd77a",
+                            fontSize: "clamp(20px, 2.2vw, 32px)",
+                          }}
+                        >
+                          双下（并列）：{victoryRemainingNames.join("、")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 18,
+                      right: 18,
+                      bottom: 16,
+                      zIndex: 4,
+                      display: "flex",
+                      alignItems: "flex-end",
+                      justifyContent: "space-between",
+                      gap: 18,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "58vw",
+                        padding: "7px 11px",
+                        borderRadius: 10,
+                        background: "rgba(0, 37, 25, 0.56)",
+                        color: "#fff7df",
+                        fontSize: 13,
+                        pointerEvents: "auto",
+                      }}
+                    >
+                      <span
+                        className="guandan-screenshot-email-status"
+                        aria-live="polite"
+                      >
+                        {screenshotEmailStatus === "sending" &&
+                          "正在生成并发送打A胜利截图……"}
+                        {screenshotEmailStatus === "sent" &&
+                          `胜利截图已发送到 ${normalizeWinnerScreenshotEmail(winnerScreenshotEmail)}`}
+                        {screenshotEmailStatus === "missing" &&
+                          "未设置有效邮箱：胜利截图已生成，但不会发送邮件。"}
+                        {screenshotEmailStatus === "failed" &&
+                          (screenshotEmailError || "胜利截图发送失败，可重试一次。")}
+                      </span>
+                      {(screenshotEmailStatus === "failed" ||
+                        screenshotEmailStatus === "missing") && (
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={retryVictoryScreenshot}
+                          disabled={screenshotRetryUsedRef.current}
+                          style={{ marginLeft: 10 }}
+                        >
+                          {screenshotRetryUsedRef.current
+                            ? "已用完重试次数"
+                            : "重试发送一次"}
+                        </button>
+                      )}
+                      {!matchCelebrationComplete && (
+                        <>
+                          <time
+                            className="guandan-match-celebration-time"
+                            dateTime={celebrationNow.toISOString()}
+                            style={{ marginLeft: 12 }}
+                          >
+                            庆祝时间：{formatCelebrationDateTime(celebrationNow)}
+                          </time>
+                          <span style={{ marginLeft: 10 }}>
+                            🏆 烟花庆祝播放中（10秒）
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {matchCelebrationComplete && (
+                      <div
+                        style={{
+                          minWidth: 310,
+                          maxWidth: "34vw",
+                          padding: 12,
+                          borderRadius: 14,
+                          background: "rgba(255, 248, 214, 0.94)",
+                          boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+                          pointerEvents: "auto",
+                          color: "#4a2b00",
+                        }}
+                      >
+                        {threeMatchSeriesComplete ? (
+                          <span>
+                            三局比赛全部结束，{seriesChampion}以{" "}
+                            {Math.max(
+                              state.seriesTeamAWins ?? 0,
+                              state.seriesTeamBWins ?? 0,
+                            )}
+                            比
+                            {Math.min(
+                              state.seriesTeamAWins ?? 0,
+                              state.seriesTeamBWins ?? 0,
+                            )}{" "}
+                            获得总冠军。继续后开始新的三局赛。
+                          </span>
+                        ) : threeMatchSeriesActive ? (
+                          <span>
+                            第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
+                            重新抽牌并从打2开始第{" "}
+                            {(state.seriesMatchNumber ?? 0) + 1}/3 局。
+                          </span>
+                        ) : (
+                          <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                        )}
+                        <div
+                          className="guandan-match-actions"
+                          style={{
+                            marginTop: 10,
+                            display: "flex",
+                            gap: 10,
+                            justifyContent: "flex-end",
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className="normal"
+                            onClick={restartMatch}
+                          >
+                            继续
+                          </button>
+                          <button
+                            type="button"
+                            className="normal"
+                            onClick={exitCompletedMatch}
+                          >
+                            退出
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>,
+                document.body,
+              )}
 
             {state.matchWinner === null && state.nextRoundPhase !== null && (
               <section
@@ -1932,7 +2132,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.tributeResisted && (
+            {state.tributeResisted && state.lastGameWinner !== null && (
               <section
                 className="guandan-tribute-panel guandan-panel"
                 role="status"
@@ -2129,121 +2329,125 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
-                {handArrangeMode === "auto" &&
-                  editableAutoGroups.length > 0 && (
-                    <div
-                      className="guandan-auto-hand-toolbar"
-                      role="group"
-                      aria-label="自动理牌手动调整"
+                {editableAutoGroups.length > 0 && (
+                  <div
+                    className="guandan-auto-hand-toolbar"
+                    role="group"
+                    aria-label="手牌组合选择与调整"
+                  >
+                    <label htmlFor="guandan-active-auto-group">
+                      选择组合：
+                    </label>
+                    <select
+                      id="guandan-active-auto-group"
+                      value={Math.min(
+                        activeAutoGroupIndex,
+                        editableAutoGroups.length - 1,
+                      )}
+                      onChange={(event) =>
+                        setActiveAutoGroupIndex(Number(event.target.value))
+                      }
                     >
-                      <label htmlFor="guandan-active-auto-group">
-                        选择组合：
-                      </label>
-                      <select
-                        id="guandan-active-auto-group"
-                        value={Math.min(
-                          activeAutoGroupIndex,
-                          editableAutoGroups.length - 1,
-                        )}
-                        onChange={(event) =>
-                          setActiveAutoGroupIndex(Number(event.target.value))
-                        }
-                      >
-                        {editableAutoGroups.map((group, groupIndex) => (
-                          <option
-                            key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
-                            value={groupIndex}
-                          >
-                            {groupIndex + 1}. {group.label}
-                          </option>
-                        ))}
-                      </select>
-                      <label htmlFor="guandan-auto-hand-layout-toolbar">
-                        排列：
-                      </label>
-                      <select
-                        id="guandan-auto-hand-layout-toolbar"
-                        value={autoHandLayout}
-                        onChange={(event) =>
-                          setAutoHandLayout(
-                            event.target.value === "vertical"
-                              ? "vertical"
-                              : "horizontal",
-                          )
-                        }
-                      >
-                        <option value="horizontal">横式排列</option>
-                        <option value="vertical">竖式排列</option>
-                      </select>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={activeAutoGroup === null}
-                        onClick={selectActiveAutoGroup}
-                      >
-                        选中此组
-                      </button>
-                      <button
-                        type="button"
-                        className="guandan-auto-play-group"
-                        disabled={
-                          activeAutoGroup === null ||
-                          !gameStarted ||
-                          state.seat === null ||
-                          effectiveTurn !== state.seat ||
-                          tributePending ||
-                          state.trickComplete
-                        }
-                        onClick={playActiveAutoGroup}
-                      >
-                        一键出此组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={activeAutoGroupIndex === 0}
-                        onClick={() => moveActiveAutoGroup(-1)}
-                      >
-                        前移
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={
-                          activeAutoGroupIndex >= editableAutoGroups.length - 1
-                        }
-                        onClick={() => moveActiveAutoGroup(1)}
-                      >
-                        后移
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={
-                          activeAutoGroup === null ||
-                          activeAutoGroup.indexes.length < 2
-                        }
-                        onClick={splitActiveAutoGroup}
-                      >
-                        拆开此组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        disabled={selected.length === 0}
-                        onClick={makeSelectedCustomGroup}
-                      >
-                        选中牌组成一组
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={restoreAutoArrangement}
-                      >
-                        恢复方案
-                      </button>
-                    </div>
-                  )}
+                      {editableAutoGroups.map((group, groupIndex) => (
+                        <option
+                          key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
+                          value={groupIndex}
+                        >
+                          {groupIndex + 1}. {group.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={activeAutoGroup === null}
+                      onClick={selectActiveAutoGroup}
+                    >
+                      选中此组
+                    </button>
+                    {handArrangeMode === "auto" && (
+                      <>
+                        <label htmlFor="guandan-auto-hand-layout-toolbar">
+                          排列：
+                        </label>
+                        <select
+                          id="guandan-auto-hand-layout-toolbar"
+                          value={autoHandLayout}
+                          onChange={(event) =>
+                            setAutoHandLayout(
+                              event.target.value === "vertical"
+                                ? "vertical"
+                                : "horizontal",
+                            )
+                          }
+                        >
+                          <option value="horizontal">横式排列</option>
+                          <option value="vertical">竖式排列</option>
+                        </select>
+                        <button
+                          type="button"
+                          className="guandan-auto-play-group"
+                          disabled={
+                            activeAutoGroup === null ||
+                            !gameStarted ||
+                            state.seat === null ||
+                            effectiveTurn !== state.seat ||
+                            tributePending ||
+                            state.trickComplete
+                          }
+                          onClick={playActiveAutoGroup}
+                        >
+                          一键出此组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={activeAutoGroupIndex === 0}
+                          onClick={() => moveActiveAutoGroup(-1)}
+                        >
+                          前移
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={
+                            activeAutoGroupIndex >=
+                            editableAutoGroups.length - 1
+                          }
+                          onClick={() => moveActiveAutoGroup(1)}
+                        >
+                          后移
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={
+                            activeAutoGroup === null ||
+                            activeAutoGroup.indexes.length < 2
+                          }
+                          onClick={splitActiveAutoGroup}
+                        >
+                          拆开此组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          disabled={selected.length === 0}
+                          onClick={makeSelectedCustomGroup}
+                        >
+                          选中牌组成一组
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={restoreAutoArrangement}
+                        >
+                          恢复方案
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div
                   className={`guandan-hand${
                     handArrangeMode === "auto"

@@ -68,6 +68,13 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   current: GuandanTableState,
   message: GuandanServerMessage,
 ): GuandanTableState => {
+  if (
+    message.type === "state" &&
+    message.match_id !== undefined &&
+    message.match_id < current.matchId
+  ) {
+    return current;
+  }
   const currentFixed = current as RealTestState;
   const adapted = adaptGuandanServerMessage(current, message) as RealTestState;
 

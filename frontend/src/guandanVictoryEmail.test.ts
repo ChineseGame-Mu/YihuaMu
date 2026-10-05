@@ -82,6 +82,20 @@ describe("Guandan victory screenshot email endpoint", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("requires both the provider key and sender address", async () => {
+    process.env.RESEND_API_KEY = "test-api-key";
+    delete process.env.RESEND_FROM_EMAIL;
+    const fetchMock = jest.fn();
+    global.fetch = fetchMock;
+    const { response, result } = makeResponse();
+
+    await handler(validRequest("test-missing-sender"), response);
+
+    expect(result().statusCode).toBe(503);
+    expect(result().body.error).toBe("邮件服务尚未配置，截图没有发送。");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("sends the configured recipient a PNG attachment through the provider", async () => {
     process.env.RESEND_API_KEY = "test-api-key";
     process.env.RESEND_FROM_EMAIL = "game@example.com";

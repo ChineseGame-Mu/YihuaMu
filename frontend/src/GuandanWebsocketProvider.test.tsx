@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
@@ -95,5 +97,20 @@ describe("cleanroom room departure", () => {
       sendGuandanLeave({ readyState: WebSocket.CLOSED, send }, true),
     ).toBe(false);
     expect(send).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("disconnect seat reservation regression", () => {
+  test("does not release a seat on page suspension or provider cleanup", () => {
+    const source = readFileSync(
+      join(__dirname, "GuandanWebsocketProvider.tsx"),
+      "utf8",
+    );
+    expect(source).not.toContain('addEventListener("pagehide", leave)');
+    expect(source).not.toContain('removeEventListener("pagehide", leave)');
+    expect(source).not.toMatch(
+      /return \\(\\) => \\{[\\s\\S]*?\\n\\s*leave\\(\\);[\\s\\S]*?\\n\\s*\\};/,
+    );
   });
 });

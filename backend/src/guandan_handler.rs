@@ -26,7 +26,6 @@ use crate::guandan_serving_types::{
 const GUANDAN_MIN_PLAYER_COUNT: usize = 4;
 const GUANDAN_MAX_PLAYER_COUNT: usize = 14;
 const GUANDAN_CLASSIC_PLAYER_COUNT: usize = 4;
-const GUANDAN_DISCONNECT_GRACE_PERIOD: Duration = Duration::from_secs(10);
 const GUANDAN_HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const GUANDAN_CONNECTION_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -205,20 +204,8 @@ fn set_connected(key: &[u8], name: &str, connected: bool) {
         rooms.remove(key);
     }
 }
-fn is_connected(key: &[u8], name: &str) -> bool {
-    GUANDAN_CONNECTIONS
-        .lock()
-        .ok()
-        .and_then(|rooms| rooms.get(key).and_then(|room| room.get(name)).copied())
-        .unwrap_or(0)
-        > 0
-}
-fn remove_disconnected_waiting_player(
-    game: &mut GuandanGameState,
-    name: &str,
-    connected: bool,
-) -> bool {
-    if connected || game.started {
+fn release_waiting_player(game: &mut GuandanGameState, name: &str) -> bool {
+    if game.started {
         return false;
     }
     let Some(seat) = game
@@ -231,25 +218,45 @@ fn remove_disconnected_waiting_player(
     game.player_names.remove(seat);
     true
 }
-async fn cleanup_disconnected_waiting_player(
+async fn release_explicitly_left_waiting_player(
     storage: HashMapStorage<VersionedGuandanGame>,
     key: Vec<u8>,
     name: String,
 ) {
-    let key_for_state = key.clone();
     let _: Result<u64, ()> = storage
         .execute_operation_with_messages(key, move |mut state| {
-            if !remove_disconnected_waiting_player(
-                &mut state.game,
-                &name,
-                is_connected(&key_for_state, &name),
-            ) {
+            if !release_waiting_player(&mut state.game, &name) {
                 return Ok((state, vec![]));
             }
             state.bump_version();
             Ok((state, vec![GuandanStorageMessage::StateChanged]))
         })
         .await;
+}
+fn claim_human_seat(game: &mut GuandanGameState, name: String) -> Result<usize, ()> {
+    if let Some(seat) = game
+        .player_names
+        .iter()
+        .position(|player_name| player_name == &name)
+    {
+        return Ok(seat);
+    }
+    if game.started {
+        return Err(());
+    }
+    if let Some(robot_seat) = game
+        .player_names
+        .iter()
+        .position(|player_name| is_robot_name(player_name))
+    {
+        game.player_names[robot_seat] = name;
+        return Ok(robot_seat);
+    }
+    if game.player_names.len() >= GUANDAN_MAX_PLAYER_COUNT {
+        return Err(());
+    }
+    game.player_names.push(name);
+    Ok(game.player_names.len() - 1)
 }
 fn online_players(key: &[u8], game: &GuandanGameState) -> Vec<bool> {
     let rooms = GUANDAN_CONNECTIONS.lock().ok();
@@ -637,6 +644,122 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
     Ok(())
 }
 
+
+fn run_robot_tribute_exchange(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    let Some(plan) = game.pending_tribute.clone() else {
+        return Ok(());
+    };
+    let (givers, receivers) = match plan {
+        TributePlan::Single { giver, receiver } => (vec![giver], vec![receiver]),
+        TributePlan::Double { givers, receivers } => (givers.to_vec(), receivers.to_vec()),
+    };
+
+    for giver in givers {
+        if game
+            .tribute_cards
+            .iter()
+            .any(|entry| entry.player == giver)
+            || !game
+                .player_names
+                .get(giver)
+                .is_some_and(|name| is_robot_name(name))
+        {
+            continue;
+        }
+        let hand_len = game
+            .hands
+            .get(giver)
+            .ok_or("robot tribute giver seat is invalid")?
+            .len();
+        let mut submitted = false;
+        for card_index in 0..hand_len {
+            if game.submit_tribute_card(giver, card_index).is_ok() {
+                submitted = true;
+                break;
+            }
+        }
+        if !submitted {
+            return Err("robot could not choose a legal tribute card");
+        }
+    }
+
+    let expected_tributes = match game.pending_tribute.as_ref() {
+        Some(TributePlan::Single { .. }) => 1,
+        Some(TributePlan::Double { .. }) => 2,
+        None => return Ok(()),
+    };
+    if game.tribute_cards.len() != expected_tributes {
+        return Ok(());
+    }
+
+    for receiver in receivers {
+        if game
+            .return_cards
+            .iter()
+            .any(|entry| entry.player == receiver)
+            || !game
+                .player_names
+                .get(receiver)
+                .is_some_and(|name| is_robot_name(name))
+        {
+            continue;
+        }
+        let hand_len = game
+            .hands
+            .get(receiver)
+            .ok_or("robot return-card receiver seat is invalid")?
+            .len();
+        let mut submitted = false;
+        for card_index in 0..hand_len {
+            if game.submit_return_card(receiver, card_index).is_ok() {
+                submitted = true;
+                break;
+            }
+        }
+        if !submitted {
+            return Err("robot could not choose a legal return card");
+        }
+    }
+
+    if game.tribute_exchange_complete() {
+        game.finalize_tribute_exchange()?;
+    }
+    Ok(())
+}
+
+fn activate_next_round_after_deal(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    if game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal) {
+        return Err("the next round is not ready to deal");
+    }
+    let table = validate_start(game.player_names.len())?;
+    let plan = tribute_plan(table, &game.next_round_finish_order)?;
+    game.tribute_resisted = can_resist_tribute(&plan, &game.hands);
+    game.pending_tribute = if game.tribute_resisted { None } else { Some(plan) };
+    game.finish_order.clear();
+    game.next_round_finish_order.clear();
+    game.next_round_phase = None;
+    run_robot_tribute_exchange(game)?;
+    Ok(())
+}
+
+fn auto_deal_if_robot_winner(game: &mut GuandanGameState) -> Result<bool, &'static str> {
+    if game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal) {
+        return Ok(false);
+    }
+    let winner = game
+        .last_game_winner
+        .ok_or("the previous winner is unavailable")?;
+    if !game
+        .player_names
+        .get(winner)
+        .is_some_and(|name| is_robot_name(name))
+    {
+        return Ok(false);
+    }
+    activate_next_round_after_deal(game)?;
+    Ok(true)
+}
+
 pub async fn websocket(
     socket: WebSocket,
     storage: HashMapStorage<VersionedGuandanGame>,
@@ -727,29 +850,26 @@ pub async fn websocket(
                     );
                     continue;
                 }
+                if is_robot_name(&name) {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: "player names cannot use the reserved robot prefix"
+                                .to_string(),
+                        },
+                    );
+                    continue;
+                }
                 let key = room.as_bytes().to_vec();
                 let existing_seat = current_seat(&storage, &key, &name).await;
                 let seat = if let Some(seat) = existing_seat {
                     Some(seat)
                 } else {
                     let name_for_state = name.clone();
-                    let room_has_connected_players = GUANDAN_CONNECTIONS
-                        .lock()
-                        .ok()
-                        .and_then(|rooms| rooms.get(&key).cloned())
-                        .is_some_and(|players| players.values().any(|count| *count > 0));
                     let seat_result = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
-                            if state.game.started
-                                || state.game.player_names.len() >= GUANDAN_MAX_PLAYER_COUNT
-                            {
-                                if room_has_connected_players {
-                                    return Err(());
-                                }
-                                state.game = GuandanGameState::default();
-                            }
-                            state.game.player_names.push(name_for_state);
+                            claim_human_seat(&mut state.game, name_for_state)?;
                             state.bump_version();
                             Ok((state, vec![GuandanStorageMessage::StateChanged]))
                         })
@@ -1166,6 +1286,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1209,6 +1330,12 @@ pub async fn websocket(
                         }
                         state.game.hands = hands;
                         state.game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                        if auto_deal_if_robot_winner(&mut state.game)
+                            .map_err(PlayError::Invalid)?
+                        {
+                            run_robot_turns(&mut state.game, hook_to_bottom)
+                                .map_err(PlayError::Invalid)?;
+                        }
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1231,6 +1358,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1241,18 +1369,10 @@ pub async fn websocket(
                         if state.game.last_game_winner != Some(seat) {
                             return Err(PlayError::Invalid("only the previous winner may deal"));
                         }
-                        let table = validate_start(state.game.player_names.len())
+                        activate_next_round_after_deal(&mut state.game)
                             .map_err(PlayError::Invalid)?;
-                        let plan = tribute_plan(table, &state.game.next_round_finish_order)
+                        run_robot_turns(&mut state.game, hook_to_bottom)
                             .map_err(PlayError::Invalid)?;
-                        if can_resist_tribute(&plan, &state.game.hands) {
-                            state.game.tribute_resisted = true;
-                        } else {
-                            state.game.pending_tribute = Some(plan);
-                        }
-                        state.game.finish_order.clear();
-                        state.game.next_round_finish_order.clear();
-                        state.game.next_round_phase = None;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1352,6 +1472,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1361,6 +1482,10 @@ pub async fn websocket(
                         state
                             .game
                             .submit_tribute_card(seat, card_index)
+                            .map_err(PlayError::Invalid)?;
+                        run_robot_tribute_exchange(&mut state.game)
+                            .map_err(PlayError::Invalid)?;
+                        run_robot_turns(&mut state.game, hook_to_bottom)
                             .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
@@ -1384,6 +1509,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1394,12 +1520,16 @@ pub async fn websocket(
                             .game
                             .submit_return_card(seat, card_index)
                             .map_err(PlayError::Invalid)?;
+                        run_robot_tribute_exchange(&mut state.game)
+                            .map_err(PlayError::Invalid)?;
                         if state.game.tribute_exchange_complete() {
                             state
                                 .game
                                 .finalize_tribute_exchange()
                                 .map_err(PlayError::Invalid)?;
                         }
+                        run_robot_turns(&mut state.game, hook_to_bottom)
+                            .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1526,17 +1656,12 @@ pub async fn websocket(
                     }
                 }
             } else if requested_leave {
-                cleanup_disconnected_waiting_player(storage.clone(), key.clone(), name.clone())
-                    .await;
-            } else {
-                let cleanup_storage = storage.clone();
-                let cleanup_key = key.clone();
-                let cleanup_name = name.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(GUANDAN_DISCONNECT_GRACE_PERIOD).await;
-                    cleanup_disconnected_waiting_player(cleanup_storage, cleanup_key, cleanup_name)
-                        .await;
-                });
+                release_explicitly_left_waiting_player(
+                    storage.clone(),
+                    key.clone(),
+                    name.clone(),
+                )
+                .await;
             }
             let _: Result<u64, ()> = storage
                 .clone()
@@ -1561,38 +1686,25 @@ mod tests {
         CardFace::Suited { suit, rank }
     }
     #[test]
-    fn disconnected_waiting_players_are_removed_for_every_supported_table_size() {
+    fn only_explicitly_leaving_waiting_players_release_their_seats() {
         for player_count in (GUANDAN_MIN_PLAYER_COUNT..=GUANDAN_MAX_PLAYER_COUNT).step_by(2) {
             let mut game = GuandanGameState::default();
             game.player_names = (1..=player_count)
                 .map(|seat| format!("玩家{seat}"))
                 .collect();
 
-            assert!(remove_disconnected_waiting_player(
-                &mut game, "玩家1", false
-            ));
+            assert!(release_waiting_player(&mut game, "玩家1"));
             assert_eq!(game.player_names.len(), player_count - 1);
             assert!(!game.player_names.iter().any(|name| name == "玩家1"));
         }
     }
     #[test]
-    fn connected_or_started_players_keep_their_seats() {
+    fn started_players_keep_their_seats() {
         let mut waiting = GuandanGameState::default();
         waiting.player_names = vec!["玩家1".into(), "玩家2".into()];
-        assert!(!remove_disconnected_waiting_player(
-            &mut waiting,
-            "玩家1",
-            true
-        ));
-        assert_eq!(waiting.player_names, vec!["玩家1", "玩家2"]);
-
         let mut started = waiting.clone();
         started.started = true;
-        assert!(!remove_disconnected_waiting_player(
-            &mut started,
-            "玩家1",
-            false
-        ));
+        assert!(!release_waiting_player(&mut started, "玩家1"));
         assert_eq!(started.player_names, vec!["玩家1", "玩家2"]);
     }
     #[test]
@@ -1604,7 +1716,42 @@ mod tests {
     fn heartbeat_detects_dead_clients_before_room_cleanup_can_stall_forever() {
         assert!(GUANDAN_HEARTBEAT_INTERVAL < GUANDAN_CONNECTION_TIMEOUT);
         assert!(GUANDAN_CONNECTION_TIMEOUT <= Duration::from_secs(15));
-        assert_eq!(GUANDAN_DISCONNECT_GRACE_PERIOD, Duration::from_secs(10));
+    }
+    #[test]
+    fn reconnecting_human_keeps_the_original_seat() {
+        let mut game = GuandanGameState::default();
+        game.player_names = vec!["Yihua".into(), "机器人1".into()];
+
+        assert_eq!(claim_human_seat(&mut game, "Yihua".into()), Ok(0));
+        assert_eq!(game.player_names, vec!["Yihua", "机器人1"]);
+    }
+    #[test]
+    fn a_new_human_replaces_a_robot_in_place_before_start() {
+        let mut game = GuandanGameState::default();
+        game.player_names = vec![
+            "Yihua".into(),
+            "机器人1".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+        ];
+
+        assert_eq!(claim_human_seat(&mut game, "Mei".into()), Ok(1));
+        assert_eq!(
+            game.player_names,
+            vec!["Yihua", "Mei", "机器人2", "机器人3"]
+        );
+    }
+    #[test]
+    fn robots_never_displace_humans_and_started_games_are_never_reset_for_newcomers() {
+        let mut waiting = GuandanGameState::default();
+        waiting.player_names = vec!["Yihua".into(), "Mei".into()];
+        assert_eq!(claim_human_seat(&mut waiting, "Wendy".into()), Ok(2));
+        assert_eq!(waiting.player_names, vec!["Yihua", "Mei", "Wendy"]);
+
+        let mut started = waiting.clone();
+        started.started = true;
+        assert_eq!(claim_human_seat(&mut started, "Newcomer".into()), Err(()));
+        assert_eq!(started.player_names, waiting.player_names);
     }
     #[test]
     fn room_counts_exclude_disconnected_players_and_do_not_cross_rooms() {
@@ -1856,4 +2003,69 @@ mod tests {
         )
         .is_ok());
     }
+    #[test]
+    fn robot_previous_winner_auto_deals_after_shuffle() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "Yihua".into(),
+            "机器人1".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+        ];
+        game.level = Rank::Queen;
+        game.last_game_winner = Some(3);
+        game.last_game_winner_team = Some(Team::B);
+        game.next_round_finish_order = vec![3, 2, 1];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Spades, Rank::Ace)],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Ten)],
+        ];
+
+        assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+        assert_eq!(game.next_round_phase, None);
+        assert_eq!(
+            game.pending_tribute,
+            Some(TributePlan::Single {
+                giver: 0,
+                receiver: 3,
+            })
+        );
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn king_round_still_creates_required_tribute() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.level = Rank::King;
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Ten)],
+            vec![card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Hearts, Rank::Six)],
+            vec![card(Suit::Spades, Rank::Ace)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+
+        assert_eq!(game.level, Rank::King);
+        assert_eq!(
+            game.pending_tribute,
+            Some(TributePlan::Single {
+                giver: 3,
+                receiver: 0,
+            })
+        );
+        assert!(!game.tribute_resisted);
+        assert_eq!(game.next_round_phase, None);
+    }
+
 }

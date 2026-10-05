@@ -168,4 +168,67 @@ describe("signed player sessions", () => {
     });
     expect(reconnect.latest("hand")?.cards).toHaveLength(27);
   });
+
+  it("keeps an abnormally disconnected lobby player seated and gives robots to later humans", async () => {
+    const runtime = createServerRuntime();
+    const original = new FakeConnection();
+    await attachLegacyGuandanConnection(runtime, original);
+    await original.receive({
+      type: "join",
+      room: "reserved-seat-room",
+      name: "Yihua",
+      player_count: 4,
+    });
+    await original.receive({ type: "set_bots", count: 3 });
+    const identity = original.latest("joined");
+
+    await original.close();
+    let room = runtime.rooms.get("reserved-seat-room").room;
+    expect(
+      room.participants.find(({ id }) => id === "legacy:Yihua"),
+    ).toMatchObject({
+      seat: 0,
+      kind: "human",
+      connected: false,
+    });
+
+    const laterHuman = new FakeConnection();
+    await attachLegacyGuandanConnection(runtime, laterHuman);
+    await laterHuman.receive({
+      type: "join",
+      room: "reserved-seat-room",
+      name: "Mei",
+      player_count: 4,
+    });
+    room = runtime.rooms.get("reserved-seat-room").room;
+    expect(
+      room.participants.find(({ id }) => id === "legacy:Yihua")?.seat,
+    ).toBe(0);
+    expect(
+      room.participants.find(({ id }) => id === "legacy:Mei"),
+    ).toMatchObject({
+      seat: 1,
+      kind: "human",
+    });
+    expect(
+      room.participants.filter(({ kind }) => kind === "robot"),
+    ).toHaveLength(2);
+
+    const reconnect = new FakeConnection();
+    await attachLegacyGuandanConnection(runtime, reconnect);
+    await reconnect.receive({
+      type: "join",
+      room: "reserved-seat-room",
+      name: "Yihua",
+      player_count: 4,
+      player_id: identity?.player_id,
+      resume_token: identity?.resume_token,
+    });
+    expect(reconnect.latest("error")).toBeUndefined();
+    expect(reconnect.latest("joined")).toMatchObject({
+      room: "reserved-seat-room",
+      seat: 0,
+      player_id: "legacy:Yihua",
+    });
+  });
 });

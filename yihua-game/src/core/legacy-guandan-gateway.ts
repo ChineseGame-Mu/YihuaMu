@@ -13,6 +13,7 @@ import {
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
+  recoverLegacyTributeFromManaged,
   runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
@@ -272,8 +273,18 @@ export const advanceLegacyRobotNextRound = async (
   roomId: string,
 ): Promise<boolean> => {
   const managed = runtime.rooms.get(roomId);
-  if (managed.game.phase === "round-complete" && managed.game.levelRank === "A")
-    return false;
+  if (managed.game.phase === "round-complete") {
+    const winnerSeat = managed.game.finishedSeats[0];
+    if (winnerSeat !== undefined) {
+      const winnerTeam = winnerSeat % 2 === 0 ? "A" : "B";
+      const winnerLevel =
+        managed.game.teamLevels?.[winnerTeam] ?? managed.game.levelRank ?? "2";
+      // A team that has merely advanced *to* A must still play the A round.
+      // Only a team that was already on A before this completed deal has won
+      // the match and should stop before another deal.
+      if (winnerLevel === "A") return false;
+    }
+  }
   const { shuffleReady, winnerIsRobot } = legacyNextRoundRobotState(managed);
   if (!shuffleReady || !winnerIsRobot) return false;
 
@@ -744,9 +755,9 @@ export const attachLegacyGuandanConnection = async (
       }
     | undefined;
 
-  const detachActiveConnection = async (): Promise<
-    LegacyAdapterSocket | undefined
-  > => {
+  const detachActiveConnection = async (
+    explicitLeave = false,
+  ): Promise<LegacyAdapterSocket | undefined> => {
     if (active === undefined) return;
     const closed = active;
     active = undefined;
@@ -764,10 +775,10 @@ export const attachLegacyGuandanConnection = async (
       const next = runtime.rooms.set(closed.roomId, {
         ...managed,
         room: isObserver
-          ? managed.game.phase === "lobby"
+          ? explicitLeave && managed.game.phase === "lobby"
             ? removeObserver(managed.room, closed.playerId)
             : disconnectObserver(managed.room, closed.playerId)
-          : managed.game.phase === "lobby"
+          : explicitLeave && managed.game.phase === "lobby"
             ? removeParticipant(managed.room, closed.playerId)
             : disconnectHuman(managed.room, closed.playerId),
       });
@@ -960,6 +971,7 @@ export const attachLegacyGuandanConnection = async (
         }
 
         active = { roomId, playerId, adapter };
+        recoverLegacyTributeFromManaged(roomId, managed);
         const role = seat === null ? "observer" : "player";
         await sendLegacy(connection.socket, {
           type: "joined",
@@ -986,7 +998,7 @@ export const attachLegacyGuandanConnection = async (
       }
 
       if (message.type === "leave") {
-        const adapter = await detachActiveConnection();
+        const adapter = await detachActiveConnection(true);
         await adapter?.close(1000, "left room");
         return;
       }
@@ -1068,6 +1080,10 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "start_trick") {
         const managed = runtime.rooms.get(active.roomId);
+        if (recoverLegacyTributeFromManaged(active.roomId, managed)) {
+          await runtime.websocket.broadcastGameState(managed);
+          return;
+        }
         if (managed.game.phase !== "playing") {
           throw new Error("现在不能开始本轮");
         }

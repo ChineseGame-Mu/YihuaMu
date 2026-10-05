@@ -83,6 +83,55 @@ export const prepareLegacyTribute = (
 export const legacyTributePlan = (roomId: string): LegacyTributePlan | null =>
   sessions.get(roomId)?.plan ?? null;
 
+export const recoverLegacyTributeFromManaged = (
+  roomId: string,
+  managed: ManagedRoom,
+): boolean => {
+  if (sessions.has(roomId)) return true;
+  const native = managed.tribute;
+  if (native === undefined) return false;
+
+  if (native.kind === "anti-tribute" || native.status === "complete") {
+    sessions.delete(roomId);
+    resistedRooms.set(roomId, native.kind === "anti-tribute");
+    return native.kind === "anti-tribute";
+  }
+
+  const transfers = native.transfers;
+  if (transfers.length === 1) {
+    sessions.set(roomId, {
+      plan: {
+        Single: {
+          giver: transfers[0]!.fromSeat,
+          receiver: transfers[0]!.toSeat,
+        },
+      },
+      tributeCards: [],
+      returnCards: [],
+    });
+    resistedRooms.set(roomId, false);
+    return true;
+  }
+
+  if (transfers.length === 2) {
+    sessions.set(roomId, {
+      plan: {
+        Double: {
+          givers: [transfers[1]!.fromSeat, transfers[0]!.fromSeat],
+          receivers: [transfers[0]!.toSeat, transfers[1]!.toSeat],
+        },
+      },
+      tributeCards: [],
+      returnCards: [],
+    });
+    resistedRooms.set(roomId, false);
+    return true;
+  }
+
+  return false;
+};
+
+
 export const hasPendingLegacyTribute = (roomId: string): boolean =>
   sessions.has(roomId);
 

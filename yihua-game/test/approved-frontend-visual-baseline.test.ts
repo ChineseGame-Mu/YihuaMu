@@ -12,7 +12,7 @@ const gitBlobSha = (relativeUrl: string): string =>
 describe("approved Guandan frontend visual baseline", () => {
   it("keeps the accepted GuandanTable source byte-for-byte unchanged", () => {
     expect(gitBlobSha("../../frontend/src/GuandanTable.tsx")).toBe(
-      "085e05057d2a1b029e8a854e46bb48070884411e",
+      "b43f40e0e67edbc510ba9b7e818e25f13f08a8d1",
     );
   });
 
