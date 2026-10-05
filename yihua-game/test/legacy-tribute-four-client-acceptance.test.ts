@@ -2,7 +2,10 @@ import { describe, expect, test } from "vitest";
 
 import { mandatoryTributeCard } from "../src/core/competition.js";
 import { attachLegacyGuandanConnection } from "../src/core/legacy-guandan-gateway.js";
-import { prepareLegacyTribute } from "../src/core/legacy-tribute.js";
+import {
+  legacyTributePlan,
+  prepareLegacyTribute,
+} from "../src/core/legacy-tribute.js";
 import { isLegalReturnTributeCard } from "../src/core/native-tribute.js";
 import { createServerRuntime } from "../src/core/server-runtime.js";
 import type { TextSocket } from "../src/core/websocket-service.js";
@@ -286,4 +289,18 @@ describe("2026-09-16 four-human tribute acceptance", () => {
       ).toBe(true);
     }
   }, 15_000);
+
+  test("first and fourth teammates still require fourth to tribute first", () => {
+    // Finish order 0,1,3,2 means seats 0 and 2 are teammates:
+    // first place seat 0, fourth place seat 2.
+    prepareLegacyTribute("single-tribute-teammate-order", [0, 1, 3, 2]);
+
+    expect(legacyTributePlan("single-tribute-teammate-order")).toEqual({
+      Single: {
+        giver: 2,
+        receiver: 0,
+      },
+    });
+  });
+
 });
