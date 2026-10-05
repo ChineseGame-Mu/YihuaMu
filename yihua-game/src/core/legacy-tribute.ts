@@ -55,8 +55,11 @@ export const prepareLegacyTribute = (
   const first = finishOrder[0]!;
   const second = finishOrder[1]!;
   const doubleDown = first % 2 === second % 2;
+  // Single tribute is always the overall last-place finisher -> first place,
+  // even when first and fourth are teammates. Only double-down uses the
+  // opposing team's last two finishers.
+  const last = finishOrder.at(-1)!;
   const losingFinishers = finishOrder.filter((seat) => seat % 2 !== first % 2);
-  const last = losingFinishers.at(-1)!;
   const penultimate = losingFinishers.at(-2)!;
 
   sessions.set(
