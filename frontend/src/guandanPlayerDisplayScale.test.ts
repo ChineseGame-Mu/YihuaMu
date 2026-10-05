@@ -44,6 +44,8 @@ describe("Guandan enlarged player displays", () => {
     expect(table).toContain('className="guandan-public-card-player-name"');
     expect(table).toContain("{player}");
     expect(table).not.toContain("<span>掼蛋</span>");
+    expect(table).not.toContain('className="guandan-public-player-seat"');
+    expect(table).not.toContain("<strong title={player}>{player}</strong>");
   });
 
   test("reserves space so enlarged displays cannot cover played cards", () => {
