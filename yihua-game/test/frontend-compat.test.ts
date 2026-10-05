@@ -193,6 +193,136 @@ describe("legacy frontend compatibility adapter", () => {
       expect(legacy.last_promotion_steps).toBe(1);
     },
   );
+
+  it("treats promotion from K to A as another playable round, not a match win", () => {
+    const fourPlayerRoom = {
+      ...roomState,
+      playerCount: 4,
+      participants: [
+        {
+          id: "p1",
+          name: "Yihua",
+          seat: 0,
+          kind: "human" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+        {
+          id: "r1",
+          name: "机器人1",
+          seat: 1,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+        {
+          id: "r2",
+          name: "机器人2",
+          seat: 2,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+        {
+          id: "r3",
+          name: "机器人3",
+          seat: 3,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+      ],
+    };
+    const legacy = gameStateToLegacy(fourPlayerRoom, {
+      type: "game_state",
+      roomId: "room-1",
+      revision: 7,
+      phase: "round-complete",
+      roundNumber: 8,
+      levelRank: "K",
+      teamLevels: { A: "K", B: "2" },
+      lastPromotionSteps: 1,
+      currentTurn: 0,
+      handCounts: [0, 0, 0, 0],
+      openingDraw: [],
+      openingDrawWinner: null,
+      leadingPlay: null,
+      passedSeats: [],
+      finishedSeats: [0, 1, 2, 3],
+      completedTricks: 27,
+    });
+
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") throw new Error("expected legacy state");
+    expect(legacy.level).toBe("Ace");
+    expect(legacy.match_winner).toBeNull();
+    expect(legacy.next_round_phase).toBe("awaiting_deal");
+  });
+
+  it("ends only after the winning team was already playing A", () => {
+    const fourPlayerRoom = {
+      ...roomState,
+      playerCount: 4,
+      participants: [
+        {
+          id: "r3",
+          name: "机器人3",
+          seat: 0,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+        {
+          id: "p2",
+          name: "玩家2",
+          seat: 1,
+          kind: "human" as const,
+          connected: true,
+          readyForNextRound: true,
+        },
+        {
+          id: "r2",
+          name: "机器人2",
+          seat: 2,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+        {
+          id: "r1",
+          name: "机器人1",
+          seat: 3,
+          kind: "robot" as const,
+          connected: true,
+          readyForNextRound: false,
+        },
+      ],
+    };
+    const legacy = gameStateToLegacy(fourPlayerRoom, {
+      type: "game_state",
+      roomId: "room-1",
+      revision: 8,
+      phase: "round-complete",
+      roundNumber: 9,
+      levelRank: "A",
+      teamLevels: { A: "A", B: "2" },
+      lastPromotionSteps: 2,
+      currentTurn: 0,
+      handCounts: [0, 0, 0, 0],
+      openingDraw: [],
+      openingDrawWinner: null,
+      leadingPlay: null,
+      passedSeats: [],
+      finishedSeats: [0, 1, 2, 3],
+      completedTricks: 27,
+    });
+
+    expect(legacy.type).toBe("state");
+    if (legacy.type !== "state") throw new Error("expected legacy state");
+    expect(legacy.match_winner).toBe("TeamA");
+    expect(legacy.next_round_phase).toBeNull();
+  });
+
 });
 
 // Keep this compatibility suite on the formatted descendant so full CI runs there.
