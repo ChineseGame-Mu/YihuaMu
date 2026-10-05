@@ -27,7 +27,6 @@ import {
   formatCelebrationDateTime,
   GUANDAN_MATCH_CELEBRATION_MS,
   normalizeWinnerScreenshotEmail,
-  winningTeamPlayerNames,
 } from "./guandanMatchCelebration";
 import {
   normalizeGuandanMusicMode,
