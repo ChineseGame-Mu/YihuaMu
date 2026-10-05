@@ -27,11 +27,21 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-public-player-seat {
 html body .guandan-table:has(.guandan-public-zone) .guandan-public-card-back {
   position: relative !important;
   width: 96px !important;
-  height: 96px !important;
+  height: 67.2px !important;
   margin: 0 !important;
   border-width: 3px !important;
   border-radius: 8px !important;
   font-size: 1.04rem !important;
+}
+
+html body .guandan-public-card-player-name {
+  display: block !important;
+  max-width: 86px !important;
+  margin-bottom: 22px !important;
+  overflow: hidden !important;
+  color: #fff9dc !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
 }
 
 html
@@ -82,7 +92,7 @@ html body .guandan-public-seat-move-controls > button:disabled {
 
 /* A reserved top strip keeps enlarged displays from covering played cards. */
 html body .guandan-table:has(.guandan-public-zone) .guandan-table-stage {
-  padding-top: 154px !important;
+  padding-top: 125.2px !important;
 }
 
 html body .guandan-current-turn-mini {
