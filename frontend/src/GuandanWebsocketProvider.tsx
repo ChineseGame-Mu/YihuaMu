@@ -302,8 +302,6 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       }, delay);
     };
 
-    window.addEventListener("pagehide", leave);
-
     const connect = (): void => {
       if (!mountedRef.current) return;
       clearQueuedMessages();
@@ -373,9 +371,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
 
     return () => {
       mountedRef.current = false;
-      window.removeEventListener("pagehide", leave);
-      leave();
-      delete document.documentElement.dataset.cleanroomCommit;
+      // Closing, refreshing, suspending, or losing the page is not an explicit\n      // table departure. The server keeps the human seat reserved so the same\n      // room/name can recover its original hand and game state. Only the\n      // dedicated Exit control sends the explicit `leave` command.\n      delete document.documentElement.dataset.cleanroomCommit;
       if (reconnectTimerRef.current !== null) {
         window.clearTimeout(reconnectTimerRef.current);
       }
@@ -383,7 +379,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       websocketRef.current?.close();
       websocketRef.current = null;
     };
-  }, [leave]);
+  }, []);
 
   const send = React.useCallback((message: GuandanClientMessage): boolean => {
     const ws = websocketRef.current;
