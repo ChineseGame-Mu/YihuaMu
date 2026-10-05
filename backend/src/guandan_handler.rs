@@ -2003,4 +2003,69 @@ mod tests {
         )
         .is_ok());
     }
+    #[test]
+    fn robot_previous_winner_auto_deals_after_shuffle() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "Yihua".into(),
+            "机器人1".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+        ];
+        game.level = Rank::Queen;
+        game.last_game_winner = Some(3);
+        game.last_game_winner_team = Some(Team::B);
+        game.next_round_finish_order = vec![3, 2, 1];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Spades, Rank::Ace)],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Ten)],
+        ];
+
+        assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+        assert_eq!(game.next_round_phase, None);
+        assert_eq!(
+            game.pending_tribute,
+            Some(TributePlan::Single {
+                giver: 0,
+                receiver: 3,
+            })
+        );
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn king_round_still_creates_required_tribute() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.level = Rank::King;
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Ten)],
+            vec![card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Hearts, Rank::Six)],
+            vec![card(Suit::Spades, Rank::Ace)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+
+        assert_eq!(game.level, Rank::King);
+        assert_eq!(
+            game.pending_tribute,
+            Some(TributePlan::Single {
+                giver: 3,
+                receiver: 0,
+            })
+        );
+        assert!(!game.tribute_resisted);
+        assert_eq!(game.next_round_phase, None);
+    }
+
 }
