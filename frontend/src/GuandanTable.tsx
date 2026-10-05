@@ -299,8 +299,6 @@ const GuandanTable: React.FunctionComponent = () => {
   const [screenshotEmailError, setScreenshotEmailError] = React.useState("");
   const [victoryScreenshotDataUrl, setVictoryScreenshotDataUrl] =
     React.useState<string | null>(null);
-  const [victoryScreenshotExpanded, setVictoryScreenshotExpanded] =
-    React.useState(false);
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -1736,17 +1734,44 @@ const GuandanTable: React.FunctionComponent = () => {
 
             {state.matchWinner !== null && (
               <section
-                className={`guandan-notice-panel guandan-match-complete-panel${
+                className={`guandan-match-complete-panel${
                   matchCelebrationComplete ? "" : " guandan-match-celebrating"
                 }`}
                 role="status"
                 aria-label="本局结束"
+                style={
+                  {
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 10000,
+                    width: "100vw",
+                    height: "100vh",
+                    margin: 0,
+                    padding: 0,
+                    overflow: "hidden",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexDirection: "column",
+                    boxSizing: "border-box",
+                    backgroundColor: "#0b5a34",
+                    backgroundImage:
+                      victoryScreenshotDataUrl === null
+                        ? "radial-gradient(circle at center, rgba(255,232,123,0.5), rgba(0,97,58,0.96) 58%, rgba(0,61,40,1))"
+                        : `linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.06)), url("${victoryScreenshotDataUrl}")`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                  } as React.CSSProperties
+                }
               >
                 {!matchCelebrationComplete && (
                   <>
-                    <div className="guandan-match-trophy" aria-hidden="true">
-                      🏆
-                    </div>
+                    {victoryScreenshotDataUrl === null && (
+                      <div className="guandan-match-trophy" aria-hidden="true">
+                        🏆
+                      </div>
+                    )}
                     <div className="guandan-fireworks" aria-hidden="true">
                       {celebrationFireworks.map(([x, y, color, delay]) => (
                         <i
@@ -1765,132 +1790,173 @@ const GuandanTable: React.FunctionComponent = () => {
                     </div>
                   </>
                 )}
-                <strong>
-                  本局结束：
-                  {state.matchWinner === "TeamA" ? "A队" : "B队"}
-                  打A获胜
-                </strong>
-                <span className="guandan-match-winners">
-                  获胜队员：{winningPlayerNames.join(" ｜ ")}
-                </span>
-                <span
-                  className="guandan-screenshot-email-status"
-                  aria-live="polite"
-                >
-                  {screenshotEmailStatus === "sending" &&
-                    "正在生成并发送打A胜利截图……"}
-                  {screenshotEmailStatus === "sent" &&
-                    `胜利截图已发送到 ${normalizeWinnerScreenshotEmail(winnerScreenshotEmail)}`}
-                  {screenshotEmailStatus === "missing" &&
-                    "请在“设置”中填写有效邮箱，才能发送胜利截图。"}
-                  {screenshotEmailStatus === "failed" &&
-                    (screenshotEmailError || "胜利截图发送失败，可重试一次。")}
-                </span>
-                {victoryScreenshotDataUrl !== null && (
-                  <button
-                    type="button"
-                    className="guandan-victory-image-button"
-                    aria-label="放大胜利截图"
-                    onClick={() => setVictoryScreenshotExpanded(true)}
+
+                {victoryScreenshotDataUrl === null && (
+                  <div
+                    style={{
+                      position: "relative",
+                      zIndex: 2,
+                      textAlign: "center",
+                      padding: "28px 42px",
+                      borderRadius: 24,
+                      background: "rgba(255, 248, 214, 0.9)",
+                      boxShadow: "0 18px 60px rgba(0,0,0,0.3)",
+                    }}
                   >
-                    <img
-                      className="guandan-victory-image-preview"
-                      src={victoryScreenshotDataUrl}
-                      alt="本局胜利截图，点击放大查看"
-                    />
-                    <span>胜利截图 · 点击放大</span>
-                  </button>
-                )}
-                {victoryScreenshotExpanded &&
-                  victoryScreenshotDataUrl !== null && (
-                    <div
-                      className="guandan-victory-image-lightbox"
-                      role="dialog"
-                      aria-modal="true"
-                      aria-label="胜利截图大图"
-                      onClick={() => setVictoryScreenshotExpanded(false)}
+                    <strong
+                      style={{
+                        display: "block",
+                        fontSize: "clamp(34px, 5vw, 72px)",
+                        lineHeight: 1.15,
+                      }}
                     >
+                      本局结束：
+                      {state.matchWinner === "TeamA" ? "A队" : "B队"}
+                      打A获胜
+                    </strong>
+                    <span
+                      className="guandan-match-winners"
+                      style={{
+                        display: "block",
+                        marginTop: 18,
+                        fontSize: "clamp(22px, 3vw, 42px)",
+                      }}
+                    >
+                      获胜队员：{winningPlayerNames.join(" ｜ ")}
+                    </span>
+                  </div>
+                )}
+
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 18,
+                    right: 18,
+                    bottom: 14,
+                    zIndex: 3,
+                    display: "flex",
+                    alignItems: "flex-end",
+                    justifyContent: "space-between",
+                    gap: 18,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      maxWidth: "62vw",
+                      padding: "8px 12px",
+                      borderRadius: 10,
+                      background: "rgba(0, 40, 25, 0.58)",
+                      color: "#fff",
+                      fontSize: 14,
+                      pointerEvents: "auto",
+                    }}
+                  >
+                    <span
+                      className="guandan-screenshot-email-status"
+                      aria-live="polite"
+                    >
+                      {screenshotEmailStatus === "sending" &&
+                        "正在生成并发送打A胜利截图……"}
+                      {screenshotEmailStatus === "sent" &&
+                        `胜利截图已发送到 ${normalizeWinnerScreenshotEmail(winnerScreenshotEmail)}`}
+                      {screenshotEmailStatus === "missing" &&
+                        "请在“设置”中填写有效邮箱，才能发送胜利截图。"}
+                      {screenshotEmailStatus === "failed" &&
+                        (screenshotEmailError || "胜利截图发送失败，可重试一次。")}
+                    </span>
+                    {(screenshotEmailStatus === "failed" ||
+                      screenshotEmailStatus === "missing") && (
                       <button
                         type="button"
-                        className="guandan-victory-image-close"
-                        aria-label="关闭胜利截图大图"
-                        onClick={() => setVictoryScreenshotExpanded(false)}
+                        className="normal"
+                        onClick={retryVictoryScreenshot}
+                        disabled={screenshotRetryUsedRef.current}
+                        style={{ marginLeft: 10 }}
                       >
-                        ×
+                        {screenshotRetryUsedRef.current
+                          ? "已用完重试次数"
+                          : "重试发送一次"}
                       </button>
-                      <img
-                        src={victoryScreenshotDataUrl}
-                        alt="本局胜利截图大图"
-                        onClick={(event) => event.stopPropagation()}
-                      />
+                    )}
+                    {!matchCelebrationComplete && (
+                      <>
+                        <time
+                          className="guandan-match-celebration-time"
+                          dateTime={celebrationNow.toISOString()}
+                          style={{ marginLeft: 12 }}
+                        >
+                          庆祝时间：{formatCelebrationDateTime(celebrationNow)}
+                        </time>
+                        <span style={{ marginLeft: 10 }}>
+                          🏆 庆祝焰花播放中（10秒）
+                        </span>
+                      </>
+                    )}
+                  </div>
+
+                  {matchCelebrationComplete && (
+                    <div
+                      style={{
+                        minWidth: 310,
+                        maxWidth: "34vw",
+                        padding: 12,
+                        borderRadius: 14,
+                        background: "rgba(255, 248, 214, 0.92)",
+                        boxShadow: "0 10px 28px rgba(0,0,0,0.28)",
+                        pointerEvents: "auto",
+                      }}
+                    >
+                      {threeMatchSeriesComplete ? (
+                        <span>
+                          三局比赛全部结束，{seriesChampion}以{" "}
+                          {Math.max(
+                            state.seriesTeamAWins ?? 0,
+                            state.seriesTeamBWins ?? 0,
+                          )}
+                          比
+                          {Math.min(
+                            state.seriesTeamAWins ?? 0,
+                            state.seriesTeamBWins ?? 0,
+                          )}{" "}
+                          获得总冠军。继续后开始新的三局赛。
+                        </span>
+                      ) : threeMatchSeriesActive ? (
+                        <span>
+                          第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
+                          重新抽牌并从打2开始第{" "}
+                          {(state.seriesMatchNumber ?? 0) + 1}/3 局。
+                        </span>
+                      ) : (
+                        <span>全局结束。继续后清零并重新抽牌决定首家。</span>
+                      )}
+                      <div
+                        className="guandan-match-actions"
+                        style={{
+                          marginTop: 10,
+                          display: "flex",
+                          gap: 10,
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={restartMatch}
+                        >
+                          继续
+                        </button>
+                        <button
+                          type="button"
+                          className="normal"
+                          onClick={exitCompletedMatch}
+                        >
+                          退出
+                        </button>
+                      </div>
                     </div>
                   )}
-                {(screenshotEmailStatus === "failed" ||
-                  screenshotEmailStatus === "missing") && (
-                  <button
-                    type="button"
-                    className="normal"
-                    onClick={retryVictoryScreenshot}
-                    disabled={screenshotRetryUsedRef.current}
-                  >
-                    {screenshotRetryUsedRef.current
-                      ? "已用完重试次数"
-                      : "重试发送一次"}
-                  </button>
-                )}
-                {!matchCelebrationComplete ? (
-                  <>
-                    <time
-                      className="guandan-match-celebration-time"
-                      dateTime={celebrationNow.toISOString()}
-                    >
-                      庆祝时间：{formatCelebrationDateTime(celebrationNow)}
-                    </time>
-                    <span>🏆 庆祝焰花播放中（10秒）</span>
-                  </>
-                ) : (
-                  <>
-                    {threeMatchSeriesComplete ? (
-                      <span>
-                        三局比赛全部结束，{seriesChampion}以{" "}
-                        {Math.max(
-                          state.seriesTeamAWins ?? 0,
-                          state.seriesTeamBWins ?? 0,
-                        )}
-                        比
-                        {Math.min(
-                          state.seriesTeamAWins ?? 0,
-                          state.seriesTeamBWins ?? 0,
-                        )}{" "}
-                        获得总冠军。继续后开始新的三局赛。
-                      </span>
-                    ) : threeMatchSeriesActive ? (
-                      <span>
-                        第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
-                        重新抽牌并从打2开始第{" "}
-                        {(state.seriesMatchNumber ?? 0) + 1}/3 局。
-                      </span>
-                    ) : (
-                      <span>全局结束。继续后清零并重新抽牌决定首家。</span>
-                    )}
-                    <div className="guandan-match-actions">
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={restartMatch}
-                      >
-                        继续
-                      </button>
-                      <button
-                        type="button"
-                        className="normal"
-                        onClick={exitCompletedMatch}
-                      >
-                        退出
-                      </button>
-                    </div>
-                  </>
-                )}
+                </div>
               </section>
             )}
 
