@@ -1472,9 +1472,6 @@ const GuandanTable: React.FunctionComponent = () => {
                         shouldReport ? `，剩余${remaining}张` : ""
                       }`}
                     >
-                      <span className="guandan-public-player-seat">
-                        玩家{index + 1}
-                      </span>
                       <span className="guandan-public-card-back">
                         <span
                           className="guandan-public-card-player-name"
@@ -1529,7 +1526,6 @@ const GuandanTable: React.FunctionComponent = () => {
                           </button>
                         </span>
                       </span>
-                      <strong title={player}>{player}</strong>
                       {shouldReport && (
                         <span
                           className="guandan-public-card-count"
