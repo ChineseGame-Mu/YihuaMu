@@ -27,7 +27,7 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
-  test("doubles public player displays with no gap", () => {
+  test("keeps wide public player displays, reduces their height by thirty percent, and shows names", () => {
     expect(css).toMatch(/gap:\s*0\s*!important/);
     expect(css).toMatch(/flex:\s*0 0 96px\s*!important/);
     expect(css).toMatch(
@@ -36,12 +36,15 @@ describe("Guandan enlarged player displays", () => {
     expect(css).toMatch(
       /\.guandan-public-card-back[\s\S]*?margin:\s*0\s*!important/,
     );
-    expect(css).toMatch(/height:\s*96px\s*!important/);
+    expect(css).toMatch(/height:\s*67\.2px\s*!important/);
+    expect(table).toContain('className="guandan-public-card-player-name"');
+    expect(table).toContain("{player}");
+    expect(table).not.toContain("<span>掼蛋</span>");
   });
 
   test("reserves space so enlarged displays cannot cover played cards", () => {
     expect(css).toMatch(
-      /\.guandan-table-stage\s*\{[\s\S]*?padding-top:\s*154px\s*!important/,
+      /\.guandan-table-stage\s*\{[\s\S]*?padding-top:\s*125\.2px\s*!important/,
     );
   });
 
