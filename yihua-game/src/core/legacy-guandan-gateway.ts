@@ -13,6 +13,7 @@ import {
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
+  recoverLegacyTributeFromManaged,
   runLegacyRobotTribute,
 } from "./legacy-tribute.js";
 import { RANKS, type Rank } from "./cards.js";
@@ -970,6 +971,7 @@ export const attachLegacyGuandanConnection = async (
         }
 
         active = { roomId, playerId, adapter };
+        recoverLegacyTributeFromManaged(roomId, managed);
         const role = seat === null ? "observer" : "player";
         await sendLegacy(connection.socket, {
           type: "joined",
@@ -1078,6 +1080,10 @@ export const attachLegacyGuandanConnection = async (
 
       if (message.type === "start_trick") {
         const managed = runtime.rooms.get(active.roomId);
+        if (recoverLegacyTributeFromManaged(active.roomId, managed)) {
+          await runtime.websocket.broadcastGameState(managed);
+          return;
+        }
         if (managed.game.phase !== "playing") {
           throw new Error("现在不能开始本轮");
         }
