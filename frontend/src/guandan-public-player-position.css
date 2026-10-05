@@ -54,3 +54,87 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
     min-width: 220px !important;
   }
 }
+
+/* Four-player table: partners sit opposite each other around the public table.
+ * Seats 1/3 are Team A (top/bottom); seats 2/4 are Team B (left/right).
+ */
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-backs {
+  inset: 0 !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back {
+  position: absolute !important;
+  z-index: 35 !important;
+  pointer-events: auto !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back:nth-child(1) {
+  top: 34px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back:nth-child(2) {
+  top: 50% !important;
+  left: 10px !important;
+  transform: translateY(-50%) !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back:nth-child(3) {
+  bottom: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back:nth-child(4) {
+  top: 50% !important;
+  right: 10px !important;
+  left: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+/* Keep every played-card group in the open center of the four seats. */
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-table-stage {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 132px 116px !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-trick-plays {
+  width: auto !important;
+  max-width: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  align-content: center !important;
+}
