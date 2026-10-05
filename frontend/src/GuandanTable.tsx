@@ -521,7 +521,6 @@ const GuandanTable: React.FunctionComponent = () => {
       setScreenshotEmailStatus("idle");
       setScreenshotEmailError("");
       setVictoryScreenshotDataUrl(null);
-      setVictoryScreenshotExpanded(false);
       return;
     }
     const recipient = normalizeWinnerScreenshotEmail(winnerScreenshotEmail);
