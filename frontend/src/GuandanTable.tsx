@@ -20,6 +20,7 @@ import {
   guandanDealPresentation,
   guandanDealtCardsForSeat,
 } from "./guandanDealPresentation";
+import { shouldAnimateGuandanDeal } from "./guandanDealLifecycle";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -312,6 +313,7 @@ const GuandanTable: React.FunctionComponent = () => {
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
+  const previousNextRoundPhaseRef = React.useRef(state.nextRoundPhase);
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const lastTurnPromptKeyRef = React.useRef<string | null>(null);
   const screenshotAttemptRef = React.useRef<string | null>(null);
@@ -479,9 +481,9 @@ const GuandanTable: React.FunctionComponent = () => {
           winnerTeam: state.matchWinner,
         }),
       });
-      const result = (await response.json().catch(() => null)) as
-        | { error?: unknown }
-        | null;
+      const result = (await response.json().catch(() => null)) as {
+        error?: unknown;
+      } | null;
       if (!response.ok) {
         const errorMessage =
           typeof result?.error === "string"
@@ -684,25 +686,26 @@ const GuandanTable: React.FunctionComponent = () => {
 
   React.useEffect(() => {
     const previousHandSize = lastAnimatedHandSizeRef.current;
-    const handSizeChanged = state.hand.length !== previousHandSize;
     if (state.hand.length < previousHandSize) {
       setSelected([]);
     }
-    if (state.lastPlay.length > 0) {
+    if (state.nextRoundPhase !== null) {
       hasAnimatedCurrentDealRef.current = false;
     }
-    const shouldAnimate =
-      state.hand.length > 0 &&
-      handSizeChanged &&
-      state.lastPlay.length === 0 &&
-      !nextRoundPending &&
-      !hasAnimatedCurrentDealRef.current &&
-      playerCount >= 4;
+    const shouldAnimate = shouldAnimateGuandanDeal({
+      previousHandSize,
+      currentHandSize: state.hand.length,
+      previousNextRoundPhase: previousNextRoundPhaseRef.current,
+      nextRoundPhase: state.nextRoundPhase,
+      playerCount,
+      alreadyAnimated: hasAnimatedCurrentDealRef.current,
+    });
     lastAnimatedHandSizeRef.current = state.hand.length;
+    previousNextRoundPhaseRef.current = state.nextRoundPhase;
     if (!shouldAnimate) return;
     hasAnimatedCurrentDealRef.current = true;
     setDealStep(0);
-  }, [state.hand.length, state.lastPlay.length, nextRoundPending, playerCount]);
+  }, [state.hand.length, state.nextRoundPhase, playerCount]);
 
   React.useEffect(() => {
     if (dealStep === null || totalDealCards <= 0) return;
