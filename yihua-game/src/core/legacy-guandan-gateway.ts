@@ -272,8 +272,18 @@ export const advanceLegacyRobotNextRound = async (
   roomId: string,
 ): Promise<boolean> => {
   const managed = runtime.rooms.get(roomId);
-  if (managed.game.phase === "round-complete" && managed.game.levelRank === "A")
-    return false;
+  if (managed.game.phase === "round-complete") {
+    const winnerSeat = managed.game.finishedSeats[0];
+    if (winnerSeat !== undefined) {
+      const winnerTeam = winnerSeat % 2 === 0 ? "A" : "B";
+      const winnerLevel =
+        managed.game.teamLevels?.[winnerTeam] ?? managed.game.levelRank ?? "2";
+      // A team that has merely advanced *to* A must still play the A round.
+      // Only a team that was already on A before this completed deal has won
+      // the match and should stop before another deal.
+      if (winnerLevel === "A") return false;
+    }
+  }
   const { shuffleReady, winnerIsRobot } = legacyNextRoundRobotState(managed);
   if (!shuffleReady || !winnerIsRobot) return false;
 
