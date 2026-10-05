@@ -644,6 +644,122 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
     Ok(())
 }
 
+
+fn run_robot_tribute_exchange(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    let Some(plan) = game.pending_tribute.clone() else {
+        return Ok(());
+    };
+    let (givers, receivers) = match plan {
+        TributePlan::Single { giver, receiver } => (vec![giver], vec![receiver]),
+        TributePlan::Double { givers, receivers } => (givers.to_vec(), receivers.to_vec()),
+    };
+
+    for giver in givers {
+        if game
+            .tribute_cards
+            .iter()
+            .any(|entry| entry.player == giver)
+            || !game
+                .player_names
+                .get(giver)
+                .is_some_and(|name| is_robot_name(name))
+        {
+            continue;
+        }
+        let hand_len = game
+            .hands
+            .get(giver)
+            .ok_or("robot tribute giver seat is invalid")?
+            .len();
+        let mut submitted = false;
+        for card_index in 0..hand_len {
+            if game.submit_tribute_card(giver, card_index).is_ok() {
+                submitted = true;
+                break;
+            }
+        }
+        if !submitted {
+            return Err("robot could not choose a legal tribute card");
+        }
+    }
+
+    let expected_tributes = match game.pending_tribute.as_ref() {
+        Some(TributePlan::Single { .. }) => 1,
+        Some(TributePlan::Double { .. }) => 2,
+        None => return Ok(()),
+    };
+    if game.tribute_cards.len() != expected_tributes {
+        return Ok(());
+    }
+
+    for receiver in receivers {
+        if game
+            .return_cards
+            .iter()
+            .any(|entry| entry.player == receiver)
+            || !game
+                .player_names
+                .get(receiver)
+                .is_some_and(|name| is_robot_name(name))
+        {
+            continue;
+        }
+        let hand_len = game
+            .hands
+            .get(receiver)
+            .ok_or("robot return-card receiver seat is invalid")?
+            .len();
+        let mut submitted = false;
+        for card_index in 0..hand_len {
+            if game.submit_return_card(receiver, card_index).is_ok() {
+                submitted = true;
+                break;
+            }
+        }
+        if !submitted {
+            return Err("robot could not choose a legal return card");
+        }
+    }
+
+    if game.tribute_exchange_complete() {
+        game.finalize_tribute_exchange()?;
+    }
+    Ok(())
+}
+
+fn activate_next_round_after_deal(game: &mut GuandanGameState) -> Result<(), &'static str> {
+    if game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal) {
+        return Err("the next round is not ready to deal");
+    }
+    let table = validate_start(game.player_names.len())?;
+    let plan = tribute_plan(table, &game.next_round_finish_order)?;
+    game.tribute_resisted = can_resist_tribute(&plan, &game.hands);
+    game.pending_tribute = if game.tribute_resisted { None } else { Some(plan) };
+    game.finish_order.clear();
+    game.next_round_finish_order.clear();
+    game.next_round_phase = None;
+    run_robot_tribute_exchange(game)?;
+    Ok(())
+}
+
+fn auto_deal_if_robot_winner(game: &mut GuandanGameState) -> Result<bool, &'static str> {
+    if game.next_round_phase != Some(GuandanNextRoundPhase::AwaitingDeal) {
+        return Ok(false);
+    }
+    let winner = game
+        .last_game_winner
+        .ok_or("the previous winner is unavailable")?;
+    if !game
+        .player_names
+        .get(winner)
+        .is_some_and(|name| is_robot_name(name))
+    {
+        return Ok(false);
+    }
+    activate_next_round_after_deal(game)?;
+    Ok(true)
+}
+
 pub async fn websocket(
     socket: WebSocket,
     storage: HashMapStorage<VersionedGuandanGame>,
@@ -1170,6 +1286,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1213,6 +1330,12 @@ pub async fn websocket(
                         }
                         state.game.hands = hands;
                         state.game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                        if auto_deal_if_robot_winner(&mut state.game)
+                            .map_err(PlayError::Invalid)?
+                        {
+                            run_robot_turns(&mut state.game, hook_to_bottom)
+                                .map_err(PlayError::Invalid)?;
+                        }
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1235,6 +1358,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1245,18 +1369,10 @@ pub async fn websocket(
                         if state.game.last_game_winner != Some(seat) {
                             return Err(PlayError::Invalid("only the previous winner may deal"));
                         }
-                        let table = validate_start(state.game.player_names.len())
+                        activate_next_round_after_deal(&mut state.game)
                             .map_err(PlayError::Invalid)?;
-                        let plan = tribute_plan(table, &state.game.next_round_finish_order)
+                        run_robot_turns(&mut state.game, hook_to_bottom)
                             .map_err(PlayError::Invalid)?;
-                        if can_resist_tribute(&plan, &state.game.hands) {
-                            state.game.tribute_resisted = true;
-                        } else {
-                            state.game.pending_tribute = Some(plan);
-                        }
-                        state.game.finish_order.clear();
-                        state.game.next_round_finish_order.clear();
-                        state.game.next_round_phase = None;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
@@ -1356,6 +1472,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1365,6 +1482,10 @@ pub async fn websocket(
                         state
                             .game
                             .submit_tribute_card(seat, card_index)
+                            .map_err(PlayError::Invalid)?;
+                        run_robot_tribute_exchange(&mut state.game)
+                            .map_err(PlayError::Invalid)?;
+                        run_robot_turns(&mut state.game, hook_to_bottom)
                             .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
@@ -1388,6 +1509,7 @@ pub async fn websocket(
                     Some(seat) => seat,
                     None => continue,
                 };
+                let hook_to_bottom = hook_to_bottom_for(&key);
                 let result: Result<u64, PlayError> = storage
                     .clone()
                     .execute_operation_with_messages(key, move |mut state| {
@@ -1398,12 +1520,16 @@ pub async fn websocket(
                             .game
                             .submit_return_card(seat, card_index)
                             .map_err(PlayError::Invalid)?;
+                        run_robot_tribute_exchange(&mut state.game)
+                            .map_err(PlayError::Invalid)?;
                         if state.game.tribute_exchange_complete() {
                             state
                                 .game
                                 .finalize_tribute_exchange()
                                 .map_err(PlayError::Invalid)?;
                         }
+                        run_robot_turns(&mut state.game, hook_to_bottom)
+                            .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
