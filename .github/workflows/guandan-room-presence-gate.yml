@@ -7,11 +7,18 @@ on:
     paths:
       - "backend/src/guandan_handler.rs"
       - "backend/src/main.rs"
+      - "yihua-game/src/core/game-state.ts"
       - "yihua-game/src/core/http-router.ts"
       - "yihua-game/src/core/legacy-guandan-gateway.ts"
+      - "yihua-game/src/core/room.ts"
+      - "yihua-game/src/core/room-manager.ts"
       - "yihua-game/src/node-server.ts"
       - "yihua-game/src/node-websocket.ts"
+      - "yihua-game/test/abandoned-room-reset.test.ts"
+      - "yihua-game/test/four-player-catch-to-next-round.test.ts"
+      - "yihua-game/test/game-state-four-player-catch-fallback.test.ts"
       - "yihua-game/test/node-websocket.test.ts"
+      - "yihua-game/test/player-session-security.test.ts"
       - "yihua-game/test/security-guardrails.test.ts"
       - "yihua-game/test/server-runtime.test.ts"
       - "frontend/src/CleanroomEntry.tsx"
@@ -26,11 +33,18 @@ on:
     paths:
       - "backend/src/guandan_handler.rs"
       - "backend/src/main.rs"
+      - "yihua-game/src/core/game-state.ts"
       - "yihua-game/src/core/http-router.ts"
       - "yihua-game/src/core/legacy-guandan-gateway.ts"
+      - "yihua-game/src/core/room.ts"
+      - "yihua-game/src/core/room-manager.ts"
       - "yihua-game/src/node-server.ts"
       - "yihua-game/src/node-websocket.ts"
+      - "yihua-game/test/abandoned-room-reset.test.ts"
+      - "yihua-game/test/four-player-catch-to-next-round.test.ts"
+      - "yihua-game/test/game-state-four-player-catch-fallback.test.ts"
       - "yihua-game/test/node-websocket.test.ts"
+      - "yihua-game/test/player-session-security.test.ts"
       - "yihua-game/test/security-guardrails.test.ts"
       - "yihua-game/test/server-runtime.test.ts"
       - "frontend/src/CleanroomEntry.tsx"
@@ -52,9 +66,9 @@ concurrency:
 
 jobs:
   room-presence-regression:
-    name: Entry, leave, reconnect, stale-cleanup, and room-count gate
+    name: Entry, leave, reconnect, double-down, stale-cleanup, and room-count gate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +88,7 @@ jobs:
           corepack enable
           yarn install --frozen-lockfile --non-interactive
 
-      - name: Mandatory legacy-entry and departure regressions
+      - name: Mandatory legacy-entry, stale-session, and departure regressions
         working-directory: frontend
         run: >-
           yarn test --runInBand
@@ -97,11 +111,11 @@ jobs:
           cargo test -p shengji room_counts_exclude_disconnected_players_and_do_not_cross_rooms
           cargo test -p shengji guandan_room_endpoint_tests
 
-      - name: Mandatory deployed Node backend presence and origin regressions
+      - name: Mandatory deployed Node backend double-down, reconnect, and presence regressions
         working-directory: yihua-game
         run: |
           npm ci
-          npx prettier --check src/core/http-router.ts src/node-server.ts src/node-websocket.ts test/node-websocket.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts
+          npx prettier --check src/core/game-state.ts src/core/http-router.ts src/core/room.ts src/core/room-manager.ts src/node-server.ts src/node-websocket.ts test/abandoned-room-reset.test.ts test/four-player-catch-to-next-round.test.ts test/game-state-four-player-catch-fallback.test.ts test/node-websocket.test.ts test/player-session-security.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts
           npm run typecheck
-          npm test -- --run test/node-websocket.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts test/player-session-security.test.ts
+          npm test -- --run test/game-state-four-player-catch-fallback.test.ts test/four-player-catch-to-next-round.test.ts test/abandoned-room-reset.test.ts test/node-websocket.test.ts test/player-session-security.test.ts test/security-guardrails.test.ts test/server-runtime.test.ts
           npm run build
