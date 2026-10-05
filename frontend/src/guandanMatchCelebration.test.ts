@@ -48,9 +48,15 @@ describe("Guandan A-level match celebration", () => {
       "utf8",
     );
     expect(table).toContain('className="guandan-match-trophy"');
-    expect(table).toContain('className="guandan-victory-image-preview"');
-    expect(table).toContain('aria-label="放大胜利截图"');
-    expect(table).toContain('aria-label="胜利截图大图"');
+    expect(table).toContain('position: "fixed"');
+    expect(table).toContain('inset: 0');
+    expect(table).toContain('width: "100vw"');
+    expect(table).toContain('height: "100vh"');
+    expect(table).toContain('backgroundSize: "cover"');
+    expect(table).toContain('backgroundPosition: "center"');
+    expect(table).not.toContain('className="guandan-victory-image-preview"');
+    expect(table).not.toContain('aria-label="放大胜利截图"');
+    expect(table).not.toContain('aria-label="胜利截图大图"');
     expect(table).toContain("result?.error");
     expect(table).toContain("胜利截图发送失败，可重试一次。");
     expect(table).toContain('className="guandan-fireworks"');
@@ -74,8 +80,8 @@ describe("Guandan A-level match celebration", () => {
     expect(css).toContain("left: 50% !important");
     expect(css).toContain("transform: translate(-50%, -50%) !important");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) auto");
-    expect(css).toContain(".guandan-victory-image-lightbox");
-    expect(css).toContain("max-height: 92vh");
+    expect(table).toContain("victoryScreenshotDataUrl");
+    expect(table).toContain('zIndex: 10000');
   });
 
   test("provides a test-only online preview for screenshot verification", () => {
