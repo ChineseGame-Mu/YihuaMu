@@ -173,6 +173,43 @@ export class RoomManager {
     return next;
   }
 
+  forceRestartMatch(
+    roomId: string,
+    random: () => number = Math.random,
+  ): ManagedRoom {
+    const managed = this.get(roomId);
+    const playerCount =
+      managed.game.phase === "lobby"
+        ? managed.room.participants.length
+        : managed.game.config.playerCount;
+    if (!isSupportedPlayerCount(playerCount)) {
+      throw new Error("reset requires 4, 6, 8, 10, 12, or 14 seated players");
+    }
+    const activeParticipants = managed.room.participants.filter(
+      ({ seat }) => seat < playerCount,
+    );
+    if (activeParticipants.length !== playerCount) {
+      throw new Error("reset requires every active seat to be occupied");
+    }
+    const botCount = activeParticipants.filter(
+      ({ kind }) => kind === "robot",
+    ).length;
+    const restarted = startGame(
+      createLobbyState(playerCount, botCount),
+      random,
+    );
+    const next = {
+      ...managed,
+      game: restarted,
+      revision: managed.revision + 1,
+      tribute: undefined,
+      series: initialCompetitionSeries(playerCount),
+    } satisfies ManagedRoom;
+    this.restoredRoomsAwaitingReconnect.delete(roomId);
+    this.rooms.set(roomId, next);
+    return next;
+  }
+
   get(roomId: string, now: number = Date.now()): ManagedRoom {
     const managed = this.rooms.get(roomId);
     if (!managed) {
