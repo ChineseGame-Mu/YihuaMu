@@ -1316,7 +1316,7 @@ const GuandanTable: React.FunctionComponent = () => {
             <select
               id="guandan-bot-count"
               aria-label="机器人玩家数量"
-              value={String(pendingBotCount ?? currentBotCount || "")}
+              value={String(pendingBotCount ?? (currentBotCount || ""))}
               disabled={gameStarted || (joined && state.seat === null)}
               onChange={(event) => {
                 const count = Number(event.target.value) as 1 | 2 | 3;
