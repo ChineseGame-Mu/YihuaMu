@@ -1505,7 +1505,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     <div
                       className={`guandan-public-player-back guandan-public-team-${
                         index % 2 === 0 ? "a" : "b"
-                      } ${effectiveTurn === index && gameStarted && !dealing ? "is-active" : ""}`}
+                      } ${effectiveTurn === index && gameStarted && !dealing && !nextRoundPending && !tributePending && !state.trickComplete ? "is-active" : ""}`}
                       key={`public-back-${index}-${player}`}
                       aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${
                         shouldReport ? `，剩余${remaining}张` : ""
@@ -1653,14 +1653,9 @@ const GuandanTable: React.FunctionComponent = () => {
                       {state.onlinePlayers[index] ? "● 在线" : "○ 已掉线"}
                     </span>
                     <span>
-                      {effectiveTurn === index &&
-                      gameStarted &&
-                      !dealing &&
-                      !nextRoundPending
-                        ? " ← 当前出牌"
-                        : dealing
-                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
-                          : ""}
+                      {dealing
+                        ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                        : ""}
                     </span>
                     <div>
                       {nextRoundPending
@@ -2632,26 +2627,6 @@ const GuandanTable: React.FunctionComponent = () => {
           )}
         </>
       )}
-
-      {joined &&
-        !observing &&
-        gameStarted &&
-        !dealing &&
-        !nextRoundPending &&
-        !tributePending &&
-        !state.trickComplete &&
-        effectiveTurn !== null && (
-          <div
-            className="guandan-current-turn-mini"
-            role="status"
-            aria-label="当前应出牌玩家"
-          >
-            <span>当前应出牌：</span>
-            <strong>
-              {state.players[effectiveTurn] ?? `玩家${effectiveTurn + 1}`}
-            </strong>
-          </div>
-        )}
 
       {state.error !== null && (
         <p role="alert">{guandanErrorLabel(state.error)}</p>
