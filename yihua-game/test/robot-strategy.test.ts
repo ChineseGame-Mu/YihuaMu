@@ -145,4 +145,65 @@ describe("robot varied-play strategy", () => {
     });
     expect(bomb).toBeLessThan(routineStraight);
   });
+
+  it("avoids opening a low single when an opponent has one card left", () => {
+    const lowSingle = robotPatternPriority({
+      kind: "single",
+      strength: 3,
+      size: 1,
+      playSize: 1,
+      leading: true,
+      leadCycle: 0,
+      handSizeBefore: 8,
+      opponentMinHandSize: 1,
+    });
+    const highSingle = robotPatternPriority({
+      kind: "single",
+      strength: 12,
+      size: 1,
+      playSize: 1,
+      leading: true,
+      leadCycle: 0,
+      handSizeBefore: 8,
+      opponentMinHandSize: 1,
+    });
+    const pair = robotPatternPriority({
+      kind: "pair",
+      strength: 5,
+      size: 2,
+      playSize: 2,
+      leading: true,
+      leadCycle: 0,
+      handSizeBefore: 8,
+      opponentMinHandSize: 1,
+    });
+
+    expect(pair).toBeLessThan(highSingle);
+    expect(highSingle).toBeLessThan(lowSingle);
+  });
+
+  it("conserves high single cards while the hand is still large", () => {
+    const lowSingle = robotPatternPriority({
+      kind: "single",
+      strength: 3,
+      size: 1,
+      playSize: 1,
+      leading: true,
+      leadCycle: 1,
+      handSizeBefore: 18,
+      opponentMinHandSize: 8,
+    });
+    const highSingle = robotPatternPriority({
+      kind: "single",
+      strength: 12,
+      size: 1,
+      playSize: 1,
+      leading: true,
+      leadCycle: 1,
+      handSizeBefore: 18,
+      opponentMinHandSize: 8,
+    });
+    expect(lowSingle).toBeLessThan(highSingle);
+  });
+
 });
