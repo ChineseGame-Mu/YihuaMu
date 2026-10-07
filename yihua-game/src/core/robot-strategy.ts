@@ -125,6 +125,16 @@ export const robotPatternPriority = ({
     return bomb;
   }
   if (kind === "invalid") return responseBase.invalid;
+
+  // 残局防守：对方只剩 1 张时，机器人作为首家应尽量出多张牌，
+  // 不给对方用一张小牌直接跑掉；如果手里只能出单张，则优先出较大的单张。
+  if (leading && opponentMinHandSize === 1) {
+    if (kind === "single") {
+      return 2_000 - strength * 100;
+    }
+    return -8_000 + responseBase[kind] + strength;
+  }
+
   if (!leading) {
     // 对手只剩一两张时，不再总用最小牌应对，要提高封堵强度。
     const endgameBlock =
@@ -142,5 +152,16 @@ export const robotPatternPriority = ({
     handSizeBefore <= 9
       ? -500
       : 0;
-  return (index === -1 ? 900 : index * 100) + strength + fiveCardEndgame;
+  const preserveHighSingleEarly =
+    kind === "single" &&
+    (handSizeBefore ?? 0) >= 10 &&
+    (opponentMinHandSize ?? 99) > 3
+      ? strength * 18
+      : 0;
+  return (
+    (index === -1 ? 900 : index * 100) +
+    strength +
+    fiveCardEndgame +
+    preserveHighSingleEarly
+  );
 };
