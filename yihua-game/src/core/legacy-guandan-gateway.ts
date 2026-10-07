@@ -10,6 +10,7 @@ import {
 import {
   applyLegacyTributeSelection,
   applyLegacyTributeResistance,
+  clearLegacyTributeState,
   decorateLegacyTributeState,
   hasPendingLegacyTribute,
   prepareLegacyTribute,
@@ -335,6 +336,10 @@ const clearRobotWonTrick = async (
 
   await sleep(1200);
   pendingLegacyTricks.delete(roomId);
+  legacyTableClearIds.set(
+    roomId,
+    (legacyTableClearIds.get(roomId) ?? 0) + 1,
+  );
   await runtime.websocket.broadcastGameState(runtime.rooms.get(roomId));
   return true;
 };
@@ -367,6 +372,10 @@ const runLegacyRobots = async (
       // that a human winner triggers with the end-round button, then resume.
       await sleep(1200);
       pendingLegacyTricks.delete(roomId);
+      legacyTableClearIds.set(
+        roomId,
+        (legacyTableClearIds.get(roomId) ?? 0) + 1,
+      );
       await runtime.websocket.broadcastGameState(runtime.rooms.get(roomId));
       continue;
     }
@@ -1075,6 +1084,25 @@ export const attachLegacyGuandanConnection = async (
         await runtime.websocket.broadcastRoomState(next);
         await runtime.websocket.broadcastGameState(next);
         await advanceLegacyRobotNextRound(runtime, active.roomId);
+        return;
+      }
+
+      if (message.type === "reset_game") {
+        if (active.adapter.compat.seat === null) {
+          throw new Error("只有已入座玩家可以清零重开");
+        }
+        clearLegacyRoundBoundary(active.roomId);
+        clearLegacyTributeState(active.roomId);
+        const reset = runtime.rooms.forceRestartMatch(active.roomId);
+        legacyTableClearIds.set(
+          active.roomId,
+          (legacyTableClearIds.get(active.roomId) ?? 0) + 1,
+        );
+        startedLegacyGames.add(active.roomId);
+        await runtime.websocket.broadcastRoomState(reset);
+        await runtime.websocket.broadcastGameState(reset);
+        await runtime.websocket.sendPrivateHands(reset);
+        await runLegacyRobots(runtime, active.roomId);
         return;
       }
 
