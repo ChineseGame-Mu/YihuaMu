@@ -853,6 +853,22 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  const emergencyReset = (): void => {
+    if (state.seat === null) return;
+    const confirmed = window.confirm(
+      "清零会立即终止当前牌局，清除当前级数、比分、贡牌和桌面牌，并重新洗牌发牌。所有已入座玩家和机器人保留。确定继续吗？",
+    );
+    if (!confirmed) return;
+    setSelected([]);
+    setMatchCelebrationComplete(false);
+    if (send({ type: "reset_game" })) {
+      setStartRequested(true);
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+      setShowSettings(false);
+    }
+  };
+
   const exitCompletedMatch = (): void => {
     if (state.seat !== null) send({ type: "set_participation", active: false });
     stopMusicRef.current?.();
@@ -1310,6 +1326,20 @@ const GuandanTable: React.FunctionComponent = () => {
             4至14人大桌开局前可选择 1 至 3 个机器人。
             真人加机器人总数不能超过所选桌人数。
           </p>
+          <div className="guandan-emergency-reset">
+            <strong>异常恢复：</strong>{" "}
+            <button
+              type="button"
+              className="normal"
+              disabled={!joined || state.seat === null}
+              onClick={emergencyReset}
+            >
+              清零 / Reset
+            </button>
+            <p>
+              游戏卡住、机器人未继续或状态异常时，任一已入座玩家都可使用。清零后保留当前玩家和机器人，清除本局级数、比分、贡牌及桌面牌，并重新洗牌发牌。
+            </p>
+          </div>
         </section>
       )}
 
@@ -1475,7 +1505,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     <div
                       className={`guandan-public-player-back guandan-public-team-${
                         index % 2 === 0 ? "a" : "b"
-                      } ${effectiveTurn === index && gameStarted && !dealing ? "is-active" : ""}`}
+                      } ${effectiveTurn === index && gameStarted && !dealing && !nextRoundPending && !tributePending && !state.trickComplete ? "is-active" : ""}`}
                       key={`public-back-${index}-${player}`}
                       aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${
                         shouldReport ? `，剩余${remaining}张` : ""
@@ -1623,14 +1653,9 @@ const GuandanTable: React.FunctionComponent = () => {
                       {state.onlinePlayers[index] ? "● 在线" : "○ 已掉线"}
                     </span>
                     <span>
-                      {effectiveTurn === index &&
-                      gameStarted &&
-                      !dealing &&
-                      !nextRoundPending
-                        ? " ← 当前出牌"
-                        : dealing
-                          ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
-                          : ""}
+                      {dealing
+                        ? ` ← 发牌中 ${dealtCountForSeat(index)}/${cardsPerPlayer}`
+                        : ""}
                     </span>
                     <div>
                       {nextRoundPending
@@ -2602,26 +2627,6 @@ const GuandanTable: React.FunctionComponent = () => {
           )}
         </>
       )}
-
-      {joined &&
-        !observing &&
-        gameStarted &&
-        !dealing &&
-        !nextRoundPending &&
-        !tributePending &&
-        !state.trickComplete &&
-        effectiveTurn !== null && (
-          <div
-            className="guandan-current-turn-mini"
-            role="status"
-            aria-label="当前应出牌玩家"
-          >
-            <span>当前应出牌：</span>
-            <strong>
-              {state.players[effectiveTurn] ?? `玩家${effectiveTurn + 1}`}
-            </strong>
-          </div>
-        )}
 
       {state.error !== null && (
         <p role="alert">{guandanErrorLabel(state.error)}</p>
