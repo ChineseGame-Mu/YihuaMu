@@ -42,6 +42,11 @@ const sleep = async (milliseconds: number): Promise<void> => {
   await new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
 };
 
+export const clearLegacyTributeState = (roomId: string): void => {
+  sessions.delete(roomId);
+  resistedRooms.delete(roomId);
+};
+
 export const prepareLegacyTribute = (
   roomId: string,
   finishOrder: readonly number[],
