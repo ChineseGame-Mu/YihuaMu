@@ -383,6 +383,12 @@ const GuandanTable: React.FunctionComponent = () => {
         ? queryPlayerCount
         : 14,
     );
+  const currentBotCount = state.players.filter((player) =>
+    player.startsWith("机器人"),
+  ).length;
+  const [pendingBotCount, setPendingBotCount] = React.useState<
+    1 | 2 | 3 | null
+  >(null);
   const playerCount = state.playerCount ?? state.players.length;
   const showCompletedRoundResult = shouldShowCompletedRoundResult(state);
   const cardsPerPlayer =
@@ -646,6 +652,23 @@ const GuandanTable: React.FunctionComponent = () => {
   React.useEffect(() => {
     if (joined) joinPendingRef.current = false;
   }, [joined]);
+
+  React.useEffect(() => {
+    if (pendingBotCount === null || gameStarted || !joined || state.seat === null)
+      return;
+    if (currentBotCount === pendingBotCount) {
+      setPendingBotCount(null);
+      return;
+    }
+    send({ type: "set_bots", count: pendingBotCount });
+  }, [
+    pendingBotCount,
+    gameStarted,
+    joined,
+    state.seat,
+    currentBotCount,
+    send,
+  ]);
 
   React.useEffect(() => {
     if (status !== "connected") {
@@ -1293,14 +1316,11 @@ const GuandanTable: React.FunctionComponent = () => {
             <select
               id="guandan-bot-count"
               aria-label="机器人玩家数量"
-              value={String(
-                state.players.filter((player) => player.startsWith("机器人"))
-                  .length || "",
-              )}
-              disabled={!joined || gameStarted}
+              value={String(pendingBotCount ?? currentBotCount || "")}
+              disabled={gameStarted || (joined && state.seat === null)}
               onChange={(event) => {
                 const count = Number(event.target.value) as 1 | 2 | 3;
-                if (count >= 1 && count <= 3) send({ type: "set_bots", count });
+                if (count >= 1 && count <= 3) setPendingBotCount(count);
               }}
             >
               <option value="" disabled>
@@ -1324,6 +1344,7 @@ const GuandanTable: React.FunctionComponent = () => {
           </div>
           <p>
             4至14人大桌开局前可选择 1 至 3 个机器人。
+            可以在加入房间前先选择；入座后系统会自动加入所选机器人。
             真人加机器人总数不能超过所选桌人数。
           </p>
           <div className="guandan-emergency-reset">
