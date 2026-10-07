@@ -656,8 +656,56 @@
   background: linear-gradient(145deg, #245b9b, #123766);
 }
 .guandan-public-player-back.is-active .guandan-public-card-back {
-  outline: 3px solid #ffd75a;
-  outline-offset: 1px;
+  z-index: 4;
+  outline: 4px solid #fff06a;
+  outline-offset: 2px;
+  filter: brightness(1.32) saturate(1.18);
+  transform: translateY(-2px) scale(1.08);
+  box-shadow:
+    0 0 7px 3px rgba(255, 244, 126, 0.95),
+    0 0 18px 7px rgba(255, 215, 70, 0.72),
+    0 3px 8px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.42);
+  animation: guandan-active-player-glow 850ms ease-in-out infinite alternate;
+}
+
+.guandan-public-team-a.is-active .guandan-public-card-back {
+  background: linear-gradient(145deg, #ff5b52, #b81717);
+}
+
+.guandan-public-team-b.is-active .guandan-public-card-back {
+  background: linear-gradient(145deg, #5ab8ff, #1266c7);
+}
+
+.guandan-public-player-back.is-active .guandan-public-card-player-name {
+  color: #fffde0;
+  text-shadow:
+    0 0 4px #fff,
+    0 0 9px #ffe45c,
+    0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+@keyframes guandan-active-player-glow {
+  from {
+    box-shadow:
+      0 0 6px 2px rgba(255, 244, 126, 0.82),
+      0 0 14px 5px rgba(255, 215, 70, 0.58),
+      0 3px 8px rgba(0, 0, 0, 0.42),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.36);
+  }
+  to {
+    box-shadow:
+      0 0 10px 4px rgba(255, 250, 170, 1),
+      0 0 24px 9px rgba(255, 215, 70, 0.82),
+      0 3px 8px rgba(0, 0, 0, 0.42),
+      inset 0 0 0 2px rgba(255, 255, 255, 0.52);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guandan-public-player-back.is-active .guandan-public-card-back {
+    animation: none;
+  }
 }
 .guandan-public-card-count {
   position: absolute;
