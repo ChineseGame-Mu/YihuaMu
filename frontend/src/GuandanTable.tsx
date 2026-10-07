@@ -853,6 +853,22 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  const emergencyReset = (): void => {
+    if (state.seat === null) return;
+    const confirmed = window.confirm(
+      "清零会立即终止当前牌局，清除当前级数、比分、贡牌和桌面牌，并重新洗牌发牌。所有已入座玩家和机器人保留。确定继续吗？",
+    );
+    if (!confirmed) return;
+    setSelected([]);
+    setMatchCelebrationComplete(false);
+    if (send({ type: "reset_game" })) {
+      setStartRequested(true);
+      hasAnimatedCurrentDealRef.current = true;
+      setDealStep(0);
+      setShowSettings(false);
+    }
+  };
+
   const exitCompletedMatch = (): void => {
     if (state.seat !== null) send({ type: "set_participation", active: false });
     stopMusicRef.current?.();
@@ -1310,6 +1326,20 @@ const GuandanTable: React.FunctionComponent = () => {
             4至14人大桌开局前可选择 1 至 3 个机器人。
             真人加机器人总数不能超过所选桌人数。
           </p>
+          <div className="guandan-emergency-reset">
+            <strong>异常恢复：</strong>{" "}
+            <button
+              type="button"
+              className="normal"
+              disabled={!joined || state.seat === null}
+              onClick={emergencyReset}
+            >
+              清零 / Reset
+            </button>
+            <p>
+              游戏卡住、机器人未继续或状态异常时，任一已入座玩家都可使用。清零后保留当前玩家和机器人，清除本局级数、比分、贡牌及桌面牌，并重新洗牌发牌。
+            </p>
+          </div>
         </section>
       )}
 
@@ -2099,7 +2129,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {tributePending && (
+            {tributePending && !dealing && (
               <section className="guandan-tribute-panel guandan-panel">
                 <h2>{tributePhase === "tribute" ? "进贡" : "还贡"}</h2>
                 <p>
@@ -2132,7 +2162,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.tributeResisted && state.lastGameWinner !== null && (
+            {state.tributeResisted && !dealing && (
               <section
                 className="guandan-tribute-panel guandan-panel"
                 role="status"
@@ -2186,7 +2216,7 @@ const GuandanTable: React.FunctionComponent = () => {
                   </small>
                 </div>
               )}
-              {tributePending && (
+              {tributePending && !dealing && (
                 <div
                   className={`guandan-exchange-ceremony guandan-exchange-${tributePhase}`}
                   role="status"
