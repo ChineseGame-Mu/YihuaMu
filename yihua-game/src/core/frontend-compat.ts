@@ -55,6 +55,7 @@ export type LegacyClientMessage =
     }
   | { readonly type: "deal_next_round" }
   | { readonly type: "restart_match" }
+  | { readonly type: "reset_game" }
   | { readonly type: "play"; readonly card_indexes: readonly number[] }
   | { readonly type: "tribute_card"; readonly card_index: number }
   | { readonly type: "return_tribute"; readonly card_index: number }
@@ -239,6 +240,8 @@ export const toCleanroomCommand = (
       return { type: "next_round" };
     case "restart_match":
       return { type: "next_round" };
+    case "reset_game":
+      throw new Error("legacy reset_game is handled by the gateway");
     case "play": {
       const cardIds = message.card_indexes.map((index) => {
         const cardId = state.privateCardIds[index];
