@@ -159,6 +159,17 @@ export const classifyHandWithLevel = (
       suited(card) && !isLevelWildcard(card, levelRank),
   );
 
+  // A same-rank bomb completed with heart-level wildcards must stay a bomb.
+  // In particular, five-of-a-kind outranks every four-card bomb; it must not
+  // be reinterpreted as a full house merely because the wildcards could form
+  // a pair of another rank.
+  const wildcardSameRank = classifySameRank(
+    fixed,
+    wildcardCount,
+    cards.length,
+  );
+  if (wildcardSameRank?.kind === "bomb") return wildcardSameRank;
+
   if (cards.length === 5) {
     const straightFlush = classifySequence(fixed, wildcardCount, true);
     if (straightFlush !== null) return straightFlush;
