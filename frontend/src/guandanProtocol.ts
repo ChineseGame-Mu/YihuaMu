@@ -46,6 +46,7 @@ export type GuandanClientMessage =
     }
   | { type: "deal_next_round" }
   | { type: "restart_match" }
+  | { type: "reset_game" }
   | { type: "play"; card_indexes: number[] }
   | { type: "tribute_card"; card_index: number }
   | { type: "return_tribute"; card_index: number }
