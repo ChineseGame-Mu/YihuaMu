@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Card, Rank, Suit } from "../src/core/cards.js";
+import { canHandBeatWithLevel, classifyHand } from "../src/core/hand.js";
 import { classifyHandWithLevel } from "../src/core/level-hand.js";
 
 const suited = (rank: Rank, suit: Suit = "clubs"): Card => ({
@@ -141,4 +142,26 @@ describe("level wildcard hand classification", () => {
       ).kind,
     ).toBe("invalid");
   });
+  it("five-card level bomb beats every four-card bomb", () => {
+    const fiveTwos = classifyHandWithLevel(
+      [
+        suited("2", "clubs"),
+        suited("2", "diamonds"),
+        suited("2", "spades"),
+        suited("2", "hearts"),
+        suited("2", "hearts"),
+      ],
+      "2",
+    );
+    const fourKings = classifyHand([
+      suited("K", "clubs"),
+      suited("K", "diamonds"),
+      suited("K", "spades"),
+      suited("K", "hearts"),
+    ]);
+
+    expect(fiveTwos).toEqual({ kind: "bomb", size: 5, rank: "2" });
+    expect(canHandBeatWithLevel(fiveTwos, fourKings, "2")).toBe(true);
+  });
+
 });
