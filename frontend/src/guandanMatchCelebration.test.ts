@@ -52,8 +52,11 @@ describe("Guandan A-level match celebration", () => {
     expect(table).toContain('inset: 0');
     expect(table).toContain('width: "100vw"');
     expect(table).toContain('height: "100vh"');
-    expect(table).toContain('backgroundSize: "cover"');
-    expect(table).toContain('backgroundPosition: "center"');
+    // The celebration is now a body-level portal with a full-viewport
+    // colorful backdrop rather than a screenshot stretched over the table.
+    expect(table).toContain("createPortal(");
+    expect(table).toContain("radial-gradient(circle at 50% 42%");
+    expect(table).toContain("zIndex: 2147483000");
     expect(table).not.toContain('className="guandan-victory-image-preview"');
     expect(table).not.toContain('aria-label="放大胜利截图"');
     expect(table).not.toContain('aria-label="胜利截图大图"');
