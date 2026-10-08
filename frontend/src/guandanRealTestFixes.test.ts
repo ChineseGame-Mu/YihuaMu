@@ -181,7 +181,7 @@ describe("2026-09-16 mandatory real-test regressions", () => {
     expect(next.hand).toEqual(secondRoundHand);
   });
 
-  test("keeps the anti-tribute notice visible until the next round starts", () => {
+  test("keeps anti-tribute during active play but clears it before next-round shuffle", () => {
     const resisted = adaptGuandanServerMessageWithRealTestFixes(
       initialGuandanTableState,
       stateMessage({ tribute_resisted: true }),
@@ -201,11 +201,46 @@ describe("2026-09-16 mandatory real-test regressions", () => {
         next_round_phase: "awaiting_shuffle",
       }),
     );
-    const nextRound = adaptGuandanServerMessageWithRealTestFixes(
+    expect(completedRound.tributeResisted).toBe(false);
+    const waitingForDeal = adaptGuandanServerMessageWithRealTestFixes(
       completedRound,
-      stateMessage({ tribute_resisted: false, next_round_phase: null }),
+      stateMessage({
+        tribute_resisted: true,
+        next_round_phase: "awaiting_deal",
+      }),
     );
-    expect(nextRound.tributeResisted).toBe(false);
+    expect(waitingForDeal.tributeResisted).toBe(false);
+
+    const nextRound = adaptGuandanServerMessageWithRealTestFixes(
+      waitingForDeal,
+      stateMessage({ tribute_resisted: true, next_round_phase: null }),
+    );
+    expect(nextRound.tributeResisted).toBe(true);
+  });
+
+  test("clears the previous round's visible King before showing next-round controls", () => {
+    const oldKing = suited("King");
+    const previousRound = {
+      ...initialGuandanTableState,
+      tablePlays: [{ player: 3, cards: [oldKing] }],
+      lastPlay: [oldKing],
+      lastPlayer: 3,
+      tributeResisted: true,
+    };
+    const transition = adaptGuandanServerMessageWithRealTestFixes(
+      previousRound,
+      stateMessage({
+        next_round_phase: "awaiting_shuffle",
+        tribute_resisted: false,
+        last_play: [oldKing],
+        last_player: 3,
+        table_plays: [{ player: 3, cards: [oldKing] }],
+      }),
+    );
+    expect(transition.tablePlays).toEqual([]);
+    expect(transition.lastPlay).toEqual([]);
+    expect(transition.lastPlayer).toBeNull();
+    expect(transition.tributeResisted).toBe(false);
   });
 
   test("clears a stale anti-tribute notice when a new match id starts", () => {
