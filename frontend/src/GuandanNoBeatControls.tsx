@@ -56,9 +56,7 @@ const GuandanNoBeatControls: React.FunctionComponent = () => {
         // leaves the DOM button disabled after the no-beat condition clears.
         playButton.disabled =
           state.seat === null ||
-          state.turn !== state.seat ||
-          state.pendingTribute !== null ||
-          state.trickComplete ||
+          state.hand.length === 0 ||
           document.querySelectorAll(
             '.guandan-hand button[data-card-index][aria-pressed="true"]',
           ).length === 0;
