@@ -2248,7 +2248,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {tributePending && !dealing && (
+            {tributePending && !dealing && !nextRoundPending && serverDealt && (
               <section className="guandan-tribute-panel guandan-panel">
                 <h2>{tributePhase === "tribute" ? "进贡" : "还贡"}</h2>
                 <p>
@@ -2281,7 +2281,7 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.tributeResisted && !dealing && (
+            {state.tributeResisted && !dealing && !nextRoundPending && serverDealt && (
               <section
                 className="guandan-tribute-panel guandan-panel"
                 role="status"
