@@ -1,7 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const TOKEN_VERSION = 1;
-const TOKEN_LIFETIME_MS = 12 * 60 * 60 * 1000;
+const TOKEN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
 const MINIMUM_SECRET_BYTES = 32;
 let developmentSecret: Buffer | undefined;
 
