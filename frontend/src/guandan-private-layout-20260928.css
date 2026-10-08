@@ -306,3 +306,71 @@ html
     font-size: 12px !important;
   }
 }
+
+/* Regression fix: the portal-mounted selected-card preview is appended AFTER
+ * Play/Pass in the DOM. Without an explicit stacking order it covers their
+ * bottom-right hit targets, making both buttons appear unclickable. */
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button {
+  z-index: 10 !important;
+  pointer-events: auto !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  .guandan-selected-preview {
+  z-index: 1 !important;
+  bottom: 76px !important;
+  pointer-events: none !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions:has(.guandan-combo-bottom-controls)
+  .guandan-selected-preview {
+  bottom: 196px !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  .guandan-selected-preview-card,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  .guandan-selected-preview-cards {
+  pointer-events: auto !important;
+}
+
+@media (max-width: 760px) {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    .guandan-selected-preview {
+    bottom: 58px !important;
+  }
+
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions:has(.guandan-combo-bottom-controls)
+    .guandan-selected-preview {
+    bottom: 170px !important;
+  }
+}
