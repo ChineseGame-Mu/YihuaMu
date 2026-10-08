@@ -2281,18 +2281,21 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {state.tributeResisted && !dealing && !nextRoundPending && serverDealt && (
-              <section
-                className="guandan-tribute-panel guandan-panel"
-                role="status"
-              >
-                <h2>抗贡（{effectiveTableSize / 2} 张大王）</h2>
-                <p>
-                  输方全队合计持有 {effectiveTableSize / 2}{" "}
-                  张大王，本局无需进贡、还贡，由上一局赢家先出牌。
-                </p>
-              </section>
-            )}
+            {state.tributeResisted &&
+              !dealing &&
+              !nextRoundPending &&
+              serverDealt && (
+                <section
+                  className="guandan-tribute-panel guandan-panel"
+                  role="status"
+                >
+                  <h2>抗贡（{effectiveTableSize / 2} 张大王）</h2>
+                  <p>
+                    输方全队合计持有 {effectiveTableSize / 2}{" "}
+                    张大王，本局无需进贡、还贡，由上一局赢家先出牌。
+                  </p>
+                </section>
+              )}
 
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
