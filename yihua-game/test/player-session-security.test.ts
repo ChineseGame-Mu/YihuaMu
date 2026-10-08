@@ -95,7 +95,14 @@ describe("signed player sessions", () => {
       verifyPlayerSessionToken(
         token,
         { roomId: "0001", name: "玩家一" },
-        now + 12 * 60 * 60 * 1000,
+        now + 13 * 60 * 60 * 1000,
+      ),
+    ).not.toBeNull();
+    expect(
+      verifyPlayerSessionToken(
+        token,
+        { roomId: "0001", name: "玩家一" },
+        now + 30 * 24 * 60 * 60 * 1000,
       ),
     ).toBeNull();
     expect(
