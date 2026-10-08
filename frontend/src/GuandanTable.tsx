@@ -206,6 +206,10 @@ const guandanErrorLabel = (message: string): string => {
     "only the previous winner may deal": "只能由上一局赢家发牌。",
     "player names cannot use the reserved robot prefix":
       "真人姓名不能以“机器人”开头，请使用真实姓名。",
+    "resume token is required for this player":
+      "此姓名已在房间中保留座位。请从原浏览器恢复，或输入本人恢复码；不能直接占用原座位。",
+    "player session is invalid or expired":
+      "保存的恢复凭证已失效。请从仍在游戏中的原浏览器复制新恢复码，或使用新姓名入座。",
     "shuffle positions must both be between 1 and 108":
       "抽牌位置和插入位置都必须在1到108之间。",
   };
@@ -214,7 +218,9 @@ const guandanErrorLabel = (message: string): string => {
 
 const GuandanTable: React.FunctionComponent = () => {
   const { state, reset } = React.useContext(GuandanStateContext);
-  const { status, send } = React.useContext(GuandanWebsocketContext);
+  const { status, send, getRecoveryCode } = React.useContext(
+    GuandanWebsocketContext,
+  );
   const query = React.useMemo(
     () => new URLSearchParams(window.location.search),
     [],
@@ -223,6 +229,7 @@ const GuandanTable: React.FunctionComponent = () => {
     normalizeRoomCode(query.get("room") ?? DEFAULT_ROOM_CODE),
   );
   const [name, setName] = React.useState(() => query.get("name") ?? "");
+  const [manualRecoveryCode, setManualRecoveryCode] = React.useState("");
   const autoJoinFromLink = React.useRef(
     query.has("room") && query.has("name") && query.get("name")!.trim() !== "",
   );
@@ -366,6 +373,15 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [state.matchWinner]);
 
   const joined = state.room !== null;
+  const sessionRecoveryRequired =
+    !joined &&
+    state.error !== null &&
+    [
+      "resume token is required for this player",
+      "player session is invalid or expired",
+      "player session identity does not match",
+      "player session role does not match",
+    ].includes(state.error);
   const observing = joined && state.seat === null;
   const tributePlan = state.pendingTribute as GuandanTributePlan | null;
   const role = tributeRole(tributePlan, state.seat);
@@ -650,8 +666,20 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [status, joined, room, name, send]);
 
   React.useEffect(() => {
-    if (joined) joinPendingRef.current = false;
+    if (joined) {
+      joinPendingRef.current = false;
+      setManualRecoveryCode("");
+    }
   }, [joined]);
+
+  React.useEffect(() => {
+    if (joined || state.error === null) return;
+    // An authentication failure is terminal for this join attempt. Allow the
+    // player to edit their name or paste a recovery code and retry manually.
+    joinPendingRef.current = false;
+    autoJoinKeyRef.current = null;
+    autoJoinFromLink.current = false;
+  }, [joined, state.error]);
 
   React.useEffect(() => {
     if (pendingBotCount === null || gameStarted || !joined || state.seat === null)
@@ -781,7 +809,17 @@ const GuandanTable: React.FunctionComponent = () => {
     autoJoinKeyRef.current = `${r}\u0000${n}`;
     autoJoinFromLink.current = true;
     joinPendingRef.current = true;
-    if (!send({ type: "join", room: r, name: n })) {
+    if (state.error !== null) reset();
+    if (
+      !send({
+        type: "join",
+        room: r,
+        name: n,
+        ...(manualRecoveryCode.trim() === ""
+          ? {}
+          : { resume_token: manualRecoveryCode.trim() }),
+      })
+    ) {
       joinPendingRef.current = false;
       autoJoinKeyRef.current = null;
     }
@@ -1347,6 +1385,36 @@ const GuandanTable: React.FunctionComponent = () => {
             可以在加入房间前先选择；入座后系统会自动加入所选机器人。
             真人加机器人总数不能超过所选桌人数。
           </p>
+          {joined && (
+            <div className="guandan-emergency-reset">
+              <strong>换浏览器继续：</strong>{" "}
+              <button
+                type="button"
+                className="normal"
+                onClick={() => {
+                  const code = getRecoveryCode();
+                  if (code === null) {
+                    window.alert("当前浏览器尚无恢复码，请先成功加入房间。");
+                    return;
+                  }
+                  if (navigator.clipboard?.writeText) {
+                    void navigator.clipboard
+                      .writeText(code)
+                      .then(() => window.alert("恢复码已复制，请妥善保管，仅供本人使用。"))
+                      .catch(() => window.prompt("请复制本人恢复码：", code));
+                  } else {
+                    window.prompt("请复制本人恢复码：", code);
+                  }
+                }}
+              >
+                复制本人恢复码
+              </button>
+              <p>
+                在另一个浏览器打开同一房间时，可粘贴此码恢复原座位与手牌。
+                恢复码相当于入座凭证，请勿发送给其他玩家。
+              </p>
+            </div>
+          )}
           <div className="guandan-emergency-reset">
             <strong>异常恢复：</strong>{" "}
             <button
@@ -1386,6 +1454,25 @@ const GuandanTable: React.FunctionComponent = () => {
               setName(event.target.value);
             }}
           />
+          {sessionRecoveryRequired && (
+            <div className="guandan-emergency-reset">
+              <p>
+                该姓名已有保留座位。请回到之前成功入座的浏览器继续游戏；
+                如果要换浏览器，请在原浏览器的“设置”中复制本人恢复码。
+                没有恢复码时，可换一个新姓名加入，但不会取得原手牌。
+              </p>
+              <label htmlFor="guandan-recovery-code">本人恢复码（可选）：</label>
+              <textarea
+                id="guandan-recovery-code"
+                aria-label="本人恢复码"
+                rows={2}
+                autoComplete="off"
+                placeholder="从原浏览器复制后粘贴"
+                value={manualRecoveryCode}
+                onChange={(event) => setManualRecoveryCode(event.target.value)}
+              />
+            </div>
+          )}
           <button
             disabled={
               status !== "connected" ||
@@ -1395,11 +1482,11 @@ const GuandanTable: React.FunctionComponent = () => {
             }
             onClick={joinRoom}
           >
-            加入房间
+            {manualRecoveryCode.trim() ? "使用恢复码加入" : "加入房间"}
           </button>
-          {status === "connected" && isValidRoomCode(room) && name.trim() && (
-            <p>正在自动恢复房间…</p>
-          )}
+          {status === "connected" &&
+            joinPendingRef.current &&
+            state.error === null && <p>正在自动恢复房间…</p>}
         </section>
       )}
 
