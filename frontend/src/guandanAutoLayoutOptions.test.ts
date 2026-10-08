@@ -49,9 +49,9 @@ describe("Guandan automatic layout options", () => {
       'className="guandan-actions guandan-play-actions"',
     );
     expect(actionPanel).toBeGreaterThan(0);
-    expect(table.indexOf('className="guandan-combo-bottom-controls"')).toBeGreaterThan(
-      actionPanel,
-    );
+    expect(
+      table.indexOf('className="guandan-combo-bottom-controls"'),
+    ).toBeGreaterThan(actionPanel);
     expect(table.indexOf('id="guandan-active-auto-group"')).toBeGreaterThan(
       actionPanel,
     );
