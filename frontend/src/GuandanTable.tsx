@@ -319,6 +319,7 @@ const GuandanTable: React.FunctionComponent = () => {
     });
   const autoJoinKeyRef = React.useRef<string | null>(null);
   const joinPendingRef = React.useRef(false);
+  const [joinBusy, setJoinBusy] = React.useState(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
   const previousNextRoundPhaseRef = React.useRef(state.nextRoundPhase);
   const hasAnimatedCurrentDealRef = React.useRef(false);
@@ -661,13 +662,17 @@ const GuandanTable: React.FunctionComponent = () => {
     joinPendingRef.current = true;
     if (!send({ type: "join", room: r, name: n })) {
       joinPendingRef.current = false;
+      setJoinBusy(false);
       autoJoinKeyRef.current = null;
+    } else {
+      setJoinBusy(true);
     }
   }, [status, joined, room, name, send]);
 
   React.useEffect(() => {
     if (joined) {
       joinPendingRef.current = false;
+      setJoinBusy(false);
       setManualRecoveryCode("");
     }
   }, [joined]);
@@ -677,6 +682,7 @@ const GuandanTable: React.FunctionComponent = () => {
     // An authentication failure is terminal for this join attempt. Allow the
     // player to edit their name or paste a recovery code and retry manually.
     joinPendingRef.current = false;
+    setJoinBusy(false);
     autoJoinKeyRef.current = null;
     autoJoinFromLink.current = false;
   }, [joined, state.error]);
@@ -702,6 +708,7 @@ const GuandanTable: React.FunctionComponent = () => {
     if (status !== "connected") {
       autoJoinKeyRef.current = null;
       joinPendingRef.current = false;
+      setJoinBusy(false);
     }
   }, [status]);
 
@@ -809,6 +816,7 @@ const GuandanTable: React.FunctionComponent = () => {
     autoJoinKeyRef.current = `${r}\u0000${n}`;
     autoJoinFromLink.current = true;
     joinPendingRef.current = true;
+    setJoinBusy(true);
     if (state.error !== null) reset();
     if (
       !send({
@@ -821,6 +829,7 @@ const GuandanTable: React.FunctionComponent = () => {
       })
     ) {
       joinPendingRef.current = false;
+      setJoinBusy(false);
       autoJoinKeyRef.current = null;
     }
   };
@@ -1478,14 +1487,14 @@ const GuandanTable: React.FunctionComponent = () => {
               status !== "connected" ||
               !isValidRoomCode(room) ||
               !name.trim() ||
-              joinPendingRef.current
+              joinBusy
             }
             onClick={joinRoom}
           >
             {manualRecoveryCode.trim() ? "使用恢复码加入" : "加入房间"}
           </button>
           {status === "connected" &&
-            joinPendingRef.current &&
+            joinBusy &&
             state.error === null && <p>正在自动恢复房间…</p>}
         </section>
       )}
