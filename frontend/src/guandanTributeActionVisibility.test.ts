@@ -30,7 +30,7 @@ describe("Guandan tribute action visibility", () => {
       /tributePending\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
     );
     expect(table).toMatch(
-      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
+      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&\s*state\.finishOrder\.length === 0\s*&&\s*state\.lastPlay\.length === 0\s*&&\s*state\.tablePlays\.length === 0/,
     );
   });
 
