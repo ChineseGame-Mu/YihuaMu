@@ -81,6 +81,15 @@ export const addPlayerSessionToJoin = (
         resume_token: session.resumeToken,
       };
 
+export const withGuandanJoinCredentials = (
+  message: JoinWireMessage,
+  session: StoredPlayerSession | null,
+): JoinWireMessage =>
+  typeof message.resume_token === "string" &&
+  message.resume_token.trim() !== ""
+    ? message
+    : addPlayerSessionToJoin(message, session);
+
 const playerSessionKey = (room: string, name: string): string =>
   `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
 
@@ -113,9 +122,11 @@ export const readPlayerSession = (
   // sessionStorage is isolated to one browser tab. localStorage keeps the
   // signed credential when iOS closes/reopens that tab or creates a new tab
   // in the same browser. Neither storage is shared across different browsers.
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageType of ["sessionStorage", "localStorage"] as const) {
     try {
-      const session = parseStoredPlayerSession(storage.getItem(key));
+      const session = parseStoredPlayerSession(
+        window[storageType].getItem(key),
+      );
       if (session !== null) return session;
     } catch {
       // Storage can be blocked by private browsing or privacy settings.
@@ -130,9 +141,9 @@ export const storePlayerSession = (
   session: StoredPlayerSession,
 ): void => {
   const key = playerSessionKey(room, name);
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageType of ["sessionStorage", "localStorage"] as const) {
     try {
-      storage.setItem(key, JSON.stringify(session));
+      window[storageType].setItem(key, JSON.stringify(session));
     } catch {
       // A blocked storage mechanism must not prevent a successful join.
     }
@@ -141,9 +152,9 @@ export const storePlayerSession = (
 
 const clearPlayerSession = (room: string, name: string): void => {
   const key = playerSessionKey(room, name);
-  for (const storage of [window.sessionStorage, window.localStorage]) {
+  for (const storageType of ["sessionStorage", "localStorage"] as const) {
     try {
-      storage.removeItem(key);
+      window[storageType].removeItem(key);
     } catch {
       // Another storage mechanism may still be available.
     }
@@ -432,12 +443,7 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       const stored = readPlayerSession(joinRoom, joinName);
       // A manually pasted recovery code takes precedence over credentials
       // saved by another session with the same visible name.
-      const wireJoin =
-        typeof adapted.resume_token === "string" &&
-        adapted.resume_token.trim() !== ""
-          ? adapted
-          : addPlayerSessionToJoin(adapted, stored);
-      ws.send(JSON.stringify(wireJoin));
+      ws.send(JSON.stringify(withGuandanJoinCredentials(adapted, stored)));
       return true;
     }
     ws.send(JSON.stringify(adapted));
