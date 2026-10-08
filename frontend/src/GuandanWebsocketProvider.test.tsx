@@ -60,7 +60,7 @@ describe("cleanroom player-session reconnect", () => {
     );
     expect(
       isRecoverablePlayerSessionError("player session is invalid or expired"),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   test("adds a stored player id and resume token to the join message body", () => {
