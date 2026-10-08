@@ -25,6 +25,15 @@ describe("Guandan tribute action visibility", () => {
     expect(table).toContain("进贡：");
   });
 
+  test("does not show tribute or anti-tribute while the prior round is shuffling or dealing", () => {
+    expect(table).toContain(
+      "{tributePending && !dealing && !nextRoundPending && serverDealt && (",
+    );
+    expect(table).toContain(
+      "{state.tributeResisted && !dealing && !nextRoundPending && serverDealt && (",
+    );
+  });
+
   test("gives the exchange action its own full-width, non-overlapping slot", () => {
     expect(controls).toMatch(
       />\.guandan-tribute-action,[\s\S]*?>\.guandan-tribute-waiting\{[\s\S]*?left:14px!important;right:14px!important;width:auto!important/,
