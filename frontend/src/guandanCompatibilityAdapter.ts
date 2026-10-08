@@ -299,12 +299,15 @@ export const adaptGuandanServerMessage = (
         seriesTeamAWins: message.series_team_a_wins ?? null,
         seriesTeamBWins: message.series_team_b_wins ?? null,
         pendingTribute: message.pending_tribute,
-        // Keep the anti-tribute notice visible for the whole round.  A late
-        // state snapshot must not make it flash away; only the transition
-        // from a completed round into the next round may clear it.
-        tributeResisted: startedNewRound || startedNewMatch
-          ? message.tribute_resisted
-          : message.tribute_resisted || state.tributeResisted,
+        // A previous round's resistance must not leak into shuffle/deal.
+        // During an active round preserve the notice across transient server
+        // snapshots, but reset it as soon as the next-round phase begins.
+        tributeResisted:
+          message.next_round_phase !== null
+            ? false
+            : startedNewRound || startedNewMatch
+              ? message.tribute_resisted
+              : message.tribute_resisted || state.tributeResisted,
         tributePhase: message.tribute_phase ?? null,
         tributeCards: message.tribute_cards ?? [],
         returnTributeCards: message.return_tribute_cards ?? [],
