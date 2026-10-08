@@ -2478,45 +2478,16 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
-                {editableAutoGroups.length > 0 && (
-                  <div
-                    className="guandan-auto-hand-toolbar"
-                    role="group"
-                    aria-label="手牌组合选择与调整"
-                  >
-                    <label htmlFor="guandan-active-auto-group">
-                      选择组合：
-                    </label>
-                    <select
-                      id="guandan-active-auto-group"
-                      value={Math.min(
-                        activeAutoGroupIndex,
-                        editableAutoGroups.length - 1,
-                      )}
-                      onChange={(event) =>
-                        setActiveAutoGroupIndex(Number(event.target.value))
-                      }
+                {editableAutoGroups.length > 0 &&
+                  handArrangeMode === "auto" && (
+                    <div
+                      className="guandan-auto-hand-toolbar"
+                      role="group"
+                      aria-label="手牌组合选择与调整"
                     >
-                      {editableAutoGroups.map((group, groupIndex) => (
-                        <option
-                          key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
-                          value={groupIndex}
-                        >
-                          {groupIndex + 1}. {group.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      className="normal"
-                      disabled={activeAutoGroup === null}
-                      onClick={selectActiveAutoGroup}
-                    >
-                      选中此组
-                    </button>
-                    {handArrangeMode === "auto" && (
-                      <>
-                        <label htmlFor="guandan-auto-hand-layout-toolbar">
+                      {handArrangeMode === "auto" && (
+                        <>
+                          <label htmlFor="guandan-auto-hand-layout-toolbar">
                           排列：
                         </label>
                         <select
@@ -2695,6 +2666,45 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
 
               <section className="guandan-actions guandan-play-actions">
+                {editableAutoGroups.length > 0 && !tributePending && (
+                  <div
+                    className="guandan-combo-bottom-controls"
+                    role="group"
+                    aria-label="选择组合"
+                  >
+                    <label htmlFor="guandan-active-auto-group">
+                      选择组合：
+                    </label>
+
+                    <select
+                      id="guandan-active-auto-group"
+                      value={Math.min(
+                        activeAutoGroupIndex,
+                        editableAutoGroups.length - 1,
+                      )}
+                      onChange={(event) =>
+                        setActiveAutoGroupIndex(Number(event.target.value))
+                      }
+                    >
+                      {editableAutoGroups.map((group, groupIndex) => (
+                        <option
+                          key={`${group.kind}-${groupIndex}-${group.indexes.join("-")}`}
+                          value={groupIndex}
+                        >
+                          {groupIndex + 1}. {group.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="normal"
+                      disabled={activeAutoGroup === null}
+                      onClick={selectActiveAutoGroup}
+                    >
+                      选中此组
+                    </button>
+                  </div>
+                )}
                 {tributePending &&
                   tributePhase === "tribute" &&
                   role === "giver" && (
@@ -2735,7 +2745,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       disabled={!gameStarted || selected.length === 0}
                       onClick={playSelected}
                     >
-                      一键出选中牌
+                      出牌
                     </button>
                     <button
                       className="guandan-pass-action"
