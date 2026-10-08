@@ -40,8 +40,28 @@ describe("Guandan automatic layout options", () => {
     expect(table).toContain("effectiveTurn !== state.seat");
     expect(table).toContain("tributePending");
     expect(table).toContain("state.trickComplete");
-    expect(table.indexOf("选中此组")).toBeLessThan(table.indexOf("前移"));
+    expect(table.indexOf("选中此组")).toBeGreaterThan(table.indexOf("前移"));
     expect(table.indexOf("一键出此组")).toBeLessThan(table.indexOf("前移"));
+  });
+
+  test("keeps combo selection, play, and pass in the bottom-right action panel", () => {
+    const actionPanel = table.indexOf(
+      'className="guandan-actions guandan-play-actions"',
+    );
+    expect(actionPanel).toBeGreaterThan(0);
+    expect(table.indexOf('className="guandan-combo-bottom-controls"')).toBeGreaterThan(
+      actionPanel,
+    );
+    expect(table.indexOf('id="guandan-active-auto-group"')).toBeGreaterThan(
+      actionPanel,
+    );
+    expect(table.indexOf("选中此组")).toBeGreaterThan(actionPanel);
+    expect(table).toContain("出牌");
+    expect(table).not.toContain("一键出选中牌");
+    expect(table.indexOf("过牌", actionPanel)).toBeGreaterThan(actionPanel);
+    expect(privateLayoutCss).toContain("bottom: 82px !important");
+    expect(privateLayoutCss).toContain("bottom: 12px !important");
+    expect(privateLayoutCss).toContain("bottom: 60px !important");
   });
 
   test("places the grouping tools on the right and stacks cards vertically", () => {
