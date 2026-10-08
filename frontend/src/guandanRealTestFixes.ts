@@ -90,7 +90,10 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   const tableWasAuthoritativelyCleared =
     (message.table_clear_id ?? current.tableClearId) > current.tableClearId;
 
-  let tributePublicCount = currentFixed.__tributePublicCount ?? 0;
+  const transitioningToNextRound = message.next_round_phase !== null;
+  let tributePublicCount = transitioningToNextRound
+    ? 0
+    : (currentFixed.__tributePublicCount ?? 0);
 
   // While tribute is pending, every public table entry belongs to the tribute
   // exchange. On the final return-card snapshot pending_tribute becomes null,
@@ -115,8 +118,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
     !message.trick_complete &&
     message.last_player !== null &&
     normalPlayStarted;
-  const visiblePlays =
-    tableWasAuthoritativelyCleared && !activePlayArrivedWithClear
+  const visiblePlays = transitioningToNextRound
+    ? []
+    : tableWasAuthoritativelyCleared && !activePlayArrivedWithClear
       ? []
       : normalPlayStarted && tributePublicCount > 0
         ? message.table_plays.slice(tributePublicCount)
@@ -134,6 +138,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   return {
     ...adapted,
     hand: clearOwnHand ? [] : adapted.hand,
+    // The next-round shuffle/deal never displays an old trick's last card.
+    lastPlay: transitioningToNextRound ? [] : adapted.lastPlay,
+    lastPlayer: transitioningToNextRound ? null : adapted.lastPlayer,
     tablePlays,
     __tributePublicCount: tributePublicCount,
   } as RealTestState;
