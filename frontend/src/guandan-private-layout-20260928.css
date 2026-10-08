@@ -165,3 +165,144 @@ html
     column-gap: 4px !important;
   }
 }
+
+/* Keep the play, pass, and combo-selection controls together at the
+ * bottom-right corner of the approved two-column table layout. */
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button {
+  top: auto !important;
+  bottom: 12px !important;
+  width: calc(50% - 14px) !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  padding: 5px 6px !important;
+  border-radius: 10px !important;
+  font-size: 18px !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button:nth-last-of-type(2) {
+  left: 8px !important;
+  right: auto !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone
+  > section.guandan-play-actions
+  > button:last-of-type {
+  left: auto !important;
+  right: 8px !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-combo-bottom-controls {
+  position: absolute !important;
+  z-index: 3 !important;
+  right: 10px !important;
+  bottom: 82px !important;
+  left: 10px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+  padding: 8px !important;
+  border: 1px solid #c99a37 !important;
+  border-radius: 10px !important;
+  background: #fff8df !important;
+  color: #513300 !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-combo-bottom-controls
+  label {
+  font-size: 14px !important;
+  font-weight: 900 !important;
+}
+
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-combo-bottom-controls
+  select,
+html
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-combo-bottom-controls
+  button {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 5px 6px !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 760px) {
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    > button {
+    bottom: 6px !important;
+    width: calc(50% - 9px) !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    padding: 4px 2px !important;
+    font-size: 13px !important;
+  }
+
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    > button:nth-last-of-type(2) {
+    left: 5px !important;
+  }
+
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone
+    > section.guandan-play-actions
+    > button:last-of-type {
+    right: 5px !important;
+  }
+
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    .guandan-combo-bottom-controls {
+    right: 5px !important;
+    bottom: 60px !important;
+    left: 5px !important;
+    gap: 4px !important;
+    padding: 5px !important;
+  }
+
+  html
+    body
+    .guandan-table:has(.guandan-public-zone)
+    .guandan-combo-bottom-controls
+    label {
+    font-size: 12px !important;
+  }
+}
