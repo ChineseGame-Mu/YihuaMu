@@ -2284,7 +2284,10 @@ const GuandanTable: React.FunctionComponent = () => {
             {state.tributeResisted &&
               !dealing &&
               !nextRoundPending &&
-              serverDealt && (
+              serverDealt &&
+              state.finishOrder.length === 0 &&
+              state.lastPlay.length === 0 &&
+              state.tablePlays.length === 0 && (
                 <section
                   className="guandan-tribute-panel guandan-panel"
                   role="status"
