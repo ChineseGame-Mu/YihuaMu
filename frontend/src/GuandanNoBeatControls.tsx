@@ -52,6 +52,16 @@ const GuandanNoBeatControls: React.FunctionComponent = () => {
         playButton.disabled = true;
       } else if (playButton.dataset.noBeatDisabled === "true") {
         delete playButton.dataset.noBeatDisabled;
+        // Restore the actual interactive state. Removing the marker alone
+        // leaves the DOM button disabled after the no-beat condition clears.
+        playButton.disabled =
+          state.seat === null ||
+          state.turn !== state.seat ||
+          state.pendingTribute !== null ||
+          state.trickComplete ||
+          document.querySelectorAll(
+            '.guandan-hand button[data-card-index][aria-pressed="true"]',
+          ).length === 0;
       }
     }
 
