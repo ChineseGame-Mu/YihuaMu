@@ -1,0 +1,44 @@
+name: One-time Guandan Tribute Phase Formatting
+on:
+  push:
+    branches:
+      - preview/guandan-room-presence-fix-20261001
+    paths:
+      - .github/workflows/guandan-tribute-phase-format-20261008.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format-tribute-phase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format and check modified files
+        working-directory: frontend
+        run: |
+          ./node_modules/.bin/prettier --write \
+            src/guandanCompatibilityAdapter.ts \
+            src/GuandanTable.tsx \
+            src/guandanRealTestFixes.ts \
+            src/guandanRealTestFixes.test.ts \
+            src/guandanTributeActionVisibility.test.ts
+          ./node_modules/.bin/prettier --check \
+            src/guandanCompatibilityAdapter.ts \
+            src/GuandanTable.tsx \
+            src/guandanRealTestFixes.ts \
+            src/guandanRealTestFixes.test.ts \
+            src/guandanTributeActionVisibility.test.ts
+      - name: Commit formatting
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/guandanCompatibilityAdapter.ts frontend/src/GuandanTable.tsx frontend/src/guandanRealTestFixes.ts frontend/src/guandanRealTestFixes.test.ts frontend/src/guandanTributeActionVisibility.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "style: format anti-tribute transition fix"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
