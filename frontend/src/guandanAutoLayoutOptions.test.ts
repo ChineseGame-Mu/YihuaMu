@@ -62,6 +62,10 @@ describe("Guandan automatic layout options", () => {
     expect(privateLayoutCss).toContain("bottom: 82px !important");
     expect(privateLayoutCss).toContain("bottom: 12px !important");
     expect(privateLayoutCss).toContain("bottom: 60px !important");
+    // Portal-rendered preview must never cover Play / Pass click targets.
+    expect(privateLayoutCss).toContain("z-index: 10 !important");
+    expect(privateLayoutCss).toContain("pointer-events: none !important");
+    expect(privateLayoutCss).toContain("bottom: 196px !important");
   });
 
   test("places the grouping tools on the right and stacks cards vertically", () => {
