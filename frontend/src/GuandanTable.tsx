@@ -304,8 +304,7 @@ const GuandanTable: React.FunctionComponent = () => {
     "idle" | "missing" | "sending" | "sent" | "failed"
   >("idle");
   const [screenshotEmailError, setScreenshotEmailError] = React.useState("");
-  const [, setVictoryScreenshotDataUrl] =
-    React.useState<string | null>(null);
+  const [, setVictoryScreenshotDataUrl] = React.useState<string | null>(null);
   const musicModeRef = React.useRef<GuandanMusicMode>(musicMode);
   const activeMusicModeRef = React.useRef<GuandanMusicMode>("off");
   const stopMusicRef = React.useRef<(() => void) | null>(null);
@@ -688,21 +687,19 @@ const GuandanTable: React.FunctionComponent = () => {
   }, [joined, state.error]);
 
   React.useEffect(() => {
-    if (pendingBotCount === null || gameStarted || !joined || state.seat === null)
+    if (
+      pendingBotCount === null ||
+      gameStarted ||
+      !joined ||
+      state.seat === null
+    )
       return;
     if (currentBotCount === pendingBotCount) {
       setPendingBotCount(null);
       return;
     }
     send({ type: "set_bots", count: pendingBotCount });
-  }, [
-    pendingBotCount,
-    gameStarted,
-    joined,
-    state.seat,
-    currentBotCount,
-    send,
-  ]);
+  }, [pendingBotCount, gameStarted, joined, state.seat, currentBotCount, send]);
 
   React.useEffect(() => {
     if (status !== "connected") {
@@ -950,11 +947,13 @@ const GuandanTable: React.FunctionComponent = () => {
   const victoryFirstPlaceName =
     state.finishOrder[0] === undefined
       ? null
-      : (state.players[state.finishOrder[0]] ?? `玩家${state.finishOrder[0] + 1}`);
+      : (state.players[state.finishOrder[0]] ??
+        `玩家${state.finishOrder[0] + 1}`);
   const victorySecondPlaceName =
     state.finishOrder[1] === undefined
       ? null
-      : (state.players[state.finishOrder[1]] ?? `玩家${state.finishOrder[1] + 1}`);
+      : (state.players[state.finishOrder[1]] ??
+        `玩家${state.finishOrder[1] + 1}`);
   const victoryRemainingNames = state.finishOrder
     .slice(2)
     .map((seat) => state.players[seat] ?? `玩家${seat + 1}`);
@@ -1409,7 +1408,11 @@ const GuandanTable: React.FunctionComponent = () => {
                   if (navigator.clipboard?.writeText) {
                     void navigator.clipboard
                       .writeText(code)
-                      .then(() => window.alert("恢复码已复制，请妥善保管，仅供本人使用。"))
+                      .then(() =>
+                        window.alert(
+                          "恢复码已复制，请妥善保管，仅供本人使用。",
+                        ),
+                      )
                       .catch(() => window.prompt("请复制本人恢复码：", code));
                   } else {
                     window.prompt("请复制本人恢复码：", code);
@@ -1470,7 +1473,9 @@ const GuandanTable: React.FunctionComponent = () => {
                 如果要换浏览器，请在原浏览器的“设置”中复制本人恢复码。
                 没有恢复码时，可换一个新姓名加入，但不会取得原手牌。
               </p>
-              <label htmlFor="guandan-recovery-code">本人恢复码（可选）：</label>
+              <label htmlFor="guandan-recovery-code">
+                本人恢复码（可选）：
+              </label>
               <textarea
                 id="guandan-recovery-code"
                 aria-label="本人恢复码"
@@ -1493,9 +1498,9 @@ const GuandanTable: React.FunctionComponent = () => {
           >
             {manualRecoveryCode.trim() ? "使用恢复码加入" : "加入房间"}
           </button>
-          {status === "connected" &&
-            joinBusy &&
-            state.error === null && <p>正在自动恢复房间…</p>}
+          {status === "connected" && joinBusy && state.error === null && (
+            <p>正在自动恢复房间…</p>
+          )}
         </section>
       )}
 
@@ -2066,7 +2071,8 @@ const GuandanTable: React.FunctionComponent = () => {
                         {screenshotEmailStatus === "missing" &&
                           "未设置有效邮箱：胜利截图已生成，但不会发送邮件。"}
                         {screenshotEmailStatus === "failed" &&
-                          (screenshotEmailError || "胜利截图发送失败，可重试一次。")}
+                          (screenshotEmailError ||
+                            "胜利截图发送失败，可重试一次。")}
                       </span>
                       {(screenshotEmailStatus === "failed" ||
                         screenshotEmailStatus === "missing") && (
@@ -2089,7 +2095,8 @@ const GuandanTable: React.FunctionComponent = () => {
                             dateTime={celebrationNow.toISOString()}
                             style={{ marginLeft: 12 }}
                           >
-                            庆祝时间：{formatCelebrationDateTime(celebrationNow)}
+                            庆祝时间：
+                            {formatCelebrationDateTime(celebrationNow)}
                           </time>
                           <span style={{ marginLeft: 10 }}>
                             🏆 烟花庆祝播放中（10秒）
@@ -2127,8 +2134,8 @@ const GuandanTable: React.FunctionComponent = () => {
                           </span>
                         ) : threeMatchSeriesActive ? (
                           <span>
-                            第 {state.seriesMatchNumber}/3 局结束。继续后清零级数，
-                            重新抽牌并从打2开始第{" "}
+                            第 {state.seriesMatchNumber}/3
+                            局结束。继续后清零级数， 重新抽牌并从打2开始第{" "}
                             {(state.seriesMatchNumber ?? 0) + 1}/3 局。
                           </span>
                         ) : (

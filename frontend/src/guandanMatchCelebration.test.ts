@@ -49,7 +49,7 @@ describe("Guandan A-level match celebration", () => {
     );
     expect(table).toContain('className="guandan-match-trophy"');
     expect(table).toContain('position: "fixed"');
-    expect(table).toContain('inset: 0');
+    expect(table).toContain("inset: 0");
     expect(table).toContain('width: "100vw"');
     expect(table).toContain('height: "100vh"');
     // The celebration is now a body-level portal with a full-viewport
@@ -84,7 +84,7 @@ describe("Guandan A-level match celebration", () => {
     expect(css).toContain("transform: translate(-50%, -50%) !important");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) auto");
     expect(table).toContain("setVictoryScreenshotDataUrl");
-    expect(table).toContain('zIndex: 2147483000');
+    expect(table).toContain("zIndex: 2147483000");
   });
 
   test("provides a test-only online preview for screenshot verification", () => {
