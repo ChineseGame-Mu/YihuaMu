@@ -3,6 +3,9 @@ import { join } from "node:path";
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
+  readPlayerSession,
+  storePlayerSession,
+  withGuandanJoinCredentials,
   isRecoverablePlayerSessionError,
   sendGuandanLeave,
   shouldCoalesceGuandanServerMessage,
@@ -55,6 +58,9 @@ describe("cleanroom player-session reconnect", () => {
     expect(isRecoverablePlayerSessionError("resume token is required")).toBe(
       false,
     );
+    expect(
+      isRecoverablePlayerSessionError("player session is invalid or expired"),
+    ).toBe(false);
   });
 
   test("adds a stored player id and resume token to the join message body", () => {
@@ -76,6 +82,33 @@ describe("cleanroom player-session reconnect", () => {
   test("does not add empty credentials to a first-time join", () => {
     const join = { type: "join" as const, room: "0004", name: "玩家一" };
     expect(addPlayerSessionToJoin(join, null)).toBe(join);
+  });
+
+  test("recovers a signed session from persistent storage after a new tab", () => {
+    window.sessionStorage.clear();
+    window.localStorage.clear();
+    const session = { playerId: "legacy:玩家一", resumeToken: "signed-token" };
+    storePlayerSession("0004", "玩家一", session);
+    expect(readPlayerSession("0004", "玩家一")).toEqual(session);
+    window.sessionStorage.clear();
+    expect(readPlayerSession("0004", "玩家一")).toEqual(session);
+    expect(readPlayerSession("0004", "另一位")).toBeNull();
+    window.localStorage.clear();
+  });
+
+  test("prioritizes a pasted recovery code over stale browser credentials", () => {
+    const join = {
+      type: "join" as const,
+      room: "0004",
+      name: "玩家一",
+      resume_token: "copied-from-original-browser",
+    };
+    expect(
+      withGuandanJoinCredentials(join, {
+        playerId: "legacy:old",
+        resumeToken: "stale",
+      }),
+    ).toEqual(join);
   });
 });
 
