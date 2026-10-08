@@ -17,6 +17,7 @@ interface GuandanWebsocketContextValue {
   messageSequence: number;
   send: (message: GuandanClientMessage) => boolean;
   leave: () => boolean;
+  getRecoveryCode: () => string | null;
 }
 
 export const GuandanWebsocketContext =
@@ -26,6 +27,7 @@ export const GuandanWebsocketContext =
     messageSequence: 0,
     send: () => false,
     leave: () => false,
+    getRecoveryCode: () => null,
   });
 
 interface GuandanWebsocketProviderProps {
@@ -82,21 +84,15 @@ export const addPlayerSessionToJoin = (
 const playerSessionKey = (room: string, name: string): string =>
   `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
 
+// Only a valid token for a room that no longer exists may be retried without
+// credentials. Retrying missing/expired credentials cannot reclaim a reserved
+// seat and instead traps the player in a second authentication error.
 export const isRecoverablePlayerSessionError = (message: string): boolean =>
-  [
-    "player session is invalid or expired",
-    "player session identity does not match",
-    "player session no longer belongs to this room",
-    "player session role does not match",
-  ].includes(message);
+  message === "player session no longer belongs to this room";
 
-const readPlayerSession = (
-  room: string,
-  name: string,
-): StoredPlayerSession | null => {
+const parseStoredPlayerSession = (raw: string | null): StoredPlayerSession | null => {
+  if (raw === null) return null;
   try {
-    const raw = window.sessionStorage.getItem(playerSessionKey(room, name));
-    if (raw === null) return null;
     const parsed = JSON.parse(raw) as Partial<StoredPlayerSession>;
     return typeof parsed.playerId === "string" &&
       parsed.playerId.length > 0 &&
@@ -109,27 +105,48 @@ const readPlayerSession = (
   }
 };
 
-const storePlayerSession = (
+export const readPlayerSession = (
+  room: string,
+  name: string,
+): StoredPlayerSession | null => {
+  const key = playerSessionKey(room, name);
+  // sessionStorage is isolated to one browser tab. localStorage keeps the
+  // signed credential when iOS closes/reopens that tab or creates a new tab
+  // in the same browser. Neither storage is shared across different browsers.
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      const session = parseStoredPlayerSession(storage.getItem(key));
+      if (session !== null) return session;
+    } catch {
+      // Storage can be blocked by private browsing or privacy settings.
+    }
+  }
+  return null;
+};
+
+export const storePlayerSession = (
   room: string,
   name: string,
   session: StoredPlayerSession,
 ): void => {
-  try {
-    window.sessionStorage.setItem(
-      playerSessionKey(room, name),
-      JSON.stringify(session),
-    );
-  } catch {
-    // The game remains usable when browser storage is unavailable, but a page
-    // refresh will require a new player identity.
+  const key = playerSessionKey(room, name);
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      storage.setItem(key, JSON.stringify(session));
+    } catch {
+      // A blocked storage mechanism must not prevent a successful join.
+    }
   }
 };
 
 const clearPlayerSession = (room: string, name: string): void => {
-  try {
-    window.sessionStorage.removeItem(playerSessionKey(room, name));
-  } catch {
-    // A retry can still proceed without browser storage access.
+  const key = playerSessionKey(room, name);
+  for (const storage of [window.sessionStorage, window.localStorage]) {
+    try {
+      storage.removeItem(key);
+    } catch {
+      // Another storage mechanism may still be available.
+    }
   }
 };
 
@@ -232,6 +249,13 @@ const GuandanWebsocketProvider: React.FunctionComponent<
     if (!sendGuandanLeave(ws, lastJoinIdentityRef.current !== null)) return false;
     lastJoinIdentityRef.current = null;
     return true;
+  }, []);
+
+  const getRecoveryCode = React.useCallback((): string | null => {
+    const identity = lastJoinIdentityRef.current;
+    return identity === null
+      ? null
+      : readPlayerSession(identity.room, identity.name)?.resumeToken ?? null;
   }, []);
 
   React.useEffect(() => {
@@ -406,7 +430,14 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       lastJoinMessageRef.current = adapted;
       sessionRecoveryAttemptedRef.current = false;
       const stored = readPlayerSession(joinRoom, joinName);
-      ws.send(JSON.stringify(addPlayerSessionToJoin(adapted, stored)));
+      // A manually pasted recovery code takes precedence over credentials
+      // saved by another session with the same visible name.
+      const wireJoin =
+        typeof adapted.resume_token === "string" &&
+        adapted.resume_token.trim() !== ""
+          ? adapted
+          : addPlayerSessionToJoin(adapted, stored);
+      ws.send(JSON.stringify(wireJoin));
       return true;
     }
     ws.send(JSON.stringify(adapted));
@@ -420,8 +451,9 @@ const GuandanWebsocketProvider: React.FunctionComponent<
       messageSequence: delivery.sequence,
       send,
       leave,
+      getRecoveryCode,
     }),
-    [status, delivery, send, leave],
+    [status, delivery, send, leave, getRecoveryCode],
   );
 
   return (
