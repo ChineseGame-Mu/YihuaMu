@@ -378,7 +378,14 @@ const GuandanWebsocketProvider: React.FunctionComponent<
             if (identity !== null && lastJoin !== null) {
               sessionRecoveryAttemptedRef.current = true;
               clearPlayerSession(identity.room, identity.name);
-              ws.send(JSON.stringify(lastJoin));
+              // The old room is gone: retry as a new participant without
+              // replaying an obsolete pasted or stored session credential.
+              const freshJoin = Object.fromEntries(
+                Object.entries(lastJoin).filter(
+                  ([key]) => key !== "resume_token" && key !== "player_id",
+                ),
+              ) as JoinWireMessage;
+              ws.send(JSON.stringify(freshJoin));
               return;
             }
           }
