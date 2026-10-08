@@ -866,7 +866,7 @@ pub async fn websocket(
                     Some(seat)
                 } else {
                     let name_for_state = name.clone();
-                    let seat_result = storage
+                    let seat_result: Result<u64, PlayError> = storage
                         .clone()
                         .execute_operation_with_messages(key.clone(), move |mut state| {
                             claim_human_seat(&mut state.game, name_for_state)?;
