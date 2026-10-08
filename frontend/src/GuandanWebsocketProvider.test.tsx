@@ -85,15 +85,31 @@ describe("cleanroom player-session reconnect", () => {
   });
 
   test("recovers a signed session from persistent storage after a new tab", () => {
-    window.sessionStorage.clear();
-    window.localStorage.clear();
-    const session = { playerId: "legacy:玩家一", resumeToken: "signed-token" };
-    storePlayerSession("0004", "玩家一", session);
-    expect(readPlayerSession("0004", "玩家一")).toEqual(session);
-    window.sessionStorage.clear();
-    expect(readPlayerSession("0004", "玩家一")).toEqual(session);
-    expect(readPlayerSession("0004", "另一位")).toBeNull();
-    window.localStorage.clear();
+    const fakeStorage = () => {
+      const data = new Map<string, string>();
+      return {
+        getItem: (key: string) => data.get(key) ?? null,
+        setItem: (key: string, value: string) => data.set(key, value),
+        removeItem: (key: string) => data.delete(key),
+        clear: () => data.clear(),
+      };
+    };
+    const previousWindow = (globalThis as any).window;
+    (globalThis as any).window = {
+      sessionStorage: fakeStorage(),
+      localStorage: fakeStorage(),
+    };
+    try {
+      const session = { playerId: "legacy:玩家一", resumeToken: "signed-token" };
+      storePlayerSession("0004", "玩家一", session);
+      expect(readPlayerSession("0004", "玩家一")).toEqual(session);
+      window.sessionStorage.clear();
+      expect(readPlayerSession("0004", "玩家一")).toEqual(session);
+      expect(readPlayerSession("0004", "另一位")).toBeNull();
+    } finally {
+      if (previousWindow === undefined) delete (globalThis as any).window;
+      else (globalThis as any).window = previousWindow;
+    }
   });
 
   test("prioritizes a pasted recovery code over stale browser credentials", () => {
