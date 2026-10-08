@@ -93,11 +93,12 @@ export const withGuandanJoinCredentials = (
 const playerSessionKey = (room: string, name: string): string =>
   `${PLAYER_SESSION_PREFIX}${room}\u0000${name}`;
 
-// Only a valid token for a room that no longer exists may be retried without
-// credentials. Retrying missing/expired credentials cannot reclaim a reserved
-// seat and instead traps the player in a second authentication error.
+// An invalid or expired token may be retried once as a new participant if
+// the original room is gone. If the seat is still reserved, the server rejects
+// that retry; the UI then stops auto-joining and offers secure recovery.
 export const isRecoverablePlayerSessionError = (message: string): boolean =>
-  message === "player session no longer belongs to this room";
+  message === "player session no longer belongs to this room" ||
+  message === "player session is invalid or expired";
 
 const parseStoredPlayerSession = (raw: string | null): StoredPlayerSession | null => {
   if (raw === null) return null;
