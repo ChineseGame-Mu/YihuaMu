@@ -68,7 +68,7 @@ describe("Guandan A-level match celebration", () => {
     expect(table).toContain("setInterval");
     expect(table).toContain("celebrationFireworks.map");
     expect(table).toContain('" guandan-match-celebrating"');
-    expect(table).toContain("获胜队员：");
+    expect(table).toContain('className="guandan-match-trophy"');
     expect(table).toMatch(/>\s*继续\s*</);
     expect(table).toMatch(/>\s*退出\s*</);
     expect(css).toContain("@keyframes guandan-firework-burst");
@@ -83,8 +83,8 @@ describe("Guandan A-level match celebration", () => {
     expect(css).toContain("left: 50% !important");
     expect(css).toContain("transform: translate(-50%, -50%) !important");
     expect(css).toContain("grid-template-columns: minmax(0, 1fr) auto");
-    expect(table).toContain("victoryScreenshotDataUrl");
-    expect(table).toContain('zIndex: 10000');
+    expect(table).toContain("setVictoryScreenshotDataUrl");
+    expect(table).toContain('zIndex: 2147483000');
   });
 
   test("provides a test-only online preview for screenshot verification", () => {
