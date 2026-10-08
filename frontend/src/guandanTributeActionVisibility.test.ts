@@ -26,11 +26,11 @@ describe("Guandan tribute action visibility", () => {
   });
 
   test("does not show tribute or anti-tribute while the prior round is shuffling or dealing", () => {
-    expect(table).toContain(
-      "{tributePending && !dealing && !nextRoundPending && serverDealt && (",
+    expect(table).toMatch(
+      /tributePending\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
     );
-    expect(table).toContain(
-      "{state.tributeResisted && !dealing && !nextRoundPending && serverDealt && (",
+    expect(table).toMatch(
+      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
     );
   });
 
