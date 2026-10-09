@@ -52,7 +52,9 @@ export const availabilityByVisibleRoom = (
 export const cleanroomRoomOptionLabel = (
   room: CleanroomRoomId,
   availability: CleanroomRoomAvailability | undefined,
+  unavailable = false,
 ): string => {
+  if (unavailable) return `${room}（人数暂不可查）`;
   if (availability === undefined) return `${room}（查询中…）`;
   if (availability.humanCount === 0) return `${room}（空房）`;
   if (availability.phase === "lobby") {
