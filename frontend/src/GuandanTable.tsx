@@ -2484,96 +2484,6 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
-                {editableAutoGroups.length > 0 &&
-                  handArrangeMode === "auto" && (
-                    <div
-                      className="guandan-auto-hand-toolbar"
-                      role="group"
-                      aria-label="手牌组合选择与调整"
-                    >
-                      {handArrangeMode === "auto" && (
-                        <>
-                          <label htmlFor="guandan-auto-hand-layout-toolbar">
-                            排列：
-                          </label>
-                          <select
-                            id="guandan-auto-hand-layout-toolbar"
-                            value={autoHandLayout}
-                            onChange={(event) =>
-                              setAutoHandLayout(
-                                event.target.value === "vertical"
-                                  ? "vertical"
-                                  : "horizontal",
-                              )
-                            }
-                          >
-                            <option value="horizontal">横式排列</option>
-                            <option value="vertical">竖式排列</option>
-                          </select>
-                          <button
-                            type="button"
-                            className="guandan-auto-play-group"
-                            disabled={
-                              activeAutoGroup === null ||
-                              !gameStarted ||
-                              state.seat === null ||
-                              effectiveTurn !== state.seat ||
-                              tributePending ||
-                              state.trickComplete
-                            }
-                            onClick={playActiveAutoGroup}
-                          >
-                            一键出此组
-                          </button>
-                          <button
-                            type="button"
-                            className="normal"
-                            disabled={activeAutoGroupIndex === 0}
-                            onClick={() => moveActiveAutoGroup(-1)}
-                          >
-                            前移
-                          </button>
-                          <button
-                            type="button"
-                            className="normal"
-                            disabled={
-                              activeAutoGroupIndex >=
-                              editableAutoGroups.length - 1
-                            }
-                            onClick={() => moveActiveAutoGroup(1)}
-                          >
-                            后移
-                          </button>
-                          <button
-                            type="button"
-                            className="normal"
-                            disabled={
-                              activeAutoGroup === null ||
-                              activeAutoGroup.indexes.length < 2
-                            }
-                            onClick={splitActiveAutoGroup}
-                          >
-                            拆开此组
-                          </button>
-                          <button
-                            type="button"
-                            className="normal"
-                            disabled={selected.length === 0}
-                            onClick={makeSelectedCustomGroup}
-                          >
-                            选中牌组成一组
-                          </button>
-                          <button
-                            type="button"
-                            className="normal"
-                            onClick={restoreAutoArrangement}
-                          >
-                            恢复方案
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
                 <div
                   className={`guandan-hand${
                     handArrangeMode === "auto"
@@ -2673,7 +2583,8 @@ const GuandanTable: React.FunctionComponent = () => {
 
               <section className="guandan-actions guandan-play-actions">
                 {editableAutoGroups.length > 0 && !tributePending && (
-                  <div
+                  <div className="guandan-combo-arrange-panel" role="group" aria-label="排列与选择组合">
+                    <div
                     className="guandan-combo-bottom-controls"
                     role="group"
                     aria-label="选择组合"
@@ -2709,6 +2620,97 @@ const GuandanTable: React.FunctionComponent = () => {
                     >
                       选中此组
                     </button>
+                    </div>
+                  {editableAutoGroups.length > 0 &&
+                    handArrangeMode === "auto" && (
+                      <div
+                        className="guandan-auto-hand-toolbar"
+                        role="group"
+                        aria-label="手牌组合选择与调整"
+                      >
+                        {handArrangeMode === "auto" && (
+                          <>
+                            <label htmlFor="guandan-auto-hand-layout-toolbar">
+                              排列：
+                            </label>
+                            <select
+                              id="guandan-auto-hand-layout-toolbar"
+                              value={autoHandLayout}
+                              onChange={(event) =>
+                                setAutoHandLayout(
+                                  event.target.value === "vertical"
+                                    ? "vertical"
+                                    : "horizontal",
+                                )
+                              }
+                            >
+                              <option value="horizontal">横式排列</option>
+                              <option value="vertical">竖式排列</option>
+                            </select>
+                            <button
+                              type="button"
+                              className="guandan-auto-play-group"
+                              disabled={
+                                activeAutoGroup === null ||
+                                !gameStarted ||
+                                state.seat === null ||
+                                effectiveTurn !== state.seat ||
+                                tributePending ||
+                                state.trickComplete
+                              }
+                              onClick={playActiveAutoGroup}
+                            >
+                              一键出此组
+                            </button>
+                            <button
+                              type="button"
+                              className="normal"
+                              disabled={activeAutoGroupIndex === 0}
+                              onClick={() => moveActiveAutoGroup(-1)}
+                            >
+                              前移
+                            </button>
+                            <button
+                              type="button"
+                              className="normal"
+                              disabled={
+                                activeAutoGroupIndex >=
+                                editableAutoGroups.length - 1
+                              }
+                              onClick={() => moveActiveAutoGroup(1)}
+                            >
+                              后移
+                            </button>
+                            <button
+                              type="button"
+                              className="normal"
+                              disabled={
+                                activeAutoGroup === null ||
+                                activeAutoGroup.indexes.length < 2
+                              }
+                              onClick={splitActiveAutoGroup}
+                            >
+                              拆开此组
+                            </button>
+                            <button
+                              type="button"
+                              className="normal"
+                              disabled={selected.length === 0}
+                              onClick={makeSelectedCustomGroup}
+                            >
+                              选中牌组成一组
+                            </button>
+                            <button
+                              type="button"
+                              className="normal"
+                              onClick={restoreAutoArrangement}
+                            >
+                              恢复方案
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
                 {tributePending &&
