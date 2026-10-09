@@ -31,18 +31,12 @@ describe("cleanroom room availability", () => {
   });
 
   test("stops displaying querying indefinitely when the status endpoint fails", () => {
-    expect(cleanroomRoomOptionLabel("0005", undefined)).toBe(
-      "0005（查询中…）",
-    );
+    expect(cleanroomRoomOptionLabel("0005", undefined)).toBe("0005（查询中…）");
     expect(cleanroomRoomOptionLabel("0005", undefined, true)).toBe(
       "0005（人数暂不可查）",
     );
     expect(
-      cleanroomRoomOptionLabel(
-        "0005",
-        { humanCount: 0, phase: "lobby" },
-        true,
-      ),
+      cleanroomRoomOptionLabel("0005", { humanCount: 0, phase: "lobby" }, true),
     ).toBe("0005（人数暂不可查）");
     expect(
       cleanroomRoomOptionLabel("0005", { humanCount: 0, phase: "lobby" }),
