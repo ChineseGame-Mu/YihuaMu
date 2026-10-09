@@ -30,8 +30,18 @@ describe("Guandan tribute action visibility", () => {
       /tributePending\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
     );
     expect(table).toMatch(
-      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&\s*state\.finishOrder\.length === 0\s*&&\s*state\.lastPlay\.length === 0\s*&&\s*state\.tablePlays\.length === 0/,
+      /state\.tributeResisted\s*&&\s*!antiTributeNoticeDismissed\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&\s*state\.finishOrder\.length === 0\s*&&\s*state\.lastPlay\.length === 0\s*&&\s*state\.tablePlays\.length === 0/,
     );
+  });
+
+  test("anti-tribute announcement is dismissed after regular play and does not return after trick clear", () => {
+    expect(table).toContain("antiTributeNoticeDismissed");
+    expect(table).toContain("setAntiTributeNoticeDismissed(true)");
+    expect(table).toContain("state.lastPlayer !== null");
+    expect(table).toContain("(state.tableClearId ?? 0) > 0");
+    expect(table).toContain("setAntiTributeNoticeDismissed(false)");
+    expect(table).toMatch(/nextRoundPending \|\| dealing \|\| !serverDealt/);
+    expect(table).toMatch(/setTimeout\([\s\S]*?setAntiTributeNoticeDismissed\(true\),\s*5000/);
   });
 
   test("gives the exchange action its own full-width, non-overlapping slot", () => {
