@@ -58,3 +58,15 @@ jobs:
           grep -oE '000[1-9]（[^）]+）|0010（[^）]+）' /tmp/preview-room-dom.txt | head -n 12 || true
           echo "Preview browser JS errors:"
           grep -iE 'Uncaught|CONSOLE.*Error|CORS|blocked by|net::ERR' /tmp/preview-room-errors.txt | head -n 20 || true
+      - name: Simulate backend unavailable in Chrome
+        shell: bash
+        run: |
+          set +e
+          timeout 40s google-chrome --headless=new --no-sandbox --disable-gpu \
+            --disable-dev-shm-usage --virtual-time-budget=16000 \
+            --host-resolver-rules='MAP card-games-yihua.onrender.com ~NOTFOUND' \
+            --dump-dom 'https://yihua-iizpil1x5-chinese-game.vercel.app/' \
+            > /tmp/blocked-room-dom.txt 2>/tmp/blocked-room-errors.txt
+          echo "blocked backend room label:"
+          grep -oE '0005（[^）]+）' /tmp/blocked-room-dom.txt | head -n 2 || true
+          grep -q '0005（人数暂不可查）' /tmp/blocked-room-dom.txt || exit 1
