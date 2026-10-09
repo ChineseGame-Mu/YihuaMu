@@ -135,30 +135,47 @@ const CleanroomEntry = (): JSX.Element => {
     Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
   >({});
   React.useEffect(() => { document.documentElement.dataset.cleanroomCommit = cleanroomBuildCommit; return () => { delete document.documentElement.dataset.cleanroomCommit; }; }, []);
+  const [roomAvailabilityUnavailable, setRoomAvailabilityUnavailable] =
+    React.useState(false);
   React.useEffect(() => {
     if (joined) return undefined;
     let active = true;
+    let checking = false;
     const refresh = async (): Promise<void> => {
+      if (checking) return;
+      checking = true;
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 6_000);
       try {
         const response = await fetch(cleanroomRoomAvailabilityUrl, {
           cache: "no-store",
+          signal: controller.signal,
         });
-        if (!response.ok) return;
+        if (!response.ok) throw new Error("room availability unavailable");
         const payload = (await response.json()) as {
           readonly rooms?: readonly CleanroomRoomSummary[];
         };
-        if (!active || !Array.isArray(payload.rooms)) return;
+        if (!Array.isArray(payload.rooms)) {
+          throw new Error("invalid room availability response");
+        }
+        if (!active) return;
         setRoomAvailability(
           availabilityByVisibleRoom(payload.rooms, (room) =>
             cleanroomDeploymentRoom(room, window.location.hostname) ?? room,
           ),
         );
+        setRoomAvailabilityUnavailable(false);
       } catch {
-        // Keep the room selector usable if the read-only status service is unavailable.
+        // The read-only status service is optional. A failed request must not
+        // leave every room saying "查询中" indefinitely or prevent joining.
+        if (active) setRoomAvailabilityUnavailable(true);
+      } finally {
+        window.clearTimeout(timeout);
+        checking = false;
       }
     };
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 5_000);
+    const timer = window.setInterval(() => void refresh(), 10_000);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -194,7 +211,7 @@ const CleanroomEntry = (): JSX.Element => {
       <div className="cleanroom-final-stage">
         <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
-          <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room])}</option>)}</select>
+          <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
           <select id="cleanroom-player-count" className="cleanroom-final-control cleanroom-final-players" aria-label="开始人数" value={playerCount} onChange={(event) => setPlayerCount(Number(event.target.value))}>{supportedCounts.map((count) => <option key={count} value={count}>{count} 人</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
           <button id="cleanroom-enter-room" className="cleanroom-final-enter" type="submit" disabled={name.trim() === ""} aria-label="进入牌室"><span>进入牌室</span><small>ENTER ROOM</small></button>
