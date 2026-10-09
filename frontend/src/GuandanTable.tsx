@@ -434,6 +434,56 @@ const GuandanTable: React.FunctionComponent = () => {
   } as React.CSSProperties;
   const serverDealt =
     state.hand.length > 0 || state.handCounts.some((count) => count > 0);
+  // Anti-tribute is a once-per-deal announcement, not a persistent round status.
+  // Clearing a trick empties lastPlay/tablePlays, so those fields alone would
+  // incorrectly bring the banner back after every completed trick.
+  const [antiTributeNoticeDismissed, setAntiTributeNoticeDismissed] =
+    React.useState(false);
+  React.useEffect(() => {
+    if (nextRoundPending || dealing || !serverDealt) {
+      setAntiTributeNoticeDismissed(false);
+      return;
+    }
+    if (
+      state.lastPlayer !== null ||
+      state.lastPlay.length > 0 ||
+      state.tablePlays.length > 0 ||
+      state.finishOrder.length > 0 ||
+      (state.tableClearId ?? 0) > 0
+    ) {
+      setAntiTributeNoticeDismissed(true);
+    }
+  }, [
+    nextRoundPending,
+    dealing,
+    serverDealt,
+    state.lastPlayer,
+    state.lastPlay,
+    state.tablePlays,
+    state.finishOrder,
+    state.tableClearId,
+  ]);
+  React.useEffect(() => {
+    if (
+      !state.tributeResisted ||
+      antiTributeNoticeDismissed ||
+      dealing ||
+      nextRoundPending ||
+      !serverDealt
+    ) return;
+    const timer = window.setTimeout(
+      () => setAntiTributeNoticeDismissed(true),
+      5000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [
+    state.tributeResisted,
+    antiTributeNoticeDismissed,
+    dealing,
+    nextRoundPending,
+    serverDealt,
+  ]);
+
   const gameStarted = serverDealt || startRequested;
   const effectiveTurn = state.turn ?? (gameStarted ? 0 : null);
   const currentPlayerName =
@@ -2282,6 +2332,7 @@ const GuandanTable: React.FunctionComponent = () => {
             )}
 
             {state.tributeResisted &&
+              !antiTributeNoticeDismissed &&
               !dealing &&
               !nextRoundPending &&
               serverDealt &&
