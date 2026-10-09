@@ -1,0 +1,66 @@
+name: Complete Guandan Source Backup 2026-10-08
+on:
+  push:
+    branches:
+      - backup/full-export-20261008
+    paths:
+      - .github/workflows/guandan-full-source-backup-20261008.yml
+
+permissions:
+  contents: read
+
+jobs:
+  create-complete-backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Capture complete Git history and versioned source snapshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p guandan-backup-20261008
+          git fetch origin '+refs/heads/*:refs/remotes/origin/*' --tags --force
+          git bundle create guandan-backup-20261008/YihuaMu-all-branches-and-history.bundle --all
+          git bundle verify guandan-backup-20261008/YihuaMu-all-branches-and-history.bundle
+          git archive --format=zip --output=guandan-backup-20261008/guandan-preview-20261008.zip 15fd16879576862b20aa489799167c8fec8b09b5
+          git archive --format=zip --output=guandan-backup-20261008/guandan-production-20261008.zip eba68bb1498444d03414c60f09eea19dbc1b4b14
+          git archive --format=zip --output=guandan-backup-20261008/guandan-render-backend-20261008.zip 61ef6512b20df9f9993fa5a5fe30da43216cb2a8
+          git archive --format=zip --output=guandan-backup-20261008/guandan-master-20261008.zip ebde3b5154417909ab06da55f7e06fb573e08cf5
+          cat > guandan-backup-20261008/RESTORE-INSTRUCTIONS.txt <<'EOF'
+          YihuaMu complete source-code backup - 2026-10-08
+          Repository: ChineseGame-Mu/YihuaMu
+
+          Latest preview commit:
+          15fd16879576862b20aa489799167c8fec8b09b5
+          Current production Vercel deployment commit:
+          eba68bb1498444d03414c60f09eea19dbc1b4b14
+          Production Vercel deployment: dpl_BFh6yXMUxdwysb7xNUvrWs9NstPY
+          Current production Render backend commit:
+          61ef6512b20df9f9993fa5a5fe30da43216cb2a8
+          Render service: srv-da94sfgn74is73er3bi0
+          Master branch commit:
+          ebde3b5154417909ab06da55f7e06fb573e08cf5
+
+          Each .zip contains a full versioned source tree (not Git history).
+          The .bundle contains all fetched Git branches/tags and their Git history.
+          To restore a separate local repository from the bundle:
+            git clone YihuaMu-all-branches-and-history.bundle YihuaMu-restored
+          To restore a branch from a particular commit:
+            git checkout -b restored-preview 15fd16879576862b20aa489799167c8fec8b09b5
+
+          IMPORTANT: Source backups do NOT include hosted secrets, environment
+          variables, live game-room state, or databases. These require separate
+          backups from their respective providers if applicable.
+          EOF
+          (cd guandan-backup-20261008 && sha256sum *.zip *.bundle > SHA256SUMS.txt)
+          ls -lh guandan-backup-20261008
+      - name: Upload downloadable full backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: YihuaMu-Complete-Backup-20261008
+          path: guandan-backup-20261008/
+          retention-days: 90
+          if-no-files-found: error
