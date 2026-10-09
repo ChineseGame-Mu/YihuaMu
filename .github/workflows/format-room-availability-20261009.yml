@@ -1,0 +1,31 @@
+name: One-time Room Availability Test Format
+on:
+  push:
+    branches:
+      - preview/guandan-room-presence-fix-20261001
+    paths:
+      - .github/workflows/format-room-availability-20261009.yml
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Prettier
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Format and verify
+        working-directory: frontend
+        run: |
+          ./node_modules/.bin/prettier --write src/cleanroomRoomAvailability.test.ts
+          ./node_modules/.bin/prettier --check src/cleanroomRoomAvailability.test.ts
+      - name: Commit formatted test
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/cleanroomRoomAvailability.test.ts
+          if ! git diff --cached --quiet; then
+            git commit -m "style: format room status regression test"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
