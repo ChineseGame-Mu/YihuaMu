@@ -46,3 +46,15 @@ jobs:
           grep -oE '000[1-9]（[^）]+）|0010（[^）]+）' /tmp/room-dom.txt | head -n 12 || true
           echo "BROWSER ERRORS"
           grep -iE 'cors|content.security|blocked|failed|exception|error|net::|access.control' /tmp/room-browser-errors.txt | head -n 35 || true
+      - name: Verify patched preview room status in Chromium
+        shell: bash
+        run: |
+          set +e
+          URL='https://yihua-iizpil1x5-chinese-game.vercel.app/'
+          timeout 40s google-chrome --headless=new --no-sandbox --disable-gpu \
+            --disable-dev-shm-usage --virtual-time-budget=13000 \
+            --dump-dom "$URL" > /tmp/preview-room-dom.txt 2>/tmp/preview-room-errors.txt
+          echo "exit=$?"
+          grep -oE '000[1-9]（[^）]+）|0010（[^）]+）' /tmp/preview-room-dom.txt | head -n 12 || true
+          echo "Preview browser JS errors:"
+          grep -iE 'Uncaught|CONSOLE.*Error|CORS|blocked by|net::ERR' /tmp/preview-room-errors.txt | head -n 20 || true
