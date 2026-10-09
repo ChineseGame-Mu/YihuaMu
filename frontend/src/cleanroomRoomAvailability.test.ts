@@ -30,6 +30,25 @@ describe("cleanroom room availability", () => {
     expect(isCleanroomRoomId("1000")).toBe(false);
   });
 
+  test("stops displaying querying indefinitely when the status endpoint fails", () => {
+    expect(cleanroomRoomOptionLabel("0005", undefined)).toBe(
+      "0005（查询中…）",
+    );
+    expect(cleanroomRoomOptionLabel("0005", undefined, true)).toBe(
+      "0005（人数暂不可查）",
+    );
+    expect(
+      cleanroomRoomOptionLabel(
+        "0005",
+        { humanCount: 0, phase: "lobby" },
+        true,
+      ),
+    ).toBe("0005（人数暂不可查）");
+    expect(
+      cleanroomRoomOptionLabel("0005", { humanCount: 0, phase: "lobby" }),
+    ).toBe("0005（空房）");
+  });
+
   test("maps deployment room summaries back to visible room numbers", () => {
     const availability = availabilityByVisibleRoom(
       [
