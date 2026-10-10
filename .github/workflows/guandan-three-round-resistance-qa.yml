@@ -1,0 +1,27 @@
+name: Guandan three-round resistance QA
+on:
+  push:
+    branches:
+      - fix/guandan-resistance-repeat-20261009
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+jobs:
+  three-round-resistance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Prepare backend static asset directory
+        run: mkdir -p frontend/dist
+      - name: Three consecutive round-transition regression cycles
+        run: |
+          set -euo pipefail
+          cargo test full_four_player_three_deals_tribute_and_resistance -- --nocapture
+          cargo test three_consecutive_guandan_rounds_settle_and_reset_resistance -- --nocapture
+          for round in 1 2 3; do
+            echo "=== Round ${round}/3: Guandan tribute and round-transition regression ==="
+            cargo test --test guandan_round_transition -- --nocapture
+            cargo test -p shengji-core --test guandan_resistance_flow -- --nocapture
+          done
