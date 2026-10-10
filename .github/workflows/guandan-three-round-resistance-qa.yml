@@ -15,6 +15,6 @@ jobs:
           set -euo pipefail
           for round in 1 2 3; do
             echo "=== Round ${round}/3: Guandan tribute and round-transition regression ==="
-            cargo test -p shengji-backend --test guandan_round_transition -- --nocapture
+            cargo test --test guandan_round_transition -- --nocapture
             cargo test -p shengji-core --test guandan_resistance_flow -- --nocapture
           done
