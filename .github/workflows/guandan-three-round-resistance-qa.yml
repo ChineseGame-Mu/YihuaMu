@@ -1,0 +1,20 @@
+name: Guandan three-round resistance QA
+on:
+  push:
+    branches:
+      - fix/guandan-resistance-repeat-20261009
+  workflow_dispatch:
+jobs:
+  three-round-resistance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Three consecutive round-transition regression cycles
+        run: |
+          set -euo pipefail
+          for round in 1 2 3; do
+            echo "=== Round ${round}/3: Guandan tribute and round-transition regression ==="
+            cargo test -p shengji-backend --test guandan_round_transition -- --nocapture
+            cargo test -p shengji-core --test guandan_resistance_flow -- --nocapture
+          done
