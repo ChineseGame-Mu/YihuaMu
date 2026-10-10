@@ -13,6 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Prepare backend static asset directory
+        run: mkdir -p frontend/dist
       - name: Three consecutive round-transition regression cycles
         run: |
           set -euo pipefail
