@@ -2122,9 +2122,9 @@ mod tests {
             game.tribute_resisted = true;
             // A completed game must settle, advance to the next deal, and clear
             // the one-time anti-tribute status instead of replaying its notice.
-            assert!(settle_and_redeal_if_complete(&mut game).unwrap(), "round {round}");
+            assert!(settle_and_redeal_if_complete(&mut game).unwrap(), "round {}", round);
             assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle));
-            assert!(!game.tribute_resisted, "stale resistance in round {round}");
+            assert!(!game.tribute_resisted, "stale resistance in round {}", round);
             assert!(game.pending_tribute.is_none());
             assert!(game.hands.iter().all(Vec::is_empty));
             assert_eq!(game.finish_order.len(), 4);
