@@ -18,6 +18,7 @@ jobs:
       - name: Three consecutive round-transition regression cycles
         run: |
           set -euo pipefail
+          cargo test full_four_player_three_deals_tribute_and_resistance -- --nocapture
           cargo test three_consecutive_guandan_rounds_settle_and_reset_resistance -- --nocapture
           for round in 1 2 3; do
             echo "=== Round ${round}/3: Guandan tribute and round-transition regression ==="
