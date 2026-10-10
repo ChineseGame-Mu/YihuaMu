@@ -33,3 +33,28 @@ fn qa_next_deal(game: &mut GuandanGameState, resist: bool) {
     assert!(game.hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
     assert!(!game.normal_play_blocked());
 }
+
+#[test]
+fn full_four_player_three_deals_tribute_and_resistance() {
+    let table = TableConfig::new(4).unwrap();
+    let deck = build_deck(table);
+    assert_eq!(deck.len(), 108);
+    let (hands, remainder) = deal(table, &deck).unwrap();
+    assert!(remainder.is_empty());
+    let mut game = GuandanGameState::default();
+    game.started = true;
+    game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+    game.hands = hands;
+    game.turn = 0;
+    assert!(game.hands.iter().all(|hand| hand.len() == 27));
+
+    qa_play_full_deal(&mut game, 1);
+    qa_next_deal(&mut game, false);
+    assert!(!game.tribute_resisted);
+    qa_play_full_deal(&mut game, 2);
+    qa_next_deal(&mut game, true);
+    assert!(game.tribute_resisted);
+    qa_play_full_deal(&mut game, 3);
+    assert!(!game.tribute_resisted);
+    assert_eq!(game.finish_order.len(), 4);
+}
