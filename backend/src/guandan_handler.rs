@@ -1922,6 +1922,10 @@ pub async fn websocket(
 }
 
 #[cfg(test)]
+#[path = "guandan_full_game_qa.rs"]
+mod guandan_full_game_qa;
+
+#[cfg(test)]
 #[allow(clippy::field_reassign_with_default)]
 mod tests {
     use super::*;
