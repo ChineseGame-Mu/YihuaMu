@@ -2105,6 +2105,32 @@ mod tests {
         set_connected(key, "Bob", false);
         set_connected(key, "机器人1", false);
     }
+
+    #[test]
+    fn three_consecutive_guandan_rounds_settle_and_reset_resistance() {
+        for round in 1..=3 {
+            let mut game = GuandanGameState::default();
+            game.started = true;
+            game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+            game.hands = vec![
+                vec![],
+                vec![card(Suit::Clubs, Rank::Three)],
+                vec![],
+                vec![card(Suit::Clubs, Rank::Four)],
+            ];
+            game.finish_order = vec![0, 2];
+            game.tribute_resisted = true;
+            // A completed game must settle, advance to the next deal, and clear
+            // the one-time anti-tribute status instead of replaying its notice.
+            assert!(settle_and_redeal_if_complete(&mut game).unwrap(), "round {round}");
+            assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle));
+            assert!(!game.tribute_resisted, "stale resistance in round {round}");
+            assert!(game.pending_tribute.is_none());
+            assert!(game.hands.iter().all(Vec::is_empty));
+            assert_eq!(game.finish_order.len(), 4);
+            assert!(game.normal_play_blocked());
+        }
+    }
     #[test]
     fn one_two_finish_auto_assigns_fourth_then_loser_shuffle() {
         let mut game = GuandanGameState::default();
