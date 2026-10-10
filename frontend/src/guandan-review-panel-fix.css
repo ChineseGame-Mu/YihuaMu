@@ -11,9 +11,9 @@
 /* Let the review panel share/overlap the private-table border visually. */
 .guandan-private-zone > section.guandan-play-actions {
   position: absolute !important;
-  top: 27px !important;
+  top: 19px !important;
   right: 0 !important;
-  bottom: 0 !important;
+  bottom: 8px !important;
   left: auto !important;
   width: 304px !important;
   min-width: 304px !important;
@@ -24,7 +24,7 @@
   overflow: hidden !important;
   border: 3px solid #d5a438 !important;
   border-right-width: 0 !important;
-  border-bottom-width: 0 !important;
+  border-bottom-width: 3px !important;
   border-radius: 14px 0 0 0 !important;
   background: rgba(255, 252, 235, 0.97) !important;
   box-shadow: inset 0 0 0 2px rgba(255, 235, 166, 0.92) !important;
