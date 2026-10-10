@@ -1677,6 +1677,9 @@ pub async fn websocket(
                         for &i in indexes.iter().rev() {
                             state.game.hands[seat].remove(i);
                         }
+                        // Resistance is a one-time round-start outcome, not a persistent play notification.
+                        // Clear it only after a valid first play; invalid attempts preserve the state.
+                        state.game.tribute_resisted = false;
                         state.game.last_play = cards.clone();
                         state.game.last_player = Some(seat);
                         state.game.table_plays.push(GuandanTablePlay {
