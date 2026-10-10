@@ -3,7 +3,7 @@ fn qa_play_full_deal(game: &mut GuandanGameState, round: usize) {
     let mut passes = 0usize;
     for step in 0..3000 {
         if game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle) {
-            assert!(plays > 0, "round {round} ended without a play");
+            assert!(plays > 0, "round {} ended without a play", round);
             assert_eq!(game.finish_order.len(), 4);
             assert!(game.last_game_winner.is_some());
             assert!(!game.tribute_resisted);
@@ -27,5 +27,5 @@ fn qa_play_full_deal(game: &mut GuandanGameState, round: usize) {
             passes += 1;
         }
     }
-    panic!("round {round} exceeded 3000 turns");
+    panic!("round {} exceeded 3000 turns", round);
 }
