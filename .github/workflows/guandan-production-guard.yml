@@ -51,8 +51,14 @@ jobs:
           print('Deployment:',d.get('id'),'state:',d.get('readyState'))
           assert d.get('readyState')=='READY','Production deployment not READY'
           assert d.get('id')==os.environ['EXPECTED_DEPLOYMENT_ID'],'Unexpected production deployment ID'
-          aliases=d.get('alias') or []
-          assert domain in aliases,'Production domain not present in aliases'
+          # Deployment detail may list preview aliases only. Verify the
+          # authoritative deployment alias endpoint for the production domain.
+          alias_url='https://api.vercel.com/v2/deployments/'+d['id']+'/aliases'
+          if team: alias_url+='?teamId='+team
+          alias_req=urllib.request.Request(alias_url,headers={'Authorization':'Bearer '+token})
+          with urllib.request.urlopen(alias_req,timeout=25) as response: alias_data=json.load(response)
+          aliases=[item.get('alias') for item in alias_data.get('aliases',[])]
+          assert domain in aliases,'Production domain not present in deployment aliases'
           sha=(d.get('meta') or {}).get('githubCommitSha','')
           expected=os.getenv('EXPECTED_PRODUCTION_SHA','')
           assert expected and sha==expected, f'Unexpected production SHA: {sha}'
