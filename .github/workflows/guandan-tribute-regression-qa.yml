@@ -1,0 +1,37 @@
+name: Guandan Tribute Regression QA
+on:
+  push:
+    branches:
+      - fix/guandan-accepted-ui-tribute-20261011
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guandan-tribute-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tribute-regression:
+    name: Guandan tribute state tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify safe QA branch and approved UI ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "fix/guandan-accepted-ui-tribute-20261011"
+          git cat-file -e 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc^{commit}
+          git merge-base --is-ancestor 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD
+          git diff --exit-code 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD -- frontend/src/GuandanTable.tsx
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tribute planning and resistance rules
+        run: cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+      - name: Guandan backend tribute lifecycle tests
+        run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+      - name: Record QA scope
+        run: |
+          echo "These are Rust regression tests only."
+          echo "This workflow does not simulate four actual networked users or certify three complete online games."
+          echo "No production deployment or alias is changed."
