@@ -2067,14 +2067,12 @@ mod tests {
     fn first_robot_play_consumes_resistance_notice() {
         let mut game = GuandanGameState::default();
         game.started = true;
-        game.player_names = vec![
-            "机器人1".into(),
-            "B1".into(),
-            "A2".into(),
-            "B2".into(),
-        ];
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![
-            vec![card(Suit::Clubs, Rank::Three), card(Suit::Spades, Rank::Four)],
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
             vec![card(Suit::Diamonds, Rank::Five)],
             vec![card(Suit::Clubs, Rank::Six)],
             vec![card(Suit::Diamonds, Rank::Seven)],
