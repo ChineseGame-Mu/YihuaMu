@@ -2089,6 +2089,48 @@ mod tests {
     }
 
     #[test]
+    fn king_level_anti_tribute_is_consumed_once_after_first_play() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.level = Rank::King;
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
+            vec![card(Suit::Diamonds, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+        assert_eq!(game.level, Rank::King);
+        assert!(game.tribute_resisted);
+        assert!(game.pending_tribute.is_none());
+        assert!(game.next_round_phase.is_none());
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert!(!game.tribute_resisted);
+        assert_eq!(game.level, Rank::King);
+
+        // A trick-clear event must not reopen the K-level anti-tribute notice.
+        game.table_plays.clear();
+        game.last_play.clear();
+        game.last_player = None;
+        assert!(!game.tribute_resisted);
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
     fn king_round_still_creates_required_tribute() {
         let mut game = GuandanGameState::default();
         game.started = true;
