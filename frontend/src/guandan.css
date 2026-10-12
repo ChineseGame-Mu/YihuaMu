@@ -804,8 +804,7 @@
    Relative 0=self(bottom), 1=right, 2=partner(top), 3=left. */
 .guandan-players.guandan-players-four {
   display: grid;
-  grid-template-columns:
-    minmax(135px, 1fr) minmax(180px, 1.4fr) minmax(135px, 1fr);
+  grid-template-columns: 1fr 1.4fr 1fr;
   grid-template-rows: auto minmax(110px, auto) auto;
   gap: 10px;
   align-items: center;
