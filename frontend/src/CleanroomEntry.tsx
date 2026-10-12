@@ -125,7 +125,7 @@ const CleanroomEntry = (): JSX.Element => {
   const requested = Number(initial.get("playerCount") ?? initial.get("players") ?? "4");
   const initialCount = supportedCounts.includes(requested as (typeof supportedCounts)[number]) ? requested : 4;
   const [roomId, setRoomId] = React.useState<SelectableRoom>(initialRoom);
-  const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
+  const playerCount = initialCount;
   const [name, setName] = React.useState(
     initial.get("playerName") ?? initial.get("name") ?? "",
   );
