@@ -37,6 +37,15 @@ jobs:
       - name: Tribute planning and resistance rules
         run: |
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+      - name: Prepare frontend/dist for backend unit-test compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Rust backend binary embeds frontend/dist at compile time.
+          # This minimal test-only directory prevents an unrelated include_dir!
+          # compile failure; frontend production build is covered by CI.
+          mkdir -p frontend/dist
+          printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
       - name: Guandan backend tribute lifecycle tests
         run: |
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
