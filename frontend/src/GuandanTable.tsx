@@ -253,9 +253,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const [handArrangeMode, setHandArrangeMode] = React.useState<
     "manual" | "auto"
   >(() =>
-    window.localStorage.getItem("guandan_hand_arrange_mode") === "auto"
-      ? "auto"
-      : "manual",
+    window.localStorage.getItem("guandan_hand_arrange_mode") === "manual"
+      ? "manual"
+      : "auto",
   );
   const [autoArrangeStrategy, setAutoArrangeStrategy] =
     React.useState<GuandanArrangeStrategy>(() => {
@@ -267,9 +267,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const [autoHandLayout, setAutoHandLayout] = React.useState<
     "horizontal" | "vertical"
   >(() =>
-    window.localStorage.getItem("guandan_auto_hand_layout") === "vertical"
-      ? "vertical"
-      : "horizontal",
+    window.localStorage.getItem("guandan_auto_hand_layout") === "horizontal"
+      ? "horizontal"
+      : "vertical",
   );
   const [autoGroupOverrides, setAutoGroupOverrides] = React.useState<
     GuandanAutoGroup[] | null
@@ -312,7 +312,7 @@ const GuandanTable: React.FunctionComponent = () => {
     React.useState<number>(() => {
       const saved = Number(
         window.localStorage.getItem("guandan_card_count_alert_threshold") ??
-          "6",
+          "10",
       );
       return saved >= 6 && saved <= 10 ? saved : 6;
     });
