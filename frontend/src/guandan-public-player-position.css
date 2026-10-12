@@ -55,8 +55,9 @@ html body .guandan-table:has(.guandan-public-zone) > .guandan-start-panel {
   }
 }
 
-/* Four-player table: partners sit opposite each other around the public table.
- * Seats 1/3 are Team A (top/bottom); seats 2/4 are Team B (left/right).
+/* Four-player table: positions are relative to the local human seat.
+ * 0 = self (bottom), 2 = teammate (top), 1/3 = opponents (right/left).
+ * Reserve the top control strip so no seat obscures the first-draw button.
  */
 html[data-guandan-player-count="4"]
   body
@@ -82,25 +83,7 @@ html[data-guandan-player-count="4"]
 html[data-guandan-player-count="4"]
   body
   .guandan-table:has(.guandan-public-zone)
-  .guandan-public-player-back:nth-child(1) {
-  top: 34px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-}
-
-html[data-guandan-player-count="4"]
-  body
-  .guandan-table:has(.guandan-public-zone)
-  .guandan-public-player-back:nth-child(2) {
-  top: 50% !important;
-  left: 10px !important;
-  transform: translateY(-50%) !important;
-}
-
-html[data-guandan-player-count="4"]
-  body
-  .guandan-table:has(.guandan-public-zone)
-  .guandan-public-player-back:nth-child(3) {
+  .guandan-public-player-back.guandan-relative-0 {
   bottom: 8px !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
@@ -109,10 +92,29 @@ html[data-guandan-player-count="4"]
 html[data-guandan-player-count="4"]
   body
   .guandan-table:has(.guandan-public-zone)
-  .guandan-public-player-back:nth-child(4) {
+  .guandan-public-player-back.guandan-relative-1 {
   top: 50% !important;
   right: 10px !important;
   left: auto !important;
+  transform: translateY(-50%) !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back.guandan-relative-2 {
+  top: 116px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  .guandan-public-player-back.guandan-relative-3 {
+  top: 50% !important;
+  left: 10px !important;
+  right: auto !important;
   transform: translateY(-50%) !important;
 }
 
