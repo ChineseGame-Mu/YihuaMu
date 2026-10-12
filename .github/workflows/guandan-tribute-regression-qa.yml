@@ -29,9 +29,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Tribute planning and resistance rules
-        run: cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+        run: |
+          cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
       - name: Guandan backend tribute lifecycle tests
-        run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+        run: |
+          cargo test -p shengji guandan_handler::tests:: -- --nocapture
       - name: Record QA scope
         run: |
           echo "These are Rust regression tests only."
