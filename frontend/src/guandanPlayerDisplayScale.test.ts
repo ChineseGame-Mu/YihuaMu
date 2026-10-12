@@ -56,7 +56,7 @@ describe("Guandan enlarged player displays", () => {
 
   test("keeps local player at bottom, partner opposite, opponents at sides, and plays centered", () => {
     // Server seat IDs must not be rewritten when the viewer's seat changes.
-    expect(table).toContain('guandan-relative-${(index - state.seat + 4) % 4}');
+    expect(table).toContain("guandan-relative-${(index - state.seat + 4) % 4}");
 
     // Relative 0=self, 2=partner, 1/3=opponents.
     expect(positions).toMatch(
