@@ -800,26 +800,44 @@
   background: rgb(255 190 45 / 20%);
 }
 
-
 /* Four players: rotate only the local presentation, never server seat IDs.
    Relative 0=self(bottom), 1=right, 2=partner(top), 3=left. */
 .guandan-players.guandan-players-four {
   display: grid;
-  grid-template-columns: minmax(135px, 1fr) minmax(180px, 1.4fr) minmax(135px, 1fr);
+  grid-template-columns:
+    minmax(135px, 1fr) minmax(180px, 1.4fr) minmax(135px, 1fr);
   grid-template-rows: auto minmax(110px, auto) auto;
   gap: 10px;
   align-items: center;
 }
-.guandan-players-four > .guandan-relative-0 { grid-column: 2; grid-row: 3; }
-.guandan-players-four > .guandan-relative-1 { grid-column: 3; grid-row: 2; }
-.guandan-players-four > .guandan-relative-2 { grid-column: 2; grid-row: 1; }
-.guandan-players-four > .guandan-relative-3 { grid-column: 1; grid-row: 2; }
+
+.guandan-players-four > .guandan-relative-0 {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.guandan-players-four > .guandan-relative-1 {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.guandan-players-four > .guandan-relative-2 {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.guandan-players-four > .guandan-relative-3 {
+  grid-column: 1;
+  grid-row: 2;
+}
+
 @media (max-width: 700px) {
   .guandan-players.guandan-players-four {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(75px, auto) auto;
     gap: 5px;
   }
+
   .guandan-players-four .guandan-player-card {
     min-width: 0;
     overflow-wrap: anywhere;
