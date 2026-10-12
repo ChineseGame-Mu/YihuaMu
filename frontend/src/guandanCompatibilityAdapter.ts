@@ -224,8 +224,6 @@ export const adaptGuandanServerMessage = (
       if (message.match_id !== undefined && message.match_id < state.matchId) {
         return state;
       }
-      const startedNewRound =
-        state.nextRoundPhase !== null && message.next_round_phase === null;
       const startedNewMatch =
         message.match_id !== undefined && message.match_id > state.matchId;
       const roundComplete =
