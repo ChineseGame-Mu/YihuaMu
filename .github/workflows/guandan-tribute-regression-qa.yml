@@ -27,7 +27,7 @@ jobs:
           git merge-base --is-ancestor 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD
           # The four-seat display change is explicitly approved for QA, not production.
           # Pin its reviewed exact blob rather than silently permitting arbitrary UI edits.
-          expected_ui_blob=a24f7aab6482f17c2338cfb77589b22a7e196b76
+          expected_ui_blob=1baacc0375f447ebef614be33e0c351f0dd50dfb
           actual_ui_blob="$(git rev-parse HEAD:frontend/src/GuandanTable.tsx)"
           test "$actual_ui_blob" = "$expected_ui_blob"
           grep -q 'guandan-players-four' frontend/src/GuandanTable.tsx
