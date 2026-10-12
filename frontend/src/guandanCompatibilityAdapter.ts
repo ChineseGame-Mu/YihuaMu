@@ -299,15 +299,11 @@ export const adaptGuandanServerMessage = (
         seriesTeamAWins: message.series_team_a_wins ?? null,
         seriesTeamBWins: message.series_team_b_wins ?? null,
         pendingTribute: message.pending_tribute,
-        // A previous round's resistance must not leak into shuffle/deal.
-        // During an active round preserve the notice across transient server
-        // snapshots, but reset it as soon as the next-round phase begins.
+        // The server clears resistance on the first accepted play.
+        // Never latch a previous true value: an empty table after EndRound
+        // must not reopen the K-level anti-tribute notice.
         tributeResisted:
-          message.next_round_phase !== null
-            ? false
-            : startedNewRound || startedNewMatch
-              ? message.tribute_resisted
-              : message.tribute_resisted || state.tributeResisted,
+          message.next_round_phase === null && message.tribute_resisted,
         tributePhase: message.tribute_phase ?? null,
         tributeCards: message.tribute_cards ?? [],
         returnTributeCards: message.return_tribute_cards ?? [],
