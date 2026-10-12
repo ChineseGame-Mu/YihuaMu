@@ -25,7 +25,13 @@ jobs:
           test "${GITHUB_REF_NAME}" = "fix/guandan-accepted-ui-tribute-20261011"
           git cat-file -e 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc^{commit}
           git merge-base --is-ancestor 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD
-          git diff --exit-code 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD -- frontend/src/GuandanTable.tsx
+          # The four-seat display change is explicitly approved for QA, not production.
+          # Pin its reviewed exact blob rather than silently permitting arbitrary UI edits.
+          expected_ui_blob=a24f7aab6482f17c2338cfb77589b22a7e196b76
+          actual_ui_blob="$(git rev-parse HEAD:frontend/src/GuandanTable.tsx)"
+          test "$actual_ui_blob" = "$expected_ui_blob"
+          grep -q 'guandan-players-four' frontend/src/GuandanTable.tsx
+          grep -q 'guandan-relative-' frontend/src/GuandanTable.tsx
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Tribute planning and resistance rules
