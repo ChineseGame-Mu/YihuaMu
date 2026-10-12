@@ -60,22 +60,22 @@ describe("Guandan enlarged player displays", () => {
 
     // Relative 0=self, 2=partner, 1/3=opponents.
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-0\\s*\\{[\\s\\S]*?bottom:\\s*8px[\\s\\S]*?left:\\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-0\s*\{[\s\S]*?bottom:\s*8px[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-1\\s*\\{[\\s\\S]*?top:\\s*50%[\\s\\S]*?right:\\s*10px/,
+      /\.guandan-public-player-back\.guandan-relative-1\s*\{[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
     );
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-2\\s*\\{[\\s\\S]*?top:\\s*116px[\\s\\S]*?left:\\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*116px[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-3\\s*\\{[\\s\\S]*?top:\\s*50%[\\s\\S]*?left:\\s*10px/,
+      /\.guandan-public-player-back\.guandan-relative-3\s*\{[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
     );
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\\s\\S]*?\\.guandan-table-stage\\s*\\{[\\s\\S]*?align-items:\\s*center[\\s\\S]*?justify-content:\\s*center/,
+      /data-guandan-player-count="4"[\s\S]*?\.guandan-table-stage\s*\{[\s\S]*?align-items:\s*center[\s\S]*?justify-content:\s*center/,
     );
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\\s\\S]*?\\.guandan-trick-plays\\s*\\{[\\s\\S]*?justify-content:\\s*center/,
+      /data-guandan-player-count="4"[\s\S]*?\.guandan-trick-plays\s*\{[\s\S]*?justify-content:\s*center/,
     );
   });
 
