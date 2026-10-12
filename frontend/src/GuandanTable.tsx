@@ -1737,7 +1737,7 @@ const GuandanTable: React.FunctionComponent = () => {
             </aside>
             <section className="guandan-player-section">
               <h2>玩家</h2>
-              <div className="guandan-players">
+              <div className={`guandan-players ${state.players.length === 4 && state.seat !== null ? "guandan-players-four" : ""}`}>
                 {state.players.map((player, index) => (
                   <div
                     className={`guandan-player-card guandan-team-${
@@ -1749,7 +1749,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       !nextRoundPending
                         ? "is-active"
                         : ""
-                    } ${index === state.seat ? "is-me" : ""}`}
+                    } ${index === state.seat ? "is-me" : ""} ${state.players.length === 4 && state.seat !== null ? `guandan-relative-${(index - state.seat + 4) % 4}` : ""}`}
                     key={`${player}-${index}`}
                   >
                     <span
