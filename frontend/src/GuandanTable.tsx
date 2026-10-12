@@ -1628,6 +1628,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       className={`guandan-public-player-back guandan-public-team-${
                         index % 2 === 0 ? "a" : "b"
                       } ${effectiveTurn === index && gameStarted && !dealing && !nextRoundPending && !tributePending && !state.trickComplete ? "is-active" : ""}`}
+                      style={state.players.length === 4 && state.seat !== null ? { order: (index - state.seat + 4) % 4 } : undefined}
                       key={`public-back-${index}-${player}`}
                       aria-label={`${player}，队伍${index % 2 === 0 ? 1 : 2}${
                         shouldReport ? `，剩余${remaining}张` : ""
