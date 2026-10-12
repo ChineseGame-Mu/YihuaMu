@@ -213,7 +213,6 @@ const CleanroomEntry = (): JSX.Element => {
         <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
           <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
-          <select id="cleanroom-player-count" className="cleanroom-final-control cleanroom-final-players" aria-label="开始人数" value={playerCount} onChange={(event) => setPlayerCount(Number(event.target.value))}>{supportedCounts.map((count) => <option key={count} value={count}>{count} 人</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
           <button id="cleanroom-enter-room" className="cleanroom-final-enter" type="submit" disabled={name.trim() === ""} aria-label="进入牌室"><span>进入牌室</span><small>ENTER ROOM</small></button>
         </form>
