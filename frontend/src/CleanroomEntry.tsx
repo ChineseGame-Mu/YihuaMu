@@ -34,6 +34,7 @@ import {
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
+import "./cleanroom-lobby-approved.css";
 import "./cleanroom-device-layout.css";
 import "./cleanroom-public-player-names.css";
 import "./guandan-real-test-20260916.css";
@@ -182,6 +183,16 @@ const CleanroomEntry = (): JSX.Element => {
       window.clearInterval(timer);
     };
   }, [joined]);
+  // Use the approved artwork only after its actual image asset has been deployed.
+  // Until then, keep the existing functioning lobby and controls unchanged.
+  const [approvedLobbyLoaded, setApprovedLobbyLoaded] = React.useState(false);
+  React.useEffect(() => {
+    const image = new Image();
+    image.onload = () => setApprovedLobbyLoaded(true);
+    image.onerror = () => setApprovedLobbyLoaded(false);
+    image.src = "/guandan-lobby-approved.webp";
+    return () => { image.onload = null; image.onerror = null; };
+  }, []);
   if (showCelebrationPreview) return <CelebrationPreview />;
   if (joined) return <CleanroomTable />;
 
@@ -207,10 +218,10 @@ const CleanroomEntry = (): JSX.Element => {
   };
 
   return (
-    <main className="cleanroom-final-shell">
-      <img className="cleanroom-final-backdrop" src={cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
+    <main className={approvedLobbyLoaded ? "cleanroom-final-shell cleanroom-approved-lobby" : "cleanroom-final-shell"}>
+      <img className="cleanroom-final-backdrop" src={approvedLobbyLoaded ? "/guandan-lobby-approved.webp" : cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
       <div className="cleanroom-final-stage">
-        <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
+        <img className="cleanroom-final-art" src={approvedLobbyLoaded ? "/guandan-lobby-approved.webp" : cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
           <span className="cleanroom-legacy-room-label-mask" aria-hidden="true" />
           <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
