@@ -259,3 +259,17 @@
   .cleanroom-final-name{top:67.4%!important}
   .cleanroom-final-enter{top:75.5%!important}
 }
+
+/* Precisely conceal the tiny printed "牌室" at the upper-left of the form.
+   Separate DOM overlay avoids pseudo-element stacking and preserves inputs. */
+.cleanroom-legacy-room-label-mask{
+  position:absolute!important;
+  display:block!important;
+  left:29.3%!important;
+  top:48.0%!important;
+  width:6.1%!important;
+  height:2.6%!important;
+  z-index:5!important;
+  background:#fffdf3!important;
+  pointer-events:none!important;
+}
