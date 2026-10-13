@@ -2190,6 +2190,44 @@ mod tests {
     }
 
     #[test]
+    fn robot_leads_with_pair_without_spending_jokers() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Three), CardFace::Joker(Joker::Big)],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Clubs, Rank::Seven)],
+        ];
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert_eq!(game.table_plays[0].cards.len(), 2);
+        assert!(game.hands[0].contains(&CardFace::Joker(Joker::Big)));
+    }
+
+    #[test]
+    fn robot_passes_when_teammate_controls_and_opponents_are_safe() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "机器人1".into(), "B2".into()];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six), card(Suit::Clubs, Rank::Seven), card(Suit::Clubs, Rank::Eight), card(Suit::Clubs, Rank::Nine)],
+            vec![CardFace::Joker(Joker::Big)],
+            vec![card(Suit::Hearts, Rank::Six), card(Suit::Hearts, Rank::Seven), card(Suit::Hearts, Rank::Eight), card(Suit::Hearts, Rank::Nine)],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Five)];
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.passes, 1);
+        assert!(game.table_plays.is_empty());
+        assert_eq!(game.hands[2], vec![CardFace::Joker(Joker::Big)]);
+    }
+
+    #[test]
     fn king_round_still_creates_required_tribute() {
         let mut game = GuandanGameState::default();
         game.started = true;
