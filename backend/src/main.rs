@@ -36,6 +36,7 @@ use shengji_types::ZSTD_ZSTD_DICT;
 use storage::{HashMapStorage, Storage};
 
 mod guandan_handler;
+mod guandan_snapshot;
 mod guandan_serving_types;
 mod serving_types;
 mod shengji_handler;
@@ -118,6 +119,17 @@ async fn main() -> Result<(), anyhow::Error> {
     let (backend_storage, stats) = state_dump::load_state().await?;
     let guandan_storage =
         HashMapStorage::<VersionedGuandanGame>::new(ROOT_LOGGER.new(o!("game" => "guandan")));
+
+    // Explicit opt-in: this path MUST be on a private persistent volume.
+    // No public snapshot endpoint is registered; snapshots include hidden hands.
+    if let Ok(path) = std::env::var("GUANDAN_SNAPSHOT_PATH") {
+        let path = std::path::PathBuf::from(path);
+        match guandan_snapshot::restore(&path, guandan_storage.clone()).await {
+            Ok(count) => info!(ROOT_LOGGER, "Restored Guandan rooms"; "count" => count),
+            Err(err) => error!(ROOT_LOGGER, "Guandan restore failed"; "error" => err.to_string()),
+        }
+        tokio::spawn(guandan_snapshot::run_periodic(path, guandan_storage.clone()));
+    }
 
     tokio::task::spawn(periodically_dump_state(
         backend_storage.clone(),
