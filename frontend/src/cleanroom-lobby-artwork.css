@@ -205,3 +205,22 @@
   .cleanroom-final-name {top:66.3%!important;height:5%!important;}
   .cleanroom-final-enter {top:75.6%!important;height:6.8%!important;}
 }
+
+/* Remove duplicate heading and the final line of baked-in legacy footer.
+   Preserve the original decorative heading and frame; cover only inner panel. */
+.cleanroom-final-form::after{content:none!important;display:none!important}
+.cleanroom-final-form::before{
+  top:51.1%!important;
+  left:28.4%!important;
+  width:43.2%!important;
+  height:41.4%!important;
+  background:#fffdf3!important;
+}
+.cleanroom-final-room{top:56.5%!important}
+.cleanroom-final-name{top:65.5%!important}
+.cleanroom-final-enter{top:74.5%!important}
+@media(max-width:560px) and (orientation:portrait){
+  .cleanroom-final-room{top:56.5%!important}
+  .cleanroom-final-name{top:65.5%!important}
+  .cleanroom-final-enter{top:74.5%!important}
+}
