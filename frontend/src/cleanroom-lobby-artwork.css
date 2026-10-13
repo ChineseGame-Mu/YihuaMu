@@ -111,3 +111,34 @@
   .cleanroom-final-name {left:30%!important;width:40%!important;top:62.0%!important;height:4.35%!important;}
   .cleanroom-final-enter {left:30%!important;width:40%!important;top:72.3%!important;height:7.05%!important;}
 }
+
+/* Mobile QA correction: keep ENTER ROOM text entirely inside the button;
+   remove the obsolete four-player instruction and baked footer text. */
+.cleanroom-final-form::before {
+  top: 55.9%;
+  height: 34.2%;
+}
+.cleanroom-final-form::after { content: none!important; display: none!important; }
+.cleanroom-final-enter {
+  top: 71.6%!important;
+  height: 6.8%!important;
+  padding: 0!important;
+  gap: 0!important;
+  flex-direction: column!important;
+  line-height: 1!important;
+  overflow: hidden!important;
+}
+.cleanroom-final-enter span {
+  display: block!important;
+  line-height: 1.15!important;
+  font-size: clamp(13px, 1.95svh, 21px)!important;
+}
+.cleanroom-final-enter small {
+  display: block!important;
+  line-height: 1.1!important;
+  font-size: clamp(8px, .95svh, 11px)!important;
+  margin: 0!important;
+}
+@media (max-width:560px) and (orientation:portrait) {
+  .cleanroom-final-enter {top:71.6%!important;height:6.8%!important;}
+}
