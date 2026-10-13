@@ -625,7 +625,14 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                             _ => false,
                         })
                         .count();
-                    strength + if matching >= 4 { 3_000 } else if matching >= 2 { 600 } else { 0 }
+                    strength
+                        + if matching >= 4 {
+                            3_000
+                        } else if matching >= 2 {
+                            600
+                        } else {
+                            0
+                        }
                 })
                 .map(|(index, _)| index)
         };
