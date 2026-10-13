@@ -182,8 +182,8 @@ const tributeRole = (
   return null;
 };
 
-const DEAL_INTERVAL_MS = 45;
-const TRICK_CLEAR_DELAY_MS = 8000;
+const DEAL_PRESENTATION_DURATION_MS = 10000;
+const TRICK_CLEAR_DELAY_MS = 12000;
 const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
 const normalizeRoomCode = (value: string): string =>
@@ -775,7 +775,7 @@ const GuandanTable: React.FunctionComponent = () => {
         setDealStep((current) =>
           current === null ? null : Math.min(current + 1, totalDealCards),
         ),
-      DEAL_INTERVAL_MS,
+      Math.max(1, Math.ceil(DEAL_PRESENTATION_DURATION_MS / totalDealCards)),
     );
     return () => window.clearTimeout(timer);
   }, [dealStep, totalDealCards]);
