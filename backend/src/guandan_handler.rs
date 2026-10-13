@@ -1,8 +1,8 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, time::Duration};
 #[cfg(not(test))]
 use std::thread;
+use std::{collections::HashMap, fmt, sync::Mutex, time::Duration};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
