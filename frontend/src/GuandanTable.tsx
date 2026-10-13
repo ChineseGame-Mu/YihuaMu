@@ -1584,7 +1584,10 @@ const GuandanTable: React.FunctionComponent = () => {
                 )}
             </section>
           )}
-          <div className="guandan-public-zone" aria-label="公共桌面">
+          <div
+            className={`guandan-public-zone${state.nextRoundPhase !== null ? " guandan-has-next-round-display" : ""}`}
+            aria-label="公共桌面"
+          >
             <div className="guandan-zone-title">
               <span>公共桌面</span>
               <small>所有玩家共同可见</small>
