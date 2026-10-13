@@ -155,7 +155,9 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
     lastPlayer: transitioningToNextRound ? null : adapted.lastPlayer,
     tablePlays,
     tributeResisted: adapted.tributeResisted && !tributeNoticeConsumed,
-    __tributeNoticeConsumedMatchId: tributeNoticeConsumed ? nextMatchId : undefined,
+    __tributeNoticeConsumedMatchId: tributeNoticeConsumed
+      ? nextMatchId
+      : undefined,
     __tributePublicCount: tributePublicCount,
   } as RealTestState;
 };
