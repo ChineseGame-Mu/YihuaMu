@@ -157,5 +157,5 @@ html[data-guandan-player-count="4"]
   body
   .guandan-table:has(.guandan-public-zone)
   .guandan-public-player-back.guandan-relative-2 {
-  top: 150px !important;
+  top: 8px !important;
 }
