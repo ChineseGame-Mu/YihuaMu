@@ -590,14 +590,45 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         }
         let delay_ms = thread_rng().gen_range(800..=1800);
         thread::sleep(Duration::from_millis(delay_ms));
-        let chosen = game.hands[seat]
-            .iter()
-            .enumerate()
-            .find_map(|(index, card)| {
-                validate_play_against_table(&[*card], &game.last_play, game.level)
-                    .is_ok()
-                    .then_some(index)
-            });
+        // Protect the partner's winning play instead of needlessly overtaking it.
+        let partner_controls = game.last_player.is_some_and(|leader| {
+            leader != seat
+                && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
+                && team_for_seat(leader) == team_for_seat(seat)
+        });
+        // Prefer the cheapest legal single. Preserve jokers, level cards, and
+        // cards belonging to pairs when an alternative exists.
+        let chosen = if partner_controls {
+            None
+        } else {
+            game.hands[seat]
+                .iter()
+                .enumerate()
+                .filter(|(_, card)| {
+                    validate_play_against_table(&[**card], &game.last_play, game.level).is_ok()
+                })
+                .min_by_key(|(_, card)| {
+                    let strength = match card {
+                        CardFace::Joker(Joker::Big) => 10_000,
+                        CardFace::Joker(Joker::Small) => 9_000,
+                        CardFace::Suited { rank, .. } if *rank == game.level => 8_000,
+                        _ => initial_draw_value(**card),
+                    };
+                    let matching = game.hands[seat]
+                        .iter()
+                        .filter(|other| match (card, other) {
+                            (
+                                CardFace::Suited { rank: first, .. },
+                                CardFace::Suited { rank: second, .. },
+                            ) => first == second,
+                            (CardFace::Joker(first), CardFace::Joker(second)) => first == second,
+                            _ => false,
+                        })
+                        .count();
+                    strength + if matching >= 4 { 3_000 } else if matching >= 2 { 600 } else { 0 }
+                })
+                .map(|(index, _)| index)
+        };
         if let Some(index) = chosen {
             let card = game.hands[seat].remove(index);
             let cards = vec![card];
