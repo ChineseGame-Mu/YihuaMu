@@ -596,58 +596,79 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                 && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
                 && leader % 2 == seat % 2
         });
-        // Prefer the cheapest legal single. Preserve jokers, level cards, and
-        // cards belonging to pairs when an alternative exists.
-        let chosen = if partner_controls {
+        // Enumerate complete rank groups as well as singles. In particular,
+        // never get stuck passing when a pair, triple or bomb can legally beat
+        // the table. Preserve bombs and premium cards unless tactically needed.
+        let hand = &game.hands[seat];
+        let mut candidates: Vec<Vec<usize>> = Vec::new();
+        for i in 0..hand.len() {
+            candidates.push(vec![i]);
+        }
+        for i in 0..hand.len() {
+            let same_rank: Vec<usize> = (i..hand.len())
+                .filter(|&j| match (hand[i], hand[j]) {
+                    (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
+                    (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                    _ => false,
+                })
+                .collect();
+            for count in 2..=same_rank.len().min(8) {
+                candidates.push(same_rank[..count].to_vec());
+            }
+        }
+        let opponent_low = game.hands.iter().enumerate().any(|(other, cards)| {
+            other != seat
+                && (game.player_names.len() != GUANDAN_CLASSIC_PLAYER_COUNT
+                    || other % 2 != seat % 2)
+                && !cards.is_empty()
+                && cards.len() <= 3
+        });
+        let chosen = if partner_controls && !opponent_low {
             None
         } else {
-            game.hands[seat]
-                .iter()
-                .enumerate()
-                .filter(|(_, card)| {
-                    validate_play_against_table(&[**card], &game.last_play, game.level).is_ok()
+            candidates
+                .into_iter()
+                .filter(|indexes| {
+                    validate_play_against_table(
+                        &indexes.iter().map(|&i| hand[i]).collect::<Vec<_>>(),
+                        &game.last_play,
+                        game.level,
+                    )
+                    .is_ok()
                 })
-                .min_by_key(|(_, card)| {
-                    let strength = match card {
-                        CardFace::Joker(Joker::Big) => 10_000,
-                        CardFace::Joker(Joker::Small) => 9_000,
-                        CardFace::Suited { rank, .. } if *rank == game.level => 8_000,
-                        _ => initial_draw_value(**card),
-                    };
-                    let matching = game.hands[seat]
-                        .iter()
-                        .filter(|other| match (card, other) {
-                            (
-                                CardFace::Suited { rank: first, .. },
-                                CardFace::Suited { rank: second, .. },
-                            ) => first == second,
-                            (CardFace::Joker(first), CardFace::Joker(second)) => first == second,
+                .min_by_key(|indexes| {
+                    let premium: usize = indexes.iter().map(|&i| match hand[i] {
+                        CardFace::Joker(Joker::Big) => 10000,
+                        CardFace::Joker(Joker::Small) => 9000,
+                        CardFace::Suited { rank, .. } if rank == game.level => 8000,
+                        card => initial_draw_value(card),
+                    }).sum();
+                    let breaks_group = indexes.len() == 1 && hand.iter().filter(|&&card| {
+                        match (card, hand[indexes[0]]) {
+                            (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
+                            (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
                             _ => false,
-                        })
-                        .count();
-                    strength
-                        + if matching >= 4 {
-                            3_000
-                        } else if matching >= 2 {
-                            600
-                        } else {
-                            0
                         }
+                    }).count() >= 2;
+                    let bomb_cost = if indexes.len() >= 4 && !opponent_low { 30000 } else { 0 };
+                    // Prefer shedding several cards on a fresh lead, but avoid
+                    // spending high-value combinations merely to win a trick.
+                    let shedding = if game.last_play.is_empty() { indexes.len() * 700 } else { 0 };
+                    premium / indexes.len() + bomb_cost
+                        + if breaks_group { 3000 } else { 0 }
+                        - shedding.min(premium / indexes.len())
                 })
-                .map(|(index, _)| index)
         };
-        if let Some(index) = chosen {
-            let card = game.hands[seat].remove(index);
-            let cards = vec![card];
+        if let Some(mut indexes) = chosen {
+            indexes.sort_unstable_by(|a, b| b.cmp(a));
+            let mut cards: Vec<CardFace> = indexes.into_iter().map(|i| game.hands[seat].remove(i)).collect();
+            cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
             game.table_plays.push(GuandanTablePlay {
                 player: seat,
                 cards,
             });
-            // Resistance is a one-time announcement at the start of the deal.
-            // Clear it on the first accepted play so clearing a later trick
-            // cannot make the anti-tribute panel appear again.
             game.tribute_resisted = false;
             game.passes = 0;
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
