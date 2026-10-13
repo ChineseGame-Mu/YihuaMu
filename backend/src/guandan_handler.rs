@@ -637,31 +637,50 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                     .is_ok()
                 })
                 .min_by_key(|indexes| {
-                    let premium: usize = indexes.iter().map(|&i| match hand[i] {
-                        CardFace::Joker(Joker::Big) => 10000,
-                        CardFace::Joker(Joker::Small) => 9000,
-                        CardFace::Suited { rank, .. } if rank == game.level => 8000,
-                        card => initial_draw_value(card),
-                    }).sum();
-                    let breaks_group = indexes.len() == 1 && hand.iter().filter(|&&card| {
-                        match (card, hand[indexes[0]]) {
-                            (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
-                            (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
-                            _ => false,
-                        }
-                    }).count() >= 2;
-                    let bomb_cost = if indexes.len() >= 4 && !opponent_low { 30000 } else { 0 };
+                    let premium: usize = indexes
+                        .iter()
+                        .map(|&i| match hand[i] {
+                            CardFace::Joker(Joker::Big) => 10000,
+                            CardFace::Joker(Joker::Small) => 9000,
+                            CardFace::Suited { rank, .. } if rank == game.level => 8000,
+                            card => initial_draw_value(card),
+                        })
+                        .sum();
+                    let breaks_group = indexes.len() == 1
+                        && hand
+                            .iter()
+                            .filter(|&&card| match (card, hand[indexes[0]]) {
+                                (
+                                    CardFace::Suited { rank: a, .. },
+                                    CardFace::Suited { rank: b, .. },
+                                ) => a == b,
+                                (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                                _ => false,
+                            })
+                            .count()
+                            >= 2;
+                    let bomb_cost = if indexes.len() >= 4 && !opponent_low {
+                        30000
+                    } else {
+                        0
+                    };
                     // Prefer shedding several cards on a fresh lead, but avoid
                     // spending high-value combinations merely to win a trick.
-                    let shedding = if game.last_play.is_empty() { indexes.len() * 700 } else { 0 };
-                    premium / indexes.len() + bomb_cost
-                        + if breaks_group { 3000 } else { 0 }
+                    let shedding = if game.last_play.is_empty() {
+                        indexes.len() * 700
+                    } else {
+                        0
+                    };
+                    premium / indexes.len() + bomb_cost + if breaks_group { 3000 } else { 0 }
                         - shedding.min(premium / indexes.len())
                 })
         };
         if let Some(mut indexes) = chosen {
             indexes.sort_unstable_by(|a, b| b.cmp(a));
-            let mut cards: Vec<CardFace> = indexes.into_iter().map(|i| game.hands[seat].remove(i)).collect();
+            let mut cards: Vec<CardFace> = indexes
+                .into_iter()
+                .map(|i| game.hands[seat].remove(i))
+                .collect();
             cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
@@ -2195,7 +2214,11 @@ mod tests {
         game.started = true;
         game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
         game.hands = vec![
-            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Three), CardFace::Joker(Joker::Big)],
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                CardFace::Joker(Joker::Big),
+            ],
             vec![card(Suit::Clubs, Rank::Five)],
             vec![card(Suit::Clubs, Rank::Six)],
             vec![card(Suit::Clubs, Rank::Seven)],
@@ -2214,9 +2237,19 @@ mod tests {
         game.player_names = vec!["A1".into(), "B1".into(), "机器人1".into(), "B2".into()];
         game.hands = vec![
             vec![card(Suit::Clubs, Rank::Five)],
-            vec![card(Suit::Clubs, Rank::Six), card(Suit::Clubs, Rank::Seven), card(Suit::Clubs, Rank::Eight), card(Suit::Clubs, Rank::Nine)],
+            vec![
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+            ],
             vec![CardFace::Joker(Joker::Big)],
-            vec![card(Suit::Hearts, Rank::Six), card(Suit::Hearts, Rank::Seven), card(Suit::Hearts, Rank::Eight), card(Suit::Hearts, Rank::Nine)],
+            vec![
+                card(Suit::Hearts, Rank::Six),
+                card(Suit::Hearts, Rank::Seven),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Hearts, Rank::Nine),
+            ],
         ];
         game.turn = 2;
         game.last_player = Some(0);
