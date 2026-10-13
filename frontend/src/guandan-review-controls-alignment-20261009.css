@@ -14,8 +14,8 @@ html body .guandan-table:has(.guandan-public-zone)
 html body .guandan-table:has(.guandan-public-zone)
   > .guandan-private-zone > section.guandan-play-actions
   .guandan-selected-preview {
-  top: 80px !important;
-  bottom: calc(37.5% + 9px) !important;
+  top: 0 !important;
+  bottom: 37.5% !important;
   z-index: 1 !important;
   pointer-events: none !important;
 }
