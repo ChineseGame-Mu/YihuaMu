@@ -2354,7 +2354,9 @@ mod tests {
                 assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 0);
             }
         }
-        assert_eq!(completed, 3, "four robots stalled before three complete deals; steps={turns}");
+        assert_eq!(
+            completed, 3,
+            "four robots stalled before three complete deals; steps={turns}"
+        );
     }
-
 }
