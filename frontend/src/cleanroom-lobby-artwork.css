@@ -23,3 +23,34 @@
 .cleanroom-final-name {top:69.10%!important;height:4.55%!important;padding-left:1.72rem!important;background-color:#fffef7!important;background-position:.48rem 50%!important;background-size:.86rem .86rem!important}
 }
 @media (orientation:landscape) {.cleanroom-final-stage {width:min(100vw,calc(100svh * 1.1550985433))}}
+
+/* QA lobby: hide the obsolete player-count artwork baked into the backdrop.
+   Keep the original frame and the actual room/name/enter controls interactive. */
+.cleanroom-final-form::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 28.8%;
+  top: 56.1%;
+  width: 42.4%;
+  height: 12.2%;
+  background: #fffdf3;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.cleanroom-final-room { z-index: 2; }
+.cleanroom-final-name { z-index: 2; top: 61.4%!important; }
+.cleanroom-final-enter {
+  z-index: 2;
+  top: 70.1%!important;
+  height: 6.4%!important;
+  background: linear-gradient(180deg,#287451,#105438)!important;
+  color: #fff!important;
+  border: 2px solid #bba05d!important;
+  box-shadow: 0 3px 6px rgba(15,55,36,.25)!important;
+}
+.cleanroom-final-enter span { color: #fff!important; font-size: clamp(13px,2.15svh,24px)!important; font-weight: 700!important; }
+.cleanroom-final-enter small { color: #f5e9bd!important; font-size: clamp(7px,1svh,12px)!important; }
+@media (max-width:560px) and (orientation:portrait) {
+  .cleanroom-final-name { top: 61.4%!important; }
+}
