@@ -1,0 +1,103 @@
+/* Restore every established control in the Guandan top status/settings bar. */
+html body .guandan-status-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 58px !important;
+  padding: 7px 190px 7px 82px !important;
+  overflow: visible !important;
+}
+
+/* Keep the decorative centered Guandan brand supplied by GuandanHeaderDecor. */
+html body .guandan-status-bar::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Restore every original status item that older viewport CSS hid. */
+html body .guandan-status-bar > div,
+html body .guandan-status-bar > div:nth-of-type(1),
+html body .guandan-status-bar > div:nth-of-type(2),
+html body .guandan-status-bar > div:nth-of-type(3),
+html body .guandan-status-bar > button,
+html body .guandan-status-bar .guandan-level-hud {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+html body .guandan-status-bar > div {
+  position: relative !important;
+  z-index: 5 !important;
+  align-items: center !important;
+  min-height: 34px !important;
+  padding: 4px 9px !important;
+  white-space: nowrap !important;
+}
+
+html body .guandan-status-bar > button {
+  position: relative !important;
+  z-index: 5 !important;
+  min-height: 36px !important;
+  padding: 5px 10px !important;
+  white-space: nowrap !important;
+}
+
+/* The two level badges stay at the left of connection / room / settings. */
+html body .guandan-status-bar .guandan-level-hud {
+  order: -100 !important;
+  flex: 0 0 auto !important;
+  align-items: stretch !important;
+}
+
+/* Hide only the plain text H1 because the original decorative brand is restored separately. */
+html body .guandan-status-bar > h1 {
+  display: none !important;
+}
+
+html body .guandan-header-decor {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: none !important;
+}
+
+html body .guandan-header-brand,
+html body .guandan-header-clock {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 900px) {
+  html body .guandan-status-bar {
+    gap: 4px !important;
+    padding-left: 66px !important;
+    padding-right: 132px !important;
+    flex-wrap: nowrap !important;
+  }
+  html body .guandan-status-bar > div {
+    padding: 3px 5px !important;
+    font-size: 0.72rem !important;
+  }
+  html body .guandan-status-bar > button {
+    padding: 4px 6px !important;
+    font-size: 0.76rem !important;
+  }
+  html body .guandan-level-badge {
+    gap: 4px !important;
+    min-height: 36px !important;
+    padding: 3px 6px !important;
+  }
+  html body .guandan-level-badge span {
+    font-size: 0.72rem !important;
+  }
+  html body .guandan-level-badge strong {
+    min-width: 28px !important;
+    height: 28px !important;
+    font-size: 1rem !important;
+  }
+  html body .guandan-level-badge small {
+    font-size: 0.62rem !important;
+  }
+}

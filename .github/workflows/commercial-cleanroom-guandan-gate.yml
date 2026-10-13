@@ -1,0 +1,59 @@
+name: Commercial Clean-room Guandan Gate
+
+on:
+  push:
+    branches:
+      - cleanroom/three-game-commercial-20260916
+  workflow_dispatch:
+
+jobs:
+  provenance-isolation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require isolated clean-room source tree
+        run: |
+          test -d commercial-cleanroom/guandan/src
+          test -d commercial-cleanroom/guandan/test
+          test -d commercial-cleanroom/guandan/scripts
+          test ! -d commercial-cleanroom/guandan/node_modules
+          ! grep -R -n -E '(\.\./)+(backend|core|mechanics|play|storage|wasm-rpc-impl)(/|\b)' commercial-cleanroom/guandan/src commercial-cleanroom/guandan/test commercial-cleanroom/guandan/scripts
+      - name: Record source provenance boundary
+        run: |
+          echo "Commercial Guandan candidate comes from the independently developed yihua-game clean-room subtree."
+          echo "Original repository backend is not accepted as a production dependency."
+
+  guandan-cleanroom-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: commercial-cleanroom/guandan
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: commercial-cleanroom/guandan/package-lock.json
+      - name: Install locked dependencies without repository hooks
+        run: npm ci --ignore-scripts
+      - name: Format, typecheck, and unit tests
+        run: |
+          npm run prettier:version
+          npm run format:check
+          npm run typecheck
+          npm test
+      - name: Build independent server
+        run: npm run build
+      - name: Four-client real WebSocket gameplay transport
+        run: npm run smoke:gameplay
+      - name: Restart recovery
+        run: npm run smoke:restart
+      - name: Hard-crash checkpoint recovery
+        run: npm run smoke:crash
+      - name: Bounded repeated reconnect soak
+        run: npm run smoke:soak
+      - name: Mandatory browser gate remains separate
+        run: |
+          echo 'This foundation gate does not substitute for the mandatory real-browser 4+ client three-game gate.'

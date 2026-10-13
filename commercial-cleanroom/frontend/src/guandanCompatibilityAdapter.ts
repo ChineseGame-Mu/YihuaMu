@@ -1,0 +1,318 @@
+import type {
+  GuandanCard,
+  GuandanClientMessage,
+  GuandanRank,
+  GuandanServerMessage,
+  GuandanTeam,
+} from "./guandanProtocol";
+
+export interface GuandanTableState {
+  room: string | null;
+  seat: number | null;
+  players: string[];
+  observers: string[];
+  onlinePlayers: boolean[];
+  playerCount: number | null;
+  cardsPerPlayer: number | null;
+  hand: GuandanCard[];
+  turn: number | null;
+  handCounts: number[];
+  lastPlay: GuandanCard[];
+  lastPlayer: number | null;
+  tablePlays: Array<{ player: number; cards: GuandanCard[] }>;
+  passes: number;
+  trickComplete: boolean;
+  lastTrickWinner: number | null;
+  initialDraw: GuandanCard[];
+  initialDrawWinner: number | null;
+  level: GuandanRank | null;
+  teamLevels: unknown;
+  finishOrder: number[];
+  lastGameWinner: number | null;
+  lastGameWinnerTeam: GuandanTeam | null;
+  lastPromotionSteps: number | null;
+  pendingTribute: unknown;
+  tributeResisted: boolean;
+  matchWinner: GuandanTeam | null;
+  nextRoundPhase: "awaiting_shuffle" | "awaiting_deal" | null;
+  hookToBottom: boolean;
+  minimumPlayers: number | null;
+  maximumPlayers: number | null;
+  error: string | null;
+}
+
+export const initialGuandanTableState: GuandanTableState = {
+  room: null,
+  seat: null,
+  players: [],
+  observers: [],
+  onlinePlayers: [],
+  playerCount: null,
+  cardsPerPlayer: null,
+  hand: [],
+  turn: null,
+  handCounts: [],
+  lastPlay: [],
+  lastPlayer: null,
+  tablePlays: [],
+  passes: 0,
+  trickComplete: false,
+  lastTrickWinner: null,
+  initialDraw: [],
+  initialDrawWinner: null,
+  level: null,
+  teamLevels: null,
+  finishOrder: [],
+  lastGameWinner: null,
+  lastGameWinnerTeam: null,
+  lastPromotionSteps: null,
+  pendingTribute: null,
+  tributeResisted: false,
+  matchWinner: null,
+  nextRoundPhase: null,
+  hookToBottom: false,
+  minimumPlayers: null,
+  maximumPlayers: null,
+  error: null,
+};
+
+export const shouldClearOwnHand = (
+  ownSeat: number | null,
+  finishOrder: number[],
+): boolean => ownSeat !== null && finishOrder.includes(ownSeat);
+
+const inferPromotionSteps = (finishOrder: number[]): number | null => {
+  const winner = finishOrder[0];
+  if (winner === undefined) return null;
+  if (finishOrder.length !== 4) return finishOrder.length >= 4 ? 1 : null;
+  const partner = (winner + 2) % 4;
+  const partnerIndex = finishOrder.indexOf(partner);
+  if (partnerIndex < 0) return null;
+  const partnerPlace = partnerIndex + 1;
+  if (partnerPlace === 2) return 3;
+  if (partnerPlace === 3) return 2;
+  if (partnerPlace === 4) return 1;
+  return null;
+};
+
+const rankSequence: GuandanRank[] = [
+  "Two",
+  "Three",
+  "Four",
+  "Five",
+  "Six",
+  "Seven",
+  "Eight",
+  "Nine",
+  "Ten",
+  "Jack",
+  "Queen",
+  "King",
+  "Ace",
+];
+
+const advanceRank = (level: GuandanRank, steps: number): GuandanRank => {
+  const index = rankSequence.indexOf(level);
+  if (index < 0) return level;
+  return (
+    rankSequence[Math.min(rankSequence.length - 1, index + steps)] ?? level
+  );
+};
+
+const trickPlayKey = (play: { player: number; cards: GuandanCard[] }): string =>
+  `${play.player}:${JSON.stringify(play.cards)}`;
+
+export const mergeCurrentTrickPlays = (
+  previous: Array<{ player: number; cards: GuandanCard[] }>,
+  incoming: Array<{ player: number; cards: GuandanCard[] }>,
+  previousTrickComplete: boolean,
+  incomingTrickComplete: boolean,
+  incomingLastPlay: GuandanCard[],
+): Array<{ player: number; cards: GuandanCard[] }> => {
+  // Once a completed trick has been collected and the next trick begins, clear
+  // the old public cards. Some backends send only the newest play rather than
+  // the complete current-trick list, so otherwise preserve and append every
+  // distinct play until collection.
+  if (
+    incoming.length === 0 &&
+    incomingLastPlay.length === 0 &&
+    previous.length > 0
+  ) {
+    return [];
+  }
+
+  const base =
+    previousTrickComplete && !incomingTrickComplete ? [] : [...previous];
+  const seen = new Set(base.map(trickPlayKey));
+  for (const play of incoming) {
+    const key = trickPlayKey(play);
+    if (!seen.has(key)) {
+      base.push(play);
+      seen.add(key);
+    }
+  }
+  return base;
+};
+
+export const adaptGuandanServerMessage = (
+  state: GuandanTableState,
+  message: GuandanServerMessage,
+): GuandanTableState => {
+  switch (message.type) {
+    case "connected":
+      return { ...state, error: null };
+    case "joined":
+      return {
+        ...initialGuandanTableState,
+        room: message.room,
+        seat: message.seat,
+        error: null,
+      };
+    case "waiting":
+      return {
+        ...state,
+        players: message.players,
+        observers: message.observers,
+        onlinePlayers: message.online_players,
+        minimumPlayers: message.minimum_players,
+        maximumPlayers: message.maximum_players,
+        error: null,
+      };
+    case "started":
+      return {
+        ...state,
+        playerCount: message.player_count,
+        cardsPerPlayer: message.cards_per_player,
+        level: state.level ?? "Two",
+        turn: 0,
+        lastPlay: [],
+        lastPlayer: null,
+        tablePlays: [],
+        passes: 0,
+        trickComplete: false,
+        lastTrickWinner: null,
+        initialDraw: [],
+        initialDrawWinner: null,
+        finishOrder: [],
+        pendingTribute: null,
+        tributeResisted: false,
+        nextRoundPhase: null,
+        error: null,
+      };
+    case "hand":
+      return { ...state, hand: message.cards, error: null };
+    case "state": {
+      const roundComplete =
+        message.players.length >= 4 &&
+        message.finish_order.length === message.players.length;
+      const inferredWinner = roundComplete
+        ? (message.finish_order[0] ?? null)
+        : null;
+      const winner =
+        message.last_game_winner ?? inferredWinner ?? state.lastGameWinner;
+      const inferredTeam: GuandanTeam | null =
+        winner === null ? null : winner % 2 === 0 ? "TeamA" : "TeamB";
+      const promotionSteps =
+        message.last_promotion_steps ??
+        (roundComplete ? inferPromotionSteps(message.finish_order) : null) ??
+        state.lastPromotionSteps;
+      const serverLevel = message.level ?? state.level ?? "Two";
+      const shouldInferNextLevel =
+        roundComplete &&
+        message.last_promotion_steps === null &&
+        promotionSteps !== null &&
+        state.level !== null &&
+        serverLevel === state.level;
+      const effectiveLevel = shouldInferNextLevel
+        ? advanceRank(serverLevel, promotionSteps)
+        : serverLevel;
+      const currentTrickPlays = mergeCurrentTrickPlays(
+        state.tablePlays,
+        message.table_plays,
+        state.trickComplete,
+        message.trick_complete,
+        message.last_play,
+      );
+
+      return {
+        ...state,
+        players: message.players,
+        observers: message.observers,
+        onlinePlayers: message.online_players,
+        hand: state.hand,
+        turn: message.turn,
+        handCounts: message.hand_counts,
+        lastPlay: message.last_play,
+        lastPlayer: message.last_player,
+        tablePlays: currentTrickPlays,
+        passes: message.passes,
+        trickComplete: message.trick_complete,
+        lastTrickWinner: message.last_trick_winner,
+        initialDraw: message.initial_draw,
+        initialDrawWinner: message.initial_draw_winner,
+        level: effectiveLevel,
+        teamLevels: message.team_levels,
+        finishOrder: message.finish_order,
+        lastGameWinner: winner,
+        lastGameWinnerTeam:
+          message.last_game_winner_team ??
+          inferredTeam ??
+          state.lastGameWinnerTeam,
+        lastPromotionSteps: promotionSteps,
+        pendingTribute: message.pending_tribute,
+        tributeResisted: message.tribute_resisted,
+        matchWinner: message.match_winner,
+        nextRoundPhase: message.next_round_phase,
+        hookToBottom: message.hook_to_bottom ?? state.hookToBottom,
+        error: null,
+      };
+    }
+    case "error":
+      return { ...state, error: message.message };
+  }
+};
+
+export type GuandanWireClientMessage =
+  | GuandanClientMessage
+  | {
+      type: "join";
+      room: string;
+      name: string;
+      player_count: number;
+      desired_seat?: number;
+    };
+
+interface GuandanClientAdapterOptions {
+  cleanroom: boolean;
+  room: string | null;
+  playerCount: number | null;
+  desiredSeat?: number | null;
+}
+
+const supportedPlayerCounts = [4, 6, 8, 10, 12, 14];
+
+export const adaptGuandanClientMessage = (
+  message: GuandanClientMessage,
+  options: GuandanClientAdapterOptions,
+): GuandanWireClientMessage => {
+  if (!options.cleanroom || message.type !== "join") return message;
+
+  const requested = options.playerCount ?? 4;
+  const playerCount = supportedPlayerCounts.includes(requested) ? requested : 4;
+  const room = options.room?.trim();
+  const desiredSeat =
+    Number.isInteger(options.desiredSeat) &&
+    options.desiredSeat !== null &&
+    options.desiredSeat !== undefined &&
+    options.desiredSeat >= 0 &&
+    options.desiredSeat < playerCount
+      ? options.desiredSeat
+      : undefined;
+
+  return {
+    ...message,
+    room: room || message.room,
+    player_count: playerCount,
+    ...(desiredSeat === undefined ? {} : { desired_seat: desiredSeat }),
+  };
+};

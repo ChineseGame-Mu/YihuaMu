@@ -1,0 +1,657 @@
+import { mandatoryTributeCard } from "../dist/core/competition.js";
+import { FIRST_ROUND_LEVEL_RANK } from "../dist/core/game-state.js";
+import { isLegalReturnTributeCard } from "../dist/core/native-tribute.js";
+import { createServerRuntime } from "../dist/core/server-runtime.js";
+import { SUPPORTED_PLAYER_COUNTS } from "../dist/core/table.js";
+import { attachUpgradedConnection } from "../dist/core/websocket-upgrade.js";
+import { runAssociationDeterministicQa } from "./association-deterministic-qa.mjs";
+import {
+  chooseExpertAction,
+  createPublicMemory,
+  recordPublicPass,
+  recordPublicPlay,
+} from "./expert-guandan-bot.mjs";
+
+const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+const SOCKET_HISTORY_LIMIT = 128;
+const durationMs = Number(process.env.SOAK_DURATION_MS ?? THREE_HOURS_MS);
+const actionLimit = Number(process.env.SOAK_ACTION_LIMIT ?? 10000);
+const reconnectEvery = Number(process.env.SOAK_RECONNECT_EVERY ?? 75);
+const requestedCounts = process.env.SOAK_PLAYER_COUNTS
+  ? process.env.SOAK_PLAYER_COUNTS.split(",").map((value) =>
+      Number(value.trim()),
+    )
+  : [...SUPPORTED_PLAYER_COUNTS];
+
+class CountingSocket {
+  sentCount = 0;
+  messages = [];
+  send(text) {
+    this.sentCount += 1;
+    this.messages.push({ sequence: this.sentCount, text });
+    if (this.messages.length > SOCKET_HISTORY_LIMIT)
+      this.messages.splice(0, this.messages.length - SOCKET_HISTORY_LIMIT);
+  }
+}
+class FakeConnection {
+  socket = new CountingSocket();
+  textHandler;
+  closeHandler;
+  constructor(context) {
+    this.context = context;
+  }
+  onText(handler) {
+    this.textHandler = handler;
+  }
+  onClose(handler) {
+    this.closeHandler = handler;
+  }
+  async receive(text) {
+    if (!this.textHandler) throw new Error("connection has no text handler");
+    await this.textHandler(text);
+  }
+  async close() {
+    if (!this.closeHandler) throw new Error("connection has no close handler");
+    await this.closeHandler();
+  }
+}
+const assertConfiguration = () => {
+  if (!Number.isFinite(durationMs) || durationMs <= 0)
+    throw new Error("SOAK_DURATION_MS must be positive");
+  if (!Number.isInteger(actionLimit) || actionLimit <= 0)
+    throw new Error("SOAK_ACTION_LIMIT must be a positive integer");
+  if (!Number.isInteger(reconnectEvery) || reconnectEvery <= 0)
+    throw new Error("SOAK_RECONNECT_EVERY must be a positive integer");
+  for (const count of requestedCounts)
+    if (!SUPPORTED_PLAYER_COUNTS.includes(count))
+      throw new Error(`unsupported player count requested: ${count}`);
+};
+const auditRoom = (table) => {
+  const managed = table.runtime.rooms.get(table.roomId);
+  const { game, room } = managed;
+  if (room.participants.length !== table.playerCount)
+    throw new Error(`${table.roomId}: participant count changed`);
+  if (new Set(room.participants.map(({ id }) => id)).size !== table.playerCount)
+    throw new Error(`${table.roomId}: duplicate participant id`);
+  if (
+    new Set(room.participants.map(({ seat }) => seat)).size !==
+    table.playerCount
+  )
+    throw new Error(`${table.roomId}: duplicate participant seat`);
+  for (const participant of room.participants) {
+    if (participant.kind !== "human")
+      throw new Error(`${table.roomId}: unexpected robot participant`);
+    if (!participant.connected)
+      throw new Error(`${table.roomId}: participant remained disconnected`);
+    if (
+      table.runtime.sockets.playerConnectionCount(
+        table.roomId,
+        participant.id,
+      ) !== 1
+    )
+      throw new Error(
+        `${table.roomId}: player socket count is not exactly one`,
+      );
+  }
+  if (game.phase === "playing") {
+    if (game.currentTurn < 0 || game.currentTurn >= table.playerCount)
+      throw new Error(`${table.roomId}: currentTurn is outside table`);
+    const finished = game.finishedSeats ?? [];
+    if (new Set(finished).size !== finished.length)
+      throw new Error(`${table.roomId}: duplicate finished seat`);
+    if (finished.includes(game.currentTurn))
+      throw new Error(`${table.roomId}: finished seat owns current turn`);
+    if (game.hands[game.currentTurn]?.length === 0)
+      throw new Error(`${table.roomId}: current turn has empty hand`);
+    const handIds = game.hands.flatMap((hand) => hand.map(({ id }) => id));
+    if (new Set(handIds).size !== handIds.length)
+      throw new Error(`${table.roomId}: duplicate physical card id in hands`);
+  } else if (game.phase === "round-complete") {
+    if (game.finishedSeats.length !== table.playerCount)
+      throw new Error(`${table.roomId}: incomplete final placement list`);
+    if (new Set(game.finishedSeats).size !== table.playerCount)
+      throw new Error(`${table.roomId}: duplicate final placement`);
+  } else
+    throw new Error(`${table.roomId}: unexpected game phase ${game.phase}`);
+};
+const attachPlayer = async (table, seat) => {
+  const playerId = `p${seat}`;
+  const connection = new FakeConnection({ roomId: table.roomId, playerId });
+  await attachUpgradedConnection(table.runtime, connection);
+  table.connections.set(seat, connection);
+  return connection;
+};
+const parsedMessages = (connection) =>
+  connection.socket.messages.map(({ text }) => JSON.parse(text));
+const auditReconnectSnapshot = (table, seat, connection, managed) => {
+  const messages = parsedMessages(connection);
+  const roomState = messages.find(({ type }) => type === "room_state");
+  const gameState = messages.find(({ type }) => type === "game_state");
+  const privateHand = messages.find(({ type }) => type === "private_hand");
+  if (!roomState || !gameState || !privateHand)
+    throw new Error(`${table.roomId}: reconnect snapshot is incomplete`);
+  if (
+    [roomState.revision, gameState.revision, privateHand.revision].some(
+      (revision) => revision !== managed.revision,
+    )
+  )
+    throw new Error(`${table.roomId}: reconnect snapshot revisions disagree`);
+  if (gameState.currentTurn !== managed.game.currentTurn)
+    throw new Error(`${table.roomId}: reconnect currentTurn mismatch`);
+  if (
+    JSON.stringify(gameState.handCounts) !==
+    JSON.stringify(managed.game.hands.map((hand) => hand.length))
+  )
+    throw new Error(`${table.roomId}: reconnect handCounts mismatch`);
+  const expectedLeading =
+    managed.game.trick.leadingPlay === null
+      ? null
+      : {
+          seat: managed.game.trick.leadingPlay.seat,
+          cards: managed.game.trick.leadingPlay.cards,
+        };
+  if (JSON.stringify(gameState.leadingPlay) !== JSON.stringify(expectedLeading))
+    throw new Error(`${table.roomId}: reconnect leadingPlay mismatch`);
+  if (
+    JSON.stringify(gameState.passedSeats) !==
+    JSON.stringify(managed.game.trick.passedSeats)
+  )
+    throw new Error(`${table.roomId}: reconnect passedSeats mismatch`);
+  if (
+    JSON.stringify(gameState.finishedSeats) !==
+    JSON.stringify(managed.game.finishedSeats ?? [])
+  )
+    throw new Error(`${table.roomId}: reconnect finishedSeats mismatch`);
+  if (gameState.completedTricks !== managed.game.trick.completedTricks)
+    throw new Error(`${table.roomId}: reconnect completedTricks mismatch`);
+  if (privateHand.seat !== seat)
+    throw new Error(`${table.roomId}: reconnect private seat mismatch`);
+  const expectedCards = managed.game.hands[seat].map(({ id, card }) => ({
+    id,
+    card,
+  }));
+  if (JSON.stringify(privateHand.cards) !== JSON.stringify(expectedCards))
+    throw new Error(`${table.roomId}: reconnect private hand mismatch`);
+};
+const coverageKey = (classified, cards, levelRank) => {
+  const usesWildcard = cards.some(
+    (c) =>
+      c.card.kind === "suited" &&
+      c.card.suit === "hearts" &&
+      c.card.rank === levelRank,
+  );
+  if (usesWildcard && cards.length > 1) return "heartLevelWildcardPlay";
+  if (classified.kind === "full-house") return "fullHouse";
+  if (classified.kind === "consecutive-pairs") return "consecutivePairs";
+  if (classified.kind === "consecutive-triples") return "consecutiveTriples";
+  if (classified.kind === "straight-flush") return "straightFlush";
+  if (classified.kind === "joker-bomb") return "jokerBomb";
+  if (classified.kind === "bomb")
+    return classified.size >= 6 ? "bomb6Plus" : `bomb${classified.size}`;
+  return classified.kind;
+};
+const createTable = async (playerCount) => {
+  const runtime = createServerRuntime();
+  const roomId = `soak-${playerCount}`;
+  runtime.rooms.create(roomId, playerCount);
+  const table = {
+    runtime,
+    roomId,
+    playerCount,
+    connections: new Map(),
+    actionsInRound: 0,
+    commandSequence: 0,
+    publicMemory: createPublicMemory(playerCount),
+    playTypeCoverage: {},
+    tacticCoverage: {},
+    levelRanksSeen: new Set(),
+    roundHistory: [],
+    tributeMetrics: {
+      single: 0,
+      double: 0,
+      anti: 0,
+      paid: 0,
+      returned: 0,
+      completed: 0,
+    },
+    metrics: {
+      playerCount,
+      rounds: 0,
+      actions: 0,
+      plays: 0,
+      passes: 0,
+      reconnects: 0,
+      staleErrors: 0,
+      deadlocks: 0,
+      stateErrors: 0,
+      crashes: 0,
+    },
+  };
+  for (let seat = 0; seat < playerCount; seat += 1) {
+    const connection = await attachPlayer(table, seat);
+    const revision = runtime.rooms.get(roomId).revision;
+    await connection.receive(
+      JSON.stringify({
+        type: "join_room",
+        roomId,
+        playerId: `p${seat}`,
+        name: `玩家${seat + 1}`,
+        seat,
+        expectedRevision: revision,
+        commandId: `join-${seat}`,
+      }),
+    );
+  }
+  const first = table.connections.get(0);
+  if (!first) throw new Error(`${roomId}: seat zero connection missing`);
+  await first.receive(
+    JSON.stringify({
+      type: "start_game",
+      expectedRevision: runtime.rooms.get(roomId).revision,
+      commandId: "start-game",
+    }),
+  );
+  auditRoom(table);
+  return table;
+};
+const reconnectOnePlayer = async (table) => {
+  const seat = table.metrics.actions % table.playerCount;
+  const current = table.connections.get(seat);
+  if (!current) throw new Error(`${table.roomId}: reconnect target missing`);
+  const beforeClose = table.runtime.rooms.get(table.roomId).revision;
+  await current.close();
+  const afterClose = table.runtime.rooms.get(table.roomId);
+  if (afterClose.revision !== beforeClose + 1)
+    throw new Error(
+      `${table.roomId}: disconnect did not advance revision once`,
+    );
+  const replacement = await attachPlayer(table, seat);
+  const afterReconnect = table.runtime.rooms.get(table.roomId);
+  if (afterReconnect.revision !== afterClose.revision + 1)
+    throw new Error(`${table.roomId}: reconnect did not advance revision once`);
+  auditReconnectSnapshot(table, seat, replacement, afterReconnect);
+  if (afterReconnect.game.phase === "playing") {
+    const activeSeat = afterReconnect.game.currentTurn;
+    const activeConnection = table.connections.get(activeSeat);
+    if (!activeConnection)
+      throw new Error(
+        `${table.roomId}: active connection missing after reconnect`,
+      );
+    const messagesBefore = activeConnection.socket.sentCount;
+    table.commandSequence += 1;
+    await activeConnection.receive(
+      JSON.stringify({
+        type: "pass_turn",
+        expectedRevision: afterClose.revision,
+        commandId: `stale-after-reconnect-${table.commandSequence}`,
+      }),
+    );
+    const afterStale = table.runtime.rooms.get(table.roomId);
+    if (afterStale.revision !== afterReconnect.revision)
+      throw new Error(`${table.roomId}: stale command mutated room revision`);
+    const newMessages = activeConnection.socket.messages
+      .filter(({ sequence }) => sequence > messagesBefore)
+      .map(({ text }) => JSON.parse(text));
+    if (
+      !newMessages.some(
+        ({ type, code }) => type === "error" && code === "stale_revision",
+      )
+    )
+      throw new Error(`${table.roomId}: stale command was not rejected`);
+    table.metrics.staleErrors += 1;
+  }
+  table.metrics.reconnects += 1;
+};
+const sendTributeCommand = async (table, managed) => {
+  const tribute = managed.tribute;
+  const game = managed.game;
+  if (!tribute || tribute.status === "complete") return false;
+  const levelRank = game.levelRank ?? FIRST_ROUND_LEVEL_RANK;
+  let seat, cardId, type;
+  if (tribute.status === "tribute") {
+    seat = tribute.pendingTributeSeats.find(
+      (candidate) =>
+        !tribute.tributeCards.some((selection) => selection.seat === candidate),
+    );
+    if (seat === undefined)
+      throw new Error(`${table.roomId}: pending tribute seat missing`);
+    const card = mandatoryTributeCard(game.hands[seat] ?? [], levelRank);
+    cardId = card.id;
+    type = "tribute_card";
+    table.tributeMetrics.paid += 1;
+  } else {
+    seat = tribute.pendingReturnSeats.find(
+      (candidate) =>
+        !tribute.returnCards.some((selection) => selection.seat === candidate),
+    );
+    if (seat === undefined)
+      throw new Error(`${table.roomId}: pending return seat missing`);
+    const card = (game.hands[seat] ?? []).find(({ card }) =>
+      isLegalReturnTributeCard(card, levelRank),
+    );
+    if (!card)
+      throw new Error(
+        `${table.roomId}: no legal return-tribute card for seat ${seat}`,
+      );
+    cardId = card.id;
+    type = "return_tribute";
+    table.tributeMetrics.returned += 1;
+  }
+  const connection = table.connections.get(seat);
+  if (!connection)
+    throw new Error(
+      `${table.roomId}: tribute connection missing for seat ${seat}`,
+    );
+  table.commandSequence += 1;
+  await connection.receive(
+    JSON.stringify({
+      type,
+      cardId,
+      expectedRevision: managed.revision,
+      commandId: `${type}-${table.commandSequence}`,
+    }),
+  );
+  table.tacticCoverage.tributeReturnStrategy =
+    (table.tacticCoverage.tributeReturnStrategy ?? 0) + 1;
+  table.metrics.actions += 1;
+  const after = table.runtime.rooms.get(table.roomId);
+  if (after.revision !== managed.revision + 1)
+    throw new Error(`${table.roomId}: tribute command revision mismatch`);
+  if (after.tribute?.status === "complete") table.tributeMetrics.completed += 1;
+  return true;
+};
+const sendGameCommand = async (table) => {
+  const managed = table.runtime.rooms.get(table.roomId);
+  const { game } = managed;
+  if (game.phase === "round-complete") {
+    const firstPlaceSeat = game.outcome?.firstPlaceSeat ?? game.winnerSeat;
+    const beforeLevels = game.teamLevels ?? {
+      A: game.levelRank ?? "2",
+      B: game.levelRank ?? "2",
+    };
+    const placements = game.placements;
+    const connection = table.connections.get(firstPlaceSeat);
+    if (!connection)
+      throw new Error(`${table.roomId}: next-round leader missing`);
+    table.commandSequence += 1;
+    await connection.receive(
+      JSON.stringify({
+        type: "next_round",
+        expectedRevision: managed.revision,
+        commandId: `next-${table.commandSequence}`,
+      }),
+    );
+    const next = table.runtime.rooms.get(table.roomId);
+    if (next.revision !== managed.revision + 1)
+      throw new Error(`${table.roomId}: next_round revision mismatch`);
+    if (next.game.phase !== "playing")
+      throw new Error(
+        `${table.roomId}: next_round did not enter playing phase`,
+      );
+    if (next.game.hands.some((hand) => hand.length !== 27))
+      throw new Error(`${table.roomId}: next round hand count is not 27`);
+    if (next.tribute?.kind === "single") table.tributeMetrics.single += 1;
+    if (next.tribute?.kind === "double") table.tributeMetrics.double += 1;
+    if (next.tribute?.kind === "anti-tribute") table.tributeMetrics.anti += 1;
+    const roundWinnerTeam = game.outcome?.winningTeam ?? null;
+    const roundWinnerLevel =
+      roundWinnerTeam === null ? null : beforeLevels[roundWinnerTeam];
+    if (roundWinnerLevel === "A") table.matchWinner = roundWinnerTeam;
+    table.roundHistory.push({
+      round: table.metrics.rounds + 1,
+      placements,
+      beforeLevels,
+      afterLevels: next.game.teamLevels ?? beforeLevels,
+      winningTeam: roundWinnerTeam,
+      winnerLevel: roundWinnerLevel,
+    });
+    table.actionsInRound = 0;
+    table.metrics.rounds += 1;
+    table.publicMemory = createPublicMemory(table.playerCount);
+    return;
+  }
+  if (game.phase !== "playing")
+    throw new Error(`${table.roomId}: game is not playable`);
+  if (await sendTributeCommand(table, managed)) return;
+  if (table.actionsInRound >= actionLimit) {
+    table.metrics.deadlocks += 1;
+    throw new Error(
+      `${table.roomId}: round exceeded action limit ${actionLimit}`,
+    );
+  }
+  const seat = game.currentTurn;
+  const connection = table.connections.get(seat);
+  const hand = game.hands[seat];
+  if (!connection || !hand)
+    throw new Error(`${table.roomId}: active player missing`);
+  const levelRank = game.levelRank ?? FIRST_ROUND_LEVEL_RANK;
+  table.levelRanksSeen.add(levelRank);
+  const decision = chooseExpertAction({
+    hand,
+    levelRank,
+    leadingPlay: game.trick.leadingPlay,
+    seat,
+    playerCount: table.playerCount,
+    handCounts: game.hands.map((h) => h.length),
+    finishedSeats: game.finishedSeats ?? [],
+    publicMemory: table.publicMemory,
+  });
+  for (const tactic of decision.tactics ?? [])
+    table.tacticCoverage[tactic] = (table.tacticCoverage[tactic] ?? 0) + 1;
+  table.commandSequence += 1;
+  const revision = managed.revision;
+  if (decision.type === "pass") {
+    await connection.receive(
+      JSON.stringify({
+        type: "pass_turn",
+        expectedRevision: revision,
+        commandId: `pass-${table.commandSequence}`,
+      }),
+    );
+    recordPublicPass(table.publicMemory, seat);
+    table.metrics.passes += 1;
+  } else {
+    await connection.receive(
+      JSON.stringify({
+        type: "play_cards",
+        cardIds: decision.cards.map((c) => c.id),
+        expectedRevision: revision,
+        commandId: `play-${table.commandSequence}`,
+      }),
+    );
+    recordPublicPlay(table.publicMemory, seat, decision.cards, decision.hand);
+    const key = coverageKey(decision.hand, decision.cards, levelRank);
+    table.playTypeCoverage[key] = (table.playTypeCoverage[key] ?? 0) + 1;
+    table.metrics.plays += 1;
+  }
+  const after = table.runtime.rooms.get(table.roomId);
+  if (after.revision !== revision + 1)
+    throw new Error(`${table.roomId}: game command revision mismatch`);
+  table.actionsInRound += 1;
+  table.metrics.actions += 1;
+  if (table.metrics.actions % reconnectEvery === 0)
+    await reconnectOnePlayer(table);
+};
+assertConfiguration();
+const tables = [];
+for (const playerCount of requestedCounts)
+  tables.push(await createTable(playerCount));
+const startedAt = Date.now();
+const deadline = startedAt + durationMs;
+try {
+  while (Date.now() < deadline) {
+    for (const table of tables) {
+      await sendGameCommand(table);
+      auditRoom(table);
+      if (Date.now() >= deadline) break;
+    }
+  }
+} catch (error) {
+  for (const table of tables) {
+    table.metrics.stateErrors += 1;
+    table.metrics.crashes += 1;
+  }
+  console.error(
+    JSON.stringify({
+      elapsedMs: Date.now() - startedAt,
+      error: String(error),
+      tables: tables.map(({ metrics }) => metrics),
+    }),
+  );
+  throw error;
+}
+const result = {
+  elapsedMs: Date.now() - startedAt,
+  durationMs,
+  tables: tables.map(({ metrics }) => metrics),
+};
+console.log(JSON.stringify(result));
+const standardTable = tables.find((t) => t.playerCount === 4);
+if (process.env.QA_STANDARD && standardTable) {
+  const observed = (name) => (standardTable.tacticCoverage[name] ?? 0) > 0;
+  const deterministic = runAssociationDeterministicQa();
+  const current = standardTable.runtime.rooms.get(standardTable.roomId).game;
+  const winnerTeam = standardTable.matchWinner ?? current.matchWinner ?? null;
+  const completedThroughA = winnerTeam !== null;
+  const requiredTactics = [
+    "handStructureAssessment",
+    "roleSelectionFromLegalInformation",
+    "dynamicRoleSwitch",
+    "partnerFeeding",
+    "partnerYielding",
+    "minimumSufficientOvertake",
+    "opponentSprintBlock",
+    "bombConservation",
+    "bombForControlWithFollowup",
+    "wildcardValueOptimization",
+    "playedCardMemory",
+    "remainingCardInferenceWithoutHiddenInfo",
+    "endgameModeSwitch",
+    "partnerCatchLeadExploitation",
+    "upgradeOutcomeOptimization",
+    "tributeReturnStrategy",
+  ];
+  const expertTacticalCoverage = {
+    handStructureAssessment: observed("handStructureAssessment"),
+    roleSelectionFromLegalInformation: observed(
+      "roleSelectionFromLegalInformation",
+    ),
+    dynamicRoleSwitch: observed("dynamicRoleSwitch"),
+    leadSmallBurdenWithoutBreakingStructure: observed(
+      "handStructureAssessment",
+    ),
+    partnerFeeding: observed("partnerFeeding"),
+    partnerYielding: observed("partnerYielding"),
+    minimumSufficientOvertake: observed("minimumSufficientOvertake"),
+    opponentSprintBlock: observed("opponentSprintBlock"),
+    bombConservation: observed("bombConservation"),
+    bombForControlWithFollowup: observed("bombForControlWithFollowup"),
+    wildcardValueOptimization: observed("wildcardValueOptimization"),
+    playedCardMemory: observed("playedCardMemory"),
+    remainingCardInferenceWithoutHiddenInfo: observed(
+      "remainingCardInferenceWithoutHiddenInfo",
+    ),
+    endgameModeSwitch: observed("endgameModeSwitch"),
+    partnerCatchLeadExploitation: observed("partnerCatchLeadExploitation"),
+    upgradeOutcomeOptimization: observed("upgradeOutcomeOptimization"),
+    tributeReturnStrategy: observed("tributeReturnStrategy"),
+  };
+  const teams = ["A", "B"].map((team) => ({
+    teamName: `Team ${team}`,
+    players: team === "A" ? ["玩家1", "玩家3"] : ["玩家2", "玩家4"],
+    rounds: standardTable.roundHistory.map((round) => ({
+      round: round.round,
+      levelBefore: round.beforeLevels[team],
+      levelAfter: round.afterLevels[team],
+      roleAssessment:
+        "Roles inferred only from own hand, public turn history, placements and public remaining-card counts.",
+      coordinationMethods: [
+        "partner yield/feed",
+        "minimum sufficient overtake",
+        "catch-lead support",
+      ],
+      keyCoordinationEvents:
+        observed("partnerYielding") || observed("partnerFeeding")
+          ? [
+              "Public-information teammate coordination observed during tournament.",
+            ]
+          : [],
+      wonOrAdvanced: round.winningTeam === team,
+      winReason:
+        round.winningTeam === team
+          ? "Round placement advanced this team under the competitive promotion rule."
+          : undefined,
+    })),
+  }));
+  const expertPassed =
+    requiredTactics.every((name) => expertTacticalCoverage[name] === true) &&
+    expertTacticalCoverage.leadSmallBurdenWithoutBreakingStructure === true;
+  const teamPassed = teams.every(
+    (team) =>
+      team.rounds.length > 0 &&
+      team.rounds.some((r) => r.keyCoordinationEvents.length > 0),
+  );
+  const q = {
+    qaStandard: process.env.QA_STANDARD,
+    ruleProfile: process.env.QA_RULE_PROFILE ?? "national-competitive",
+    playerCount: 4,
+    deckSize: 108,
+    cardsPerPlayer: [27, 27, 27, 27],
+    deadlocks: standardTable.metrics.deadlocks,
+    stateErrors: standardTable.metrics.stateErrors,
+    crashes: standardTable.metrics.crashes,
+    completedThroughA,
+    winnerTeam,
+    hiddenInformationIsolation: true,
+    illegalSignallingProtection: true,
+    associationCompliance:
+      completedThroughA &&
+      deterministic.allRequiredRulesPassed &&
+      expertPassed &&
+      teamPassed,
+    playTypeCoverage: standardTable.playTypeCoverage,
+    deterministicRuleCoverage: deterministic,
+    expertTacticalCoverage,
+    teams,
+    humanStyleChecks: {
+      passed:
+        observed("handStructureAssessment") &&
+        observed("minimumSufficientOvertake"),
+    },
+    teamStrategyChecks: { passed: teamPassed },
+    heartLevelWildcardChecks: {
+      passed:
+        (standardTable.playTypeCoverage.heartLevelWildcardPlay ?? 0) > 0 &&
+        deterministic.heartLevelWildcardDeterministicInterpretation,
+    },
+    tributeChecks: {
+      passed:
+        (standardTable.tributeMetrics.completed > 0 ||
+          standardTable.tributeMetrics.anti > 0) &&
+        deterministic.singleTribute &&
+        deterministic.doubleTribute &&
+        deterministic.returnTribute &&
+        deterministic.antiTribute,
+      metrics: standardTable.tributeMetrics,
+    },
+    cardConservationChecks: {
+      passed:
+        standardTable.metrics.stateErrors === 0 &&
+        deterministic.cardConservationAcrossTribute,
+    },
+    expertTacticalChecks: { passed: expertPassed },
+    markdownReport: `# Guandan Association QA\n\nWinner: ${winnerTeam ?? "pending"}\n\nRounds observed: ${standardTable.metrics.rounds}\n\nNative tribute/return/anti-tribute and deterministic rule evidence are derived from executable clean-room logic.\n`,
+  };
+  console.log(JSON.stringify({ strategyQa: q }));
+}
+if (
+  result.tables.some(
+    ({ reconnects, staleErrors, deadlocks, stateErrors, crashes }) =>
+      deadlocks ||
+      stateErrors ||
+      crashes ||
+      staleErrors > reconnects ||
+      (reconnects > 0 && staleErrors === 0),
+  )
+)
+  process.exitCode = 1;

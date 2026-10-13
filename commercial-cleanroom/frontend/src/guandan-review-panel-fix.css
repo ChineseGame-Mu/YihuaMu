@@ -1,0 +1,162 @@
+/* Final review-panel overrides. Keep the existing green/gold table and hand styling. */
+.guandan-private-zone {
+  display: block !important;
+}
+
+.guandan-private-zone > .guandan-hand-section {
+  height: calc(100% - 8px) !important;
+  padding-right: 318px !important;
+}
+
+/* Let the review panel share/overlap the private-table border visually. */
+.guandan-private-zone > section.guandan-play-actions {
+  position: absolute !important;
+  top: 27px !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: auto !important;
+  width: 304px !important;
+  min-width: 304px !important;
+  max-width: 304px !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 96px 12px 12px !important;
+  overflow: hidden !important;
+  border: 3px solid #d5a438 !important;
+  border-right-width: 0 !important;
+  border-bottom-width: 0 !important;
+  border-radius: 14px 0 0 0 !important;
+  background: rgba(255, 252, 235, 0.97) !important;
+  box-shadow: inset 0 0 0 2px rgba(255, 235, 166, 0.92) !important;
+  color: #173528 !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions::before {
+  content: "待出牌核对区" !important;
+  position: absolute !important;
+  top: 8px !important;
+  left: 12px !important;
+  right: 12px !important;
+  height: 26px !important;
+  color: #6b4a08 !important;
+  font-size: 16px !important;
+  font-weight: 950 !important;
+  line-height: 26px !important;
+  text-align: center !important;
+  pointer-events: none !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button:nth-of-type(1),
+.guandan-private-zone > section.guandan-play-actions > button:nth-of-type(2) {
+  position: absolute !important;
+  top: 42px !important;
+  width: 132px !important;
+  min-width: 132px !important;
+  max-width: 132px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border-width: 2px !important;
+  border-radius: 11px !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+  opacity: 1 !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button:nth-of-type(1) {
+  left: 12px !important;
+  right: auto !important;
+  border-color: #fff2a8 !important;
+  background: linear-gradient(180deg, #ffe36a 0%, #ffae00 100%) !important;
+  color: #4d2b00 !important;
+  box-shadow:
+    0 3px 0 #9d6600,
+    0 4px 8px rgba(0, 0, 0, 0.22) !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button:nth-of-type(2) {
+  left: auto !important;
+  right: 12px !important;
+  border-color: #d8f6ff !important;
+  background: linear-gradient(180deg, #72ddff 0%, #159fdf 100%) !important;
+  color: #073d5a !important;
+  box-shadow:
+    0 3px 0 #08739f,
+    0 4px 8px rgba(0, 0, 0, 0.22) !important;
+}
+
+.guandan-private-zone > section.guandan-play-actions > button:disabled {
+  opacity: 0.58 !important;
+  filter: saturate(0.8) !important;
+}
+
+/* The preview itself fills the panel below the two action buttons. */
+.guandan-private-zone
+  > section.guandan-play-actions
+  > .guandan-selected-preview {
+  position: absolute !important;
+  top: 94px !important;
+  right: 10px !important;
+  bottom: 10px !important;
+  left: 10px !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 12px 8px 10px !important;
+  overflow: auto !important;
+  border: 2px solid #d9b75b !important;
+  border-radius: 12px !important;
+  background: linear-gradient(180deg, #fffdf2, #fff3c7) !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+}
+
+.guandan-selected-preview::before {
+  display: none !important;
+}
+
+.guandan-selected-preview-header {
+  margin-bottom: 6px !important;
+}
+
+@media (max-width: 760px) {
+  .guandan-private-zone > .guandan-hand-section {
+    padding-right: 208px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions {
+    width: 196px !important;
+    min-width: 196px !important;
+    max-width: 196px !important;
+    padding-top: 88px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:nth-of-type(1),
+  .guandan-private-zone > section.guandan-play-actions > button:nth-of-type(2) {
+    top: 40px !important;
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    font-size: 15px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:nth-of-type(1) {
+    left: 9px !important;
+  }
+
+  .guandan-private-zone > section.guandan-play-actions > button:nth-of-type(2) {
+    right: 9px !important;
+  }
+
+  .guandan-private-zone
+    > section.guandan-play-actions
+    > .guandan-selected-preview {
+    top: 88px !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    left: 8px !important;
+  }
+}

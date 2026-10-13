@@ -1,0 +1,99 @@
+/* Final top-bar placement, matching the approved hand-drawn layout.
+ * Exit stays inside the left edge of the settings/status bar.
+ * Guandan + two cards on each side stays centered.
+ * Clock stays inside the right edge of the same bar.
+ */
+
+html body #root {
+  position: relative !important;
+}
+
+html body .guandan-status-bar {
+  position: relative !important;
+  z-index: 20 !important;
+  box-sizing: border-box !important;
+  min-height: 66px !important;
+  padding-left: 104px !important;
+  padding-right: 190px !important;
+}
+
+html body #root > .exit-game-button {
+  position: absolute !important;
+  z-index: 120 !important;
+  top: 8px !important;
+  left: 14px !important;
+  width: 74px !important;
+  height: 50px !important;
+  grid-template-rows: 35px auto !important;
+  margin: 0 !important;
+  padding: 2px !important;
+}
+
+html body #root > .exit-game-button svg {
+  width: 38px !important;
+  height: 38px !important;
+}
+
+html body #root > .exit-game-button span {
+  font-size: 11px !important;
+}
+
+html body #root > .guandan-header-decor {
+  position: absolute !important;
+  z-index: 110 !important;
+  top: 4px !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 62px !important;
+  display: block !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+html body #root > .guandan-header-decor .guandan-header-brand {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+html body #root > .guandan-header-decor .guandan-header-clock {
+  position: absolute !important;
+  top: 8px !important;
+  right: 16px !important;
+  width: 154px !important;
+  height: 44px !important;
+  margin: 0 !important;
+}
+
+@media (max-width: 900px) {
+  html body .guandan-status-bar {
+    min-height: 60px !important;
+    padding-left: 82px !important;
+    padding-right: 136px !important;
+  }
+
+  html body #root > .exit-game-button {
+    top: 7px !important;
+    left: 6px !important;
+    width: 62px !important;
+    height: 46px !important;
+    grid-template-rows: 32px auto !important;
+  }
+
+  html body #root > .exit-game-button svg {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  html body #root > .guandan-header-decor {
+    height: 58px !important;
+  }
+
+  html body #root > .guandan-header-decor .guandan-header-clock {
+    top: 8px !important;
+    right: 6px !important;
+    width: 122px !important;
+    height: 40px !important;
+  }
+}
