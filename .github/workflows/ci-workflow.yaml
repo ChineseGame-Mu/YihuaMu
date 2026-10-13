@@ -79,15 +79,16 @@ jobs:
           grep -q 'content: "出牌人："' frontend/src/guandan-play-author-hotfix.css
           grep -q 'state.players\[play.player\]' frontend/src/GuandanTable.tsx
 
-          echo "[4/5] public Guandan room gate must remain fixed to rooms 0001-0004"
-          grep -q "expectedRooms = \['0001','0002','0003','0004'\]" .github/workflows/cleanroom-short-link-gate.yml
+          echo "[4/5] public Guandan room gate must cover rooms 0001-0010"
+          grep -q "expectedRooms = \['0001','0002','0003','0004','0005','0006','0007','0008','0009','0010'\]" .github/workflows/cleanroom-short-link-gate.yml
           grep -q "free-text room input detected" .github/workflows/cleanroom-short-link-gate.yml
 
-          echo "[5/5] production short link gate must protect master and yihuagames.com"
-          grep -q 'https://yihuagames.com' .github/workflows/cleanroom-short-link-gate.yml
+          echo "[5/5] production short link gate must protect master and the legacy Vercel URL"
+          grep -q 'https://yihua-mu.vercel.app' .github/workflows/cleanroom-short-link-gate.yml
           grep -q '^      - master$' .github/workflows/cleanroom-short-link-gate.yml
 
           echo "Guandan forced regression QA: PASS (5/5)"
+        working-directory: .
 
       - name: Lint Rust code
         run: cargo clippy
