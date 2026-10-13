@@ -31,9 +31,7 @@ const getFileReader: () => IBlobToArrayBufferQueue = memoize(() => {
     const next = queue.shift();
     if (next !== undefined) {
       next.handler(fr.result as ArrayBuffer);
-      if (queue.length > 0) {
-        fr.readAsArrayBuffer(queue[0].blob);
-      }
+      if (queue.length > 0) fr.readAsArrayBuffer(queue[0].blob);
     }
   };
   return {
@@ -75,6 +73,26 @@ const getBlobArrayBuffer: () => IBlobToArrayBufferQueue = memoize(() => {
   };
 });
 
+const websocketUri = (): string => {
+  const runtimeWebsocketHost = (window as any)._WEBSOCKET_HOST;
+  if (runtimeWebsocketHost !== undefined && runtimeWebsocketHost !== null) {
+    const base = String(runtimeWebsocketHost).replace(/\/$/, "");
+    return base.endsWith("/api") ? base : `${base}/api`;
+  }
+
+  // Keep the Vercel frontend and all game modes on the same long-lived Render
+  // websocket backend. Guandan uses the sibling /api/guandan endpoint.
+  if (location.hostname.endsWith(".vercel.app")) {
+    return "wss://chinesegame-yihua.onrender.com/api";
+  }
+
+  const protocol = location.protocol === "https:" ? "wss://" : "ws://";
+  const basePath = location.pathname.endsWith("/")
+    ? location.pathname.slice(0, -1)
+    : location.pathname;
+  return `${protocol}${location.host}${basePath}/api`;
+};
+
 const WebsocketProvider: React.FunctionComponent<
   React.PropsWithChildren<IProps>
 > = (props: IProps) => {
@@ -82,19 +100,17 @@ const WebsocketProvider: React.FunctionComponent<
   const { decodeWireFormat } = React.useContext(WasmContext);
   const { setTimeout, clearTimeout } = React.useContext(TimerContext);
   const [timer, setTimer] = React.useState<number | null>(null);
-  const [websocket, setWebsocket] = React.useState<WebSocket | null>(null);
 
-  // Because state/updateState are passed in and change every time something
-  // happens, we need to maintain a reference to these props to prevent stale
-  // closures which may happen if state/updateState is changed between when an
-  // event listener is registered and when it fires.
-  // https://reactjs.org/docs/hooks-faq.html#why-am-i-seeing-stale-props-or-state-inside-my-function
   const stateRef = React.useRef(state);
   const updateStateRef = React.useRef(updateState);
   const timerRef = React.useRef(timer);
   const setTimerRef = React.useRef(setTimer);
   const setTimeoutRef = React.useRef(setTimeout);
   const clearTimeoutRef = React.useRef(clearTimeout);
+  const websocketRef = React.useRef<WebSocket | null>(null);
+  const reconnectTimerRef = React.useRef<number | null>(null);
+  const reconnectAttemptRef = React.useRef(0);
+  const mountedRef = React.useRef(true);
 
   React.useEffect(() => {
     stateRef.current = state;
@@ -109,104 +125,115 @@ const WebsocketProvider: React.FunctionComponent<
   React.useEffect(() => {
     timerRef.current = timer;
     setTimerRef.current = setTimer;
-  }, [timer, setTimerRef]);
+  }, [timer]);
 
   React.useEffect(() => {
-    const runtimeWebsocketHost = (window as any)._WEBSOCKET_HOST;
-    const uri =
-      runtimeWebsocketHost !== undefined && runtimeWebsocketHost !== null
-        ? runtimeWebsocketHost
-        : (location.protocol === "https:" ? "wss://" : "ws://") +
-          location.host +
-          location.pathname +
-          (location.pathname.endsWith("/") ? "api" : "/api");
+    mountedRef.current = true;
 
-    const ws = new WebSocket(uri);
-    setWebsocket(ws);
-
-    ws.addEventListener("open", () =>
-      updateStateRef.current({ connected: true, everConnected: true }),
-    );
-    ws.addEventListener("close", () =>
-      updateStateRef.current({ connected: false }),
-    );
-    ws.addEventListener("message", (event: MessageEvent) => {
-      if (timerRef.current !== null) {
-        clearTimeoutRef.current(timerRef.current);
+    const scheduleReconnect = (): void => {
+      if (!mountedRef.current) return;
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
       }
-      setTimerRef.current(null);
+      const delay = Math.min(1000 * 2 ** reconnectAttemptRef.current, 10000);
+      reconnectAttemptRef.current += 1;
+      reconnectTimerRef.current = window.setTimeout(() => {
+        reconnectTimerRef.current = null;
+        connect();
+      }, delay);
+    };
 
-      // Check if the message is text (uncompressed JSON) or binary (compressed)
-      if (typeof event.data === "string") {
-        // Plain text JSON message (uncompressed)
-        try {
-          const message = JSON.parse(event.data);
-          if ("Kicked" in message) {
-            ws.close();
-          } else {
-            updateStateRef.current({
-              connected: true,
-              everConnected: true,
-              ...websocketHandler(stateRef.current, message, (msg) => {
-                ws.send(JSON.stringify(msg));
-              }),
-            });
-          }
-        } catch (e) {
-          console.error("Failed to parse JSON message:", e);
-        }
-      } else {
-        // Binary message (compressed)
-        const f = (buf: ArrayBuffer): void => {
-          const message = decodeWireFormat(new Uint8Array(buf)) as GameMessage;
+    const connect = (): void => {
+      if (!mountedRef.current) return;
+      const ws = new WebSocket(websocketUri());
+      websocketRef.current = ws;
+
+      ws.addEventListener("open", () => {
+        reconnectAttemptRef.current = 0;
+        updateStateRef.current({ connected: true, everConnected: true });
+      });
+
+      ws.addEventListener("close", () => {
+        if (websocketRef.current === ws) websocketRef.current = null;
+        updateStateRef.current({ connected: false });
+        scheduleReconnect();
+      });
+
+      ws.addEventListener("error", () => {
+        if (ws.readyState === WebSocket.OPEN) ws.close();
+      });
+
+      ws.addEventListener("message", (event: MessageEvent) => {
+        if (timerRef.current !== null)
+          clearTimeoutRef.current(timerRef.current);
+        setTimerRef.current(null);
+
+        const handleMessage = (message: GameMessage): void => {
           if (message && typeof message === "object" && "Kicked" in message) {
             ws.close();
-          } else {
-            updateStateRef.current({
-              connected: true,
-              everConnected: true,
-              ...websocketHandler(stateRef.current, message, (msg) => {
-                ws.send(JSON.stringify(msg));
-              }),
-            });
+            return;
           }
+          updateStateRef.current({
+            connected: true,
+            everConnected: true,
+            ...websocketHandler(stateRef.current, message, (msg) => {
+              if (ws.readyState === WebSocket.OPEN)
+                ws.send(JSON.stringify(msg));
+            }),
+          });
         };
 
-        if (event.data.arrayBuffer !== undefined) {
-          const b2a = getBlobArrayBuffer();
-          b2a.enqueue(event.data, f);
-        } else {
-          const frs = getFileReader();
-          frs.enqueue(event.data, f);
+        if (typeof event.data === "string") {
+          try {
+            handleMessage(JSON.parse(event.data) as GameMessage);
+          } catch (e) {
+            console.error("Failed to parse JSON message:", e);
+          }
+          return;
         }
-      }
-    });
 
+        const decode = (buf: ArrayBuffer): void =>
+          handleMessage(decodeWireFormat(new Uint8Array(buf)) as GameMessage);
+        if (event.data.arrayBuffer !== undefined) {
+          getBlobArrayBuffer().enqueue(event.data, decode);
+        } else {
+          getFileReader().enqueue(event.data, decode);
+        }
+      });
+    };
+
+    connect();
     return () => {
-      if (timerRef.current !== null) {
-        clearTimeoutRef.current(timerRef.current);
+      mountedRef.current = false;
+      if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
       }
+      websocketRef.current?.close();
+      websocketRef.current = null;
     };
   }, []);
 
   const send = (value: any): void => {
-    if (timerRef.current !== null) {
-      clearTimeoutRef.current(timerRef.current);
-    }
-    // We expect a response back from the server within 5 seconds. Otherwise,
-    // we should assume we have lost our websocket connection.
+    if (timerRef.current !== null) clearTimeoutRef.current(timerRef.current);
 
     const localTimerRef = setTimeoutRef.current(() => {
       if (timerRef.current === localTimerRef) {
         updateStateRef.current({ connected: false });
+        const ws = websocketRef.current;
+        if (ws !== null && ws.readyState !== WebSocket.CLOSED) ws.close();
       }
     }, 5000);
-
     setTimerRef.current(localTimerRef);
-    websocket?.send(JSON.stringify(value));
+
+    const ws = websocketRef.current;
+    if (ws !== null && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(value));
+    } else {
+      updateStateRef.current({ connected: false });
+    }
   };
 
-  // TODO(read this from consumers instead of globals)
   (window as any).send = send;
 
   return (
