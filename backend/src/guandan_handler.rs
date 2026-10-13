@@ -588,8 +588,11 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         {
             break;
         }
-        let delay_ms = thread_rng().gen_range(800..=1800);
-        thread::sleep(Duration::from_millis(delay_ms));
+        #[cfg(not(test))]
+        {
+            let delay_ms = thread_rng().gen_range(800..=1800);
+            thread::sleep(Duration::from_millis(delay_ms));
+        }
         // Protect the partner's winning play instead of needlessly overtaking it.
         let partner_controls = game.last_player.is_some_and(|leader| {
             leader != seat
@@ -2290,4 +2293,62 @@ mod tests {
         assert!(!game.tribute_resisted);
         assert_eq!(game.next_round_phase, None);
     }
+    #[test]
+    #[ignore = "full four-robot three-round simulation; run in dedicated QA"]
+    fn four_robots_complete_three_consecutive_full_deals() {
+        let table = validate_start(4).unwrap();
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = (1..=4).map(|n| format!("机器人{n}")).collect();
+        let mut deck = build_deck(table);
+        deck.shuffle(&mut thread_rng());
+        let (hands, remainder) = deal(table, &deck).unwrap();
+        assert!(remainder.is_empty());
+        assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+        game.hands = hands;
+        game.turn = 0;
+        let mut completed = 0usize;
+        let mut turns = 0usize;
+        while completed < 3 && turns < 12000 {
+            turns += 1;
+            if game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle) {
+                deck.shuffle(&mut thread_rng());
+                let (hands, remainder) = deal(table, &deck).unwrap();
+                assert!(remainder.is_empty());
+                assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+                game.hands = hands;
+                game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+                assert!(game.pending_tribute.is_none(), "robots must finish tribute exchange");
+                continue;
+            }
+            if game.trick_complete {
+                let winner = game.last_player.expect("completed trick must have winner");
+                game.last_trick_winner = Some(winner);
+                game.turn = winner;
+                if game.hands[winner].is_empty() {
+                    advance_turn(&mut game);
+                }
+                game.last_play.clear();
+                game.last_player = None;
+                game.table_plays.clear();
+                game.tribute_resisted = false;
+                game.passes = 0;
+                game.trick_complete = false;
+                continue;
+            }
+            let previous_round = game.next_round_phase;
+            run_robot_turns(&mut game, false).unwrap();
+            if previous_round.is_none()
+                && game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle)
+            {
+                completed += 1;
+                println!("robot round {completed}: finish={:?} promotion={:?} level={:?} steps={turns}", game.finish_order, game.last_promotion_steps, game.level);
+                assert_eq!(game.finish_order.len(), 4);
+                assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 0);
+            }
+        }
+        assert_eq!(completed, 3, "four robots stalled before three complete deals; steps={turns}");
+    }
+
 }
