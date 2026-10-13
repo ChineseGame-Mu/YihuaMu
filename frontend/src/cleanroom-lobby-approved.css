@@ -1,14 +1,41 @@
 /* Approved 1536x1024 image. Enabled only after image file successfully loads. */
-.cleanroom-approved-lobby .cleanroom-final-stage{aspect-ratio:3/2!important;width:min(100vw,calc(100svh * 1.5))!important}
+.cleanroom-approved-lobby .cleanroom-final-stage {
+  aspect-ratio: 3 / 2 !important;
+  width: min(100vw, calc(100svh * 1.5)) !important;
+}
 .cleanroom-approved-lobby .cleanroom-final-form::before,
 .cleanroom-approved-lobby .cleanroom-final-form::after,
-.cleanroom-approved-lobby .cleanroom-legacy-room-label-mask{display:none!important;content:none!important}
+.cleanroom-approved-lobby .cleanroom-legacy-room-label-mask {
+  display: none !important;
+  content: none !important;
+}
 .cleanroom-approved-lobby .cleanroom-final-room,
 .cleanroom-approved-lobby .cleanroom-final-name,
-.cleanroom-approved-lobby .cleanroom-final-enter{left:32.25%!important;width:35.65%!important;z-index:5!important}
-.cleanroom-approved-lobby .cleanroom-final-room{top:59.1%!important;height:6.65%!important}
-.cleanroom-approved-lobby .cleanroom-final-name{top:69.1%!important;height:7.1%!important}
-.cleanroom-approved-lobby .cleanroom-final-enter{top:79.25%!important;height:8.8%!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.cleanroom-approved-lobby .cleanroom-final-enter {
+  left: 32.25% !important;
+  width: 35.65% !important;
+  z-index: 5 !important;
+}
+.cleanroom-approved-lobby .cleanroom-final-room {
+  top: 59.1% !important;
+  height: 6.65% !important;
+}
+.cleanroom-approved-lobby .cleanroom-final-name {
+  top: 69.1% !important;
+  height: 7.1% !important;
+}
+.cleanroom-approved-lobby .cleanroom-final-enter {
+  top: 79.25% !important;
+  height: 8.8% !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
 .cleanroom-approved-lobby .cleanroom-final-enter span,
-.cleanroom-approved-lobby .cleanroom-final-enter small{color:transparent!important}
-.cleanroom-approved-lobby .cleanroom-final-enter:focus-visible{outline:3px solid #b69b58!important;outline-offset:3px!important}
+.cleanroom-approved-lobby .cleanroom-final-enter small {
+  color: transparent !important;
+}
+.cleanroom-approved-lobby .cleanroom-final-enter:focus-visible {
+  outline: 3px solid #b69b58 !important;
+  outline-offset: 3px !important;
+}
