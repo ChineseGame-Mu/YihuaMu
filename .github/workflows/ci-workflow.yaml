@@ -69,5 +69,10 @@ jobs:
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
 
+      - name: Four-robot three-consecutive-deals acceptance simulation
+        if: ${{ github.head_ref == 'fix/guandan-robot-strategy-20261013' || github.ref_name == 'fix/guandan-robot-strategy-20261013' }}
+        timeout-minutes: 45
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
+
       - name: Test Rust code
         run: cargo test --all
