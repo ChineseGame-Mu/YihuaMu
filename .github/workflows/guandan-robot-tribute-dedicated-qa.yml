@@ -27,5 +27,7 @@ jobs:
           printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
       - name: Backend Guandan state and robot regressions
         run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+      - name: Four robots complete three consecutive full deals
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
       - name: QA scope
         run: echo "Rust regression only; not four-client end-to-end certification. No production promotion."
