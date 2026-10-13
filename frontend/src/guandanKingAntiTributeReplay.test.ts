@@ -1,8 +1,11 @@
 import { initialGuandanTableState } from "./guandanCompatibilityAdapter";
 import { adaptGuandanServerMessageWithRealTestFixes } from "./guandanRealTestFixes";
 
-const stateMessage = (matchId: number, overrides: Record<string, unknown> = {}) =>
-  ({
+function stateMessage(
+  matchId: number,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
     type: "state",
     match_id: matchId,
     players: ["A", "B", "C", "D"],
@@ -29,7 +32,8 @@ const stateMessage = (matchId: number, overrides: Record<string, unknown> = {}) 
     match_winner: null,
     next_round_phase: null,
     ...overrides,
-  }) as any;
+  } as any;
+}
 
 describe("K-level anti-tribute delayed and repeated snapshots", () => {
   test("delayed previous-match resistance cannot reopen notice", () => {
@@ -54,20 +58,29 @@ describe("K-level anti-tribute delayed and repeated snapshots", () => {
       initialGuandanTableState,
       stateMessage(1, { tribute_resisted: true }),
     );
+    const shuffleState = stateMessage(1, {
+      next_round_phase: "awaiting_shuffle",
+      tribute_resisted: true,
+    });
     const shuffling = adaptGuandanServerMessageWithRealTestFixes(
       resisted,
-      stateMessage(1, { next_round_phase: "awaiting_shuffle", tribute_resisted: true }),
+      shuffleState,
     );
     expect(shuffling.tributeResisted).toBe(false);
 
     const card = { Suited: { suit: "Clubs", rank: "Four" } };
+    const postPlayState = stateMessage(1, {
+      last_play: [card],
+      last_player: 0,
+      table_plays: [{ player: 0, cards: [card] }],
+    });
     const played = adaptGuandanServerMessageWithRealTestFixes(
       resisted,
-      stateMessage(1, { last_play: [card], last_player: 0, table_plays: [{ player: 0, cards: [card] }] }),
+      postPlayState,
     );
     const repeated = adaptGuandanServerMessageWithRealTestFixes(
       played,
-      stateMessage(1, { last_play: [card], last_player: 0, table_plays: [{ player: 0, cards: [card] }] }),
+      postPlayState,
     );
     expect(played.tributeResisted).toBe(false);
     expect(repeated.tributeResisted).toBe(false);
