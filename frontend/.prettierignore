@@ -12,3 +12,8 @@ src/guandanInitialDrawLifecycle.test.ts
 src/GuandanStartGate.tsx
 src/GuandanWebsocketProvider.test.tsx
 src/GuandanWebsocketProvider.tsx
+# Approved Guandan UI baseline (2026-10-10 SHA 5f4cf3e3): exact blobs
+# verified identical on this fix branch; preserve layout and test semantics.
+src/guandan-review-controls-alignment-20261009.css
+src/GuandanTable.tsx
+src/guandanTributeActionVisibility.test.ts

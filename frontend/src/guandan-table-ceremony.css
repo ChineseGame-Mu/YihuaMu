@@ -7,7 +7,7 @@ html body .guandan-table:has(.guandan-public-zone) .guandan-table-stage {
 .guandan-deal-ceremony,
 .guandan-exchange-ceremony {
   position: absolute;
-  z-index: 48;
+  z-index: 80;
   top: 54%;
   left: 50%;
   display: flex;

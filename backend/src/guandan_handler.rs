@@ -1,11 +1,15 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
+#[cfg(not(test))]
+use std::thread;
+use std::{collections::HashMap, fmt, sync::Mutex, time::Duration};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
+#[cfg(not(test))]
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
@@ -588,25 +592,110 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         {
             break;
         }
-        let delay_ms = thread_rng().gen_range(800..=1800);
-        thread::sleep(Duration::from_millis(delay_ms));
-        let chosen = game.hands[seat]
-            .iter()
-            .enumerate()
-            .find_map(|(index, card)| {
-                validate_play_against_table(&[*card], &game.last_play, game.level)
+        #[cfg(not(test))]
+        {
+            let delay_ms = thread_rng().gen_range(800..=1800);
+            thread::sleep(Duration::from_millis(delay_ms));
+        }
+        // Protect the partner's winning play instead of needlessly overtaking it.
+        let partner_controls = game.last_player.is_some_and(|leader| {
+            leader != seat
+                && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
+                && leader % 2 == seat % 2
+        });
+        // Enumerate complete rank groups as well as singles. In particular,
+        // never get stuck passing when a pair, triple or bomb can legally beat
+        // the table. Preserve bombs and premium cards unless tactically needed.
+        let hand = &game.hands[seat];
+        let mut candidates: Vec<Vec<usize>> = Vec::new();
+        for i in 0..hand.len() {
+            candidates.push(vec![i]);
+        }
+        for i in 0..hand.len() {
+            let same_rank: Vec<usize> = (i..hand.len())
+                .filter(|&j| match (hand[i], hand[j]) {
+                    (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
+                    (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                    _ => false,
+                })
+                .collect();
+            for count in 2..=same_rank.len().min(8) {
+                candidates.push(same_rank[..count].to_vec());
+            }
+        }
+        let opponent_low = game.hands.iter().enumerate().any(|(other, cards)| {
+            other != seat
+                && (game.player_names.len() != GUANDAN_CLASSIC_PLAYER_COUNT
+                    || other % 2 != seat % 2)
+                && !cards.is_empty()
+                && cards.len() <= 3
+        });
+        let chosen = if partner_controls && !opponent_low {
+            None
+        } else {
+            candidates
+                .into_iter()
+                .filter(|indexes| {
+                    validate_play_against_table(
+                        &indexes.iter().map(|&i| hand[i]).collect::<Vec<_>>(),
+                        &game.last_play,
+                        game.level,
+                    )
                     .is_ok()
-                    .then_some(index)
-            });
-        if let Some(index) = chosen {
-            let card = game.hands[seat].remove(index);
-            let cards = vec![card];
+                })
+                .min_by_key(|indexes| {
+                    let premium: usize = indexes
+                        .iter()
+                        .map(|&i| match hand[i] {
+                            CardFace::Joker(Joker::Big) => 10000,
+                            CardFace::Joker(Joker::Small) => 9000,
+                            CardFace::Suited { rank, .. } if rank == game.level => 8000,
+                            card => initial_draw_value(card),
+                        })
+                        .sum();
+                    let breaks_group = indexes.len() == 1
+                        && hand
+                            .iter()
+                            .filter(|&&card| match (card, hand[indexes[0]]) {
+                                (
+                                    CardFace::Suited { rank: a, .. },
+                                    CardFace::Suited { rank: b, .. },
+                                ) => a == b,
+                                (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                                _ => false,
+                            })
+                            .count()
+                            >= 2;
+                    let bomb_cost = if indexes.len() >= 4 && !opponent_low {
+                        30000
+                    } else {
+                        0
+                    };
+                    // Prefer shedding several cards on a fresh lead, but avoid
+                    // spending high-value combinations merely to win a trick.
+                    let shedding = if game.last_play.is_empty() {
+                        indexes.len() * 700
+                    } else {
+                        0
+                    };
+                    premium / indexes.len() + bomb_cost + if breaks_group { 3000 } else { 0 }
+                        - shedding.min(premium / indexes.len())
+                })
+        };
+        if let Some(mut indexes) = chosen {
+            indexes.sort_unstable_by(|a, b| b.cmp(a));
+            let mut cards: Vec<CardFace> = indexes
+                .into_iter()
+                .map(|i| game.hands[seat].remove(i))
+                .collect();
+            cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
             game.table_plays.push(GuandanTablePlay {
                 player: seat,
                 cards,
             });
+            game.tribute_resisted = false;
             game.passes = 0;
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
                 game.finish_order.push(seat);
@@ -1434,6 +1523,8 @@ pub async fn websocket(
                             player: seat,
                             cards,
                         });
+                        // Do not redisplay anti-tribute after this trick ends.
+                        state.game.tribute_resisted = false;
                         state.game.passes = 0;
                         if state.game.hands[seat].is_empty()
                             && !state.game.finish_order.contains(&seat)
@@ -1618,6 +1709,8 @@ pub async fn websocket(
                         state.game.last_play.clear();
                         state.game.last_player = None;
                         state.game.table_plays.clear();
+                        // Defensive cleanup for rooms restored from older state.
+                        state.game.tribute_resisted = false;
                         state.game.passes = 0;
                         state.game.trick_complete = false;
                         state.bump_version();
@@ -2030,6 +2123,151 @@ mod tests {
     }
 
     #[test]
+    fn anti_tribute_only_occurs_at_the_start_of_the_deal() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+        assert!(game.tribute_resisted);
+        assert!(game.pending_tribute.is_none());
+        assert!(game.next_round_phase.is_none());
+        assert!(game.next_round_finish_order.is_empty());
+        // A duplicate deal request must not reinitialize tribute.
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+        assert!(game.tribute_resisted);
+    }
+
+    #[test]
+    fn first_robot_play_consumes_resistance_notice() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
+            vec![card(Suit::Diamonds, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Diamonds, Rank::Seven)],
+        ];
+        game.turn = 0;
+        game.tribute_resisted = true;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert!(!game.tribute_resisted);
+        // A cleared public trick cannot cause the notice to reappear.
+        game.table_plays.clear();
+        game.last_play.clear();
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn king_level_anti_tribute_is_consumed_once_after_first_play() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.level = Rank::King;
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
+            vec![card(Suit::Diamonds, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+        assert_eq!(game.level, Rank::King);
+        assert!(game.tribute_resisted);
+        assert!(game.pending_tribute.is_none());
+        assert!(game.next_round_phase.is_none());
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert!(!game.tribute_resisted);
+        assert_eq!(game.level, Rank::King);
+
+        // A trick-clear event must not reopen the K-level anti-tribute notice.
+        game.table_plays.clear();
+        game.last_play.clear();
+        game.last_player = None;
+        assert!(!game.tribute_resisted);
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn robot_leads_with_pair_without_spending_jokers() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                CardFace::Joker(Joker::Big),
+            ],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Clubs, Rank::Seven)],
+        ];
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert_eq!(game.table_plays[0].cards.len(), 2);
+        assert!(game.hands[0].contains(&CardFace::Joker(Joker::Big)));
+    }
+
+    #[test]
+    fn robot_passes_when_teammate_controls_and_opponents_are_safe() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "机器人1".into(), "B2".into()];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+            ],
+            vec![CardFace::Joker(Joker::Big)],
+            vec![
+                card(Suit::Hearts, Rank::Six),
+                card(Suit::Hearts, Rank::Seven),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Hearts, Rank::Nine),
+            ],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Five)];
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.passes, 1);
+        assert!(game.table_plays.is_empty());
+        assert_eq!(game.hands[2], vec![CardFace::Joker(Joker::Big)]);
+    }
+
+    #[test]
     fn king_round_still_creates_required_tribute() {
         let mut game = GuandanGameState::default();
         game.started = true;
@@ -2058,5 +2296,71 @@ mod tests {
         );
         assert!(!game.tribute_resisted);
         assert_eq!(game.next_round_phase, None);
+    }
+    #[test]
+    #[ignore = "full four-robot three-round simulation; run in dedicated QA"]
+    fn four_robots_complete_three_consecutive_full_deals() {
+        let table = validate_start(4).unwrap();
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = (1..=4).map(|n| format!("机器人{n}")).collect();
+        let mut deck = build_deck(table);
+        deck.shuffle(&mut thread_rng());
+        let (hands, remainder) = deal(table, &deck).unwrap();
+        assert!(remainder.is_empty());
+        assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+        game.hands = hands;
+        game.turn = 0;
+        let mut completed = 0usize;
+        let mut turns = 0usize;
+        while completed < 3 && turns < 12000 {
+            turns += 1;
+            if game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle) {
+                deck.shuffle(&mut thread_rng());
+                let (hands, remainder) = deal(table, &deck).unwrap();
+                assert!(remainder.is_empty());
+                assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+                game.hands = hands;
+                game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+                assert!(
+                    game.pending_tribute.is_none(),
+                    "robots must finish tribute exchange"
+                );
+                continue;
+            }
+            if game.trick_complete {
+                let winner = game.last_player.expect("completed trick must have winner");
+                game.last_trick_winner = Some(winner);
+                game.turn = winner;
+                if game.hands[winner].is_empty() {
+                    advance_turn(&mut game);
+                }
+                game.last_play.clear();
+                game.last_player = None;
+                game.table_plays.clear();
+                game.tribute_resisted = false;
+                game.passes = 0;
+                game.trick_complete = false;
+                continue;
+            }
+            let previous_round = game.next_round_phase;
+            run_robot_turns(&mut game, false).unwrap();
+            if previous_round.is_none()
+                && game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle)
+            {
+                completed += 1;
+                println!(
+                    "robot round {completed}: finish={:?} promotion={:?} level={:?} steps={turns}",
+                    game.finish_order, game.last_promotion_steps, game.level
+                );
+                assert_eq!(game.finish_order.len(), 4);
+                assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 0);
+            }
+        }
+        assert_eq!(
+            completed, 3,
+            "four robots stalled before three complete deals; steps={turns}"
+        );
     }
 }

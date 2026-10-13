@@ -11,6 +11,7 @@ import type {
 
 type RealTestState = GuandanTableState & {
   __tributePublicCount?: number;
+  __tributeNoticeConsumedMatchId?: number;
 };
 
 const rankOrder: GuandanRank[] = [
@@ -113,6 +114,17 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
   }
 
   const normalPlayStarted = message.last_play.length > 0;
+  // A delayed server snapshot may still claim tribute_resisted after normal
+  // play has begun. Keep the notice dismissed for the rest of this match,
+  // even when the public trick is subsequently cleared.
+  const nextMatchId = message.match_id ?? current.matchId;
+  const startedFreshRound =
+    nextMatchId > current.matchId ||
+    (current.nextRoundPhase !== null && message.next_round_phase === null);
+  const tributeNoticeConsumed =
+    normalPlayStarted ||
+    (!startedFreshRound &&
+      currentFixed.__tributeNoticeConsumedMatchId === nextMatchId);
   const activePlayArrivedWithClear =
     tableWasAuthoritativelyCleared &&
     !message.trick_complete &&
@@ -142,6 +154,10 @@ export const adaptGuandanServerMessageWithRealTestFixes = (
     lastPlay: transitioningToNextRound ? [] : adapted.lastPlay,
     lastPlayer: transitioningToNextRound ? null : adapted.lastPlayer,
     tablePlays,
+    tributeResisted: adapted.tributeResisted && !tributeNoticeConsumed,
+    __tributeNoticeConsumedMatchId: tributeNoticeConsumed
+      ? nextMatchId
+      : undefined,
     __tributePublicCount: tributePublicCount,
   } as RealTestState;
 };

@@ -192,7 +192,7 @@ describe("2026-09-16 mandatory real-test regressions", () => {
       resisted,
       stateMessage({ tribute_resisted: false }),
     );
-    expect(laterSnapshot.tributeResisted).toBe(true);
+    expect(laterSnapshot.tributeResisted).toBe(false);
 
     const completedRound = adaptGuandanServerMessageWithRealTestFixes(
       laterSnapshot,

@@ -1,0 +1,33 @@
+name: Guandan Robot Tribute Dedicated QA
+on:
+  push:
+    branches:
+      - fix/guandan-robot-strategy-20261013
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guandan-robot-tribute-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tribute:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify Rust formatting
+        run: cargo fmt --all -- --check
+      - name: Guandan tribute and anti-tribute rules
+        run: cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+      - name: Prepare frontend test stub
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
+      - name: Backend Guandan state and robot regressions
+        run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+      - name: Four robots complete three consecutive full deals
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
+      - name: QA scope
+        run: echo "Rust regression only; not four-client end-to-end certification. No production promotion."

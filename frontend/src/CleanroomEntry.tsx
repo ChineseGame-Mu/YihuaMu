@@ -34,6 +34,7 @@ import {
 import "./cleanroom-hand-stack-fix.css";
 import "./cleanroom-initial-draw-position.css";
 import "./cleanroom-lobby-artwork.css";
+import "./cleanroom-lobby-approved.css";
 import "./cleanroom-device-layout.css";
 import "./cleanroom-public-player-names.css";
 import "./guandan-real-test-20260916.css";
@@ -125,7 +126,7 @@ const CleanroomEntry = (): JSX.Element => {
   const requested = Number(initial.get("playerCount") ?? initial.get("players") ?? "4");
   const initialCount = supportedCounts.includes(requested as (typeof supportedCounts)[number]) ? requested : 4;
   const [roomId, setRoomId] = React.useState<SelectableRoom>(initialRoom);
-  const [playerCount, setPlayerCount] = React.useState<number>(initialCount);
+  const playerCount = initialCount;
   const [name, setName] = React.useState(
     initial.get("playerName") ?? initial.get("name") ?? "",
   );
@@ -182,6 +183,16 @@ const CleanroomEntry = (): JSX.Element => {
       window.clearInterval(timer);
     };
   }, [joined]);
+  // Use the approved artwork only after its actual image asset has been deployed.
+  // Until then, keep the existing functioning lobby and controls unchanged.
+  const [approvedLobbyLoaded, setApprovedLobbyLoaded] = React.useState(false);
+  React.useEffect(() => {
+    const image = new Image();
+    image.onload = () => setApprovedLobbyLoaded(true);
+    image.onerror = () => setApprovedLobbyLoaded(false);
+    image.src = "/guandan-lobby-approved.webp";
+    return () => { image.onload = null; image.onerror = null; };
+  }, []);
   if (showCelebrationPreview) return <CelebrationPreview />;
   if (joined) return <CleanroomTable />;
 
@@ -207,13 +218,13 @@ const CleanroomEntry = (): JSX.Element => {
   };
 
   return (
-    <main className="cleanroom-final-shell">
-      <img className="cleanroom-final-backdrop" src={cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
+    <main className={approvedLobbyLoaded ? "cleanroom-final-shell cleanroom-approved-lobby" : "cleanroom-final-shell"}>
+      <img className="cleanroom-final-backdrop" src={approvedLobbyLoaded ? "/guandan-lobby-approved.webp" : cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
       <div className="cleanroom-final-stage">
-        <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
+        <img className="cleanroom-final-art" src={approvedLobbyLoaded ? "/guandan-lobby-approved.webp" : cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
+          <span className="cleanroom-legacy-room-label-mask" aria-hidden="true" />
           <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
-          <select id="cleanroom-player-count" className="cleanroom-final-control cleanroom-final-players" aria-label="开始人数" value={playerCount} onChange={(event) => setPlayerCount(Number(event.target.value))}>{supportedCounts.map((count) => <option key={count} value={count}>{count} 人</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
           <button id="cleanroom-enter-room" className="cleanroom-final-enter" type="submit" disabled={name.trim() === ""} aria-label="进入牌室"><span>进入牌室</span><small>ENTER ROOM</small></button>
         </form>

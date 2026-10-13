@@ -116,6 +116,37 @@ const GuandanCustomSortControls: React.FunctionComponent = () => {
       .guandan-selected-preview-cards{display:flex;flex:1 1 auto;flex-direction:column;align-items:center;justify-content:flex-start;min-height:0;overflow-y:auto;padding:14px 2px 6px}.guandan-selected-preview-card{width:96px;min-width:96px;height:134px;margin-top:-80px;padding:0;overflow:hidden;border:3px solid #ffe68a;border-radius:10px;background:transparent;box-shadow:0 4px 9px rgb(0 0 0 / 30%);cursor:pointer}.guandan-selected-preview-card:first-child{margin-top:0}.guandan-selected-preview-card>*{width:100%!important;height:100%!important}.guandan-selected-preview-empty{display:grid;flex:1 1 auto;min-height:220px;place-items:center;color:#7c6942;text-align:center;font-weight:850;line-height:1.5}
 
       @media(max-width:900px){.guandan-private-zone{grid-template-columns:minmax(0,2fr) minmax(240px,1fr)!important}.guandan-private-zone>.guandan-play-actions{padding:72px 8px 8px!important}.guandan-private-zone>.guandan-play-actions>button{width:calc(50% - 12px)!important;height:42px!important;min-height:42px!important;max-height:42px!important;font-size:.98rem!important}.guandan-private-zone>.guandan-play-actions>.guandan-play-action{left:8px!important}.guandan-private-zone>.guandan-play-actions>.guandan-pass-action{right:8px!important}.guandan-private-zone>.guandan-play-actions>.guandan-tribute-action,.guandan-private-zone>.guandan-play-actions>.guandan-tribute-waiting{left:8px!important;right:8px!important;width:auto!important}.guandan-selected-preview-card{width:72px;min-width:72px;height:102px;margin-top:-60px}}
+
+      /* Approved review panel: dashed box starts level with the public table
+         and ends directly above Play / Pass. Use viewport-relative placement
+         so the two action buttons stay visible on different screen heights. */
+      .guandan-private-zone>.guandan-play-actions{overflow:visible!important}
+      .guandan-private-zone>.guandan-play-actions>.guandan-selected-preview{
+        position:fixed!important;
+        top:clamp(96px,12.1vh,135px)!important;
+        right:clamp(12px,1.5vw,24px)!important;
+        bottom:calc(31vh + 58px)!important;
+        left:auto!important;
+        width:calc(20vw - 20px)!important;
+        min-width:210px!important;
+        max-width:320px!important;
+        height:auto!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:12px 8px!important;
+        overflow:auto!important;
+        border:2px dashed #d9b75b!important;
+        border-radius:12px!important;
+        z-index:15!important;
+      }
+      @media(max-width:900px){
+        .guandan-private-zone>.guandan-play-actions>.guandan-selected-preview{
+          top:clamp(70px,12vh,100px)!important;
+          right:8px!important;
+          width:clamp(175px,24vw,250px)!important;
+          bottom:calc(31vh + 50px)!important;
+        }
+      }
     `}</style>
   );
 
