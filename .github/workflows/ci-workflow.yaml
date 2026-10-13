@@ -63,7 +63,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: K-level anti-tribute Rust regression (fix branch only)
-        if: ${{ github.head_ref == 'fix/guandan-accepted-ui-tribute-20261011' || github.ref_name == 'fix/guandan-accepted-ui-tribute-20261011' }}
+        if: ${{ github.head_ref == 'fix/guandan-accepted-ui-tribute-20261011' || github.ref_name == 'fix/guandan-accepted-ui-tribute-20261011' || github.head_ref == 'fix/guandan-robot-strategy-20261013' || github.ref_name == 'fix/guandan-robot-strategy-20261013' }}
         run: |
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
