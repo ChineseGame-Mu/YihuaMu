@@ -594,7 +594,7 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         let partner_controls = game.last_player.is_some_and(|leader| {
             leader != seat
                 && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
-                && team_for_seat(leader) == team_for_seat(seat)
+                && leader % 2 == seat % 2
         });
         // Prefer the cheapest legal single. Preserve jokers, level cards, and
         // cards belonging to pairs when an alternative exists.
