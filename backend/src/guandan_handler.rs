@@ -2319,7 +2319,10 @@ mod tests {
                 game.hands = hands;
                 game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
                 assert!(auto_deal_if_robot_winner(&mut game).unwrap());
-                assert!(game.pending_tribute.is_none(), "robots must finish tribute exchange");
+                assert!(
+                    game.pending_tribute.is_none(),
+                    "robots must finish tribute exchange"
+                );
                 continue;
             }
             if game.trick_complete {
@@ -2343,7 +2346,10 @@ mod tests {
                 && game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle)
             {
                 completed += 1;
-                println!("robot round {completed}: finish={:?} promotion={:?} level={:?} steps={turns}", game.finish_order, game.last_promotion_steps, game.level);
+                println!(
+                    "robot round {completed}: finish={:?} promotion={:?} level={:?} steps={turns}",
+                    game.finish_order, game.last_promotion_steps, game.level
+                );
                 assert_eq!(game.finish_order.len(), 4);
                 assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 0);
             }
