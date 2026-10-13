@@ -54,3 +54,60 @@
 @media (max-width:560px) and (orientation:portrait) {
   .cleanroom-final-name { top: 61.4%!important; }
 }
+
+/* 2026-10-13 mobile acceptance: one room selector, one name input,
+   one live enter button; cover both obsolete printed buttons and footnotes. */
+.cleanroom-final-form::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  left: 28.95%;
+  top: 55.9%;
+  width: 42.1%;
+  height: 34.1%;
+  background: #fffdf3;
+  border-radius: 3px;
+  pointer-events: none;
+}
+.cleanroom-final-form::after {
+  content: "四位玩家选择同一牌室，分别输入姓名后进入";
+  position: absolute;
+  z-index: 1;
+  top: 82.2%;
+  left: 29.7%;
+  width: 40.6%;
+  color: #52634f;
+  text-align: center;
+  font-size: clamp(9px, 1.2svh, 13px);
+  line-height: 1.5;
+  pointer-events: none;
+}
+.cleanroom-final-room {
+  left: 30%!important;
+  width: 40%!important;
+  top: 51.35%!important;
+  z-index: 2;
+}
+.cleanroom-final-name {
+  left: 30%!important;
+  width: 40%!important;
+  top: 62.0%!important;
+  height: 4.35%!important;
+  z-index: 2;
+}
+.cleanroom-final-enter {
+  left: 30%!important;
+  width: 40%!important;
+  top: 72.3%!important;
+  height: 7.05%!important;
+  z-index: 2;
+  flex-direction: column!important;
+  gap: 1px!important;
+}
+.cleanroom-final-enter span { font-size: clamp(14px, 2.15svh, 23px)!important; }
+.cleanroom-final-enter small { font-size: clamp(8px, 1.1svh, 12px)!important; }
+@media (max-width:560px) and (orientation:portrait) {
+  .cleanroom-final-room {left:30%!important;width:40%!important;top:51.35%!important;}
+  .cleanroom-final-name {left:30%!important;width:40%!important;top:62.0%!important;height:4.35%!important;}
+  .cleanroom-final-enter {left:30%!important;width:40%!important;top:72.3%!important;height:7.05%!important;}
+}
