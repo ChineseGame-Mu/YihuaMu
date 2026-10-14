@@ -87,7 +87,7 @@ describe("runtime snapshots", () => {
 
     const serialized = JSON.stringify(runtime.snapshot());
     const recovered = createServerRuntime(JSON.parse(serialized));
-    expect(recovered.rooms.listRoomIds().sort()).toEqual([
+    expect([...recovered.rooms.listRoomIds()].sort()).toEqual([
       "backup-room-a",
       "backup-room-b",
     ]);
