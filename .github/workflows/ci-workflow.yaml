@@ -56,6 +56,13 @@ jobs:
           test "$(yarn --silent prettier --version)" = "3.4.1"
           yarn prettier --check
         working-directory: ./frontend
+      - name: Guandan runtime snapshot and restart regression
+        working-directory: ./yihua-game
+        run: |
+          npm ci
+          npx vitest run test/runtime-snapshot.test.ts test/managed-room-snapshot-recovery.test.ts
+          npm run typecheck
+
       - name: Lint Rust code
         run: cargo clippy
 
