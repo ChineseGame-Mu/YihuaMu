@@ -39,6 +39,7 @@ describe("runtime snapshots", () => {
     const recovered = createServerRuntime(snapshot).rooms.get("recover-room");
     expect(recovered.revision).toBe(played.revision);
     expect(recovered.game).toEqual(played.game);
+    expect(recovered.series).toEqual(played.series);
     expect(recovered.room.config).toEqual(played.room.config);
     expect(
       recovered.room.participants.map(({ id, name, kind, seat }) => ({
@@ -95,6 +96,7 @@ describe("runtime snapshots", () => {
       const before = runtime.rooms.get(roomId);
       const after = recovered.rooms.get(roomId);
       expect(after.game).toEqual(before.game);
+      expect(after.series).toEqual(before.series);
       expect(after.revision).toBe(before.revision);
       expect(after.room.participants.map((p) => [p.id, p.seat])).toEqual(
         before.room.participants.map((p) => [p.id, p.seat]),
