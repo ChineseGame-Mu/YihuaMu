@@ -67,4 +67,42 @@ describe("runtime snapshots", () => {
     expect(new Set(allIds).size).toBe(allIds.length);
     expect(allIds).not.toContain(cardId);
   });
+  it("round-trips multiple rooms through serialized restart without mixing seats or hands", () => {
+    const runtime = createServerRuntime();
+    for (const roomId of ["backup-room-a", "backup-room-b"]) {
+      let managed = runtime.rooms.create(roomId, 4);
+      for (let seat = 0; seat < 4; seat += 1) {
+        managed = runtime.rooms.set(roomId, {
+          ...managed,
+          room: addHuman(managed.room, {
+            id: `${roomId}-p${seat}`,
+            name: `${roomId}-玩家${seat + 1}`,
+            seat,
+          }),
+        });
+      }
+      runtime.rooms.start(roomId, deterministicRandom());
+    }
+
+    const serialized = JSON.stringify(runtime.snapshot());
+    const recovered = createServerRuntime(JSON.parse(serialized));
+    expect(recovered.rooms.listRoomIds().sort()).toEqual([
+      "backup-room-a",
+      "backup-room-b",
+    ]);
+
+    for (const roomId of ["backup-room-a", "backup-room-b"]) {
+      const before = runtime.rooms.get(roomId);
+      const after = recovered.rooms.get(roomId);
+      expect(after.game).toEqual(before.game);
+      expect(after.revision).toBe(before.revision);
+      expect(after.room.participants.map((p) => [p.id, p.seat])).toEqual(
+        before.room.participants.map((p) => [p.id, p.seat]),
+      );
+      expect(after.room.participants.every((p) => p.connected === false)).toBe(
+        true,
+      );
+      expect(after.game.phase).toBe("playing");
+    }
+  });
 });
