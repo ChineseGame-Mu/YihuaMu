@@ -54,18 +54,22 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
-  test("places four players on opposite table edges and centers every played-card group", () => {
+  test("keeps local player at bottom, partner opposite, opponents at sides, and plays centered", () => {
+    // Server seat IDs must not be rewritten when the viewer's seat changes.
+    expect(table).toContain("guandan-relative-${(index - state.seat + 4) % 4}");
+
+    // Relative 0=self, 2=partner, 1/3=opponents.
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\s\S]*?nth-child\(1\)[\s\S]*?top:\s*34px[\s\S]*?left:\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-0\s*\{[\s\S]*?bottom:\s*8px[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\s\S]*?nth-child\(2\)[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
+      /\.guandan-public-player-back\.guandan-relative-1\s*\{[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
     );
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\s\S]*?nth-child\(3\)[\s\S]*?bottom:\s*8px[\s\S]*?left:\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*116px[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
-      /data-guandan-player-count="4"[\s\S]*?nth-child\(4\)[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
+      /\.guandan-public-player-back\.guandan-relative-3\s*\{[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
     );
     expect(positions).toMatch(
       /data-guandan-player-count="4"[\s\S]*?\.guandan-table-stage\s*\{[\s\S]*?align-items:\s*center[\s\S]*?justify-content:\s*center/,

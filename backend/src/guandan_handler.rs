@@ -607,6 +607,10 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                 player: seat,
                 cards,
             });
+            // Resistance is a one-time announcement at the start of the deal.
+            // Clear it on the first accepted play so clearing a later trick
+            // cannot make the anti-tribute panel appear again.
+            game.tribute_resisted = false;
             game.passes = 0;
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
                 game.finish_order.push(seat);
@@ -1434,6 +1438,8 @@ pub async fn websocket(
                             player: seat,
                             cards,
                         });
+                        // Do not redisplay anti-tribute after this trick ends.
+                        state.game.tribute_resisted = false;
                         state.game.passes = 0;
                         if state.game.hands[seat].is_empty()
                             && !state.game.finish_order.contains(&seat)
@@ -1618,6 +1624,8 @@ pub async fn websocket(
                         state.game.last_play.clear();
                         state.game.last_player = None;
                         state.game.table_plays.clear();
+                        // Defensive cleanup for rooms restored from older state.
+                        state.game.tribute_resisted = false;
                         state.game.passes = 0;
                         state.game.trick_complete = false;
                         state.bump_version();
@@ -2026,6 +2034,99 @@ mod tests {
                 receiver: 3,
             })
         );
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn anti_tribute_only_occurs_at_the_start_of_the_deal() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+        assert!(game.tribute_resisted);
+        assert!(game.pending_tribute.is_none());
+        assert!(game.next_round_phase.is_none());
+        assert!(game.next_round_finish_order.is_empty());
+        // A duplicate deal request must not reinitialize tribute.
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+        assert!(game.tribute_resisted);
+    }
+
+    #[test]
+    fn first_robot_play_consumes_resistance_notice() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
+            vec![card(Suit::Diamonds, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Diamonds, Rank::Seven)],
+        ];
+        game.turn = 0;
+        game.tribute_resisted = true;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert!(!game.tribute_resisted);
+        // A cleared public trick cannot cause the notice to reappear.
+        game.table_plays.clear();
+        game.last_play.clear();
+        assert!(!game.tribute_resisted);
+    }
+
+    #[test]
+    fn king_level_anti_tribute_is_consumed_once_after_first_play() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.level = Rank::King;
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Spades, Rank::Four),
+            ],
+            vec![card(Suit::Diamonds, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![CardFace::Joker(Joker::Big), CardFace::Joker(Joker::Big)],
+        ];
+
+        activate_next_round_after_deal(&mut game).unwrap();
+        assert_eq!(game.level, Rank::King);
+        assert!(game.tribute_resisted);
+        assert!(game.pending_tribute.is_none());
+        assert!(game.next_round_phase.is_none());
+        assert!(activate_next_round_after_deal(&mut game).is_err());
+
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert!(!game.tribute_resisted);
+        assert_eq!(game.level, Rank::King);
+
+        // A trick-clear event must not reopen the K-level anti-tribute notice.
+        game.table_plays.clear();
+        game.last_play.clear();
+        game.last_player = None;
+        assert!(!game.tribute_resisted);
+        assert!(activate_next_round_after_deal(&mut game).is_err());
         assert!(!game.tribute_resisted);
     }
 

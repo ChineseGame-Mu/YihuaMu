@@ -1,0 +1,72 @@
+name: Guandan Production Guard
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+concurrency:
+  group: guandan-production-guard
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      EXPECTED_UI_SHA: 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc
+      DOMAIN: yihua-mu.vercel.app
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      EXPECTED_PRODUCTION_SHA: 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc
+      EXPECTED_DEPLOYMENT_ID: dpl_G63jJdFtGbcChDujAtYiNGjuzZx7
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Probe production homepage and canonical domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 25 -D /tmp/headers -o /tmp/page "https://${DOMAIN}/"
+          test -s /tmp/page
+          grep -Eiq '<html|<!doctype' /tmp/page
+          echo "Homepage HTTP response and HTML: OK"
+      - name: Check deployed Vercel git SHA and domain aliases
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${VERCEL_TOKEN:?VERCEL_TOKEN is required to verify production identity}"
+          python3 - <<'PY'
+          import json,os,urllib.request
+          token=os.environ['VERCEL_TOKEN']
+          domain=os.environ['DOMAIN']
+          url='https://api.vercel.com/v13/deployments/'+domain
+          team=os.getenv('VERCEL_TEAM_ID')
+          if team: url+='?teamId='+team
+          req=urllib.request.Request(url,headers={'Authorization':'Bearer '+token})
+          with urllib.request.urlopen(req,timeout=25) as response: d=json.load(response)
+          print('Deployment:',d.get('id'),'state:',d.get('readyState'))
+          assert d.get('readyState')=='READY','Production deployment not READY'
+          assert d.get('id')==os.environ['EXPECTED_DEPLOYMENT_ID'],'Unexpected production deployment ID'
+          # Deployment detail may list preview aliases only. Verify the
+          # authoritative deployment alias endpoint for the production domain.
+          alias_url='https://api.vercel.com/v2/deployments/'+d['id']+'/aliases'
+          if team: alias_url+='?teamId='+team
+          alias_req=urllib.request.Request(alias_url,headers={'Authorization':'Bearer '+token})
+          with urllib.request.urlopen(alias_req,timeout=25) as response: alias_data=json.load(response)
+          aliases=[item.get('alias') for item in alias_data.get('aliases',[])]
+          assert domain in aliases,'Production domain not present in deployment aliases'
+          sha=(d.get('meta') or {}).get('githubCommitSha','')
+          expected=os.getenv('EXPECTED_PRODUCTION_SHA','')
+          assert expected and sha==expected, f'Unexpected production SHA: {sha}'
+          print('Production SHA:',sha)
+          PY
+      - name: Open incident on failed checks
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --title "Guandan production guard failure: $(date -u +%F)" --body "Production guard failed. Inspect run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}. Do not auto-promote or replace the approved deployment. Restore only after confirming approved SHA and backups." || true

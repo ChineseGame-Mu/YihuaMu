@@ -40,7 +40,8 @@ describe("Guandan automatic layout options", () => {
     expect(table).toContain("effectiveTurn !== state.seat");
     expect(table).toContain("tributePending");
     expect(table).toContain("state.trickComplete");
-    expect(table.indexOf("选中此组")).toBeGreaterThan(table.indexOf("前移"));
+    // The accepted right-side controls put "选中此组" before the group-move buttons.
+    expect(table.indexOf("选中此组")).toBeLessThan(table.indexOf("前移"));
     expect(table.indexOf("一键出此组")).toBeLessThan(table.indexOf("前移"));
   });
 

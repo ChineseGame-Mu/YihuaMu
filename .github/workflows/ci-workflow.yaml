@@ -56,11 +56,24 @@ jobs:
           test "$(yarn --silent prettier --version)" = "3.4.1"
           yarn prettier --check
         working-directory: ./frontend
+      - name: Guandan runtime snapshot and restart regression
+        working-directory: ./yihua-game
+        run: |
+          npm ci
+          npx vitest run test/runtime-snapshot.test.ts test/managed-room-snapshot-recovery.test.ts
+          npm run typecheck
+
       - name: Lint Rust code
         run: cargo clippy
 
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
+
+      - name: K-level anti-tribute Rust regression (fix branch only)
+        if: ${{ github.head_ref == 'fix/guandan-accepted-ui-tribute-20261011' || github.ref_name == 'fix/guandan-accepted-ui-tribute-20261011' }}
+        run: |
+          cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+          cargo test -p shengji guandan_handler::tests:: -- --nocapture
 
       - name: Test Rust code
         run: cargo test --all

@@ -1,0 +1,56 @@
+name: Guandan Tribute Regression QA
+on:
+  push:
+    branches:
+      - fix/guandan-accepted-ui-tribute-20261011
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guandan-tribute-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tribute-regression:
+    name: Guandan tribute state tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify safe QA branch and approved UI ancestry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "fix/guandan-accepted-ui-tribute-20261011"
+          git cat-file -e 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc^{commit}
+          git merge-base --is-ancestor 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc HEAD
+          # The four-seat display change is explicitly approved for QA, not production.
+          # Pin its reviewed exact blob rather than silently permitting arbitrary UI edits.
+          expected_ui_blob=1baacc0375f447ebef614be33e0c351f0dd50dfb
+          actual_ui_blob="$(git rev-parse HEAD:frontend/src/GuandanTable.tsx)"
+          test "$actual_ui_blob" = "$expected_ui_blob"
+          grep -q 'guandan-players-four' frontend/src/GuandanTable.tsx
+          grep -q 'guandan-relative-' frontend/src/GuandanTable.tsx
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Tribute planning and resistance rules
+        run: |
+          cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+      - name: Prepare frontend/dist for backend unit-test compilation
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The Rust backend binary embeds frontend/dist at compile time.
+          # This minimal test-only directory prevents an unrelated include_dir!
+          # compile failure; frontend production build is covered by CI.
+          mkdir -p frontend/dist
+          printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
+      - name: Guandan backend tribute lifecycle tests
+        run: |
+          cargo test -p shengji guandan_handler::tests:: -- --nocapture
+      - name: Record QA scope
+        run: |
+          echo "These are Rust regression tests only."
+          echo "This workflow does not simulate four actual networked users or certify three complete online games."
+          echo "No production deployment or alias is changed."

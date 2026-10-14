@@ -1,3 +1,4 @@
+import type { CompetitionSeriesState } from "./competition-series.js";
 import type { GameState } from "./game-state.js";
 import type { NativeTributeState } from "./native-tribute.js";
 import type { ManagedRoom } from "./room-manager.js";
@@ -14,6 +15,7 @@ export interface RuntimeRoomSnapshot {
   readonly game: GameState;
   readonly revision: number;
   readonly tribute?: NativeTributeState | undefined;
+  readonly series?: CompetitionSeriesState | undefined;
 }
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
@@ -28,6 +30,7 @@ export const createRuntimeSnapshot = (
     game: clone(managed.game),
     revision: managed.revision,
     tribute: managed.tribute === undefined ? undefined : clone(managed.tribute),
+    series: managed.series === undefined ? undefined : clone(managed.series),
   })),
 });
 

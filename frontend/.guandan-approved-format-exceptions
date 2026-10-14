@@ -1,0 +1,5 @@
+# Temporary formatting exemptions for byte-for-byte approved 2026-10-10 UI baseline.
+# The CI workflow MUST verify exact Git blob SHAs before using this file.
+src/GuandanTable.tsx
+src/guandan-review-controls-alignment-20261009.css
+src/guandanTributeActionVisibility.test.ts

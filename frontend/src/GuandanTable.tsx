@@ -253,9 +253,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const [handArrangeMode, setHandArrangeMode] = React.useState<
     "manual" | "auto"
   >(() =>
-    window.localStorage.getItem("guandan_hand_arrange_mode") === "auto"
-      ? "auto"
-      : "manual",
+    window.localStorage.getItem("guandan_hand_arrange_mode") === "manual"
+      ? "manual"
+      : "auto",
   );
   const [autoArrangeStrategy, setAutoArrangeStrategy] =
     React.useState<GuandanArrangeStrategy>(() => {
@@ -267,9 +267,9 @@ const GuandanTable: React.FunctionComponent = () => {
   const [autoHandLayout, setAutoHandLayout] = React.useState<
     "horizontal" | "vertical"
   >(() =>
-    window.localStorage.getItem("guandan_auto_hand_layout") === "vertical"
-      ? "vertical"
-      : "horizontal",
+    window.localStorage.getItem("guandan_auto_hand_layout") === "horizontal"
+      ? "horizontal"
+      : "vertical",
   );
   const [autoGroupOverrides, setAutoGroupOverrides] = React.useState<
     GuandanAutoGroup[] | null
@@ -312,7 +312,7 @@ const GuandanTable: React.FunctionComponent = () => {
     React.useState<number>(() => {
       const saved = Number(
         window.localStorage.getItem("guandan_card_count_alert_threshold") ??
-          "6",
+          "10",
       );
       return saved >= 6 && saved <= 10 ? saved : 6;
     });
@@ -1675,7 +1675,7 @@ const GuandanTable: React.FunctionComponent = () => {
                     remaining <= cardCountAlertThreshold;
                   return (
                     <div
-                      className={`guandan-public-player-back guandan-public-team-${
+                      className={`guandan-public-player-back ${state.players.length === 4 && state.seat !== null ? `guandan-relative-${(index - state.seat + 4) % 4}` : ""} guandan-public-team-${
                         index % 2 === 0 ? "a" : "b"
                       } ${effectiveTurn === index && gameStarted && !dealing && !nextRoundPending && !tributePending && !state.trickComplete ? "is-active" : ""}`}
                       key={`public-back-${index}-${player}`}
@@ -1787,7 +1787,7 @@ const GuandanTable: React.FunctionComponent = () => {
             </aside>
             <section className="guandan-player-section">
               <h2>玩家</h2>
-              <div className="guandan-players">
+              <div className={`guandan-players ${state.players.length === 4 && state.seat !== null ? "guandan-players-four" : ""}`}>
                 {state.players.map((player, index) => (
                   <div
                     className={`guandan-player-card guandan-team-${
@@ -1799,7 +1799,7 @@ const GuandanTable: React.FunctionComponent = () => {
                       !nextRoundPending
                         ? "is-active"
                         : ""
-                    } ${index === state.seat ? "is-me" : ""}`}
+                    } ${index === state.seat ? "is-me" : ""} ${state.players.length === 4 && state.seat !== null ? `guandan-relative-${(index - state.seat + 4) % 4}` : ""}`}
                     key={`${player}-${index}`}
                   >
                     <span
