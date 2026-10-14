@@ -23,3 +23,30 @@
 .cleanroom-final-name {top:69.10%!important;height:4.55%!important;padding-left:1.72rem!important;background-color:#fffef7!important;background-position:.48rem 50%!important;background-size:.86rem .86rem!important}
 }
 @media (orientation:landscape) {.cleanroom-final-stage {width:min(100vw,calc(100svh * 1.1550985433))}}
+
+/* 2026-10-14: approved lobby has the retired start-count selector baked into
+   the decorative raster. Conceal that obsolete artwork without changing room
+   selection or the existing game/seat-count protocol. */
+.cleanroom-final-form::before {
+  content: "";
+  position: absolute;
+  left: 22.5%; top: 55.5%; width: 55%; height: 19.15%;
+  background: #faf8ee;
+  pointer-events: none;
+  z-index: 0;
+}
+.cleanroom-final-form::after {
+  content: "您的姓名";
+  position: absolute;
+  left: 23.5%; top: 61.6%;
+  color: #173f30;
+  font: 700 clamp(12px,1.65svh,19px) -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  pointer-events: none;
+  z-index: 1;
+}
+.cleanroom-final-control,.cleanroom-final-enter {z-index:2!important}
+.cleanroom-final-name {top:65.0%!important}
+@media (max-width:560px) and (orientation:portrait) {
+  .cleanroom-final-form::after {font-size:12px;top:61.6%}
+  .cleanroom-final-name {top:65.0%!important}
+}
