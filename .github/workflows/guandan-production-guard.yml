@@ -14,11 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
-      EXPECTED_UI_SHA: 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc
+      EXPECTED_UI_SHA: 65a38c0bffb37ae813783f02e74fccb917d64e21
       DOMAIN: yihua-mu.vercel.app
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      EXPECTED_PRODUCTION_SHA: 5f4cf3e3a08b7d4d87dc2474715e0c8a84964fdc
-      EXPECTED_DEPLOYMENT_ID: dpl_G63jJdFtGbcChDujAtYiNGjuzZx7
+      EXPECTED_PRODUCTION_SHA: 65a38c0bffb37ae813783f02e74fccb917d64e21
+      EXPECTED_DEPLOYMENT_ID: dpl_AG7pBfekU7ZipSfF6WsBLPywyheT
     steps:
       - name: Checkout
         uses: actions/checkout@v4
