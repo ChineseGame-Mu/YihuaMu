@@ -60,4 +60,34 @@ describe("K-level anti-tribute must be one-time only", () => {
     expect(cleared.tablePlays).toEqual([]);
     expect(cleared.tributeResisted).toBe(false);
   });
+  test("suppresses anti-tribute during the next-round screen and ignores stale prior-match broadcasts", () => {
+    const resisted = adaptGuandanServerMessageWithRealTestFixes(
+      initialGuandanTableState,
+      snapshot({ match_id: 10, tribute_resisted: true }),
+    );
+    expect(resisted.tributeResisted).toBe(true);
+
+    const waitingForShuffle = adaptGuandanServerMessageWithRealTestFixes(
+      resisted,
+      snapshot({
+        match_id: 10,
+        next_round_phase: "awaiting_shuffle",
+        tribute_resisted: true,
+      }),
+    );
+    expect(waitingForShuffle.tributeResisted).toBe(false);
+
+    const newDeal = adaptGuandanServerMessageWithRealTestFixes(
+      waitingForShuffle,
+      snapshot({ match_id: 11, tribute_resisted: false }),
+    );
+    expect(newDeal.tributeResisted).toBe(false);
+
+    const lateOldBroadcast = adaptGuandanServerMessageWithRealTestFixes(
+      newDeal,
+      snapshot({ match_id: 10, tribute_resisted: true }),
+    );
+    expect(lateOldBroadcast.matchId).toBe(11);
+    expect(lateOldBroadcast.tributeResisted).toBe(false);
+  });
 });
