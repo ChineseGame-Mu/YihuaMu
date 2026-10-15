@@ -169,3 +169,20 @@ html[data-guandan-player-count="4"]
   .guandan-public-player-back.guandan-relative-2 {
   top: 96px !important;
 }
+
+/* Seat 2 clears all visible ceremony banners, not only next-round overlays.
+ * Keep seats 1 and 3 anchored at the left/right midpoints.
+ * This applies only to four-seat rooms and does not alter the approved lobby.
+ */
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  :is(.guandan-public-zone:has(.guandan-deal-ceremony), .guandan-public-zone:has(.guandan-exchange-ceremony)) {
+  isolation: isolate;
+}
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone:has(.guandan-deal-ceremony, .guandan-exchange-ceremony))
+  .guandan-public-player-back.guandan-relative-2 {
+  top: 148px !important;
+}
