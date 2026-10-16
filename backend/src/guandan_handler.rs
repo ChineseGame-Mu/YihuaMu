@@ -623,6 +623,53 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                 candidates.push(same_rank[..count].to_vec());
             }
         }
+        // Advanced QA fix: enumerate mixed-rank full houses and rank runs.
+        // Every candidate is subsequently checked by the canonical rules
+        // validator; this generator does not redefine legal card patterns.
+        let mut rank_groups: Vec<(Rank, Vec<usize>)> = Vec::new();
+        for (index, card) in hand.iter().enumerate() {
+            if let CardFace::Suited { rank, .. } = card {
+                if let Some((_, indexes)) = rank_groups.iter_mut().find(|(r, _)| r == rank) {
+                    indexes.push(index);
+                } else {
+                    rank_groups.push((*rank, vec![index]));
+                }
+            }
+        }
+        for (triple_rank, triple) in &rank_groups {
+            if triple.len() < 3 {
+                continue;
+            }
+            for (pair_rank, pair) in &rank_groups {
+                if triple_rank != pair_rank && pair.len() >= 2 {
+                    let mut indexes = triple[..3].to_vec();
+                    indexes.extend_from_slice(&pair[..2]);
+                    candidates.push(indexes);
+                }
+            }
+        }
+        // Rank values are consecutive for ordinary suited cards; validate
+        // each generated run to exclude any disallowed wraps or level rules.
+        rank_groups.sort_by_key(|(rank, _)| *rank as usize);
+        for start in 0..rank_groups.len() {
+            for run_len in [5usize, 3usize] {
+                if start + run_len > rank_groups.len() {
+                    continue;
+                }
+                let window = &rank_groups[start..start + run_len];
+                if !window.windows(2).all(|w| (w[1].0 as usize) == (w[0].0 as usize) + 1) {
+                    continue;
+                }
+                let cards_per_rank = if run_len == 5 { 1 } else { 2 };
+                if window.iter().all(|(_, indexes)| indexes.len() >= cards_per_rank) {
+                    let indexes: Vec<usize> = window
+                        .iter()
+                        .flat_map(|(_, indexes)| indexes[..cards_per_rank].iter().copied())
+                        .collect();
+                    candidates.push(indexes);
+                }
+            }
+        }
         let opponent_low = game.hands.iter().enumerate().any(|(other, cards)| {
             other != seat
                 && (game.player_names.len() != GUANDAN_CLASSIC_PLAYER_COUNT
