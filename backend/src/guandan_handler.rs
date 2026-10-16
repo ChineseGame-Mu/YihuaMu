@@ -657,11 +657,17 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                     continue;
                 }
                 let window = &rank_groups[start..start + run_len];
-                if !window.windows(2).all(|w| (w[1].0 as usize) == (w[0].0 as usize) + 1) {
+                if !window
+                    .windows(2)
+                    .all(|w| (w[1].0 as usize) == (w[0].0 as usize) + 1)
+                {
                     continue;
                 }
                 let cards_per_rank = if run_len == 5 { 1 } else { 2 };
-                if window.iter().all(|(_, indexes)| indexes.len() >= cards_per_rank) {
+                if window
+                    .iter()
+                    .all(|(_, indexes)| indexes.len() >= cards_per_rank)
+                {
                     let indexes: Vec<usize> = window
                         .iter()
                         .flat_map(|(_, indexes)| indexes[..cards_per_rank].iter().copied())
@@ -2312,9 +2318,15 @@ mod tests {
         ];
         let previous = game.last_play.clone();
         run_robot_turns(&mut game, false).unwrap();
-        assert_eq!(game.table_plays.len(), 1, "robot should beat a lower straight");
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower straight"
+        );
         assert_eq!(game.table_plays[0].cards.len(), 5);
-        assert!(validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok());
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
     }
 
     #[test]
@@ -2345,9 +2357,15 @@ mod tests {
         ];
         let previous = game.last_play.clone();
         run_robot_turns(&mut game, false).unwrap();
-        assert_eq!(game.table_plays.len(), 1, "robot should beat a lower full house");
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower full house"
+        );
         assert_eq!(game.table_plays[0].cards.len(), 5);
-        assert!(validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok());
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
     }
 
     #[test]
@@ -2380,9 +2398,15 @@ mod tests {
         ];
         let previous = game.last_play.clone();
         run_robot_turns(&mut game, false).unwrap();
-        assert_eq!(game.table_plays.len(), 1, "robot should beat lower consecutive pairs");
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat lower consecutive pairs"
+        );
         assert_eq!(game.table_plays[0].cards.len(), 6);
-        assert!(validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok());
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
     }
 
     #[test]
