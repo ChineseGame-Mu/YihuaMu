@@ -857,7 +857,7 @@ const GuandanTable: React.FunctionComponent = () => {
     const observePanels = () => {
       const current = new Set<Element>([
         zone,
-        ...table.querySelectorAll(panelSelector),
+        ...Array.from(table.querySelectorAll(panelSelector)),
       ]);
       observed.forEach((element) => {
         if (current.has(element)) return;
