@@ -182,7 +182,7 @@ const tributeRole = (
   return null;
 };
 
-const DEAL_INTERVAL_MS = 45;
+const DEAL_PRESENTATION_DURATION_MS = 10_000;
 const TRICK_CLEAR_DELAY_MS = 8000;
 const ROOM_CODE_LENGTH = 4;
 const DEFAULT_ROOM_CODE = "0001";
@@ -775,7 +775,7 @@ const GuandanTable: React.FunctionComponent = () => {
         setDealStep((current) =>
           current === null ? null : Math.min(current + 1, totalDealCards),
         ),
-      DEAL_INTERVAL_MS,
+      Math.ceil(DEAL_PRESENTATION_DURATION_MS / totalDealCards),
     );
     return () => window.clearTimeout(timer);
   }, [dealStep, totalDealCards]);
@@ -805,6 +805,88 @@ const GuandanTable: React.FunctionComponent = () => {
     dealing,
     send,
   ]);
+
+  // Keep the opposite player's seat at the public table edge, and move it
+  // below any visible start/tribute/next-round notice.  Measure the actual
+  // panels rather than relying on a fixed pixel offset at one screen size.
+  React.useLayoutEffect(() => {
+    if (!joined || state.players.length !== 4 || state.seat === null) return;
+    const table = document.querySelector<HTMLElement>(".guandan-table");
+    const zone = table?.querySelector<HTMLElement>(".guandan-public-zone");
+    if (!table || !zone) return;
+
+    const panelSelector = [
+      ".guandan-start-panel",
+      ".guandan-next-round-panel",
+      ".guandan-tribute-panel",
+      ".guandan-notice-panel",
+      ".guandan-initial-draw-mini",
+    ].join(", ");
+    let animationFrame = 0;
+    const updateSeatOffset = () => {
+      const zoneRect = zone.getBoundingClientRect();
+      let offset = 0;
+      table.querySelectorAll<HTMLElement>(panelSelector).forEach((panel) => {
+        const rect = panel.getBoundingClientRect();
+        const style = window.getComputedStyle(panel);
+        if (
+          style.display === "none" ||
+          style.visibility === "hidden" ||
+          rect.width === 0 ||
+          rect.height === 0 ||
+          rect.bottom <= zoneRect.top ||
+          rect.top >= zoneRect.bottom
+        ) {
+          return;
+        }
+        offset = Math.max(offset, rect.bottom - zoneRect.top);
+      });
+      zone.style.setProperty(
+        "--guandan-top-seat-offset",
+        `${Math.ceil(offset)}px`,
+      );
+    };
+    const scheduleUpdate = () => {
+      if (animationFrame !== 0) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        updateSeatOffset();
+      });
+    };
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
+    const observed = new Set<Element>();
+    const observePanels = () => {
+      const current = new Set<Element>([
+        zone,
+        ...Array.from(table.querySelectorAll(panelSelector)),
+      ]);
+      observed.forEach((element) => {
+        if (current.has(element)) return;
+        resizeObserver.unobserve(element);
+        observed.delete(element);
+      });
+      current.forEach((element) => {
+        if (observed.has(element)) return;
+        resizeObserver.observe(element);
+        observed.add(element);
+      });
+    };
+    const mutationObserver = new MutationObserver(() => {
+      observePanels();
+      scheduleUpdate();
+    });
+    mutationObserver.observe(table, { childList: true, subtree: true });
+    window.addEventListener("resize", scheduleUpdate);
+    observePanels();
+    updateSeatOffset();
+    return () => {
+      window.cancelAnimationFrame(animationFrame);
+      window.removeEventListener("resize", scheduleUpdate);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+      zone.style.removeProperty("--guandan-top-seat-offset");
+    };
+  }, [joined, state.players.length, state.seat]);
 
   const joinRoom = (): void => {
     const r = room.trim();

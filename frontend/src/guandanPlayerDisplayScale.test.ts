@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { createHash } from "crypto";
 import { join } from "path";
 
 describe("Guandan enlarged player displays", () => {
@@ -66,7 +67,7 @@ describe("Guandan enlarged player displays", () => {
       /\.guandan-public-player-back\.guandan-relative-1\s*\{[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
     );
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*116px[\s\S]*?left:\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*var\(--guandan-top-seat-offset,\s*0px\)[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
       /\.guandan-public-player-back\.guandan-relative-3\s*\{[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
@@ -77,6 +78,18 @@ describe("Guandan enlarged player displays", () => {
     expect(positions).toMatch(
       /data-guandan-player-count="4"[\s\S]*?\.guandan-trick-plays\s*\{[\s\S]*?justify-content:\s*center/,
     );
+  });
+
+  test("moves the top seat below every visible ceremony panel", () => {
+    expect(table).toContain('".guandan-initial-draw-mini"');
+    expect(table).toContain('".guandan-start-panel"');
+    expect(table).toContain('".guandan-next-round-panel"');
+    expect(table).toContain('".guandan-tribute-panel"');
+    expect(table).toContain('".guandan-notice-panel"');
+    expect(table).toContain("new ResizeObserver(scheduleUpdate)");
+    expect(table).toContain("new MutationObserver(() => {");
+    expect(table).toContain('"--guandan-top-seat-offset"');
+    expect(positions).toContain("var(--guandan-top-seat-offset, 0px)");
   });
 
   test("doubles the current-turn display and embeds left, observe, right controls", () => {
@@ -97,5 +110,23 @@ describe("Guandan enlarged player displays", () => {
       /\.guandan-public-seat-move-controls\s*\{[\s\S]*?position:\s*absolute\s*!important[\s\S]*?bottom:\s*0\s*!important/,
     );
     expect(css).toMatch(/width:\s*32px\s*!important/);
+  });
+
+  test("preserves the exact approved production lobby and ink artwork", () => {
+    const approvedFiles = [
+      ["CleanroomEntry.tsx", "043b563fb4c85dd6609400068dccb402c7caed41"],
+      [
+        "cleanroom-lobby-artwork.css",
+        "b1f1e463710ede481c24f12903ad0ae3beb5d7e4",
+      ],
+    ] as const;
+    for (const [filename, approvedGitBlobSha] of approvedFiles) {
+      const bytes = readFileSync(join(__dirname, filename));
+      const gitBlobSha = createHash("sha1")
+        .update(`blob ${bytes.length}\0`)
+        .update(bytes)
+        .digest("hex");
+      expect(gitBlobSha).toBe(approvedGitBlobSha);
+    }
   });
 });
