@@ -1,11 +1,11 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
+use std::{collections::HashMap, fmt, sync::Mutex, time::Duration};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
