@@ -8,8 +8,6 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 #[cfg(not(test))]
 use rand::Rng;
-#[cfg(not(test))]
-use std::thread;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
@@ -19,6 +17,8 @@ use shengji_core::guandan::{
     tribute::{can_resist_tribute, tribute_plan, TributePlan},
     CardFace, Joker, Rank, Suit, TableConfig,
 };
+#[cfg(not(test))]
+use std::thread;
 use storage::{HashMapStorage, Storage};
 use tokio::sync::mpsc;
 
