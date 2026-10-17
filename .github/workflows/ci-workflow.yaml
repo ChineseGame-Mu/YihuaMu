@@ -75,5 +75,10 @@ jobs:
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
 
+      - name: Advanced robot combination and teammate regressions
+        run: |
+          cargo test -p shengji guandan_handler::tests::advanced_robot_beats_ -- --nocapture
+          cargo test -p shengji guandan_handler::tests::robot_passes_when_teammate_controls_and_opponents_are_safe -- --nocapture
+
       - name: Test Rust code
         run: cargo test --all
