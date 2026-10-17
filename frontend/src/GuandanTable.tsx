@@ -820,6 +820,7 @@ const GuandanTable: React.FunctionComponent = () => {
       ".guandan-next-round-panel",
       ".guandan-tribute-panel",
       ".guandan-notice-panel",
+      ".guandan-initial-draw-mini",
     ].join(", ");
     let animationFrame = 0;
     const updateSeatOffset = () => {
