@@ -193,6 +193,10 @@ export const cleanroomDeploymentRoom = (
 
 const cleanroomWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
+  // QA only: never connect an automated browser to the shared player backend.
+  if (window.location.hostname.startsWith("yihua-guandan-qa-safe-")) {
+    return "wss://guandan-isolated-browser-qa-20261017.onrender.com/api/guandan";
+  }
   if (query.get("cleanroom") !== "1") return null;
   return CLEANROOM_WEBSOCKET;
 };
