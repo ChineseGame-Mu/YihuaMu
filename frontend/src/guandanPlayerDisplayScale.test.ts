@@ -1,4 +1,5 @@
 import { readFileSync } from "fs";
+import { createHash } from "crypto";
 import { join } from "path";
 
 describe("Guandan enlarged player displays", () => {
@@ -110,4 +111,19 @@ describe("Guandan enlarged player displays", () => {
     );
     expect(css).toMatch(/width:\s*32px\s*!important/);
   });
+  test("preserves the exact approved production lobby and ink artwork", () => {
+    const approvedFiles = [
+      ["CleanroomEntry.tsx", "043b563fb4c85dd6609400068dccb402c7caed41"],
+      ["cleanroom-lobby-artwork.css", "b1f1e463710ede481c24f12903ad0ae3beb5d7e4"],
+    ] as const;
+    for (const [filename, approvedGitBlobSha] of approvedFiles) {
+      const bytes = readFileSync(join(__dirname, filename));
+      const gitBlobSha = createHash("sha1")
+        .update(`blob ${bytes.length}\\0`.replace("\\0", "\0"))
+        .update(bytes)
+        .digest("hex");
+      expect(gitBlobSha).toBe(approvedGitBlobSha);
+    }
+  });
+
 });
