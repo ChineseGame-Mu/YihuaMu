@@ -69,11 +69,16 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: K-level anti-tribute Rust regression (fix branch only)
-        if: ${{ github.head_ref == 'fix/guandan-accepted-ui-tribute-20261011' || github.ref_name == 'fix/guandan-accepted-ui-tribute-20261011' }}
+      - name: K-level anti-tribute Rust regression (integration QA)
+        if: ${{ github.head_ref == 'fix/guandan-accepted-ui-tribute-20261011' || github.ref_name == 'fix/guandan-accepted-ui-tribute-20261011' || github.head_ref == 'qa/robot-ui-safe-integration-20261017-noon' || github.ref_name == 'qa/robot-ui-safe-integration-20261017-noon' }}
         run: |
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
+
+      - name: Advanced robot combination and teammate regressions
+        run: |
+          cargo test -p shengji guandan_handler::tests::advanced_robot_beats_ -- --nocapture
+          cargo test -p shengji guandan_handler::tests::robot_passes_when_teammate_controls_and_opponents_are_safe -- --nocapture
 
       - name: Test Rust code
         run: cargo test --all

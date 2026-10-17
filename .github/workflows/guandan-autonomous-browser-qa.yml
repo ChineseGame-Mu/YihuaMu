@@ -1,0 +1,44 @@
+name: Guandan Autonomous Browser QA
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/robot-ui-safe-integration-20261017-noon
+    paths:
+      - 'qa/robot-browser-smoke.cjs'
+      - '.github/workflows/guandan-autonomous-browser-qa.yml'
+concurrency:
+  group: guandan-browser-qa-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-robots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      QA_URL: https://yihua-guandan-qa-safe-f8mp0224q-chinese-game.vercel.app/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright browser runner
+        run: |
+          mkdir -p /tmp/guandan-browser-runner
+          cd /tmp/guandan-browser-runner
+          npm init -y
+          npm install --no-audit --no-fund playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Run autonomous browser robots
+        env:
+          NODE_PATH: /tmp/guandan-browser-runner/node_modules
+        run: node qa/robot-browser-smoke.cjs
+      - name: Preserve browser evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guandan-browser-qa-evidence
+          path: qa-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
