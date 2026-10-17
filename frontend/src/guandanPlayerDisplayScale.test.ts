@@ -66,7 +66,7 @@ describe("Guandan enlarged player displays", () => {
       /\.guandan-public-player-back\.guandan-relative-1\s*\{[\s\S]*?top:\s*50%[\s\S]*?right:\s*10px/,
     );
     expect(positions).toMatch(
-      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*116px[\s\S]*?left:\s*50%/,
+      /\.guandan-public-player-back\.guandan-relative-2\s*\{[\s\S]*?top:\s*var\(--guandan-top-seat-offset,\s*0px\)[\s\S]*?left:\s*50%/,
     );
     expect(positions).toMatch(
       /\.guandan-public-player-back\.guandan-relative-3\s*\{[\s\S]*?top:\s*50%[\s\S]*?left:\s*10px/,
