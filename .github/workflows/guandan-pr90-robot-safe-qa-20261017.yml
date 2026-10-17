@@ -1,0 +1,40 @@
+name: Guandan PR90 Robot Backend-Only QA
+on:
+  push:
+    branches:
+      - qa/pr90-robot-backend-only-20261017
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: guandan-pr90-robot-safe-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  robot-rust-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify PR90 frontend remains byte-for-byte unchanged
+        run: |
+          git diff --exit-code 25ed25b5fdd2c8d4a8cfe8e4d8cb89cc658c1358 HEAD -- frontend/
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Check Rust formatting
+        run: cargo fmt --all -- --check
+      - name: K-level tribute and anti-tribute core regression
+        run: cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+      - name: Prepare compile-only frontend stub
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
+      - name: Backend Guandan room, tribute and robot regressions
+        run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+      - name: Four robots three consecutive complete deals (NOT four humans)
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
+      - name: QA scope
+        run: echo "No production deployment; not browser/SSO, four-human E2E, or persistent disaster recovery certification."
