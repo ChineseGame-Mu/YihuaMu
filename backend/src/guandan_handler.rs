@@ -588,28 +588,162 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         {
             break;
         }
-        let delay_ms = thread_rng().gen_range(800..=1800);
-        thread::sleep(Duration::from_millis(delay_ms));
-        let chosen = game.hands[seat]
-            .iter()
-            .enumerate()
-            .find_map(|(index, card)| {
-                validate_play_against_table(&[*card], &game.last_play, game.level)
+        #[cfg(not(test))]
+        {
+            let delay_ms = thread_rng().gen_range(800..=1800);
+            thread::sleep(Duration::from_millis(delay_ms));
+        }
+        // Protect the partner's winning play instead of needlessly overtaking it.
+        let partner_controls = game.last_player.is_some_and(|leader| {
+            leader != seat
+                && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
+                && leader % 2 == seat % 2
+        });
+        // Enumerate complete rank groups as well as singles. In particular,
+        // never get stuck passing when a pair, triple or bomb can legally beat
+        // the table. Preserve bombs and premium cards unless tactically needed.
+        let hand = &game.hands[seat];
+        let mut candidates: Vec<Vec<usize>> = Vec::new();
+        for i in 0..hand.len() {
+            candidates.push(vec![i]);
+        }
+        for i in 0..hand.len() {
+            let same_rank: Vec<usize> = (i..hand.len())
+                .filter(|&j| match (hand[i], hand[j]) {
+                    (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
+                    (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                    _ => false,
+                })
+                .collect();
+            for count in 2..=same_rank.len().min(8) {
+                candidates.push(same_rank[..count].to_vec());
+            }
+        }
+        // Advanced QA fix: enumerate mixed-rank full houses and rank runs.
+        // Every candidate is subsequently checked by the canonical rules
+        // validator; this generator does not redefine legal card patterns.
+        let mut rank_groups: Vec<(Rank, Vec<usize>)> = Vec::new();
+        for (index, card) in hand.iter().enumerate() {
+            if let CardFace::Suited { rank, .. } = card {
+                if let Some((_, indexes)) = rank_groups.iter_mut().find(|(r, _)| r == rank) {
+                    indexes.push(index);
+                } else {
+                    rank_groups.push((*rank, vec![index]));
+                }
+            }
+        }
+        for (triple_rank, triple) in &rank_groups {
+            if triple.len() < 3 {
+                continue;
+            }
+            for (pair_rank, pair) in &rank_groups {
+                if triple_rank != pair_rank && pair.len() >= 2 {
+                    let mut indexes = triple[..3].to_vec();
+                    indexes.extend_from_slice(&pair[..2]);
+                    candidates.push(indexes);
+                }
+            }
+        }
+        // Rank values are consecutive for ordinary suited cards; validate
+        // each generated run to exclude any disallowed wraps or level rules.
+        rank_groups.sort_by_key(|(rank, _)| *rank as usize);
+        for start in 0..rank_groups.len() {
+            for run_len in [5usize, 3usize] {
+                if start + run_len > rank_groups.len() {
+                    continue;
+                }
+                let window = &rank_groups[start..start + run_len];
+                if !window
+                    .windows(2)
+                    .all(|w| (w[1].0 as usize) == (w[0].0 as usize) + 1)
+                {
+                    continue;
+                }
+                let cards_per_rank = if run_len == 5 { 1 } else { 2 };
+                if window
+                    .iter()
+                    .all(|(_, indexes)| indexes.len() >= cards_per_rank)
+                {
+                    let indexes: Vec<usize> = window
+                        .iter()
+                        .flat_map(|(_, indexes)| indexes[..cards_per_rank].iter().copied())
+                        .collect();
+                    candidates.push(indexes);
+                }
+            }
+        }
+        let opponent_low = game.hands.iter().enumerate().any(|(other, cards)| {
+            other != seat
+                && (game.player_names.len() != GUANDAN_CLASSIC_PLAYER_COUNT
+                    || other % 2 != seat % 2)
+                && !cards.is_empty()
+                && cards.len() <= 3
+        });
+        let chosen = if partner_controls && !opponent_low {
+            None
+        } else {
+            candidates
+                .into_iter()
+                .filter(|indexes| {
+                    validate_play_against_table(
+                        &indexes.iter().map(|&i| hand[i]).collect::<Vec<_>>(),
+                        &game.last_play,
+                        game.level,
+                    )
                     .is_ok()
-                    .then_some(index)
-            });
-        if let Some(index) = chosen {
-            let card = game.hands[seat].remove(index);
-            let cards = vec![card];
+                })
+                .min_by_key(|indexes| {
+                    let premium: usize = indexes
+                        .iter()
+                        .map(|&i| match hand[i] {
+                            CardFace::Joker(Joker::Big) => 10000,
+                            CardFace::Joker(Joker::Small) => 9000,
+                            CardFace::Suited { rank, .. } if rank == game.level => 8000,
+                            card => initial_draw_value(card),
+                        })
+                        .sum();
+                    let breaks_group = indexes.len() == 1
+                        && hand
+                            .iter()
+                            .filter(|&&card| match (card, hand[indexes[0]]) {
+                                (
+                                    CardFace::Suited { rank: a, .. },
+                                    CardFace::Suited { rank: b, .. },
+                                ) => a == b,
+                                (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                                _ => false,
+                            })
+                            .count()
+                            >= 2;
+                    let bomb_cost = if indexes.len() >= 4 && !opponent_low {
+                        30000
+                    } else {
+                        0
+                    };
+                    // Prefer shedding several cards on a fresh lead, but avoid
+                    // spending high-value combinations merely to win a trick.
+                    let shedding = if game.last_play.is_empty() {
+                        indexes.len() * 700
+                    } else {
+                        0
+                    };
+                    premium / indexes.len() + bomb_cost + if breaks_group { 3000 } else { 0 }
+                        - shedding.min(premium / indexes.len())
+                })
+        };
+        if let Some(mut indexes) = chosen {
+            indexes.sort_unstable_by(|a, b| b.cmp(a));
+            let mut cards: Vec<CardFace> = indexes
+                .into_iter()
+                .map(|i| game.hands[seat].remove(i))
+                .collect();
+            cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
             game.table_plays.push(GuandanTablePlay {
                 player: seat,
                 cards,
             });
-            // Resistance is a one-time announcement at the start of the deal.
-            // Clear it on the first accepted play so clearing a later trick
-            // cannot make the anti-tribute panel appear again.
             game.tribute_resisted = false;
             game.passes = 0;
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
