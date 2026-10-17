@@ -25,14 +25,14 @@ sha=d.get("meta",{}).get("githubCommitSha")
 assert sha=="3031e1a2375bb9870b409a17cb240af42cae435c", f"Unexpected production SHA: {sha}"
 print("Approved production deployment SHA confirmed")
 PY
-  PRODUCTION_CHECK="deployment-sha-verified"
+  PRODUCTION_CHECK="approved-deployment-sha-verified;live-alias-identity-unverified"
 else
   echo "::warning::VERCEL_TOKEN missing: production identity UNVERIFIED; no production approval possible"
 fi
 cat > qa-artifacts/guard/manifest.json <<EOF
 {"qa_head":"$HEAD_SHA","approved_homepage_entry_blob":"$APPROVED_ENTRY","approved_homepage_css_blob":"$APPROVED_CSS","approved_production_sha":"$APPROVED_PRODUCTION_SHA","approved_production_deployment":"$APPROVED_DEPLOYMENT","production_http_status":"$STATUS","production_identity_check":"$PRODUCTION_CHECK","checked_at":"$(date -u +%Y-%m-%dT%H:%M:%SZ)"}
 EOF
-git bundle create qa-artifacts/guard/qa-branch-backup.bundle HEAD
+git bundle create qa-artifacts/guard/qa-branch-backup.bundle "refs/remotes/origin/qa/robot-ui-safe-integration-20261017-noon"
 if [[ "${CREATE_BACKUP_TAG:-false}" == "true" ]]; then
   TAG="backup/guandan-qa-$(date -u +%Y%m%dT%H%M%SZ)-${HEAD_SHA:0:12}"
   git config user.name "Guandan QA Backup Bot"
@@ -42,3 +42,6 @@ if [[ "${CREATE_BACKUP_TAG:-false}" == "true" ]]; then
   echo "Recovery tag: $TAG"
 fi
 echo "Guard complete: QA $HEAD_SHA, production $PRODUCTION_CHECK"
+if [[ "$PRODUCTION_CHECK" != *"approved-deployment-sha-verified"* ]]; then
+  echo "::warning::Live production alias identity remains unverified; release gate stays closed"
+fi
