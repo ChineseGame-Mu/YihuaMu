@@ -1,0 +1,46 @@
+name: QA Approved Homepage Source Gate
+
+on:
+  push:
+    branches:
+      - qa/verify-embedded-homepage-20261017
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  approved-homepage-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify lobby controls, default route, embedded frontend and preserved counts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          entry = Path("frontend/src/CleanroomEntry.tsx").read_text()
+          router = Path("frontend/src/index.tsx").read_text()
+          backend = Path("backend/src/main.rs").read_text()
+          docker = Path("Dockerfile").read_text()
+          webpack = Path("frontend/webpack.config.js").read_text()
+          assert '<select id="cleanroom-room"' in entry, "room selector missing"
+          assert '<input id="cleanroom-player-name"' in entry, "name input missing"
+          assert '<button id="cleanroom-enter-room"' in entry, "enter button missing"
+          assert '开始人数' not in entry, "obsolete start player selector label present"
+          assert 'id="cleanroom-player-count"' not in entry, "obsolete player count control present"
+          assert 'const supportedCounts = [4, 6, 8, 10, 12, 14]' in entry, "supported counts missing"
+          assert 'url.searchParams.set("players",String(playerCount))' in entry, "player-count transport removed"
+          assert 'if (cleanroom)' in router and '<CleanroomEntry />' in router, "default cleanroom route missing"
+          assert 'include_dir!("frontend/dist")' in backend, "embedded frontend path changed"
+          assert 'COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist/' in docker, "frontend dist copy missing"
+          assert 'entry: "./src/index.tsx"' in webpack, "webpack entry changed"
+          print("PASS: approved homepage SOURCE invariants; live deployment still requires browser validation")
+          PY
+      - name: Block promotion without independent deployed-browser evidence
+        shell: bash
+        run: |
+          echo "::warning::SOURCE GATE ONLY. This workflow does not verify deployed HTML/JS or browser UI."
+          echo "::warning::QA homepage remains FAIL until independently validated against immutable deployment."
