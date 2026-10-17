@@ -111,6 +111,7 @@ describe("Guandan enlarged player displays", () => {
     );
     expect(css).toMatch(/width:\s*32px\s*!important/);
   });
+
   test("preserves the exact approved production lobby and ink artwork", () => {
     const approvedFiles = [
       ["CleanroomEntry.tsx", "043b563fb4c85dd6609400068dccb402c7caed41"],
@@ -125,5 +126,4 @@ describe("Guandan enlarged player displays", () => {
       expect(gitBlobSha).toBe(approvedGitBlobSha);
     }
   });
-
 });
