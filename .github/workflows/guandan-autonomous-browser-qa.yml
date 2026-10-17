@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
     env:
-      QA_URL: https://yihua-guandan-qa-safe-53achi50q-chinese-game.vercel.app/
+      QA_URL: https://yihua-guandan-qa-safe-f8mp0224q-chinese-game.vercel.app/
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
