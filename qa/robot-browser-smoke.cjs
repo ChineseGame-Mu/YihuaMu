@@ -15,6 +15,7 @@ async function shot(page, name) {
 }
 async function main() {
   assert.ok(url && /^https:\/\//.test(url), 'QA_URL must be HTTPS');
+  assert.ok(new URL(url).hostname === 'yihua-guandan-qa-safe-f8mp0224q-chinese-game.vercel.app', 'Refuse any non-isolated QA deployment');
   browser = await chromium.launch({ headless: true });
   const contexts = await Promise.all(Array.from({ length: 4 }, () => browser.newContext({ viewport: { width: 1365, height: 900 }, ignoreHTTPSErrors: false })));
   try {
@@ -54,7 +55,8 @@ async function main() {
       assert.ok(initiallyDisabled && enabledAfterName, 'Entry name validation regression');
       await shot(first, 'entry-name-validation');
     } else {
-      record('entry button present', 'UNVERIFIED', 'No matching button; requires UI selector mapping');
+      record('entry button present', 'FAIL', 'No matching button; requires UI selector mapping');
+      throw new Error('Room entry button missing');
     }
     const backendProbe = await first.request.get('https://' + isolatedWsHost + '/api/guandan/rooms', { timeout: 25000 }).catch(e => ({ ok: () => false, status: () => 'NETWORK_ERROR', error: e.message }));
     const backendReady = backendProbe.ok();
