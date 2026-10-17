@@ -6,6 +6,7 @@ const assert = require('node:assert/strict');
 const out = path.resolve('qa-artifacts');
 fs.mkdirSync(out, { recursive: true });
 const url = process.env.QA_URL;
+const isolatedWsHost = 'guandan-isolated-browser-qa-20261017.onrender.com';
 const report = { url, started: new Date().toISOString(), checks: [], limitations: [], sha: process.env.GITHUB_SHA };
 const record = (name, status, detail) => { report.checks.push({ name, status, detail }); console.log(status + ' ' + name + ': ' + detail); };
 let browser;
@@ -18,6 +19,8 @@ async function main() {
   const contexts = await Promise.all(Array.from({ length: 4 }, () => browser.newContext({ viewport: { width: 1365, height: 900 }, ignoreHTTPSErrors: false })));
   try {
     const pages = await Promise.all(contexts.map(c => c.newPage()));
+    const websocketEvents = pages.map(() => []);
+    pages.forEach((page, index) => page.on('websocket', ws => websocketEvents[index].push(ws.url())));
     for (let i = 0; i < pages.length; i++) {
       const page = pages[i];
       const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -53,7 +56,17 @@ async function main() {
     } else {
       record('entry button present', 'UNVERIFIED', 'No matching button; requires UI selector mapping');
     }
-    record('isolated backend precondition', 'UNVERIFIED', 'Frontend points to shared card-games-yihua.onrender.com; never enter rooms with bots until isolated backend is available');
+    const backendProbe = await first.request.get('https://' + isolatedWsHost + '/api/guandan/rooms', { timeout: 25000 }).catch(e => ({ ok: () => false, status: () => 'NETWORK_ERROR', error: e.message }));
+    const backendReady = backendProbe.ok();
+    record('isolated backend HTTP readiness', backendReady ? 'PASS' : 'FAIL', 'HTTP ' + backendProbe.status());
+    assert.ok(backendReady, 'Isolated QA backend is not ready');
+    await join.click();
+    await first.waitForTimeout(3500);
+    await shot(first, 'isolated-room-entry');
+    const observed = websocketEvents[0];
+    record('isolated WebSocket routing', observed.length && observed.every(ws => new URL(ws).hostname === isolatedWsHost) ? 'PASS' : 'FAIL', JSON.stringify(observed));
+    assert.ok(observed.length && observed.every(ws => new URL(ws).hostname === isolatedWsHost), 'Shared backend WebSocket detected or no WebSocket established');
+    record('isolated room browser entry', 'PASS', 'Entered room with QA-only backend; no shared backend sockets observed');
     for (const name of ['robot 2 dynamic overlay avoidance', 'play/pass real interaction', 'tribute and anti-tribute timing', 'last trick visibility', '10-second dealing', '4 clients 3 complete games', 'reconnect room-state recovery']) {
       record(name, 'UNVERIFIED', 'Requires deterministic room setup and UI/network test hooks; not simulated by smoke test');
     }
