@@ -115,7 +115,10 @@ describe("Guandan enlarged player displays", () => {
   test("preserves the exact approved production lobby and ink artwork", () => {
     const approvedFiles = [
       ["CleanroomEntry.tsx", "043b563fb4c85dd6609400068dccb402c7caed41"],
-      ["cleanroom-lobby-artwork.css", "b1f1e463710ede481c24f12903ad0ae3beb5d7e4"],
+      [
+        "cleanroom-lobby-artwork.css",
+        "b1f1e463710ede481c24f12903ad0ae3beb5d7e4",
+      ],
     ] as const;
     for (const [filename, approvedGitBlobSha] of approvedFiles) {
       const bytes = readFileSync(join(__dirname, filename));
