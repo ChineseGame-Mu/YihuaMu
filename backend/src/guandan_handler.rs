@@ -2294,4 +2294,154 @@ mod tests {
         assert!(!game.tribute_resisted);
         assert_eq!(game.next_round_phase, None);
     }
+    #[test]
+    fn advanced_robot_beats_straight_with_complete_straight() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Four),
+                card(Suit::Clubs, Rank::Five),
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+            ],
+            vec![card(Suit::Diamonds, Rank::Three)],
+            vec![card(Suit::Hearts, Rank::Three)],
+            vec![card(Suit::Spades, Rank::Three)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Diamonds, Rank::Three),
+            card(Suit::Diamonds, Rank::Four),
+            card(Suit::Diamonds, Rank::Five),
+            card(Suit::Diamonds, Rank::Six),
+            card(Suit::Diamonds, Rank::Seven),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower straight"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 5);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn advanced_robot_beats_three_with_two() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Diamonds, Rank::Eight),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Diamonds, Rank::Nine),
+            ],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Clubs, Rank::Six),
+            card(Suit::Diamonds, Rank::Six),
+            card(Suit::Hearts, Rank::Six),
+            card(Suit::Clubs, Rank::Seven),
+            card(Suit::Diamonds, Rank::Seven),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower full house"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 5);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn advanced_robot_beats_consecutive_pairs() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Diamonds, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Diamonds, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Diamonds, Rank::Nine),
+            ],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Clubs, Rank::Four),
+            card(Suit::Diamonds, Rank::Four),
+            card(Suit::Clubs, Rank::Five),
+            card(Suit::Diamonds, Rank::Five),
+            card(Suit::Clubs, Rank::Six),
+            card(Suit::Diamonds, Rank::Six),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat lower consecutive pairs"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 6);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn robot_passes_when_teammate_controls_and_opponents_are_safe() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "机器人1".into(), "B2".into()];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+            ],
+            vec![CardFace::Joker(Joker::Big)],
+            vec![
+                card(Suit::Hearts, Rank::Six),
+                card(Suit::Hearts, Rank::Seven),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Hearts, Rank::Nine),
+            ],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Five)];
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.passes, 1);
+        assert!(game.table_plays.is_empty());
+        assert_eq!(game.hands[2], vec![CardFace::Joker(Joker::Big)]);
+    }
+
+
 }
