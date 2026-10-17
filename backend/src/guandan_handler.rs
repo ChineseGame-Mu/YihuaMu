@@ -6,6 +6,10 @@ use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
+#[cfg(not(test))]
+use rand::Rng;
+#[cfg(not(test))]
+use std::thread;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
