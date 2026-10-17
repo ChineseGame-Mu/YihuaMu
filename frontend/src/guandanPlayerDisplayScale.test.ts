@@ -79,6 +79,18 @@ describe("Guandan enlarged player displays", () => {
     );
   });
 
+  test("moves the top seat below every visible ceremony panel", () => {
+    expect(table).toContain('".guandan-initial-draw-mini"');
+    expect(table).toContain('".guandan-start-panel"');
+    expect(table).toContain('".guandan-next-round-panel"');
+    expect(table).toContain('".guandan-tribute-panel"');
+    expect(table).toContain('".guandan-notice-panel"');
+    expect(table).toContain("new ResizeObserver(scheduleUpdate)");
+    expect(table).toContain("new MutationObserver(() => {");
+    expect(table).toContain('"--guandan-top-seat-offset"');
+    expect(positions).toContain("var(--guandan-top-seat-offset, 0px)");
+  });
+
   test("doubles the current-turn display and embeds left, observe, right controls", () => {
     expect(css).toMatch(/min-width:\s*300px\s*!important/);
     expect(css).toMatch(/font-size:\s*28px\s*!important/);
