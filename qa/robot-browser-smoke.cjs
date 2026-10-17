@@ -42,12 +42,18 @@ async function main() {
     record('Guandan entry visible', 'PASS', 'Text matched');
     const join = first.getByRole('button', { name: /加入房间|进入房间|加入|进入|开始游戏/i }).first();
     if (await join.count()) {
-      const disabled = await join.isDisabled();
-      record('entry button present', disabled ? 'FAIL' : 'PASS', disabled ? 'Button disabled' : 'Button enabled');
-      assert.ok(!disabled, 'Entry button disabled');
+      const initiallyDisabled = await join.isDisabled();
+      const nameInput = first.locator('#cleanroom-player-name');
+      assert.ok(await nameInput.count(), 'Player name input missing');
+      await nameInput.fill('QA-Bot-1');
+      const enabledAfterName = await join.isEnabled();
+      record('entry button name validation', initiallyDisabled && enabledAfterName ? 'PASS' : 'FAIL', 'Empty name disabled=' + initiallyDisabled + '; named entry enabled=' + enabledAfterName);
+      assert.ok(initiallyDisabled && enabledAfterName, 'Entry name validation regression');
+      await shot(first, 'entry-name-validation');
     } else {
       record('entry button present', 'UNVERIFIED', 'No matching button; requires UI selector mapping');
     }
+    record('isolated backend precondition', 'UNVERIFIED', 'Frontend points to shared card-games-yihua.onrender.com; never enter rooms with bots until isolated backend is available');
     for (const name of ['robot 2 dynamic overlay avoidance', 'play/pass real interaction', 'tribute and anti-tribute timing', 'last trick visibility', '10-second dealing', '4 clients 3 complete games', 'reconnect room-state recovery']) {
       record(name, 'UNVERIFIED', 'Requires deterministic room setup and UI/network test hooks; not simulated by smoke test');
     }
