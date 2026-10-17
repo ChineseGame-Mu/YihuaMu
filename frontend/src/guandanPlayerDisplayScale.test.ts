@@ -119,7 +119,7 @@ describe("Guandan enlarged player displays", () => {
     for (const [filename, approvedGitBlobSha] of approvedFiles) {
       const bytes = readFileSync(join(__dirname, filename));
       const gitBlobSha = createHash("sha1")
-        .update(`blob ${bytes.length}\\0`.replace("\\0", "\0"))
+        .update(`blob ${bytes.length}\0`)
         .update(bytes)
         .digest("hex");
       expect(gitBlobSha).toBe(approvedGitBlobSha);
