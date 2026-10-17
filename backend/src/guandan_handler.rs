@@ -2442,6 +2442,4 @@ mod tests {
         assert!(game.table_plays.is_empty());
         assert_eq!(game.hands[2], vec![CardFace::Joker(Joker::Big)]);
     }
-
-
 }
