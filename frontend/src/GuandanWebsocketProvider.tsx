@@ -194,6 +194,15 @@ export const cleanroomDeploymentRoom = (
 const cleanroomWebsocketOverride = (): string | null => {
   const query = new URLSearchParams(window.location.search);
   if (query.get("cleanroom") !== "1") return null;
+  // In the isolated QA Vercel project, exercise the backend built from this
+  // same candidate SHA, never the shared Render production game backend.
+  const host = window.location.hostname;
+  if (
+    host === "yihua-guandan-qa-safe.vercel.app" ||
+    (host.startsWith("yihua-guandan-qa-safe-") && host.endsWith(".vercel.app"))
+  ) {
+    return `wss://${window.location.host}/api/guandan`;
+  }
   return CLEANROOM_WEBSOCKET;
 };
 
