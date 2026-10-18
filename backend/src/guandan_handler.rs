@@ -1855,6 +1855,55 @@ pub async fn websocket(
 mod tests {
     use super::*;
     use shengji_core::guandan::Suit;
+
+    fn ace_round(finish_order: &[usize], attempts: u8) -> GuandanGameState {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.hands = vec![Vec::new(); 4];
+        game.finish_order = finish_order.to_vec();
+        game.team_levels.team_a = Rank::Ace;
+        game.level = Rank::Ace;
+        game.last_game_winner_team = Some(Team::A);
+        game.ace_attempts_team_a = attempts;
+        game
+    }
+
+    #[test]
+    fn first_ace_attempt_rejects_one_three_but_second_accepts_it() {
+        let mut game = ace_round(&[0, 1, 2, 3], 0);
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 1);
+        assert_eq!(game.match_winner, None);
+        assert_eq!(game.team_levels.team_a, Rank::Ace);
+
+        game.next_round_phase = None;
+        game.finish_order = vec![0, 1, 2, 3];
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 2);
+        assert_eq!(game.match_winner, Some(Team::A));
+    }
+
+    #[test]
+    fn third_ace_attempt_accepts_one_four_only_after_two_failures() {
+        let mut game = ace_round(&[0, 1, 3, 2], 0);
+        for attempt in 1..=3 {
+            game.next_round_phase = None;
+            game.finish_order = vec![0, 1, 3, 2];
+            assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+            assert_eq!(game.ace_attempts_team_a, attempt);
+            assert_eq!(game.match_winner, if attempt == 3 { Some(Team::A) } else { None });
+        }
+    }
+
+    #[test]
+    fn ace_attempt_counts_even_when_other_team_finishes_first() {
+        let mut game = ace_round(&[1, 0, 3, 2], 0);
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 1);
+        assert_eq!(game.ace_attempts_team_b, 0);
+        assert_eq!(game.match_winner, None);
+    }
+
     fn card(suit: Suit, rank: Rank) -> CardFace {
         CardFace::Suited { suit, rank }
     }
