@@ -15,7 +15,7 @@ import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import GuandanRoundResultHud from "./GuandanRoundResultHud";
 import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
-import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
+import approvedHomepage20261017 from "./guandan-approved-homepage-20261017";
 import { prepareGuandanTurnPrompt } from "./guandanTurnPrompt";
 import { shouldAutoJoinCleanroom } from "./cleanroomAutoJoin";
 import {
@@ -217,13 +217,9 @@ const CleanroomEntry = (): JSX.Element => {
 
   return (
     <main className="cleanroom-final-shell">
-      <img className="cleanroom-final-backdrop" src={cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
+      <img className="cleanroom-final-backdrop" src={approvedHomepage20261017} alt="" aria-hidden="true" />
       <div className="cleanroom-final-stage">
-        <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
-        {/* The approved artwork contains an obsolete player-count label/dropdown
-            baked into its pixels. Cover only that non-interactive artwork region;
-            the real room/name/enter controls and 4–14 player support stay intact. */}
-        <div className="cleanroom-final-no-count-mask" aria-hidden="true" />
+        <img className="cleanroom-final-art" src={approvedHomepage20261017} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
           <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
