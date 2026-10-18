@@ -506,7 +506,8 @@ fn settle_and_redeal_if_complete(
             .filter(|team| game.team_levels.level_for(*team) == Rank::Ace)
             .or_else(|| {
                 [Team::A, Team::B]
-                    .into_iter()
+                    .iter()
+                    .copied()
                     .find(|team| game.team_levels.level_for(*team) == Rank::Ace)
             })
     } else {
