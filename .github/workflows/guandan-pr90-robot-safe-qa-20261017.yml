@@ -41,3 +41,30 @@ jobs:
           cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
       - name: QA scope
         run: echo "No production deployment; not browser/SSO, four-human E2E, or persistent disaster recovery certification."
+
+  isolated-runtime-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: yihua-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: yihua-game/package-lock.json
+      - name: Install isolated runtime dependencies
+        run: npm ci
+      - name: Build isolated runtime
+        run: npm run build
+      - name: Test runtime snapshots and reconnect recovery
+        run: |
+          npx vitest run test/runtime-snapshot.test.ts test/managed-room-snapshot-recovery.test.ts test/websocket-reconnect-snapshot.test.ts
+      - name: Restart recovery with disk snapshot and live WebSocket clients
+        run: npm run smoke:restart
+      - name: Crash recovery with disk snapshot
+        run: npm run smoke:crash
+      - name: Scope declaration
+        run: echo "Isolated CI runtime only; not a production data export or production restoration exercise."
