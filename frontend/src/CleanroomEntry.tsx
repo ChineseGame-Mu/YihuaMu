@@ -50,10 +50,10 @@ const isIsolatedQaPreview =
   (window.location.hostname.startsWith("yihua-guandan-qa-safe-") &&
     window.location.hostname.endsWith(".vercel.app"));
 const cleanroomWebsocket = isIsolatedQaPreview
-  ? `wss://${window.location.host}/api/guandan`
+  ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
   : "wss://card-games-yihua.onrender.com/api/guandan";
 const cleanroomRoomAvailabilityUrl = isIsolatedQaPreview
-  ? `${window.location.origin}/api/guandan/rooms`
+  ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
   : "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = isCleanroomRoomId;
