@@ -43,9 +43,18 @@ import "./guandan-review-controls-alignment-20261009.css";
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = CLEANROOM_ROOM_IDS;
 type SelectableRoom = CleanroomRoomId;
-const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
-const cleanroomRoomAvailabilityUrl =
-  "https://card-games-yihua.onrender.com/api/guandan/rooms";
+// QA-only routing: preview gameplay must use its own isolated Rust backend.
+// The approved production hostname and homepage remain unchanged.
+const isIsolatedQaPreview =
+  window.location.hostname === "yihua-guandan-qa-safe.vercel.app" ||
+  (window.location.hostname.startsWith("yihua-guandan-qa-safe-") &&
+    window.location.hostname.endsWith(".vercel.app"));
+const cleanroomWebsocket = isIsolatedQaPreview
+  ? `wss://${window.location.host}/api/guandan`
+  : "wss://card-games-yihua.onrender.com/api/guandan";
+const cleanroomRoomAvailabilityUrl = isIsolatedQaPreview
+  ? `${window.location.origin}/api/guandan/rooms`
+  : "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = isCleanroomRoomId;
 const roomFromLocation = (): SelectableRoom => {
