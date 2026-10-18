@@ -121,13 +121,25 @@ pub fn four_player_promotion_steps(
     }
 }
 
-/// At Ace, standard four-player play requires the winner's partner not to be
-/// last: 1-2 or 1-3 wins the match; 1-4 stays on Ace.
+/// User-approved progressive Ace clearance (2026-10-18):
+/// first Ace attempt needs 1st+2nd; second allows 1st+3rd;
+/// third and later allow 1st+4th. An attempt is a *deal played at Ace*,
+/// even when the Ace team loses that deal. Only the Ace team finishing
+/// first can clear, and the first finisher's teammate determines the result.
 pub fn four_player_ace_win(
     table: TableConfig,
     finish_order: &[usize],
+    attempt: u8,
 ) -> Result<bool, &'static str> {
-    Ok(four_player_promotion_steps(table, finish_order)? >= 2)
+    if attempt == 0 {
+        return Err("Ace attempt must be at least one");
+    }
+    let required_promotion = match attempt {
+        1 => 3,
+        2 => 2,
+        _ => 1,
+    };
+    Ok(four_player_promotion_steps(table, finish_order)? >= required_promotion)
 }
 
 #[cfg(test)]
@@ -193,11 +205,25 @@ mod tests {
     }
 
     #[test]
-    fn ace_requires_partner_not_last() {
+    fn progressive_ace_clearance_requires_one_two_then_one_three_then_one_four() {
         let t = TableConfig::new(4).unwrap();
-        assert!(four_player_ace_win(t, &[0, 2]).unwrap());
-        assert!(four_player_ace_win(t, &[0, 1, 2]).unwrap());
-        assert!(!four_player_ace_win(t, &[0, 1, 3]).unwrap());
+        // First Ace: only 1st + 2nd.
+        assert!(four_player_ace_win(t, &[0, 2], 1).unwrap());
+        assert!(!four_player_ace_win(t, &[0, 1, 2], 1).unwrap());
+        assert!(!four_player_ace_win(t, &[0, 1, 3], 1).unwrap());
+        // Second Ace: 1st + 3rd or better.
+        assert!(four_player_ace_win(t, &[0, 2], 2).unwrap());
+        assert!(four_player_ace_win(t, &[0, 1, 2], 2).unwrap());
+        assert!(!four_player_ace_win(t, &[0, 1, 3], 2).unwrap());
+        // Third or later Ace: 1st + 4th or better.
+        for attempt in [3, 4, u8::MAX] {
+            for order in [&[0, 2][..], &[0, 1, 2][..], &[0, 1, 3][..]] {
+                assert!(four_player_ace_win(t, order, attempt).unwrap());
+            }
+        }
+        assert!(four_player_ace_win(t, &[1, 3], 1).unwrap());
+        assert!(four_player_ace_win(t, &[1, 0, 3], 2).unwrap());
+        assert!(!four_player_ace_win(t, &[0, 2], 0).is_ok());
     }
 
     #[test]
