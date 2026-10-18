@@ -10,12 +10,19 @@ use shengji_core::guandan::{
 };
 
 #[test]
-fn ace_level_match_finish_requires_partner_not_last() {
+fn ace_clearance_is_progressively_easier_across_three_deals() {
     let table = TableConfig::new(4).unwrap();
+    assert!(four_player_ace_win(table, &[0, 2], 1).unwrap());
+    assert!(!four_player_ace_win(table, &[0, 1, 2], 1).unwrap());
+    assert!(!four_player_ace_win(table, &[0, 1, 3], 1).unwrap());
 
-    assert!(four_player_ace_win(table, &[0, 2]).unwrap());
-    assert!(four_player_ace_win(table, &[0, 1, 2]).unwrap());
-    assert!(!four_player_ace_win(table, &[0, 1, 3]).unwrap());
+    assert!(four_player_ace_win(table, &[0, 2], 2).unwrap());
+    assert!(four_player_ace_win(table, &[0, 1, 2], 2).unwrap());
+    assert!(!four_player_ace_win(table, &[0, 1, 3], 2).unwrap());
+
+    assert!(four_player_ace_win(table, &[0, 2], 3).unwrap());
+    assert!(four_player_ace_win(table, &[0, 1, 2], 3).unwrap());
+    assert!(four_player_ace_win(table, &[0, 1, 3], 3).unwrap());
 }
 
 #[test]
