@@ -3,6 +3,10 @@
 .cleanroom-final-backdrop {position:absolute;inset:-6%;z-index:0;width:112%;height:112%;object-fit:cover;filter:blur(22px) saturate(.92) brightness(1.06);transform:scale(1.05);opacity:.42;pointer-events:none;user-select:none}
 .cleanroom-final-stage {position:relative;z-index:1;width:min(100vw,calc(100svh * 1.1550985433));aspect-ratio:1348/1167;flex:0 0 auto;overflow:hidden;box-shadow:0 0 28px rgba(34,46,38,.12)}
 .cleanroom-final-art {position:absolute;inset:0;z-index:1;width:100%;height:100%;object-fit:contain;display:block;user-select:none;-webkit-user-drag:none;image-rendering:auto;filter:contrast(1.035) saturate(1.025)}
+/* The old player-count caption/dropdown is baked into the approved WebP.
+   Remove it visually without altering the original protected artwork asset.
+   The 4–14-player capability remains handled by CleanroomEntry. */
+.cleanroom-final-no-count-mask {position:absolute;left:29.6%;top:55.7%;width:40.8%;height:11.2%;z-index:2;pointer-events:none;background:#fffdf1}
 .cleanroom-final-form {position:absolute;inset:0;z-index:3;margin:0;padding:0;pointer-events:none}
 .cleanroom-final-control,.cleanroom-final-enter {position:absolute!important;box-sizing:border-box!important;pointer-events:auto!important;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif!important}
 .cleanroom-final-control {left:30.0%!important;width:40.0%!important;border:1px solid #a98b55!important;border-radius:.5rem!important;background:#fffef7!important;color:#173f30!important;padding:0 .78rem!important;outline:none!important;box-shadow:0 0 0 2px #fffef7!important;font-size:clamp(12px,1.45svh,16px)!important;font-weight:400!important;line-height:1!important;opacity:1!important}
