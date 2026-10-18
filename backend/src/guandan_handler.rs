@@ -1891,7 +1891,10 @@ mod tests {
             game.finish_order = vec![0, 1, 3, 2];
             assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
             assert_eq!(game.ace_attempts_team_a, attempt);
-            assert_eq!(game.match_winner, if attempt == 3 { Some(Team::A) } else { None });
+            assert_eq!(
+                game.match_winner,
+                if attempt == 3 { Some(Team::A) } else { None }
+            );
         }
     }
 
