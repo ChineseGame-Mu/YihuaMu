@@ -15,7 +15,7 @@ use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
-    team::{team_for_seat, Team, TeamLevels},
+    team::{four_player_ace_win, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, tribute_plan, TributePlan},
     CardFace, Joker, Rank, Suit, TableConfig,
 };
@@ -498,6 +498,31 @@ fn settle_and_redeal_if_complete(
     }
     let winner_team = if winner % 2 == 0 { Team::A } else { Team::B };
     let winner_level = game.team_levels.level_for(winner_team);
+    // Record every *deal played at Ace*, including a loss by the Ace team.
+    // The previous winner selected the current level, so capture that team
+    // before overwriting last_game_winner_team for the just-finished deal.
+    let ace_playing_team = if game.level == Rank::Ace {
+        game.last_game_winner_team
+            .filter(|team| game.team_levels.level_for(*team) == Rank::Ace)
+            .or_else(|| {
+                [Team::A, Team::B]
+                    .into_iter()
+                    .find(|team| game.team_levels.level_for(*team) == Rank::Ace)
+            })
+    } else {
+        None
+    };
+    let ace_attempt = match ace_playing_team {
+        Some(Team::A) => {
+            game.ace_attempts_team_a = game.ace_attempts_team_a.saturating_add(1);
+            game.ace_attempts_team_a
+        }
+        Some(Team::B) => {
+            game.ace_attempts_team_b = game.ace_attempts_team_b.saturating_add(1);
+            game.ace_attempts_team_b
+        }
+        None => 0,
+    };
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
     let completed_finish_order = previous_finish_order.clone();
@@ -522,7 +547,15 @@ fn settle_and_redeal_if_complete(
         }
     }
 
-    if winner_level == Rank::Ace && promotion_steps >= 2 {
+    if winner_level == Rank::Ace
+        && ace_playing_team == Some(winner_team)
+        && four_player_ace_win(
+            TableConfig::new(GUANDAN_CLASSIC_PLAYER_COUNT)
+                .map_err(|_| "invalid classic Guandan table")?,
+            &completed_finish_order,
+            ace_attempt,
+        )?
+    {
         game.match_winner = Some(winner_team);
         game.trick_complete = true;
         return Ok(true);
@@ -1379,6 +1412,8 @@ pub async fn websocket(
                         state.game.return_cards.clear();
                         state.game.tribute_resisted = false;
                         state.game.match_winner = None;
+                        state.game.ace_attempts_team_a = 0;
+                        state.game.ace_attempts_team_b = 0;
                         state.game.next_round_phase = None;
                         state.game.next_round_finish_order.clear();
                         run_robot_turns(&mut state.game, hook_to_bottom).map_err(|_| ())?;
