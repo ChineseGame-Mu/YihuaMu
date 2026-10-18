@@ -61,6 +61,12 @@ pub struct GuandanGameState {
     pub return_cards: Vec<GuandanTributeCard>,
     pub tribute_resisted: bool,
     pub match_winner: Option<Team>,
+    /// Number of completed Ace-level deals for each team in this match.
+    /// Defaults preserve compatibility with older saved room states.
+    #[serde(default)]
+    pub ace_attempts_team_a: u8,
+    #[serde(default)]
+    pub ace_attempts_team_b: u8,
     #[serde(default)]
     pub next_round_phase: Option<GuandanNextRoundPhase>,
     #[serde(default)]
@@ -94,6 +100,8 @@ impl Default for GuandanGameState {
             return_cards: Vec::new(),
             tribute_resisted: false,
             match_winner: None,
+            ace_attempts_team_a: 0,
+            ace_attempts_team_b: 0,
             next_round_phase: None,
             next_round_finish_order: Vec::new(),
         }
