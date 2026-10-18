@@ -27,14 +27,17 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
       - name: K-level tribute and anti-tribute core regression
-        run: cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
+        run: |
+          cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
       - name: Prepare compile-only frontend stub
         run: |
           mkdir -p frontend/dist
           printf '<!doctype html><title>QA-only stub</title>\n' > frontend/dist/index.html
       - name: Backend Guandan room, tribute and robot regressions
-        run: cargo test -p shengji guandan_handler::tests:: -- --nocapture
+        run: |
+          cargo test -p shengji guandan_handler::tests:: -- --nocapture
       - name: Four robots three consecutive complete deals (NOT four humans)
-        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
+        run: |
+          cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
       - name: QA scope
         run: echo "No production deployment; not browser/SSO, four-human E2E, or persistent disaster recovery certification."
