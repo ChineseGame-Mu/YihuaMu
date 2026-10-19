@@ -132,7 +132,7 @@ async fn main() -> Result<(), anyhow::Error> {
             "/guandan",
             get(|| async {
                 Redirect::temporary(
-                    "https://yihua-mu.vercel.app/?test=1&game=guandan&players=14&room=0001&ws=wss%3A%2F%2Fcard-games-yihua.onrender.com%2Fapi%2Fguandan",
+                    "https://yihua-guandan-qa-safe.vercel.app/?test=1&game=guandan&room=0001&ws=wss%3A%2F%2Fguandan-stable-ws-qa-20261018.onrender.com%2Fapi%2Fguandan",
                 )
             }),
         )
