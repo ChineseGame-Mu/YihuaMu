@@ -191,6 +191,8 @@ async fn main() -> Result<(), anyhow::Error> {
                 "https://yihua-guandan-qa-safe.vercel.app",
                 "https://yihua-guandan-qa-safe-lwnp8lnhy-chinese-game.vercel.app",
                 "https://yihua-guandan-qa-safe-kaqgdir1x-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-h50qs2l1v-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-a8kju9y9b-chinese-game.vercel.app",
             ];
             let origins: Vec<HeaderValue> = allowed_origins
                 .split(',')
