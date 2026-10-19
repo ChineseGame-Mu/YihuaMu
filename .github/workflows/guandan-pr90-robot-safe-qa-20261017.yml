@@ -4,7 +4,6 @@ on:
     branches:
       - qa/pr90-robot-backend-only-20261017
       - qa/manual-11items-advanced-robot-20261018
-      - 'qa/manual-11items-advanced-robot-20261018'
   workflow_dispatch:
   pull_request:
     branches:
