@@ -1633,9 +1633,12 @@ pub async fn websocket(
                     .await;
                 match result {
                     Err(error) => {
-                        send(&tx, &GuandanServerMessage::Error {
-                            message: error.to_string(),
-                        });
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: error.to_string(),
+                            },
+                        );
                     }
                     Ok(_) => {
                         // The human play has already committed and emitted StateChanged.
@@ -1651,9 +1654,12 @@ pub async fn websocket(
                             })
                             .await;
                         if let Err(error) = robot_result {
-                            send(&tx, &GuandanServerMessage::Error {
-                                message: error.to_string(),
-                            });
+                            send(
+                                &tx,
+                                &GuandanServerMessage::Error {
+                                    message: error.to_string(),
+                                },
+                            );
                         }
                     }
                 }
