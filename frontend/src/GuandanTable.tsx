@@ -821,6 +821,8 @@ const GuandanTable: React.FunctionComponent = () => {
       ".guandan-tribute-panel",
       ".guandan-notice-panel",
       ".guandan-initial-draw-mini",
+      // The centered public-table title can also sit behind the top seat.
+      ".guandan-public-zone > .guandan-zone-title",
     ].join(", ");
     let animationFrame = 0;
     const updateSeatOffset = () => {
