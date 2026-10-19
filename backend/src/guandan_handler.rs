@@ -1577,7 +1577,7 @@ pub async fn websocket(
                 let indexes = card_indexes;
                 let result: Result<u64, PlayError> = storage
                     .clone()
-                    .execute_operation_with_messages(key, move |mut state| {
+                    .execute_operation_with_messages(key.clone(), move |mut state| {
                         if state.game.normal_play_blocked() {
                             return Err(PlayError::Invalid(
                                 "normal play is blocked until tribute is resolved",
@@ -1626,19 +1626,36 @@ pub async fn websocket(
                         if !settled {
                             advance_turn(&mut state.game);
                         }
-                        run_robot_turns(&mut state.game, hook_to_bottom)
-                            .map_err(PlayError::Invalid)?;
+                        // Publish the human play before any robot thinking delay.
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
-                if let Err(error) = result {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
+                match result {
+                    Err(error) => {
+                        send(&tx, &GuandanServerMessage::Error {
                             message: error.to_string(),
-                        },
-                    );
+                        });
+                    }
+                    Ok(_) => {
+                        // The human play has already committed and emitted StateChanged.
+                        // Yield so subscribers can display it before robots act.
+                        tokio::task::yield_now().await;
+                        let robot_result: Result<u64, PlayError> = storage
+                            .clone()
+                            .execute_operation_with_messages(key, move |mut state| {
+                                run_robot_turns(&mut state.game, hook_to_bottom)
+                                    .map_err(PlayError::Invalid)?;
+                                state.bump_version();
+                                Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                            })
+                            .await;
+                        if let Err(error) = robot_result {
+                            send(&tx, &GuandanServerMessage::Error {
+                                message: error.to_string(),
+                            });
+                        }
+                    }
                 }
             }
             GuandanClientMessage::TributeCard { card_index } => {
