@@ -1,10 +1,13 @@
-name: Guandan PR90 Robot Backend-Only QA
+name: Guandan PR92 Robot Three-Deal QA
 on:
   push:
     branches:
       - qa/pr90-robot-backend-only-20261017
       - qa/manual-11items-advanced-robot-20261018
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 permissions:
   contents: read
 concurrency:
@@ -36,7 +39,7 @@ jobs:
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
       - name: Four robots three consecutive complete deals (NOT four humans)
         run: |
-          cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
+          cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --exact --nocapture
       - name: QA scope
         run: echo "No production deployment; not browser/SSO, four-human E2E, or persistent disaster recovery certification."
 
