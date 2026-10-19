@@ -185,8 +185,16 @@ async fn main() -> Result<(), anyhow::Error> {
                 .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
                 .allow_headers(tower_http::cors::Any)
         } else {
+            // QA-only compatibility: retain an explicit allowlist for the
+            // dedicated preview deployment without allowing arbitrary origins.
+            let qa_origins = [
+                "https://yihua-guandan-qa-safe.vercel.app",
+                "https://yihua-guandan-qa-safe-lwnp8lnhy-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-kaqgdir1x-chinese-game.vercel.app",
+            ];
             let origins: Vec<HeaderValue> = allowed_origins
                 .split(',')
+                .chain(qa_origins.iter().copied())
                 .filter_map(|origin| origin.trim().parse::<HeaderValue>().ok())
                 .collect();
 
