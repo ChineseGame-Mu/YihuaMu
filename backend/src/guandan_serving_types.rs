@@ -607,7 +607,10 @@ mod tests {
         room.game.level = Rank::Ace;
         room.game.ace_attempts_team_a = 2;
         room.game.ace_attempts_team_b = 1;
-        room.game.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
+        room.game.pending_tribute = Some(TributePlan::Single {
+            giver: 3,
+            receiver: 0,
+        });
         let serialized = serde_json::to_vec(&room).expect("serialize complete room");
         let recovered: VersionedGuandanGame =
             serde_json::from_slice(&serialized).expect("restore complete room");
