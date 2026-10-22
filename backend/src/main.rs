@@ -193,6 +193,9 @@ async fn main() -> Result<(), anyhow::Error> {
                 "https://yihua-guandan-qa-safe-kaqgdir1x-chinese-game.vercel.app",
                 "https://yihua-guandan-qa-safe-h50qs2l1v-chinese-game.vercel.app",
                 "https://yihua-guandan-qa-safe-a8kju9y9b-chinese-game.vercel.app",
+                // Approved QA SHA deployment and stable QA branch preview only.
+                "https://yihua-guandan-qa-safe-mhi7oohvw-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-git-qa-manual-11items-bdedba-chinese-game.vercel.app",
             ];
             let origins: Vec<HeaderValue> = allowed_origins
                 .split(',')
