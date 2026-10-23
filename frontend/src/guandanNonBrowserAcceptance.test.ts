@@ -42,21 +42,20 @@ describe("Guandan non-browser QA contracts", () => {
   });
   test("review-panel grid placement and selected-card preview clearance", () => {
     expect(approvedLayout).toMatch(
-      /section\\.guandan-play-actions\\s*\\{\\s*grid-column:\\s*2 !important;\\s*grid-row:\\s*2 \\/ 4 !important;/,
+      /section\.guandan-play-actions\s*\{\s*grid-column:\s*2 !important;\s*grid-row:\s*2 \/ 4 !important;/,
     );
     expect(approvedLayout).toMatch(
-      /\\.guandan-selected-preview\\s*\\{[\\s\\S]*?inset:\\s*80px 12px 12px !important;/,
+      /\.guandan-selected-preview\s*\{[\s\S]*?inset:\s*80px 12px 12px !important;/,
     );
     expect(layout).toMatch(
-      /section\\.guandan-play-actions\\s*>\\s*button\\s*\\{[\\s\\S]*?bottom:\\s*12px !important;/,
+      /section\.guandan-play-actions\s*>\s*button\s*\{[\s\S]*?bottom:\s*12px !important;/,
     );
     expect(layout).toMatch(
-      /\\.guandan-combo-bottom-controls\\s*\\{[\\s\\S]*?bottom:\\s*82px !important;/,
+      /\.guandan-combo-bottom-controls\s*\{[\s\S]*?bottom:\s*82px !important;/,
     );
     expect(layout).toMatch(
-      /section\\.guandan-play-actions:has\\(\\.guandan-combo-bottom-controls\\)[\\s\\S]*?\\.guandan-selected-preview\\s*\\{\\s*bottom:\\s*196px !important;/,
+      /section\.guandan-play-actions:has\(\.guandan-combo-bottom-controls\)[\s\S]*?\.guandan-selected-preview\s*\{\s*bottom:\s*196px !important;/,
     );
     expect(layout).toContain("bottom: 170px !important");
   });
-
 });
