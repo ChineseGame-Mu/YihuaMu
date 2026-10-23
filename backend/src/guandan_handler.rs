@@ -1975,6 +1975,42 @@ mod tests {
         assert_eq!(game.player_names, vec!["Yihua", "机器人1"]);
     }
     #[test]
+    fn reconnecting_started_human_preserves_seat_hand_and_turn_state() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "Player1".into(),
+            "Player2".into(),
+            "Player3".into(),
+            "Player4".into(),
+        ];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Diamonds, Rank::Six)],
+            vec![card(Suit::Hearts, Rank::Seven)],
+            vec![card(Suit::Spades, Rank::Eight)],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Four)];
+
+        let names_before = game.player_names.clone();
+        let hands_before = game.hands.clone();
+        let last_play_before = game.last_play.clone();
+
+        assert_eq!(claim_human_seat(&mut game, "Player2".into()), Ok(1));
+        assert_eq!(game.player_names, names_before);
+        assert_eq!(game.hands, hands_before);
+        assert_eq!(game.turn, 2);
+        assert_eq!(game.last_player, Some(0));
+        assert_eq!(game.last_play, last_play_before);
+
+        // A newcomer must not overwrite any ongoing player's private hand.
+        assert_eq!(claim_human_seat(&mut game, "Newcomer".into()), Err(()));
+        assert_eq!(game.player_names, names_before);
+        assert_eq!(game.hands, hands_before);
+    }
+    #[test]
     fn a_new_human_replaces_a_robot_in_place_before_start() {
         let mut game = GuandanGameState::default();
         game.player_names = vec![
