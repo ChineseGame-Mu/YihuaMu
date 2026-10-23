@@ -8,6 +8,10 @@ describe("Guandan non-browser QA contracts", () => {
     join(__dirname, "guandan-private-layout-20260928.css"),
     "utf8",
   );
+  const approvedLayout = readFileSync(
+    join(__dirname, "guandan-approved-layout.css"),
+    "utf8",
+  );
 
   test.each([4, 6, 8, 10, 12, 14])(
     "nominal ten-second deal for %i players",
@@ -36,4 +40,23 @@ describe("Guandan non-browser QA contracts", () => {
     expect(source).toContain('send({ type: "end_round" })');
     expect(source).toContain("TRICK_CLEAR_DELAY_MS,");
   });
+  test("review-panel grid placement and selected-card preview clearance", () => {
+    expect(approvedLayout).toMatch(
+      /section\\.guandan-play-actions\\s*\\{\\s*grid-column:\\s*2 !important;\\s*grid-row:\\s*2 \\/ 4 !important;/,
+    );
+    expect(approvedLayout).toMatch(
+      /\\.guandan-selected-preview\\s*\\{[\\s\\S]*?inset:\\s*80px 12px 12px !important;/,
+    );
+    expect(layout).toMatch(
+      /section\\.guandan-play-actions\\s*>\\s*button\\s*\\{[\\s\\S]*?bottom:\\s*12px !important;/,
+    );
+    expect(layout).toMatch(
+      /\\.guandan-combo-bottom-controls\\s*\\{[\\s\\S]*?bottom:\\s*82px !important;/,
+    );
+    expect(layout).toMatch(
+      /section\\.guandan-play-actions:has\\(\\.guandan-combo-bottom-controls\\)[\\s\\S]*?\\.guandan-selected-preview\\s*\\{\\s*bottom:\\s*196px !important;/,
+    );
+    expect(layout).toContain("bottom: 170px !important");
+  });
+
 });
