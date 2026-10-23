@@ -25,7 +25,9 @@ describe("Guandan isolated QA non-browser acceptance contracts", () => {
         "Math.ceil(DEAL_PRESENTATION_DURATION_MS / totalDealCards)",
       );
       expect(table).toContain("setDealStep((current) =>");
-      expect(table).toContain("current === null ? null : Math.min(current + 1, totalDealCards)");
+      expect(table).toContain(
+        "current === null ? null : Math.min(current + 1, totalDealCards)",
+      );
       const totalCards = playerCount * 27;
       const nominalMilliseconds = Math.ceil(duration / totalCards) * totalCards;
       expect(nominalMilliseconds).toBeGreaterThanOrEqual(10_000);
@@ -42,18 +44,23 @@ describe("Guandan isolated QA non-browser acceptance contracts", () => {
     expect(table).toContain('className="guandan-pass-action"');
     expect(table).toContain('onClick={() => send({ type: "pass" })}');
     expect(table).toContain("disabled={!gameStarted || selected.length === 0}");
-    expect(table).toContain("disabled={!gameStarted || state.lastPlayer === null}");
+    expect(table).toContain(
+      "disabled={!gameStarted || state.lastPlayer === null}",
+    );
     expect(layout).toContain("z-index: 10 !important");
     expect(layout).toContain("pointer-events: auto !important");
   });
 
-  test("completed trick is held for eight seconds before automatic collection", () => {
-    expect(table).toContain("const TRICK_CLEAR_DELAY_MS = 8000;");
-    expect(table).toContain(
-      '() => send({ type: "end_round" }),\n      TRICK_CLEAR_DELAY_MS,',
-    );
-    expect(table).toContain("state.trickComplete");
-    expect(table).toContain("state.lastPlayer");
-    expect(table).toContain("state.seat !== state.lastPlayer");
-  });
+  test(
+    "completed trick is held for eight seconds before automatic collection",
+    () => {
+      expect(table).toContain("const TRICK_CLEAR_DELAY_MS = 8000;");
+      expect(table).toContain(
+        '() => send({ type: "end_round" }),\n      TRICK_CLEAR_DELAY_MS,',
+      );
+      expect(table).toContain("state.trickComplete");
+      expect(table).toContain("state.lastPlayer");
+      expect(table).toContain("state.seat !== state.lastPlayer");
+    },
+  );
 });
