@@ -20,7 +20,9 @@ describe("Guandan non-browser QA contracts", () => {
       expect(source).toContain("window.performance.now() - startedAt");
       expect(source).toContain("elapsed >= DEAL_PRESENTATION_DURATION_MS");
       expect(source).toContain("window.setInterval(");
-      expect(source).toContain("Math.floor((elapsed / DEAL_PRESENTATION_DURATION_MS) * totalDealCards)");
+      expect(source).toContain(
+        "Math.floor((elapsed / DEAL_PRESENTATION_DURATION_MS) * totalDealCards)",
+      );
       const cards = players * 27;
       let previous = -1;
       for (const elapsed of [0, 2500, 5000, 7500, 9999]) {
