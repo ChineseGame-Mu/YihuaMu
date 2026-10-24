@@ -16,14 +16,19 @@ describe("Guandan non-browser QA contracts", () => {
   test.each([4, 6, 8, 10, 12, 14])(
     "nominal ten-second deal for %i players",
     (players) => {
-      const pacing = "DEAL_PRESENTATION_DURATION_MS / totalDealCards";
       expect(source).toContain("DEAL_PRESENTATION_DURATION_MS = 10_000");
-      expect(source).toContain(pacing);
-      expect(source).toContain("setDealStep((current) =>");
+      expect(source).toContain("window.performance.now() - startedAt");
+      expect(source).toContain("elapsed >= DEAL_PRESENTATION_DURATION_MS");
+      expect(source).toContain("window.setInterval(");
+      expect(source).toMatch(/Math\\.floor\\(\\(elapsed \\/ DEAL_PRESENTATION_DURATION_MS\\) \\* totalDealCards\\)/);
       const cards = players * 27;
-      const duration = Math.ceil(10_000 / cards) * cards;
-      expect(duration).toBeGreaterThanOrEqual(10_000);
-      expect(duration).toBeLessThanOrEqual(10_300);
+      let previous = -1;
+      for (const elapsed of [0, 2500, 5000, 7500, 9999]) {
+        const step = Math.min(cards - 1, Math.floor((elapsed / 10_000) * cards));
+        expect(step).toBeGreaterThanOrEqual(previous);
+        expect(step).toBeLessThan(cards);
+        previous = step;
+      }
     },
   );
 
