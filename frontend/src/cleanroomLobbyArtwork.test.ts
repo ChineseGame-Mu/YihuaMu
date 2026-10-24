@@ -7,8 +7,15 @@ describe("clean-room lobby artwork controls", () => {
     "utf8",
   );
 
-  test("keeps the name field below the artwork name label", () => {
-    expect(css).toContain(".cleanroom-final-name {top:69.25%!important");
-    expect(css).toContain("top:69.10%!important;height:4.55%!important");
+  test("aligns the October 17 approved artwork controls", () => {
+    expect(css).toContain(".cleanroom-final-room {");
+    expect(css).toContain("top:54.38%!important;height:5.20%!important");
+    expect(css).toContain(
+      ".cleanroom-final-name {top:64.80%!important;height:5.20%!important",
+    );
+    expect(css).toContain(
+      ".cleanroom-final-enter {left:26.90%!important;top:72.65%!important",
+    );
+    expect(css).not.toContain(".cleanroom-final-no-count-mask");
   });
 });

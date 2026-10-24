@@ -764,21 +764,26 @@ const GuandanTable: React.FunctionComponent = () => {
     setDealStep(0);
   }, [state.hand.length, state.nextRoundPhase, playerCount]);
 
+  // Use elapsed time rather than chaining one timer per card: hundreds of
+  // React renders and timer callbacks can otherwise stretch a nominal 10s deal.
+  const dealAnimationActive = dealStep !== null && totalDealCards > 0;
   React.useEffect(() => {
-    if (dealStep === null || totalDealCards <= 0) return;
-    if (dealStep >= totalDealCards) {
-      setDealStep(null);
-      return;
-    }
-    const timer = window.setTimeout(
-      () =>
-        setDealStep((current) =>
-          current === null ? null : Math.min(current + 1, totalDealCards),
-        ),
-      Math.ceil(DEAL_PRESENTATION_DURATION_MS / totalDealCards),
-    );
-    return () => window.clearTimeout(timer);
-  }, [dealStep, totalDealCards]);
+    if (!dealAnimationActive) return;
+    const startedAt = window.performance.now();
+    const timer = window.setInterval(() => {
+      const elapsed = window.performance.now() - startedAt;
+      if (elapsed >= DEAL_PRESENTATION_DURATION_MS) {
+        setDealStep(null);
+        return;
+      }
+      const step = Math.min(
+        totalDealCards - 1,
+        Math.floor((elapsed / DEAL_PRESENTATION_DURATION_MS) * totalDealCards),
+      );
+      setDealStep(step);
+    }, 16);
+    return () => window.clearInterval(timer);
+  }, [dealAnimationActive, totalDealCards]);
 
   React.useEffect(() => {
     if (
@@ -821,6 +826,8 @@ const GuandanTable: React.FunctionComponent = () => {
       ".guandan-tribute-panel",
       ".guandan-notice-panel",
       ".guandan-initial-draw-mini",
+      // The centered public-table title can also sit behind the top seat.
+      ".guandan-public-zone > .guandan-zone-title",
     ].join(", ");
     let animationFrame = 0;
     const updateSeatOffset = () => {

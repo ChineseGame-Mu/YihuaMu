@@ -40,6 +40,19 @@ export const shouldCoalesceGuandanServerMessage = (
 
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
+// Dedicated long-running QA WebSocket service. Vercel request-scoped
+// containers are not safe for an in-memory multiplayer room store.
+export const QA_GUANDAN_WEBSOCKET =
+  "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan";
+
+export const qaGuandanWebsocketForHostname = (hostname: string): string | null => {
+  const host = hostname.trim().toLowerCase();
+  return host === "yihua-guandan-qa-safe.vercel.app" ||
+    (host.startsWith("yihua-guandan-qa-safe-") &&
+      host.endsWith(".vercel.app"))
+    ? QA_GUANDAN_WEBSOCKET
+    : null;
+};
 const PLAYER_SESSION_PREFIX = "guandan-player-session:";
 
 export interface StoredPlayerSession {
@@ -192,6 +205,11 @@ export const cleanroomDeploymentRoom = (
 };
 
 const cleanroomWebsocketOverride = (): string | null => {
+  // Always isolate QA previews from shared production backends, even when
+  // a stale URL contains a test=1&ws=... override.
+  const qaWebsocket = qaGuandanWebsocketForHostname(window.location.hostname);
+  if (qaWebsocket !== null) return qaWebsocket;
+
   const query = new URLSearchParams(window.location.search);
   if (query.get("cleanroom") !== "1") return null;
   return CLEANROOM_WEBSOCKET;

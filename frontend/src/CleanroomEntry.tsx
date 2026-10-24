@@ -15,7 +15,7 @@ import GuandanCustomSortControls from "./GuandanCustomSortControls";
 import GuandanRoundResultHud from "./GuandanRoundResultHud";
 import GuandanHookToBottomSetting from "./GuandanHookToBottomSetting";
 import ExitGameButton from "./ExitGameButton";
-import cleanroomLobbyFinalImage from "./cleanroom-lobby-final-image";
+import approvedHomepage20261017 from "./guandan-approved-homepage-20261017";
 import { prepareGuandanTurnPrompt } from "./guandanTurnPrompt";
 import { shouldAutoJoinCleanroom } from "./cleanroomAutoJoin";
 import {
@@ -43,9 +43,18 @@ import "./guandan-review-controls-alignment-20261009.css";
 const supportedCounts = [4, 6, 8, 10, 12, 14] as const;
 const selectableRooms = CLEANROOM_ROOM_IDS;
 type SelectableRoom = CleanroomRoomId;
-const cleanroomWebsocket = "wss://card-games-yihua.onrender.com/api/guandan";
-const cleanroomRoomAvailabilityUrl =
-  "https://card-games-yihua.onrender.com/api/guandan/rooms";
+// QA-only routing: preview gameplay must use its own isolated Rust backend.
+// The approved production hostname and homepage remain unchanged.
+const isIsolatedQaPreview =
+  window.location.hostname === "yihua-guandan-qa-safe.vercel.app" ||
+  (window.location.hostname.startsWith("yihua-guandan-qa-safe-") &&
+    window.location.hostname.endsWith(".vercel.app"));
+const cleanroomWebsocket = isIsolatedQaPreview
+  ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
+  : "wss://card-games-yihua.onrender.com/api/guandan";
+const cleanroomRoomAvailabilityUrl = isIsolatedQaPreview
+  ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
+  : "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = isCleanroomRoomId;
 const roomFromLocation = (): SelectableRoom => {
@@ -208,9 +217,9 @@ const CleanroomEntry = (): JSX.Element => {
 
   return (
     <main className="cleanroom-final-shell">
-      <img className="cleanroom-final-backdrop" src={cleanroomLobbyFinalImage} alt="" aria-hidden="true" />
+      <img className="cleanroom-final-backdrop" src={approvedHomepage20261017} alt="" aria-hidden="true" />
       <div className="cleanroom-final-stage">
-        <img className="cleanroom-final-art" src={cleanroomLobbyFinalImage} alt="掼蛋游戏山水牌室" />
+        <img className="cleanroom-final-art" src={approvedHomepage20261017} alt="掼蛋游戏山水牌室" />
         <form className="cleanroom-final-form" onSubmit={submit} aria-label="加入牌室">
           <select id="cleanroom-room" className="cleanroom-final-control cleanroom-final-room" aria-label="牌室（显示在线人数）" value={roomId} onChange={(event) => setRoomId(event.target.value as SelectableRoom)}>{selectableRooms.map((room) => <option key={room} value={room}>{cleanroomRoomOptionLabel(room, roomAvailability[room], roomAvailabilityUnavailable)}</option>)}</select>
           <input id="cleanroom-player-name" className="cleanroom-final-control cleanroom-final-name" aria-label="您的姓名" value={name} maxLength={10} placeholder="请输入姓名" autoFocus onChange={(event) => setName(event.target.value)} />
