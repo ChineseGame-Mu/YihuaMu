@@ -26,7 +26,10 @@ describe("Guandan non-browser QA contracts", () => {
       const cards = players * 27;
       let previous = -1;
       for (const elapsed of [0, 2500, 5000, 7500, 9999]) {
-        const step = Math.min(cards - 1, Math.floor((elapsed / 10_000) * cards));
+        const step = Math.min(
+          cards - 1,
+          Math.floor((elapsed / 10_000) * cards),
+        );
         expect(step).toBeGreaterThanOrEqual(previous);
         expect(step).toBeLessThan(cards);
         previous = step;
