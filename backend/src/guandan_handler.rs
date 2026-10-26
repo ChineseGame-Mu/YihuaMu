@@ -1,17 +1,21 @@
 //! Guandan websocket protocol backed by the shared room storage.
 
-use std::{collections::HashMap, fmt, sync::Mutex, thread, time::Duration};
+#[cfg(not(test))]
+use std::thread;
+use std::{collections::HashMap, fmt, sync::Mutex, time::Duration};
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
+use rand::thread_rng;
+#[cfg(not(test))]
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use shengji_core::guandan::{
     compare::beats_at_level,
     deck::{build_deck, deal, CARDS_PER_PLAYER},
     strength::strengths_at_level,
-    team::{team_for_seat, Team, TeamLevels},
+    team::{four_player_ace_win, team_for_seat, Team, TeamLevels},
     tribute::{can_resist_tribute, tribute_plan, TributePlan},
     CardFace, Joker, Rank, Suit, TableConfig,
 };
@@ -494,6 +498,32 @@ fn settle_and_redeal_if_complete(
     }
     let winner_team = if winner % 2 == 0 { Team::A } else { Team::B };
     let winner_level = game.team_levels.level_for(winner_team);
+    // Record every *deal played at Ace*, including a loss by the Ace team.
+    // The previous winner selected the current level, so capture that team
+    // before overwriting last_game_winner_team for the just-finished deal.
+    let ace_playing_team = if game.level == Rank::Ace {
+        game.last_game_winner_team
+            .filter(|team| game.team_levels.level_for(*team) == Rank::Ace)
+            .or_else(|| {
+                [Team::A, Team::B]
+                    .iter()
+                    .copied()
+                    .find(|team| game.team_levels.level_for(*team) == Rank::Ace)
+            })
+    } else {
+        None
+    };
+    let ace_attempt = match ace_playing_team {
+        Some(Team::A) => {
+            game.ace_attempts_team_a = game.ace_attempts_team_a.saturating_add(1);
+            game.ace_attempts_team_a
+        }
+        Some(Team::B) => {
+            game.ace_attempts_team_b = game.ace_attempts_team_b.saturating_add(1);
+            game.ace_attempts_team_b
+        }
+        None => 0,
+    };
     game.last_game_winner = Some(winner);
     game.last_game_winner_team = Some(winner_team);
     let completed_finish_order = previous_finish_order.clone();
@@ -518,7 +548,15 @@ fn settle_and_redeal_if_complete(
         }
     }
 
-    if winner_level == Rank::Ace && promotion_steps >= 2 {
+    if winner_level == Rank::Ace
+        && ace_playing_team == Some(winner_team)
+        && four_player_ace_win(
+            TableConfig::new(GUANDAN_CLASSIC_PLAYER_COUNT)
+                .map_err(|_| "invalid classic Guandan table")?,
+            &completed_finish_order,
+            ace_attempt,
+        )?
+    {
         game.match_winner = Some(winner_team);
         game.trick_complete = true;
         return Ok(true);
@@ -588,28 +626,162 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
         {
             break;
         }
-        let delay_ms = thread_rng().gen_range(800..=1800);
-        thread::sleep(Duration::from_millis(delay_ms));
-        let chosen = game.hands[seat]
-            .iter()
-            .enumerate()
-            .find_map(|(index, card)| {
-                validate_play_against_table(&[*card], &game.last_play, game.level)
+        #[cfg(not(test))]
+        {
+            let delay_ms = thread_rng().gen_range(800..=1800);
+            thread::sleep(Duration::from_millis(delay_ms));
+        }
+        // Protect the partner's winning play instead of needlessly overtaking it.
+        let partner_controls = game.last_player.is_some_and(|leader| {
+            leader != seat
+                && game.player_names.len() == GUANDAN_CLASSIC_PLAYER_COUNT
+                && leader % 2 == seat % 2
+        });
+        // Enumerate complete rank groups as well as singles. In particular,
+        // never get stuck passing when a pair, triple or bomb can legally beat
+        // the table. Preserve bombs and premium cards unless tactically needed.
+        let hand = &game.hands[seat];
+        let mut candidates: Vec<Vec<usize>> = Vec::new();
+        for i in 0..hand.len() {
+            candidates.push(vec![i]);
+        }
+        for i in 0..hand.len() {
+            let same_rank: Vec<usize> = (i..hand.len())
+                .filter(|&j| match (hand[i], hand[j]) {
+                    (CardFace::Suited { rank: a, .. }, CardFace::Suited { rank: b, .. }) => a == b,
+                    (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                    _ => false,
+                })
+                .collect();
+            for count in 2..=same_rank.len().min(8) {
+                candidates.push(same_rank[..count].to_vec());
+            }
+        }
+        // Advanced QA fix: enumerate mixed-rank full houses and rank runs.
+        // Every candidate is subsequently checked by the canonical rules
+        // validator; this generator does not redefine legal card patterns.
+        let mut rank_groups: Vec<(Rank, Vec<usize>)> = Vec::new();
+        for (index, card) in hand.iter().enumerate() {
+            if let CardFace::Suited { rank, .. } = card {
+                if let Some((_, indexes)) = rank_groups.iter_mut().find(|(r, _)| r == rank) {
+                    indexes.push(index);
+                } else {
+                    rank_groups.push((*rank, vec![index]));
+                }
+            }
+        }
+        for (triple_rank, triple) in &rank_groups {
+            if triple.len() < 3 {
+                continue;
+            }
+            for (pair_rank, pair) in &rank_groups {
+                if triple_rank != pair_rank && pair.len() >= 2 {
+                    let mut indexes = triple[..3].to_vec();
+                    indexes.extend_from_slice(&pair[..2]);
+                    candidates.push(indexes);
+                }
+            }
+        }
+        // Rank values are consecutive for ordinary suited cards; validate
+        // each generated run to exclude any disallowed wraps or level rules.
+        rank_groups.sort_by_key(|(rank, _)| *rank as usize);
+        for start in 0..rank_groups.len() {
+            for run_len in [5usize, 3usize] {
+                if start + run_len > rank_groups.len() {
+                    continue;
+                }
+                let window = &rank_groups[start..start + run_len];
+                if !window
+                    .windows(2)
+                    .all(|w| (w[1].0 as usize) == (w[0].0 as usize) + 1)
+                {
+                    continue;
+                }
+                let cards_per_rank = if run_len == 5 { 1 } else { 2 };
+                if window
+                    .iter()
+                    .all(|(_, indexes)| indexes.len() >= cards_per_rank)
+                {
+                    let indexes: Vec<usize> = window
+                        .iter()
+                        .flat_map(|(_, indexes)| indexes[..cards_per_rank].iter().copied())
+                        .collect();
+                    candidates.push(indexes);
+                }
+            }
+        }
+        let opponent_low = game.hands.iter().enumerate().any(|(other, cards)| {
+            other != seat
+                && (game.player_names.len() != GUANDAN_CLASSIC_PLAYER_COUNT
+                    || other % 2 != seat % 2)
+                && !cards.is_empty()
+                && cards.len() <= 3
+        });
+        let chosen = if partner_controls && !opponent_low {
+            None
+        } else {
+            candidates
+                .into_iter()
+                .filter(|indexes| {
+                    validate_play_against_table(
+                        &indexes.iter().map(|&i| hand[i]).collect::<Vec<_>>(),
+                        &game.last_play,
+                        game.level,
+                    )
                     .is_ok()
-                    .then_some(index)
-            });
-        if let Some(index) = chosen {
-            let card = game.hands[seat].remove(index);
-            let cards = vec![card];
+                })
+                .min_by_key(|indexes| {
+                    let premium: usize = indexes
+                        .iter()
+                        .map(|&i| match hand[i] {
+                            CardFace::Joker(Joker::Big) => 10000,
+                            CardFace::Joker(Joker::Small) => 9000,
+                            CardFace::Suited { rank, .. } if rank == game.level => 8000,
+                            card => initial_draw_value(card),
+                        })
+                        .sum();
+                    let breaks_group = indexes.len() == 1
+                        && hand
+                            .iter()
+                            .filter(|&&card| match (card, hand[indexes[0]]) {
+                                (
+                                    CardFace::Suited { rank: a, .. },
+                                    CardFace::Suited { rank: b, .. },
+                                ) => a == b,
+                                (CardFace::Joker(a), CardFace::Joker(b)) => a == b,
+                                _ => false,
+                            })
+                            .count()
+                            >= 2;
+                    let bomb_cost = if indexes.len() >= 4 && !opponent_low {
+                        30000
+                    } else {
+                        0
+                    };
+                    // Prefer shedding several cards on a fresh lead, but avoid
+                    // spending high-value combinations merely to win a trick.
+                    let shedding = if game.last_play.is_empty() {
+                        indexes.len() * 700
+                    } else {
+                        0
+                    };
+                    premium / indexes.len() + bomb_cost + if breaks_group { 3000 } else { 0 }
+                        - shedding.min(premium / indexes.len())
+                })
+        };
+        if let Some(mut indexes) = chosen {
+            indexes.sort_unstable_by(|a, b| b.cmp(a));
+            let mut cards: Vec<CardFace> = indexes
+                .into_iter()
+                .map(|i| game.hands[seat].remove(i))
+                .collect();
+            cards.reverse();
             game.last_play = cards.clone();
             game.last_player = Some(seat);
             game.table_plays.push(GuandanTablePlay {
                 player: seat,
                 cards,
             });
-            // Resistance is a one-time announcement at the start of the deal.
-            // Clear it on the first accepted play so clearing a later trick
-            // cannot make the anti-tribute panel appear again.
             game.tribute_resisted = false;
             game.passes = 0;
             if game.hands[seat].is_empty() && !game.finish_order.contains(&seat) {
@@ -1241,6 +1413,8 @@ pub async fn websocket(
                         state.game.return_cards.clear();
                         state.game.tribute_resisted = false;
                         state.game.match_winner = None;
+                        state.game.ace_attempts_team_a = 0;
+                        state.game.ace_attempts_team_b = 0;
                         state.game.next_round_phase = None;
                         state.game.next_round_finish_order.clear();
                         run_robot_turns(&mut state.game, hook_to_bottom).map_err(|_| ())?;
@@ -1403,7 +1577,7 @@ pub async fn websocket(
                 let indexes = card_indexes;
                 let result: Result<u64, PlayError> = storage
                     .clone()
-                    .execute_operation_with_messages(key, move |mut state| {
+                    .execute_operation_with_messages(key.clone(), move |mut state| {
                         if state.game.normal_play_blocked() {
                             return Err(PlayError::Invalid(
                                 "normal play is blocked until tribute is resolved",
@@ -1452,19 +1626,42 @@ pub async fn websocket(
                         if !settled {
                             advance_turn(&mut state.game);
                         }
-                        run_robot_turns(&mut state.game, hook_to_bottom)
-                            .map_err(PlayError::Invalid)?;
+                        // Publish the human play before any robot thinking delay.
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
-                if let Err(error) = result {
-                    send(
-                        &tx,
-                        &GuandanServerMessage::Error {
-                            message: error.to_string(),
-                        },
-                    );
+                match result {
+                    Err(error) => {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: error.to_string(),
+                            },
+                        );
+                    }
+                    Ok(_) => {
+                        // The human play has already committed and emitted StateChanged.
+                        // Yield so subscribers can display it before robots act.
+                        tokio::task::yield_now().await;
+                        let robot_result: Result<u64, PlayError> = storage
+                            .clone()
+                            .execute_operation_with_messages(key, move |mut state| {
+                                run_robot_turns(&mut state.game, hook_to_bottom)
+                                    .map_err(PlayError::Invalid)?;
+                                state.bump_version();
+                                Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                            })
+                            .await;
+                        if let Err(error) = robot_result {
+                            send(
+                                &tx,
+                                &GuandanServerMessage::Error {
+                                    message: error.to_string(),
+                                },
+                            );
+                        }
+                    }
                 }
             }
             GuandanClientMessage::TributeCard { card_index } => {
@@ -1682,6 +1879,58 @@ pub async fn websocket(
 mod tests {
     use super::*;
     use shengji_core::guandan::Suit;
+
+    fn ace_round(finish_order: &[usize], attempts: u8) -> GuandanGameState {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.hands = vec![Vec::new(); 4];
+        game.finish_order = finish_order.to_vec();
+        game.team_levels.team_a = Rank::Ace;
+        game.level = Rank::Ace;
+        game.last_game_winner_team = Some(Team::A);
+        game.ace_attempts_team_a = attempts;
+        game
+    }
+
+    #[test]
+    fn first_ace_attempt_rejects_one_three_but_second_accepts_it() {
+        let mut game = ace_round(&[0, 1, 2, 3], 0);
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 1);
+        assert_eq!(game.match_winner, None);
+        assert_eq!(game.team_levels.team_a, Rank::Ace);
+
+        game.next_round_phase = None;
+        game.finish_order = vec![0, 1, 2, 3];
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 2);
+        assert_eq!(game.match_winner, Some(Team::A));
+    }
+
+    #[test]
+    fn third_ace_attempt_accepts_one_four_only_after_two_failures() {
+        let mut game = ace_round(&[0, 1, 3, 2], 0);
+        for attempt in 1..=3 {
+            game.next_round_phase = None;
+            game.finish_order = vec![0, 1, 3, 2];
+            assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+            assert_eq!(game.ace_attempts_team_a, attempt);
+            assert_eq!(
+                game.match_winner,
+                if attempt == 3 { Some(Team::A) } else { None }
+            );
+        }
+    }
+
+    #[test]
+    fn ace_attempt_counts_even_when_other_team_finishes_first() {
+        let mut game = ace_round(&[1, 0, 3, 2], 0);
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.ace_attempts_team_a, 1);
+        assert_eq!(game.ace_attempts_team_b, 0);
+        assert_eq!(game.match_winner, None);
+    }
+
     fn card(suit: Suit, rank: Rank) -> CardFace {
         CardFace::Suited { suit, rank }
     }
@@ -1724,6 +1973,42 @@ mod tests {
 
         assert_eq!(claim_human_seat(&mut game, "Yihua".into()), Ok(0));
         assert_eq!(game.player_names, vec!["Yihua", "机器人1"]);
+    }
+    #[test]
+    fn reconnecting_started_human_preserves_seat_hand_and_turn_state() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "Player1".into(),
+            "Player2".into(),
+            "Player3".into(),
+            "Player4".into(),
+        ];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Diamonds, Rank::Six)],
+            vec![card(Suit::Hearts, Rank::Seven)],
+            vec![card(Suit::Spades, Rank::Eight)],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Four)];
+
+        let names_before = game.player_names.clone();
+        let hands_before = game.hands.clone();
+        let last_play_before = game.last_play.clone();
+
+        assert_eq!(claim_human_seat(&mut game, "Player2".into()), Ok(1));
+        assert_eq!(game.player_names, names_before);
+        assert_eq!(game.hands, hands_before);
+        assert_eq!(game.turn, 2);
+        assert_eq!(game.last_player, Some(0));
+        assert_eq!(game.last_play, last_play_before);
+
+        // A newcomer must not overwrite any ongoing player's private hand.
+        assert_eq!(claim_human_seat(&mut game, "Newcomer".into()), Err(()));
+        assert_eq!(game.player_names, names_before);
+        assert_eq!(game.hands, hands_before);
     }
     #[test]
     fn a_new_human_replaces_a_robot_in_place_before_start() {
@@ -2131,6 +2416,177 @@ mod tests {
     }
 
     #[test]
+    fn robot_leads_with_pair_without_spending_jokers() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Three),
+                CardFace::Joker(Joker::Big),
+            ],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Clubs, Rank::Seven)],
+        ];
+        game.turn = 0;
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert_eq!(game.table_plays[0].cards.len(), 2);
+        assert!(game.hands[0].contains(&CardFace::Joker(Joker::Big)));
+    }
+
+    #[test]
+    fn advanced_robot_beats_straight_with_complete_straight() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Four),
+                card(Suit::Clubs, Rank::Five),
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+            ],
+            vec![card(Suit::Diamonds, Rank::Three)],
+            vec![card(Suit::Hearts, Rank::Three)],
+            vec![card(Suit::Spades, Rank::Three)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Diamonds, Rank::Three),
+            card(Suit::Diamonds, Rank::Four),
+            card(Suit::Diamonds, Rank::Five),
+            card(Suit::Diamonds, Rank::Six),
+            card(Suit::Diamonds, Rank::Seven),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower straight"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 5);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn advanced_robot_beats_three_with_two() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Diamonds, Rank::Eight),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Diamonds, Rank::Nine),
+            ],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Clubs, Rank::Six),
+            card(Suit::Diamonds, Rank::Six),
+            card(Suit::Hearts, Rank::Six),
+            card(Suit::Clubs, Rank::Seven),
+            card(Suit::Diamonds, Rank::Seven),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat a lower full house"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 5);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn advanced_robot_beats_consecutive_pairs() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["机器人1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Diamonds, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Diamonds, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Diamonds, Rank::Nine),
+            ],
+            vec![card(Suit::Clubs, Rank::Three)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Clubs, Rank::Four),
+            card(Suit::Diamonds, Rank::Four),
+            card(Suit::Clubs, Rank::Five),
+            card(Suit::Diamonds, Rank::Five),
+            card(Suit::Clubs, Rank::Six),
+            card(Suit::Diamonds, Rank::Six),
+        ];
+        let previous = game.last_play.clone();
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(
+            game.table_plays.len(),
+            1,
+            "robot should beat lower consecutive pairs"
+        );
+        assert_eq!(game.table_plays[0].cards.len(), 6);
+        assert!(
+            validate_play_against_table(&game.table_plays[0].cards, &previous, game.level).is_ok()
+        );
+    }
+
+    #[test]
+    fn robot_passes_when_teammate_controls_and_opponents_are_safe() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "机器人1".into(), "B2".into()];
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![
+                card(Suit::Clubs, Rank::Six),
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Clubs, Rank::Eight),
+                card(Suit::Clubs, Rank::Nine),
+            ],
+            vec![CardFace::Joker(Joker::Big)],
+            vec![
+                card(Suit::Hearts, Rank::Six),
+                card(Suit::Hearts, Rank::Seven),
+                card(Suit::Hearts, Rank::Eight),
+                card(Suit::Hearts, Rank::Nine),
+            ],
+        ];
+        game.turn = 2;
+        game.last_player = Some(0);
+        game.last_play = vec![card(Suit::Clubs, Rank::Five)];
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.passes, 1);
+        assert!(game.table_plays.is_empty());
+        assert_eq!(game.hands[2], vec![CardFace::Joker(Joker::Big)]);
+    }
+
+    #[test]
     fn king_round_still_creates_required_tribute() {
         let mut game = GuandanGameState::default();
         game.started = true;
@@ -2159,5 +2615,71 @@ mod tests {
         );
         assert!(!game.tribute_resisted);
         assert_eq!(game.next_round_phase, None);
+    }
+    #[test]
+    #[ignore = "full four-robot three-round simulation; run in dedicated QA"]
+    fn four_robots_complete_three_consecutive_full_deals() {
+        let table = validate_start(4).unwrap();
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = (1..=4).map(|n| format!("机器人{n}")).collect();
+        let mut deck = build_deck(table);
+        deck.shuffle(&mut thread_rng());
+        let (hands, remainder) = deal(table, &deck).unwrap();
+        assert!(remainder.is_empty());
+        assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+        game.hands = hands;
+        game.turn = 0;
+        let mut completed = 0usize;
+        let mut turns = 0usize;
+        while completed < 3 && turns < 12000 {
+            turns += 1;
+            if game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle) {
+                deck.shuffle(&mut thread_rng());
+                let (hands, remainder) = deal(table, &deck).unwrap();
+                assert!(remainder.is_empty());
+                assert!(hands.iter().all(|hand| hand.len() == CARDS_PER_PLAYER));
+                game.hands = hands;
+                game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+                assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+                assert!(
+                    game.pending_tribute.is_none(),
+                    "robots must finish tribute exchange"
+                );
+                continue;
+            }
+            if game.trick_complete {
+                let winner = game.last_player.expect("completed trick must have winner");
+                game.last_trick_winner = Some(winner);
+                game.turn = winner;
+                if game.hands[winner].is_empty() {
+                    advance_turn(&mut game);
+                }
+                game.last_play.clear();
+                game.last_player = None;
+                game.table_plays.clear();
+                game.tribute_resisted = false;
+                game.passes = 0;
+                game.trick_complete = false;
+                continue;
+            }
+            let previous_round = game.next_round_phase;
+            run_robot_turns(&mut game, false).unwrap();
+            if previous_round.is_none()
+                && game.next_round_phase == Some(GuandanNextRoundPhase::AwaitingShuffle)
+            {
+                completed += 1;
+                println!(
+                    "robot round {completed}: finish={:?} promotion={:?} level={:?} steps={turns}",
+                    game.finish_order, game.last_promotion_steps, game.level
+                );
+                assert_eq!(game.finish_order.len(), 4);
+                assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 0);
+            }
+        }
+        assert_eq!(
+            completed, 3,
+            "four robots stalled before three complete deals; steps={turns}"
+        );
     }
 }

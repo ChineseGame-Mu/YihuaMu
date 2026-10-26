@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import { join } from "path";
+import { GUANDAN_TOP_SEAT_NOTICE_SELECTORS } from "./guandanTopSeatOffset";
 
 describe("Guandan enlarged player displays", () => {
   const css = readFileSync(
@@ -81,11 +82,18 @@ describe("Guandan enlarged player displays", () => {
   });
 
   test("moves the top seat below every visible ceremony panel", () => {
-    expect(table).toContain('".guandan-initial-draw-mini"');
-    expect(table).toContain('".guandan-start-panel"');
-    expect(table).toContain('".guandan-next-round-panel"');
-    expect(table).toContain('".guandan-tribute-panel"');
-    expect(table).toContain('".guandan-notice-panel"');
+    // The selectors now live in a shared, independently tested module.
+    // Assert the live table consumes that module instead of matching stale literals.
+    expect(table).toContain("GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join");
+    for (const selector of [
+      ".guandan-initial-draw-mini",
+      ".guandan-start-panel",
+      ".guandan-next-round-panel",
+      ".guandan-tribute-panel",
+      ".guandan-notice-panel",
+    ]) {
+      expect(GUANDAN_TOP_SEAT_NOTICE_SELECTORS).toContain(selector);
+    }
     expect(table).toContain("new ResizeObserver(scheduleUpdate)");
     expect(table).toContain("new MutationObserver(() => {");
     expect(table).toContain('"--guandan-top-seat-offset"');
@@ -112,12 +120,20 @@ describe("Guandan enlarged player displays", () => {
     expect(css).toMatch(/width:\s*32px\s*!important/);
   });
 
-  test("preserves the exact approved production lobby and ink artwork", () => {
+  test("pins the user-approved October 17 homepage image and layout without freezing game logic", () => {
+    const entry = readFileSync(join(__dirname, "CleanroomEntry.tsx"), "utf8");
+    expect(entry).toContain('from "./guandan-approved-homepage-20261017"');
+    expect(entry).not.toContain('from "./cleanroom-lobby-final-image"');
+    expect(entry).not.toContain('className="cleanroom-final-no-count-mask"');
+    expect(entry).not.toContain('id="cleanroom-player-count"');
     const approvedFiles = [
-      ["CleanroomEntry.tsx", "043b563fb4c85dd6609400068dccb402c7caed41"],
+      [
+        "guandan-approved-homepage-20261017.ts",
+        "bb2562d4c92f43dbd16df886f3bc3dd84266c3c3",
+      ],
       [
         "cleanroom-lobby-artwork.css",
-        "b1f1e463710ede481c24f12903ad0ae3beb5d7e4",
+        "776071e50dc48e037f4a9b410251d6f290312852",
       ],
     ] as const;
     for (const [filename, approvedGitBlobSha] of approvedFiles) {

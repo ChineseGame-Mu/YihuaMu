@@ -3,6 +3,8 @@ import { join } from "node:path";
 import {
   addPlayerSessionToJoin,
   cleanroomDeploymentRoom,
+  QA_GUANDAN_WEBSOCKET,
+  qaGuandanWebsocketForHostname,
   readPlayerSession,
   storePlayerSession,
   withGuandanJoinCredentials,
@@ -19,6 +21,36 @@ describe("Guandan server message queue", () => {
   test("still coalesces replaceable lobby and private-hand snapshots", () => {
     expect(shouldCoalesceGuandanServerMessage({ type: "waiting" })).toBe(true);
     expect(shouldCoalesceGuandanServerMessage({ type: "hand" })).toBe(true);
+  });
+});
+
+describe("dedicated QA WebSocket backend isolation", () => {
+  test("QA preview always targets the single Render WebSocket server", () => {
+    expect(
+      qaGuandanWebsocketForHostname(
+        "yihua-guandan-qa-safe-4nvtgpjhl-chinese-game.vercel.app",
+      ),
+    ).toBe(QA_GUANDAN_WEBSOCKET);
+    expect(
+      qaGuandanWebsocketForHostname("yihua-guandan-qa-safe.vercel.app"),
+    ).toBe(QA_GUANDAN_WEBSOCKET);
+  });
+
+  test("production and unrelated hosts are never routed to QA", () => {
+    expect(qaGuandanWebsocketForHostname("yihua-mu.vercel.app")).toBeNull();
+    expect(qaGuandanWebsocketForHostname("localhost")).toBeNull();
+    expect(qaGuandanWebsocketForHostname("chinesegame-yihua.onrender.com")).toBeNull();
+  });
+
+  test("room availability and WebSocket endpoint use the same backend", () => {
+    const entry = readFileSync(join(__dirname, "CleanroomEntry.tsx"), "utf8");
+    expect(entry).toContain(
+      '"wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"',
+    );
+    expect(entry).toContain(
+      '"https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"',
+    );
+    expect(entry).not.toContain("window.location.host}/api/guandan");
   });
 });
 

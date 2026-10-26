@@ -23,6 +23,10 @@ import {
 } from "./guandanDealPresentation";
 import { shouldAnimateGuandanDeal } from "./guandanDealLifecycle";
 import {
+  calculateGuandanTopSeatOffset,
+  GUANDAN_TOP_SEAT_NOTICE_SELECTORS,
+} from "./guandanTopSeatOffset";
+import {
   celebrationFireworks,
   formatCelebrationDateTime,
   GUANDAN_MATCH_CELEBRATION_MS,
@@ -764,21 +768,26 @@ const GuandanTable: React.FunctionComponent = () => {
     setDealStep(0);
   }, [state.hand.length, state.nextRoundPhase, playerCount]);
 
+  // Use elapsed time rather than chaining one timer per card: hundreds of
+  // React renders and timer callbacks can otherwise stretch a nominal 10s deal.
+  const dealAnimationActive = dealStep !== null && totalDealCards > 0;
   React.useEffect(() => {
-    if (dealStep === null || totalDealCards <= 0) return;
-    if (dealStep >= totalDealCards) {
-      setDealStep(null);
-      return;
-    }
-    const timer = window.setTimeout(
-      () =>
-        setDealStep((current) =>
-          current === null ? null : Math.min(current + 1, totalDealCards),
-        ),
-      Math.ceil(DEAL_PRESENTATION_DURATION_MS / totalDealCards),
-    );
-    return () => window.clearTimeout(timer);
-  }, [dealStep, totalDealCards]);
+    if (!dealAnimationActive) return;
+    const startedAt = window.performance.now();
+    const timer = window.setInterval(() => {
+      const elapsed = window.performance.now() - startedAt;
+      if (elapsed >= DEAL_PRESENTATION_DURATION_MS) {
+        setDealStep(null);
+        return;
+      }
+      const step = Math.min(
+        totalDealCards - 1,
+        Math.floor((elapsed / DEAL_PRESENTATION_DURATION_MS) * totalDealCards),
+      );
+      setDealStep(step);
+    }, 16);
+    return () => window.clearInterval(timer);
+  }, [dealAnimationActive, totalDealCards]);
 
   React.useEffect(() => {
     if (
@@ -815,36 +824,26 @@ const GuandanTable: React.FunctionComponent = () => {
     const zone = table?.querySelector<HTMLElement>(".guandan-public-zone");
     if (!table || !zone) return;
 
-    const panelSelector = [
-      ".guandan-start-panel",
-      ".guandan-next-round-panel",
-      ".guandan-tribute-panel",
-      ".guandan-notice-panel",
-      ".guandan-initial-draw-mini",
-    ].join(", ");
+    const panelSelector = GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join(", ");
     let animationFrame = 0;
     const updateSeatOffset = () => {
       const zoneRect = zone.getBoundingClientRect();
-      let offset = 0;
-      table.querySelectorAll<HTMLElement>(panelSelector).forEach((panel) => {
+      const panels = Array.from(
+        table.querySelectorAll<HTMLElement>(panelSelector),
+      ).map((panel) => {
         const rect = panel.getBoundingClientRect();
         const style = window.getComputedStyle(panel);
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          rect.width === 0 ||
-          rect.height === 0 ||
-          rect.bottom <= zoneRect.top ||
-          rect.top >= zoneRect.bottom
-        ) {
-          return;
-        }
-        offset = Math.max(offset, rect.bottom - zoneRect.top);
+        return {
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          display: style.display,
+          visibility: style.visibility,
+        };
       });
-      zone.style.setProperty(
-        "--guandan-top-seat-offset",
-        `${Math.ceil(offset)}px`,
-      );
+      const offset = calculateGuandanTopSeatOffset(zoneRect, panels);
+      zone.style.setProperty("--guandan-top-seat-offset", `${offset}px`);
     };
     const scheduleUpdate = () => {
       if (animationFrame !== 0) return;

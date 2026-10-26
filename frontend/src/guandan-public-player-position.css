@@ -159,3 +159,22 @@ html[data-guandan-player-count="4"]
   .guandan-public-player-back.guandan-relative-2 {
   top: var(--guandan-top-seat-offset, 0px) !important;
 }
+
+/* Four-player QA: the permanent heading is not a transient notice. Keep it
+ * at the right edge so the top teammate rests at the table's upper edge.
+ * Visual clearance on narrow screens remains a separate acceptance gate. */
+html[data-guandan-player-count="4"]
+  body
+  .guandan-table:has(.guandan-public-zone)
+  > .guandan-public-zone
+  > .guandan-zone-title {
+  left: auto !important;
+  right: 4px !important;
+  transform: none !important;
+  min-width: 0 !important;
+  width: min(24%, 156px) !important;
+  max-width: 156px !important;
+  padding: 2px 3px !important;
+  gap: 2px !important;
+  flex-wrap: wrap !important;
+}

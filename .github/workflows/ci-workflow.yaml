@@ -26,10 +26,15 @@ jobs:
         run: yarn install
         working-directory: ./frontend
 
-      - name: Install wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: 'latest'
+      - name: Install wasm-pack (cross-filesystem safe)
+        run: |
+          set -euo pipefail
+          version="v0.15.0"
+          archive="wasm-pack-${version}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --location --retry 3 --output "/tmp/${archive}" "https://github.com/rustwasm/wasm-pack/releases/download/${version}/${archive}"
+          tar -xzf "/tmp/${archive}" -C /tmp
+          install -m 0755 "/tmp/wasm-pack-${version}-x86_64-unknown-linux-musl/wasm-pack" "$HOME/.cargo/bin/wasm-pack"
+          wasm-pack --version
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -74,6 +79,17 @@ jobs:
         run: |
           cargo test -p shengji-core guandan::tribute::tests:: -- --nocapture
           cargo test -p shengji guandan_handler::tests:: -- --nocapture
+
+      - name: QA K-level anti-tribute no duplicate popup (mandatory)
+        if: ${{ github.head_ref == 'qa/manual-11items-advanced-robot-20261018' || github.ref_name == 'qa/manual-11items-advanced-robot-20261018' }}
+        run: |
+          cargo test -p shengji guandan_handler::tests::king_level_anti_tribute_is_consumed_once_after_first_play -- --exact --nocapture
+          cargo test -p shengji guandan_handler::tests::king_round_still_creates_required_tribute -- --exact --nocapture
+          cargo test -p shengji guandan_handler::tests::anti_tribute_only_occurs_at_the_start_of_the_deal -- --exact --nocapture
+
+      - name: QA four robots three consecutive full deals (mandatory)
+        if: ${{ github.head_ref == 'qa/manual-11items-advanced-robot-20261018' || github.ref_name == 'qa/manual-11items-advanced-robot-20261018' }}
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --nocapture
 
       - name: Test Rust code
         run: cargo test --all

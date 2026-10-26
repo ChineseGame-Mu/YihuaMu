@@ -61,6 +61,12 @@ pub struct GuandanGameState {
     pub return_cards: Vec<GuandanTributeCard>,
     pub tribute_resisted: bool,
     pub match_winner: Option<Team>,
+    /// Number of completed Ace-level deals for each team in this match.
+    /// Defaults preserve compatibility with older saved room states.
+    #[serde(default)]
+    pub ace_attempts_team_a: u8,
+    #[serde(default)]
+    pub ace_attempts_team_b: u8,
     #[serde(default)]
     pub next_round_phase: Option<GuandanNextRoundPhase>,
     #[serde(default)]
@@ -94,6 +100,8 @@ impl Default for GuandanGameState {
             return_cards: Vec::new(),
             tribute_resisted: false,
             match_winner: None,
+            ace_attempts_team_a: 0,
+            ace_attempts_team_b: 0,
             next_round_phase: None,
             next_round_finish_order: Vec::new(),
         }
@@ -581,5 +589,38 @@ mod tests {
         let mut state = GuandanGameState::default();
         state.match_winner = Some(Team::A);
         assert!(state.normal_play_blocked());
+    }
+
+    #[test]
+    fn qa_room_snapshot_roundtrip_preserves_private_hands_and_ace_progress() {
+        let mut room = new_guandan_room(b"qa-restart-0001".to_vec());
+        room.game.started = true;
+        room.game.match_id = 42;
+        room.game.player_names = vec!["A".into(), "B".into(), "C".into(), "D".into()];
+        room.game.hands = vec![
+            vec![card(Suit::Spades, Rank::Ace)],
+            vec![card(Suit::Hearts, Rank::King)],
+            vec![card(Suit::Clubs, Rank::Two)],
+            vec![card(Suit::Diamonds, Rank::Queen)],
+        ];
+        room.game.turn = 2;
+        room.game.level = Rank::Ace;
+        room.game.ace_attempts_team_a = 2;
+        room.game.ace_attempts_team_b = 1;
+        room.game.pending_tribute = Some(TributePlan::Single {
+            giver: 3,
+            receiver: 0,
+        });
+        let serialized = serde_json::to_vec(&room).expect("serialize complete room");
+        let recovered: VersionedGuandanGame =
+            serde_json::from_slice(&serialized).expect("restore complete room");
+        assert_eq!(recovered.room_name, room.room_name);
+        assert_eq!(recovered.game.match_id, 42);
+        assert_eq!(recovered.game.hands, room.game.hands);
+        assert_eq!(recovered.game.turn, 2);
+        assert_eq!(recovered.game.level, Rank::Ace);
+        assert_eq!(recovered.game.ace_attempts_team_a, 2);
+        assert_eq!(recovered.game.ace_attempts_team_b, 1);
+        assert!(recovered.game.pending_tribute.is_some());
     }
 }

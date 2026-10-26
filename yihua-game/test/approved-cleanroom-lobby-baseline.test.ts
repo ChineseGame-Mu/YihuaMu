@@ -16,12 +16,25 @@ describe("approved clean-room join-room homepage", () => {
     expect(source).toContain('className="cleanroom-final-art"');
     expect(source).toContain('aria-label="加入牌室"');
     expect(source).toContain('id="cleanroom-room"');
-    expect(source).toContain('id="cleanroom-player-count"');
+    expect(source).not.toContain('id="cleanroom-player-count"');
+    expect(source).not.toContain("cleanroom-final-no-count-mask");
+    expect(source).toContain('import approvedHomepage20261017 from "./guandan-approved-homepage-20261017"');
     expect(source).toContain(
       "const supportedCounts = [4, 6, 8, 10, 12, 14] as const",
     );
     expect(source).toContain('id="cleanroom-player-name"');
     expect(source).toContain('placeholder="请输入姓名"');
+    const artworkCss = readFileSync(
+      resolve(repositoryRoot, "frontend/src/cleanroom-lobby-artwork.css"),
+      "utf8",
+    );
+    expect(artworkCss).not.toContain(".cleanroom-final-no-count-mask");
+    expect(artworkCss).toContain("aspect-ratio:1125/1017");
+    const approvedImage = readFileSync(
+      resolve(repositoryRoot, "frontend/src/guandan-approved-homepage-20261017.ts"),
+      "utf8",
+    );
+    expect(approvedImage).toContain("data:image/webp;base64,");
     expect(source).toContain("<span>进入牌室</span>");
     expect(source).toContain("<small>ENTER ROOM</small>");
   });

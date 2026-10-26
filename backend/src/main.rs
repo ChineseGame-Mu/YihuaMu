@@ -132,7 +132,7 @@ async fn main() -> Result<(), anyhow::Error> {
             "/guandan",
             get(|| async {
                 Redirect::temporary(
-                    "https://yihua-mu.vercel.app/?test=1&game=guandan&players=14&room=0001&ws=wss%3A%2F%2Fcard-games-yihua.onrender.com%2Fapi%2Fguandan",
+                    "https://yihua-guandan-qa-safe.vercel.app/?test=1&game=guandan&room=0001&ws=wss%3A%2F%2Fguandan-stable-ws-qa-20261018.onrender.com%2Fapi%2Fguandan",
                 )
             }),
         )
@@ -185,8 +185,21 @@ async fn main() -> Result<(), anyhow::Error> {
                 .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
                 .allow_headers(tower_http::cors::Any)
         } else {
+            // QA-only compatibility: retain an explicit allowlist for the
+            // dedicated preview deployment without allowing arbitrary origins.
+            let qa_origins = [
+                "https://yihua-guandan-qa-safe.vercel.app",
+                "https://yihua-guandan-qa-safe-lwnp8lnhy-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-kaqgdir1x-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-h50qs2l1v-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-a8kju9y9b-chinese-game.vercel.app",
+                // Approved QA SHA deployment and stable QA branch preview only.
+                "https://yihua-guandan-qa-safe-mhi7oohvw-chinese-game.vercel.app",
+                "https://yihua-guandan-qa-safe-git-qa-manual-11items-bdedba-chinese-game.vercel.app",
+            ];
             let origins: Vec<HeaderValue> = allowed_origins
                 .split(',')
+                .chain(qa_origins.iter().copied())
                 .filter_map(|origin| origin.trim().parse::<HeaderValue>().ok())
                 .collect();
 

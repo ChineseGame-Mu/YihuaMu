@@ -173,7 +173,8 @@ impl<S: State> Storage<S, ()> for HashMapStorage<S> {
 
     async fn unsubscribe(self, key: Vec<u8>, subscriber_id: usize) {
         info!(self.logger, "Unsubscribing listener"; "key" => stringify(&key), "subscriber_id" => subscriber_id);
-        let mut m = self.state_map.lock().await;
+        // Disconnecting listeners must not erase an unfinished room.
+        // The existing prune() policy bounds retention for idle rooms.
         let mut s = self.subscribers.lock().await;
         let should_cleanup_key = if let Some(ss) = s.get_mut(&key) {
             if ss.contains_key(&subscriber_id) {
@@ -184,9 +185,8 @@ impl<S: State> Storage<S, ()> for HashMapStorage<S> {
             false
         };
         if should_cleanup_key {
-            info!(self.logger, "Cleaning up state"; "key" => stringify(&key), "subscriber_id" => subscriber_id);
+            info!(self.logger, "Cleaning up listeners (room state retained)"; "key" => stringify(&key), "subscriber_id" => subscriber_id);
             s.remove(&key);
-            m.remove(&key);
         }
     }
 
