@@ -20,7 +20,6 @@ const panel = (
 });
 
 describe("top seat dynamically clears visible public-table notices", () => {
-
   test("permanent table title never displaces the resting seat", () => {
     const selectors = GUANDAN_TOP_SEAT_NOTICE_SELECTORS;
     expect(selectors.join(",")).not.toContain(".guandan-zone-title");
