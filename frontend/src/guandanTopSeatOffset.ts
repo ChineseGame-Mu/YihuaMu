@@ -1,3 +1,13 @@
+// Only transient notices displace the opposite player's seat. The permanent
+// public-table heading is placed separately so the resting offset stays zero.
+export const GUANDAN_TOP_SEAT_NOTICE_SELECTORS = [
+  ".guandan-start-panel",
+  ".guandan-next-round-panel",
+  ".guandan-tribute-panel",
+  ".guandan-notice-panel",
+  ".guandan-initial-draw-mini",
+] as const;
+
 // Pure geometry contract for the opposite player's seat.
 // This can be tested without a browser; visual overlap still requires runtime QA.
 export type GuandanPanelBounds = {

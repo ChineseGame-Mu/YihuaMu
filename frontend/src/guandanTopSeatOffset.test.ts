@@ -1,6 +1,7 @@
 import {
   calculateGuandanTopSeatOffset,
   type GuandanPanelBounds,
+  GUANDAN_TOP_SEAT_NOTICE_SELECTORS,
 } from "./guandanTopSeatOffset";
 
 const zone = { top: 100, bottom: 600 };
@@ -19,6 +20,16 @@ const panel = (
 });
 
 describe("top seat dynamically clears visible public-table notices", () => {
+
+  test("permanent table title never displaces the resting seat", () => {
+    expect(GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join(",")).not.toContain(
+      ".guandan-zone-title",
+    );
+    expect(GUANDAN_TOP_SEAT_NOTICE_SELECTORS).toContain(
+      ".guandan-tribute-panel",
+    );
+  });
+
   test("rests at the public-table edge when no notice is visible", () => {
     expect(calculateGuandanTopSeatOffset(zone, [])).toBe(0);
   });

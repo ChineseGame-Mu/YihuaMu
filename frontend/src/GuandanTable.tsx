@@ -22,7 +22,10 @@ import {
   guandanDealtCardsForSeat,
 } from "./guandanDealPresentation";
 import { shouldAnimateGuandanDeal } from "./guandanDealLifecycle";
-import { calculateGuandanTopSeatOffset } from "./guandanTopSeatOffset";
+import {
+  calculateGuandanTopSeatOffset,
+  GUANDAN_TOP_SEAT_NOTICE_SELECTORS,
+} from "./guandanTopSeatOffset";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -821,15 +824,7 @@ const GuandanTable: React.FunctionComponent = () => {
     const zone = table?.querySelector<HTMLElement>(".guandan-public-zone");
     if (!table || !zone) return;
 
-    const panelSelector = [
-      ".guandan-start-panel",
-      ".guandan-next-round-panel",
-      ".guandan-tribute-panel",
-      ".guandan-notice-panel",
-      ".guandan-initial-draw-mini",
-      // The centered public-table title can also sit behind the top seat.
-      ".guandan-public-zone > .guandan-zone-title",
-    ].join(", ");
+    const panelSelector = GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join(", ");
     let animationFrame = 0;
     const updateSeatOffset = () => {
       const zoneRect = zone.getBoundingClientRect();
