@@ -22,6 +22,7 @@ import {
   guandanDealtCardsForSeat,
 } from "./guandanDealPresentation";
 import { shouldAnimateGuandanDeal } from "./guandanDealLifecycle";
+import { calculateGuandanTopSeatOffset } from "./guandanTopSeatOffset";
 import {
   celebrationFireworks,
   formatCelebrationDateTime,
@@ -832,26 +833,22 @@ const GuandanTable: React.FunctionComponent = () => {
     let animationFrame = 0;
     const updateSeatOffset = () => {
       const zoneRect = zone.getBoundingClientRect();
-      let offset = 0;
-      table.querySelectorAll<HTMLElement>(panelSelector).forEach((panel) => {
+      const panels = Array.from(
+        table.querySelectorAll<HTMLElement>(panelSelector),
+      ).map((panel) => {
         const rect = panel.getBoundingClientRect();
         const style = window.getComputedStyle(panel);
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          rect.width === 0 ||
-          rect.height === 0 ||
-          rect.bottom <= zoneRect.top ||
-          rect.top >= zoneRect.bottom
-        ) {
-          return;
-        }
-        offset = Math.max(offset, rect.bottom - zoneRect.top);
+        return {
+          top: rect.top,
+          bottom: rect.bottom,
+          width: rect.width,
+          height: rect.height,
+          display: style.display,
+          visibility: style.visibility,
+        };
       });
-      zone.style.setProperty(
-        "--guandan-top-seat-offset",
-        `${Math.ceil(offset)}px`,
-      );
+      const offset = calculateGuandanTopSeatOffset(zoneRect, panels);
+      zone.style.setProperty("--guandan-top-seat-offset", `${offset}px`);
     };
     const scheduleUpdate = () => {
       if (animationFrame !== 0) return;
