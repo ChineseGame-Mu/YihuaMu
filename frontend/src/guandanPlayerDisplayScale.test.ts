@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import { createHash } from "crypto";
 import { join } from "path";
+import { GUANDAN_TOP_SEAT_NOTICE_SELECTORS } from "./guandanTopSeatOffset";
 
 describe("Guandan enlarged player displays", () => {
   const css = readFileSync(
@@ -81,11 +82,18 @@ describe("Guandan enlarged player displays", () => {
   });
 
   test("moves the top seat below every visible ceremony panel", () => {
-    expect(table).toContain('".guandan-initial-draw-mini"');
-    expect(table).toContain('".guandan-start-panel"');
-    expect(table).toContain('".guandan-next-round-panel"');
-    expect(table).toContain('".guandan-tribute-panel"');
-    expect(table).toContain('".guandan-notice-panel"');
+    // The selectors now live in a shared, independently tested module.
+    // Assert the live table consumes that module instead of matching stale literals.
+    expect(table).toContain("GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join");
+    for (const selector of [
+      ".guandan-initial-draw-mini",
+      ".guandan-start-panel",
+      ".guandan-next-round-panel",
+      ".guandan-tribute-panel",
+      ".guandan-notice-panel",
+    ]) {
+      expect(GUANDAN_TOP_SEAT_NOTICE_SELECTORS).toContain(selector);
+    }
     expect(table).toContain("new ResizeObserver(scheduleUpdate)");
     expect(table).toContain("new MutationObserver(() => {");
     expect(table).toContain('"--guandan-top-seat-offset"');
