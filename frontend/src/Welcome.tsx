@@ -12,9 +12,6 @@ type WelcomeProps = {
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
-const guandanTestHref = (): string =>
-  "https://yihua-mu-git-cleanroom-yihua-game-20260826-chinese-game.vercel.app/";
-
 const Welcome = ({
   connected = false,
   playerName = "",
@@ -78,25 +75,25 @@ const Welcome = ({
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
           </div>
         </button>
-        <a
+        <button
           className="welcome-mode"
-          href={guandanTestHref()}
+          type="button"
+          disabled
+          aria-label="掼蛋暂不开放"
           style={{
             font: "inherit",
             color: "inherit",
             textAlign: "left",
-            cursor: "pointer",
-            textDecoration: "none",
+            cursor: "not-allowed",
+            opacity: 0.65,
           }}
         >
           <div className="welcome-mode-icon">🂠</div>
           <div>
-            <h2>
-              掼蛋 / Guandan <span className="welcome-badge">朋友测试</span>
-            </h2>
-            <p>进入测试房间0001，填写姓名后即可与朋友一起测试。</p>
+            <h2>掼蛋 / Guandan <span className="welcome-badge">暂不开放</span></h2>
+            <p>目前暂不连接任何游戏或网站。</p>
           </div>
-        </a>
+        </button>
       </div>
 
       <div className="welcome-actions">
