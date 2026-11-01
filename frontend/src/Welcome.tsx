@@ -10,8 +10,6 @@ type WelcomeProps = {
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
-const guandanHref = (): string => "/?game=guandan";
-
 const Welcome = ({
   connected = false,
   onSelectGameMode,
@@ -74,25 +72,25 @@ const Welcome = ({
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
           </div>
         </button>
-        <a
+        <button
           className="welcome-mode"
-          href={guandanHref()}
+          type="button"
+          disabled
+          aria-label="掼蛋，暂不开放"
           style={{
             font: "inherit",
             color: "inherit",
             textAlign: "left",
-            cursor: "pointer",
-            textDecoration: "none",
+            cursor: "not-allowed",
+            opacity: 0.65,
           }}
         >
           <div className="welcome-mode-icon">🂠</div>
           <div>
-            <h2>
-              掼蛋 / Guandan <span className="welcome-badge">进入掼蛋</span>
-            </h2>
-            <p>进入本三游戏平台内的掼蛋牌局，不跳转独立网站。</p>
+            <h2>掼蛋 / Guandan <span className="welcome-badge">暂不开放</span></h2>
+            <p>入口暂不连接任何游戏，后续开放。</p>
           </div>
-        </a>
+        </button>
       </div>
 
       <div className="welcome-actions">
