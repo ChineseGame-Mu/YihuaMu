@@ -10,7 +10,7 @@ type WelcomeProps = {
   onSelectGameMode?: (mode: GameModeChoice) => void;
 };
 
-const guandanHref = (): string => "https://yihua-mu.vercel.app/";
+const guandanHref = (): string => "/?game=guandan";
 
 const Welcome = ({
   connected = false,
@@ -90,7 +90,7 @@ const Welcome = ({
             <h2>
               掼蛋 / Guandan <span className="welcome-badge">进入掼蛋</span>
             </h2>
-            <p>进入独立掼蛋游戏，与朋友一起在线游戏。</p>
+            <p>进入本三游戏平台内的掼蛋牌局，不跳转独立网站。</p>
           </div>
         </a>
       </div>
