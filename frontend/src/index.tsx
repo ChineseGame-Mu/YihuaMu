@@ -4,40 +4,16 @@ import ReactModal from "react-modal";
 import * as Sentry from "@sentry/react";
 
 import "./style.css";
-import "./guandan.css";
-import "./guandan-single-viewport.css";
-import "./guandan-review-panel-fix.css";
-import "./guandan-review-third.css";
-import "./guandan-approved-layout.css";
-import "./guandan-header-decor.css";
 import "./game-logos.css";
-import "./guandan-settings-card-hints.css";
-import "./guandan-statusbar-restore.css";
-import "./guandan-topbar-final.css";
-import "./guandan-button-3d.css";
-import "./guandan-public-player-position.css";
-import "./guandan-play-author-hotfix.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
 import TimerProvider from "./TimerProvider";
 import Root from "./Root";
-import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
-import GuandanStateProvider from "./GuandanStateProvider";
-import GuandanTable from "./GuandanTable";
-import GuandanNoBeatHint from "./GuandanNoBeatHint";
-import GuandanNoBeatControls from "./GuandanNoBeatControls";
-import ExitGameButton from "./ExitGameButton";
-import GuandanHeaderDecor from "./GuandanHeaderDecor";
-import GuandanCustomSortControls from "./GuandanCustomSortControls";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
 );
-
-const returnToGameSelection = (): void => {
-  window.location.href = `${window.location.origin}${window.location.pathname}`;
-};
 
 const bootstrap = (): void => {
   Sentry.init({
@@ -65,31 +41,6 @@ const bootstrap = (): void => {
   );
   ReactModal.setAppElement(root!);
   const root_ = createRoot(root!);
-
-  const params = new URLSearchParams(window.location.search);
-  const game = params.get("game");
-
-  // This domain is the standalone Guandan game. Keep its original lobby as default.
-  // Other modes remain opt-in only and must not replace the Guandan homepage.
-  if (game === null || game === "guandan") {
-    root_.render(
-      <React.Suspense fallback={fallback}>
-        <TimerProvider>
-          <GuandanWebsocketProvider>
-            <GuandanStateProvider>
-              <ExitGameButton onClick={returnToGameSelection} />
-              <GuandanHeaderDecor />
-              <GuandanCustomSortControls />
-              <GuandanTable />
-              <GuandanNoBeatHint />
-              <GuandanNoBeatControls />
-            </GuandanStateProvider>
-          </GuandanWebsocketProvider>
-        </TimerProvider>
-      </React.Suspense>,
-    );
-    return;
-  }
 
   root_.render(
     <React.Suspense fallback={fallback}>
