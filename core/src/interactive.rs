@@ -459,6 +459,7 @@ pub enum Action {
     ResetGame,
     MakeObserver(PlayerID),
     MakePlayer(PlayerID),
+    SetBots(usize),
     SetChatLink(Option<String>),
     SetNumDecks(Option<usize>),
     SetSpecialDecks(Vec<Deck>),
