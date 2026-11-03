@@ -43,9 +43,22 @@ impl InteractiveGame {
         &mut self,
         name: String,
     ) -> Result<(PlayerID, Vec<(BroadcastMessage, String)>), Error> {
-        let (actor, msgs) = self.state.register(name)?;
+        let mut displaced = Vec::new();
+        if !name.starts_with("机器人") && self.state.player_id(&name).is_err() {
+            if let GameState::Initialize(ref mut phase) = self.state {
+                if phase.propagated().players.len() >= 4 {
+                    let id = phase.propagated().players.iter().rev()
+                        .find(|p| p.name.starts_with("机器人")).map(|p| p.id);
+                    if let Some(id) = id {
+                        displaced.extend(phase.remove_player(id)?);
+                    }
+                }
+            }
+        }
+        let (actor, mut msgs) = self.state.register(name)?;
+        displaced.append(&mut msgs);
 
-        Ok((actor, self.hydrate_messages(actor, msgs)?))
+        Ok((actor, self.hydrate_messages(actor, displaced)?))
     }
 
     pub fn kick(
