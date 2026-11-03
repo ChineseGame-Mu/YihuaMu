@@ -125,6 +125,26 @@ impl InteractiveGame {
                 info!(logger, "Cancelling game reset request");
                 self.state.cancel_reset()?
             }
+            (Action::SetBots(count), GameState::Initialize(ref mut phase)) => {
+                if count > 3 || !phase.propagated().players.iter().any(|p| p.id == id) {
+                    anyhow::bail!("invalid robot request");
+                }
+                let old: Vec<_> = phase.propagated().players.iter()
+                    .filter(|p| p.name.starts_with("机器人"))
+                    .map(|p| p.id).collect();
+                let humans = phase.propagated().players.len() - old.len();
+                if humans + count > 4 {
+                    anyhow::bail!("not enough seats for robots");
+                }
+                let mut messages = Vec::new();
+                for robot_id in old {
+                    messages.extend(phase.remove_player(robot_id)?);
+                }
+                for n in 1..=count {
+                    messages.extend(phase.add_player(format!("机器人{n}"))?.1);
+                }
+                messages
+            }
             (Action::SetChatLink(ref link), _) => {
                 self.state.set_chat_link(link.clone())?;
                 vec![]
