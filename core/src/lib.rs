@@ -10,3 +10,5 @@ pub mod game_state;
 pub mod guandan;
 pub mod interactive;
 pub mod message;
+
+pub mod robot_policy;
