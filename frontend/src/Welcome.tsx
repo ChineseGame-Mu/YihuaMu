@@ -33,7 +33,7 @@ const Welcome = ({
         中国纸牌游戏 <span>/ Chinese Card Games</span>
       </h1>
       <p className="welcome-subtitle">
-        选择一种玩法，与亲朋好友一起在线游戏。
+        选择升级或找朋友，与亲朋好友一起在线游戏。
         <br />
         Choose a game, create a room, and play together anywhere.
       </p>
@@ -73,25 +73,6 @@ const Welcome = ({
           <div>
             <h2>找朋友</h2>
             <p>保留找朋友玩法，进入游戏后按房间设置开始牌局。</p>
-          </div>
-        </button>
-        <button
-          className="welcome-mode"
-          type="button"
-          disabled
-          aria-label="掼蛋暂不开放"
-          style={{
-            font: "inherit",
-            color: "inherit",
-            textAlign: "left",
-            cursor: "not-allowed",
-            opacity: 0.65,
-          }}
-        >
-          <div className="welcome-mode-icon">🂠</div>
-          <div>
-            <h2>掼蛋 / Guandan <span className="welcome-badge">暂不开放</span></h2>
-            <p>目前暂不连接任何游戏或网站。</p>
           </div>
         </button>
       </div>
