@@ -2,7 +2,7 @@
 //! All suggested moves are checked against the authoritative game rules.
 use crate::game_state::GameState;
 use crate::interactive::Action;
-use shengji_mechanics::types::{Card, PlayerID};
+use shengji_mechanics::types::PlayerID;
 
 /// Returns one legal automatic action, or None when player input is required.
 /// Does not inspect another player's private cards.
