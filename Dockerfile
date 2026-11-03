@@ -37,6 +37,7 @@ COPY backend/src/main.rs ./backend/src/main.rs
 COPY storage ./storage
 COPY wasm-rpc-impl ./wasm-rpc-impl
 WORKDIR /app/frontend
+RUN cd shengji-wasm && wasm-pack build --target bundler --release --out-name shengji-core
 RUN yarn build
 
 # Create a workspace recipe.json to pre-fetch and pre-compile dependencies, but
