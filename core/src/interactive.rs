@@ -77,6 +77,31 @@ impl InteractiveGame {
         self.state.player_name(player_id)
     }
 
+    /// Drive autonomous turns only for explicitly named robot seats.
+    /// Stop at human turns, unhandled phases, or after a bounded number
+    /// of actions to prevent a malformed game from looping indefinitely.
+    pub fn run_robot_actions(
+        &mut self,
+        logger: &Logger,
+    ) -> Result<Vec<(BroadcastMessage, String)>, Error> {
+        let mut messages = Vec::new();
+        for _ in 0..128 {
+            let actor = match self.state.next_player() {
+                Ok(player) => player,
+                Err(_) => break,
+            };
+            let name = self.state.player_name(actor)?;
+            if !name.starts_with("机器人") {
+                break;
+            }
+            let Some(action) = crate::robot_policy::choose_robot_action(&self.state, actor) else {
+                break;
+            };
+            messages.extend(self.interact(action, actor, logger)?);
+        }
+        Ok(messages)
+    }
+
     #[allow(clippy::cognitive_complexity)]
     pub fn interact(
         &mut self,
