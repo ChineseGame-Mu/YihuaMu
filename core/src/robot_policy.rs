@@ -14,9 +14,15 @@ pub fn choose_robot_action(state: &GameState, bot: PlayerID) -> Option<Action> {
         GameState::Draw(draw) => {
             if !draw.deck().is_empty() {
                 Some(Action::DrawCard)
+            } else if draw.advance(bot).is_ok() {
+                Some(Action::PickUpKitty)
             } else {
-                // Calling trump or taking the kitty requires additional strategy.
-                None
+                let mut trial = draw.clone();
+                if trial.reveal_card().is_ok() {
+                    Some(Action::RevealCard)
+                } else {
+                    None
+                }
             }
         }
         GameState::Play(play) => {
@@ -41,6 +47,7 @@ pub fn choose_robot_action(state: &GameState, bot: PlayerID) -> Option<Action> {
             }
             None
         }
-        GameState::Initialize(_) | GameState::Exchange(_) => None,
+        GameState::Exchange(exchange) => exchange.robot_action(bot),
+        GameState::Initialize(_) => None,
     }
 }
