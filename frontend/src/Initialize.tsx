@@ -1123,6 +1123,19 @@ const Initialize = (props: IProps): JSX.Element => {
       />
       <div className="game-settings">
         <h3>游戏设置</h3>
+        <div className="robot-settings">
+          <label htmlFor="two-game-bot-count">机器人陪玩：</label>
+          <select id="two-game-bot-count"
+            value={props.state.propagated.players.filter((p) => p.name.startsWith("机器人")).length}
+            onChange={(event) => send({ Action: { SetBots: Number(event.target.value) } })}>
+            {[0, 1, 2, 3].map((count) => (
+              <option key={count} value={count} disabled={props.state.propagated.players.filter((p) => !p.name.startsWith("机器人")).length + count > 4}>
+                {count === 0 ? "无机器人" : `${count} 个机器人`}
+              </option>
+            ))}
+          </select>
+          <p>真人与机器人合计最多四人，开局前选择。</p>
+        </div>
         <div>
           <label>
             游戏模式：{" "}
