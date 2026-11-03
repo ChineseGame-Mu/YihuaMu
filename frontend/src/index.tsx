@@ -69,9 +69,27 @@ const bootstrap = (): void => {
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
 
-  // This domain is the standalone Guandan game. Keep its original lobby as default.
-  // Other modes remain opt-in only and must not replace the Guandan homepage.
-  if (game === null || game === "guandan") {
+  // Test Version 2: show a dedicated entry page before the existing game lobby.
+  // This intentionally changes no GuandanTable logic or production branch.
+  if (game === null) {
+    root_.render(
+      <main style={{ minHeight: "100vh", background: "linear-gradient(155deg,#083b2b,#146446)", color: "#fff8da", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "sans-serif" }}>
+        <section style={{ width: "min(100%,480px)", border: "2px solid #d6b66d", borderRadius: 22, padding: "48px 24px", textAlign: "center", background: "rgba(0,0,0,.17)", boxShadow: "0 16px 48px rgba(0,0,0,.2)" }}>
+          <div style={{ fontSize: 43, marginBottom: 14 }} aria-hidden="true">🂡　♥　♠　🃏</div>
+          <h1 style={{ fontSize: 54, margin: "12px 0", letterSpacing: 12, color: "#f4d385" }}>掼蛋</h1>
+          <p style={{ fontSize: 19, margin: "12px 0 32px", color: "#e4e8d3" }}>独立掼蛋游戏 · Guandan</p>
+          <button type="button" onClick={() => { window.location.search = "?game=guandan"; }}
+            style={{ border: "1px solid #f9e5a3", background: "#e7bf65", color: "#163e2c", borderRadius: 12, fontSize: 22, fontWeight: 700, padding: "15px 40px", cursor: "pointer" }}>
+            进入牌室
+          </button>
+          <p style={{ marginTop: 26, fontSize: 13, color: "#deeadc" }}>测试版本2 · 仅供测试，正式网站不受影响</p>
+        </section>
+      </main>,
+    );
+    return;
+  }
+
+  if (game === "guandan") {
     root_.render(
       <React.Suspense fallback={fallback}>
         <TimerProvider>
