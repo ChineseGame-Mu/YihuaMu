@@ -407,8 +407,9 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                 room_name,
                 backend_storage,
                 move |game, _, _| {
-                    Ok(game
-                        .interact(action, caller, &logger)?
+                    let mut messages = game.interact(action, caller, &logger)?;
+                    messages.extend(game.run_robot_actions(&logger)?);
+                    Ok(messages
                         .into_iter()
                         .map(|(data, message)| GameMessage::Broadcast { data, message })
                         .collect())
