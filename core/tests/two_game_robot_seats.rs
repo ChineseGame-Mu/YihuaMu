@@ -35,3 +35,14 @@ fn rejects_excess_robots_and_preserves_players() {
     assert_eq!(game.dump_state().unwrap().propagated().players.len(), 2);
     assert!(game.interact(Action::SetBots(4), human, &log).is_err());
 }
+
+#[test]
+fn human_join_replaces_last_bot_in_full_room() {
+    let mut game = InteractiveGame::new();
+    let (first, _) = game.register("真人甲".to_string()).unwrap();
+    game.interact(Action::SetBots(3), first, &logger()).unwrap();
+    game.register("真人乙".to_string()).unwrap();
+    let state = game.dump_state().unwrap();
+    assert_eq!(state.propagated().players.len(), 4);
+    assert_eq!(state.propagated().players.iter().filter(|p| p.name.starts_with("机器人")).count(), 2);
+}
