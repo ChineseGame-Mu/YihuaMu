@@ -72,6 +72,8 @@ pub enum UserMessage {
     Beep,
     ReadyCheck,
     Ready,
+    /// Room-owner request for zero to three server-controlled practice seats.
+    SetBots { count: usize },
 }
 
 #[derive(Clone, Serialize)]

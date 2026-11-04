@@ -39,6 +39,7 @@ mod guandan_handler;
 mod guandan_serving_types;
 mod serving_types;
 mod shengji_handler;
+mod two_game_bots;
 mod state_dump;
 mod utils;
 mod wasm_rpc_handler;

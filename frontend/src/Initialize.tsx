@@ -1123,6 +1123,23 @@ const Initialize = (props: IProps): JSX.Element => {
       />
       <div className="game-settings">
         <h3>游戏设置</h3>
+        <div className="practice-bots-control">
+          <label htmlFor="two-games-bot-count">机器人练习对手：</label>{" "}
+          <select
+            id="two-games-bot-count"
+            value={props.state.propagated.players.filter((p) => /^机器人[123]$/.test(p.name)).length}
+            disabled={props.state.propagated.players[0]?.name !== props.name}
+            onChange={(evt) => send({ SetBots: { count: Number(evt.target.value) } })}
+          >
+            <option value={0}>0 个（关闭）</option>
+            <option value={1}>1 个机器人</option>
+            <option value={2}>2 个机器人</option>
+            <option value={3}>3 个机器人</option>
+          </select>
+          <small style={{ display: "block" }}>
+            仅房主可设置；机器人由服务器托管，自动摸牌并尝试合法出牌。埋底、叫牌和复杂组合仍需后续验证。
+          </small>
+        </div>
         <div>
           <label>
             游戏模式：{" "}

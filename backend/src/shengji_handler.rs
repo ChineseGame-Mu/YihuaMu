@@ -71,7 +71,7 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
                     room_name,
                     name,
                     disable_compression,
-                }) if room_name.len() == 4 && name.len() < 32 => {
+                }) if room_name.len() == 4 && name.len() < 32 && !name.starts_with("机器人") => {
                     break (room_name, name, disable_compression);
                 }
                 Ok(_) => GameMessage::Error("invalid room or name".to_string()),
@@ -322,6 +322,17 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
     msg: UserMessage,
 ) -> Result<(), E> {
     match msg {
+        UserMessage::SetBots { count } => {
+            let bot_logger = logger.clone();
+            execute_operation(
+                ws_id,
+                room_name,
+                backend_storage,
+                move |game, _, _| crate::two_game_bots::configure_bots(game, caller, count, &bot_logger),
+                "configure practice robots",
+            )
+            .await;
+        }
         UserMessage::Beep => {
             execute_immutable_operation(
                 ws_id,
@@ -407,11 +418,13 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                 room_name,
                 backend_storage,
                 move |game, _, _| {
-                    Ok(game
+                    let mut messages: Vec<GameMessage> = game
                         .interact(action, caller, &logger)?
                         .into_iter()
                         .map(|(data, message)| GameMessage::Broadcast { data, message })
-                        .collect())
+                        .collect();
+                    messages.extend(crate::two_game_bots::run_robot_turns(game, &logger));
+                    Ok(messages)
                 },
                 "handle user action",
             )
