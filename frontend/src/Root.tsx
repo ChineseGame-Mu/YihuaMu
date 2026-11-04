@@ -34,7 +34,10 @@ const Root = (): JSX.Element => {
   const { state, updateState } = React.useContext(AppStateContext);
   const timerContext = React.useContext(TimerContext);
   const [selectedGameMode, setSelectedGameMode] =
-    React.useState<GameModeChoice | null>(null);
+    React.useState<GameModeChoice | null>(() => {
+      const mode = new URLSearchParams(window.location.search).get("game");
+      return mode === "tractor" ? "Tractor" : mode === "findingfriends" ? "FindingFriends" : null;
+    });
 
   const [previousHeaderMessages, setPreviousHeaderMessages] = React.useState<
     string[]
