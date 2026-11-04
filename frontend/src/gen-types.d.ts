@@ -28,6 +28,9 @@ export type Action =
       MakePlayer: number;
     }
   | {
+      SetBots: number;
+    }
+  | {
       SetChatLink: string | null;
     }
   | {

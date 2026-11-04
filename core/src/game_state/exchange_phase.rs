@@ -297,6 +297,39 @@ impl ExchangePhase {
         )
     }
 
+    /// Conservative legal actions for a bot who is the current exchanger.
+    pub fn robot_action(&self, bot: PlayerID) -> Option<crate::interactive::Action> {
+        use crate::interactive::Action;
+        use shengji_mechanics::types::FULL_DECK;
+        if self.next_player().ok()? != bot {
+            return None;
+        }
+        if self.exchanger == bot && !self.finalized {
+            if self.kitty.len() < self.kitty_size {
+                let hand = self.hands._get_cards(bot).ok()?;
+                let card = hand.into_iter().min_by_key(|card| card.points().unwrap_or(0))?;
+                return Some(Action::MoveCardToKitty(card));
+            }
+            if let GameMode::FindingFriends { num_friends: 1, ref friends } = self.game_mode {
+                if friends.is_empty() {
+                    for card in FULL_DECK {
+                        let candidate = vec![FriendSelection { card, initial_skip: 0 }];
+                        let mut cloned = self.clone();
+                        if cloned.set_friends(bot, candidate.iter().copied()).is_ok() {
+                            return Some(Action::SetFriends(candidate));
+                        }
+                    }
+                    return None;
+                }
+            }
+            return Some(Action::PutDownKitty);
+        }
+        if self.advance(bot).is_ok() {
+            return Some(Action::BeginPlay);
+        }
+        None
+    }
+
     pub fn landlord(&self) -> PlayerID {
         self.landlord
     }

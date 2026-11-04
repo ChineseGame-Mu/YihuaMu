@@ -43,9 +43,22 @@ impl InteractiveGame {
         &mut self,
         name: String,
     ) -> Result<(PlayerID, Vec<(BroadcastMessage, String)>), Error> {
-        let (actor, msgs) = self.state.register(name)?;
+        let mut displaced = Vec::new();
+        if !name.starts_with("机器人") && self.state.player_id(&name).is_err() {
+            if let GameState::Initialize(ref mut phase) = self.state {
+                if phase.propagated().players.len() >= 4 {
+                    let id = phase.propagated().players.iter().rev()
+                        .find(|p| p.name.starts_with("机器人")).map(|p| p.id);
+                    if let Some(id) = id {
+                        displaced.extend(phase.remove_player(id)?);
+                    }
+                }
+            }
+        }
+        let (actor, mut msgs) = self.state.register(name)?;
+        displaced.append(&mut msgs);
 
-        Ok((actor, self.hydrate_messages(actor, msgs)?))
+        Ok((actor, self.hydrate_messages(actor, displaced)?))
     }
 
     pub fn kick(
@@ -77,6 +90,31 @@ impl InteractiveGame {
         self.state.player_name(player_id)
     }
 
+    /// Drive autonomous turns only for explicitly named robot seats.
+    /// Stop at human turns, unhandled phases, or after a bounded number
+    /// of actions to prevent a malformed game from looping indefinitely.
+    pub fn run_robot_actions(
+        &mut self,
+        logger: &Logger,
+    ) -> Result<Vec<(BroadcastMessage, String)>, Error> {
+        let mut messages = Vec::new();
+        for _ in 0..128 {
+            let actor = match self.state.next_player() {
+                Ok(player) => player,
+                Err(_) => break,
+            };
+            let name = self.state.player_name(actor)?;
+            if !name.starts_with("机器人") {
+                break;
+            }
+            let Some(action) = crate::robot_policy::choose_robot_action(&self.state, actor) else {
+                break;
+            };
+            messages.extend(self.interact(action, actor, logger)?);
+        }
+        Ok(messages)
+    }
+
     #[allow(clippy::cognitive_complexity)]
     pub fn interact(
         &mut self,
@@ -99,6 +137,26 @@ impl InteractiveGame {
             (Action::CancelResetGame, _) => {
                 info!(logger, "Cancelling game reset request");
                 self.state.cancel_reset()?
+            }
+            (Action::SetBots(count), GameState::Initialize(ref mut phase)) => {
+                if count > 3 || phase.propagated().players.iter().find(|p| !p.name.starts_with("机器人")).map(|p| p.id) != Some(id) {
+                    anyhow::bail!("invalid robot request");
+                }
+                let old: Vec<_> = phase.propagated().players.iter()
+                    .filter(|p| p.name.starts_with("机器人"))
+                    .map(|p| p.id).collect();
+                let humans = phase.propagated().players.len() - old.len();
+                if humans + count > 4 {
+                    anyhow::bail!("not enough seats for robots");
+                }
+                let mut messages = Vec::new();
+                for robot_id in old {
+                    messages.extend(phase.remove_player(robot_id)?);
+                }
+                for n in 1..=count {
+                    messages.extend(phase.add_player(format!("机器人{n}"))?.1);
+                }
+                messages
             }
             (Action::SetChatLink(ref link), _) => {
                 self.state.set_chat_link(link.clone())?;
@@ -434,6 +492,7 @@ pub enum Action {
     ResetGame,
     MakeObserver(PlayerID),
     MakePlayer(PlayerID),
+    SetBots(usize),
     SetChatLink(Option<String>),
     SetNumDecks(Option<usize>),
     SetSpecialDecks(Vec<Deck>),

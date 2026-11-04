@@ -71,7 +71,7 @@ async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug 
                     room_name,
                     name,
                     disable_compression,
-                }) if room_name.len() == 4 && name.len() < 32 => {
+                }) if room_name.len() == 4 && name.len() < 32 && !name.starts_with("机器人") => {
                     break (room_name, name, disable_compression);
                 }
                 Ok(_) => GameMessage::Error("invalid room or name".to_string()),
@@ -407,8 +407,9 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                 room_name,
                 backend_storage,
                 move |game, _, _| {
-                    Ok(game
-                        .interact(action, caller, &logger)?
+                    let mut messages = game.interact(action, caller, &logger)?;
+                    messages.extend(game.run_robot_actions(&logger)?);
+                    Ok(messages
                         .into_iter()
                         .map(|(data, message)| GameMessage::Broadcast { data, message })
                         .collect())
