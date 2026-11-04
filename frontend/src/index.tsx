@@ -69,9 +69,9 @@ const bootstrap = (): void => {
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
 
-  // This domain is the standalone Guandan game. Keep its original lobby as default.
-  // Other modes remain opt-in only and must not replace the Guandan homepage.
-  if (game === null || game === "guandan") {
+  // TWO-GAME ISOLATED QA: default to the Tractor / Finding Friends welcome page.
+  // Never redirect visitors to the standalone Guandan lobby from this test site.
+  if (game === "guandan") {
     root_.render(
       <React.Suspense fallback={fallback}>
         <TimerProvider>
