@@ -22,6 +22,7 @@ import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
 import TimerProvider from "./TimerProvider";
 import Root from "./Root";
+import Welcome from "./Welcome";
 import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
 import GuandanStateProvider from "./GuandanStateProvider";
 import GuandanTable from "./GuandanTable";
@@ -69,9 +70,23 @@ const bootstrap = (): void => {
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
 
+  // This isolated TWO-GAME test site must always open the selection homepage.
+  // Never show a game lobby or a remembered room on a bare homepage URL.
+  if (game !== "tractor" && game !== "findingfriends") {
+    root_.render(
+      <Welcome
+        onSelectGameMode={(mode) => {
+          const query = mode === "Tractor" ? "tractor" : "findingfriends";
+          window.location.assign(window.location.pathname + "?game=" + query);
+        }}
+      />,
+    );
+    return;
+  }
+
   // TWO-GAME ISOLATED QA: default to the Tractor / Finding Friends welcome page.
   // Never redirect visitors to the standalone Guandan lobby from this test site.
-  if (game === "guandan") {
+  if (false && game === "guandan") {
     root_.render(
       <React.Suspense fallback={fallback}>
         <TimerProvider>
