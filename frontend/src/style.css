@@ -475,3 +475,19 @@ label {
 /* Preserve black spade readability even when the overall app is in dark mode. */
 .dark-mode .four-color .♤,
 .dark-mode .four-color.♤ { color: #151515; }
+
+/* Four-suit high-contrast palette aligned with the independent Guandan cards.
+// SVG paths use explicit fill/stroke, so update both SVG and plain card text. */
+.four-color .♢, .four-color.♢ { color: #b87310; }
+.four-color .♡, .four-color.♡ { color: #bd2438; }
+.four-color .♧, .four-color.♧ { color: #176b43; }
+.four-color .♤, .four-color.♤ { color: #202a39; }
+
+svg[class*="D_svg__card"] [fill="#f5a623"] { fill: #b87310; }
+svg[class*="D_svg__card"] [stroke="#f5a623"] { stroke: #b87310; }
+svg[class*="H_svg__card"] [fill="red"] { fill: #bd2438; }
+svg[class*="H_svg__card"] [stroke="red"] { stroke: #bd2438; }
+svg[class*="C_svg__card"] [fill="green"] { fill: #176b43; }
+svg[class*="C_svg__card"] [stroke="green"] { stroke: #176b43; }
+svg[class*="S_svg__card"] [fill="#000"] { fill: #202a39; }
+svg[class*="S_svg__card"] [stroke="#000"] { stroke: #202a39; }

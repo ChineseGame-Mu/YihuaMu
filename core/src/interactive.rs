@@ -99,6 +99,15 @@ impl InteractiveGame {
     ) -> Result<Vec<(BroadcastMessage, String)>, Error> {
         let mut messages = Vec::new();
         for _ in 0..128 {
+            // The last card of a trick empties the turn queue.  If we only
+            // consult next_player(), robots appear to freeze after all four
+            // seats have played.  Complete the trick before selecting turns.
+            if let GameState::Play(phase) = &self.state {
+                if let Ok(completed) = phase.trick().complete() {
+                    messages.extend(self.interact(Action::EndTrick, completed.winner, logger)?);
+                    continue;
+                }
+            }
             let actor = match self.state.next_player() {
                 Ok(player) => player,
                 Err(_) => break,
