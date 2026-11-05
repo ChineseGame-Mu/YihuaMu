@@ -469,9 +469,10 @@ const Play = (props: IProps): JSX.Element => {
       )}
       {playPhase.last_trick !== undefined &&
       playPhase.last_trick !== null &&
-      props.showLastTrick ? (
+      (props.showLastTrick ||
+        playPhase.propagated.players.some((p) => p.name.startsWith("机器人"))) ? (
         <div>
-          <p>上一墩</p>
+          <p><strong>上一墩出牌记录（四位玩家实际出的牌）</strong></p>
           <Trick
             trick={playPhase.last_trick}
             players={playPhase.propagated.players}
