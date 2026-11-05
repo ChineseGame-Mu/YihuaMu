@@ -46,6 +46,7 @@ pub enum GuandanClientMessage {
         name: String,
     },
     Leave,
+    ResetRoom,
     ReorderPlayers {
         order: [usize; 2],
     },
@@ -88,6 +89,10 @@ pub enum GuandanServerMessage {
     Joined {
         room: String,
         seat: Option<usize>,
+    },
+    RoomReset {
+        room: String,
+        match_id: u64,
     },
     Waiting {
         players: Vec<String>,
@@ -278,6 +283,36 @@ pub fn online_human_count(key: &[u8], game: &GuandanGameState) -> usize {
         .collect::<std::collections::HashSet<_>>()
         .len()
 }
+/// Destructive reset, allowed only for the single currently connected human.
+/// A disconnected seat may be reclaimed; another online human is never evicted.
+/// Caller is kept in room so the room code remains usable after the operation.
+fn reset_room_state_for_sole_online_player(
+    game: &mut GuandanGameState,
+    room: &[u8],
+    caller: &str,
+) -> Result<(), &'static str> {
+    let seat = game
+        .player_names
+        .iter()
+        .position(|name| name == caller)
+        .ok_or("only a seated player can reset the room")?;
+    if !online_players(room, game)
+        .get(seat)
+        .copied()
+        .unwrap_or(false)
+    {
+        return Err("the requester must be online");
+    }
+    if online_human_count(room, game) != 1 {
+        return Err("another human is online; ask them to leave before resetting the room");
+    }
+    let next_match_id = game.match_id.saturating_add(1);
+    *game = GuandanGameState::default();
+    game.match_id = next_match_id;
+    game.player_names.push(caller.to_string());
+    Ok(())
+}
+
 fn normalize_room_name(room: &str) -> String {
     room.trim().trim_end_matches('/').trim_end().to_string()
 }
@@ -885,6 +920,61 @@ pub async fn websocket(
             GuandanClientMessage::Leave => {
                 requested_leave = true;
                 break;
+            }
+            GuandanClientMessage::ResetRoom => {
+                let (key, name) = match (joined_room.clone(), joined_name.clone()) {
+                    (Some(key), Some(name)) => (key, name),
+                    _ => {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: "join a room before resetting it".to_string(),
+                            },
+                        );
+                        continue;
+                    }
+                };
+                let key_for_check = key.clone();
+                let result: Result<u64, PlayError> = storage
+                    .clone()
+                    .execute_operation_with_messages(key.clone(), move |mut state| {
+                        reset_room_state_for_sole_online_player(
+                            &mut state.game,
+                            &key_for_check,
+                            &name,
+                        )
+                        .map_err(PlayError::Invalid)?;
+                        state.bump_version();
+                        Ok((state, vec![GuandanStorageMessage::StateChanged]))
+                    })
+                    .await;
+                if let Err(error) = result {
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: format!("reset room denied: {error}"),
+                        },
+                    );
+                } else {
+                    GUANDAN_OBSERVERS
+                        .lock()
+                        .ok()
+                        .map(|mut rooms| rooms.remove(&key));
+                    GUANDAN_HOOK_TO_BOTTOM
+                        .lock()
+                        .ok()
+                        .map(|mut rooms| rooms.remove(&key));
+                    if let Ok(state) = storage.clone().get(key.clone()).await {
+                        send(
+                            &tx,
+                            &GuandanServerMessage::RoomReset {
+                                room: String::from_utf8_lossy(&key).to_string(),
+                                match_id: state.game.match_id,
+                            },
+                        );
+                        send(&tx, &waiting_message(&key, &state.game));
+                    }
+                }
             }
             GuandanClientMessage::SetParticipation { active } => {
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
@@ -1580,6 +1670,55 @@ mod tests {
         started.started = true;
         assert!(!release_waiting_player(&mut started, "玩家1"));
         assert_eq!(started.player_names, vec!["玩家1", "玩家2"]);
+    }
+    #[test]
+    fn reset_room_requires_only_online_human_and_keeps_requester() {
+        let room = b"guandan-reset-qa-room";
+        let mut game = GuandanGameState::default();
+        game.player_names = vec!["Owner".into(), "OldPlayer".into(), "机器人1".into()];
+        game.started = true;
+        game.match_id = 17;
+        game.turn = 2;
+        game.finish_order = vec![1];
+        set_connected(room, "Owner", true);
+        assert!(reset_room_state_for_sole_online_player(&mut game, room, "Owner").is_ok());
+        assert_eq!(game.player_names, vec!["Owner"]);
+        assert!(!game.started);
+        assert_eq!(game.match_id, 18);
+        assert!(game.hands.is_empty());
+        assert!(game.finish_order.is_empty());
+        assert_eq!(game.turn, 0);
+        set_connected(room, "Owner", false);
+    }
+    #[test]
+    fn reset_room_rejects_other_live_players_without_mutating() {
+        let room = b"guandan-reset-qa-two-online";
+        let mut game = GuandanGameState::default();
+        game.player_names = vec!["Host".into(), "Guest".into(), "机器人1".into()];
+        set_connected(room, "Host", true);
+        set_connected(room, "Guest", true);
+        let before = game.player_names.clone();
+        assert!(reset_room_state_for_sole_online_player(&mut game, room, "Host").is_err());
+        assert_eq!(game.player_names, before);
+        assert!(!game.started);
+        set_connected(room, "Host", false);
+        set_connected(room, "Guest", false);
+    }
+    #[test]
+    fn reset_room_rejects_observer_and_non_seated_name() {
+        let room = b"guandan-reset-qa-observer";
+        let mut game = GuandanGameState::default();
+        game.player_names = vec!["Seated".into(), "机器人1".into()];
+        set_connected(room, "Seated", true);
+        assert!(reset_room_state_for_sole_online_player(&mut game, room, "Observer").is_err());
+        assert_eq!(game.player_names.len(), 2);
+        set_connected(room, "Seated", false);
+    }
+    #[test]
+    fn reset_room_message_is_parsed() {
+        let message: GuandanClientMessage =
+            serde_json::from_str(r#"{"type":"reset_room"}"#).unwrap();
+        assert!(matches!(message, GuandanClientMessage::ResetRoom));
     }
     #[test]
     fn explicit_leave_message_is_accepted() {
