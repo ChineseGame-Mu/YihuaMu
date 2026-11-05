@@ -402,14 +402,15 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
             .await;
         }
         UserMessage::Action(action) => {
-            execute_operation(
+            let robot_storage = backend_storage.clone();
+            let robot_room = room_name.to_owned();
+            let robot_logger = logger.clone();
+            let success = execute_operation(
                 ws_id,
                 room_name,
                 backend_storage,
                 move |game, _, _| {
-                    let mut messages = game.interact(action, caller, &logger)?;
-                    messages.extend(game.run_robot_actions(&logger)?);
-                    Ok(messages
+                    Ok(game.interact(action, caller, &logger)?
                         .into_iter()
                         .map(|(data, message)| GameMessage::Broadcast { data, message })
                         .collect())
@@ -417,6 +418,34 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                 "handle user action",
             )
             .await;
+            if success {
+                // Let clients paint every robot's face-up cards before the
+                // next move. Each operation publishes a distinct game state.
+                tokio::spawn(async move {
+                    for _ in 0..128 {
+                        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+                        let progressed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+                        let marker = progressed.clone();
+                        let tick_logger = robot_logger.clone();
+                        let ok = execute_operation(
+                            ws_id,
+                            &robot_room,
+                            robot_storage.clone(),
+                            move |game, _, _| {
+                                let moves = game.run_robot_actions(&tick_logger)?;
+                                marker.store(!moves.is_empty(), std::sync::atomic::Ordering::Relaxed);
+                                Ok(moves.into_iter()
+                                    .map(|(data, message)| GameMessage::Broadcast { data, message })
+                                    .collect())
+                            },
+                            "advance robot turn",
+                        ).await;
+                        if !ok || !progressed.load(std::sync::atomic::Ordering::Relaxed) {
+                            break;
+                        }
+                    }
+                });
+            }
         }
     }
     Ok(())
