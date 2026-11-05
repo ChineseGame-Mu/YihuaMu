@@ -231,22 +231,22 @@ button.normal {
 
 .four-color .♢,
 .four-color.♢ {
-  color: #1933f9;
+  color: #f5a623;
 }
 
 .four-color .♡,
 .four-color.♡ {
-  color: #bb0313;
+  color: #ed2945;
 }
 
 .four-color .♤,
 .four-color.♤ {
-  color: #000;
+  color: #151515;
 }
 
 .four-color .♧,
 .four-color.♧ {
-  color: #477e1b;
+  color: #16a354;
 }
 
 .four-color .🃟,
@@ -465,3 +465,13 @@ label {
 .rules .card:last-child {
   margin-right: 0;
 }
+
+/* Two-game four-colour cards: match the readable Guandan red/orange/green/black palette.
+   Scope to game card SVGs; do not change the independent Guandan design. */
+.four-color .card.svg.♧ svg path[fill="green"] { fill: #16a354; }
+.four-color .card.svg.♧ svg path[stroke="green"] { stroke: #16a354; }
+.four-color .card.svg.♡ svg path[fill="red"] { fill: #ed2945; }
+.four-color .card.svg.♡ svg path[stroke="red"] { stroke: #ed2945; }
+/* Preserve black spade readability even when the overall app is in dark mode. */
+.dark-mode .four-color .♤,
+.dark-mode .four-color.♤ { color: #151515; }
