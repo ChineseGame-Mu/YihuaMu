@@ -1003,7 +1003,10 @@ const GuandanTable: React.FunctionComponent = () => {
 
   // Explicitly destructive. The backend separately enforces the one-online-human rule.
   const resetRoom = (): void => {
-    if (!joined || state.seat === null || state.room === null) return;
+    if (!joined || state.seat === null || state.room === null) {
+      window.alert("请先从掼蛋山水首页选择牌室、输入姓名，并确认已连接及成功入座，再清空旧玩家。");
+      return;
+    }
     const otherOnlineHuman = state.players.some(
       (player, index) =>
         index !== state.seat &&
@@ -1537,16 +1540,6 @@ const GuandanTable: React.FunctionComponent = () => {
             <button
               type="button"
               className="normal"
-              disabled={
-                !joined ||
-                state.seat === null ||
-                state.players.some(
-                  (player, index) =>
-                    index !== state.seat &&
-                    !player.startsWith("机器人") &&
-                    state.onlinePlayers[index],
-                )
-              }
               onClick={resetRoom}
             >
               清空旧玩家 / Reset Room

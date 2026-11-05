@@ -38,6 +38,8 @@ export const shouldCoalesceGuandanServerMessage = (
   message: { readonly type: GuandanServerMessage["type"] },
 ): boolean => ["waiting", "started", "hand"].includes(message.type);
 
+const RESET_ROOM_QA_HOST = "guandan-reset-room-qa-20261105.onrender.com";
+const RESET_ROOM_QA_WEBSOCKET = "wss://guandan-reset-room-qa-20261105.onrender.com/api/guandan";
 const TEST_WEBSOCKET = "wss://chinesegame-yihua.onrender.com/api/guandan";
 const CLEANROOM_WEBSOCKET = "wss://card-games-yihua.onrender.com/api/guandan";
 // Dedicated long-running QA WebSocket service. Vercel request-scoped
@@ -230,6 +232,9 @@ const testWebsocketOverride = (): string | null => {
 };
 
 const websocketUri = (): string => {
+  // This isolated QA host must never connect to the production shared backend.
+  // Ignore any stale query-string ws= value, _WEBSOCKET_HOST, or cleanroom override.
+  if (window.location.hostname === RESET_ROOM_QA_HOST) return RESET_ROOM_QA_WEBSOCKET;
   const cleanroom = cleanroomWebsocketOverride();
   if (cleanroom !== null) return cleanroom;
 
