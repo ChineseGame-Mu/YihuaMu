@@ -295,10 +295,16 @@ fn reset_room_state_for_sole_online_player(
     room: &[u8],
     caller: &str,
 ) -> Result<(), &'static str> {
-    let seat = game.player_names.iter()
+    let seat = game
+        .player_names
+        .iter()
         .position(|name| name == caller)
         .ok_or("only a seated player can reset the room")?;
-    if !online_players(room, game).get(seat).copied().unwrap_or(false) {
+    if !online_players(room, game)
+        .get(seat)
+        .copied()
+        .unwrap_or(false)
+    {
         return Err("the requester must be online");
     }
     if online_human_count(room, game) != 1 {
@@ -1211,9 +1217,12 @@ pub async fn websocket(
                 let (key, name) = match (joined_room.clone(), joined_name.clone()) {
                     (Some(key), Some(name)) => (key, name),
                     _ => {
-                        send(&tx, &GuandanServerMessage::Error {
-                            message: "join a room before resetting it".to_string(),
-                        });
+                        send(
+                            &tx,
+                            &GuandanServerMessage::Error {
+                                message: "join a room before resetting it".to_string(),
+                            },
+                        );
                         continue;
                     }
                 };
@@ -1222,19 +1231,31 @@ pub async fn websocket(
                     .clone()
                     .execute_operation_with_messages(key.clone(), move |mut state| {
                         reset_room_state_for_sole_online_player(
-                            &mut state.game, &key_for_check, &name
-                        ).map_err(PlayError::Invalid)?;
+                            &mut state.game,
+                            &key_for_check,
+                            &name,
+                        )
+                        .map_err(PlayError::Invalid)?;
                         state.bump_version();
                         Ok((state, vec![GuandanStorageMessage::StateChanged]))
                     })
                     .await;
                 if let Err(error) = result {
-                    send(&tx, &GuandanServerMessage::Error {
-                        message: format!("reset room denied: {error}"),
-                    });
+                    send(
+                        &tx,
+                        &GuandanServerMessage::Error {
+                            message: format!("reset room denied: {error}"),
+                        },
+                    );
                 } else {
-                    GUANDAN_OBSERVERS.lock().ok().map(|mut rooms| rooms.remove(&key));
-                    GUANDAN_HOOK_TO_BOTTOM.lock().ok().map(|mut rooms| rooms.remove(&key));
+                    GUANDAN_OBSERVERS
+                        .lock()
+                        .ok()
+                        .map(|mut rooms| rooms.remove(&key));
+                    GUANDAN_HOOK_TO_BOTTOM
+                        .lock()
+                        .ok()
+                        .map(|mut rooms| rooms.remove(&key));
                     if let Ok(state) = storage.clone().get(key.clone()).await {
                         send(&tx, &GuandanServerMessage::RoomReset {
                             room: String::from_utf8_lossy(&key).to_string(),
