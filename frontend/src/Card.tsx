@@ -301,9 +301,11 @@ const Card = (props: IProps): JSX.Element => {
             settings.darkMode && !settings.fourColor ? "dark-mode" : null,
           )}
           colorOverride={
-            settings.suitColorOverrides[
-              staticCardInfo.typ as keyof ISuitOverrides
-            ]
+            settings.fourColor
+              ? undefined
+              : settings.suitColorOverrides[
+                  staticCardInfo.typ as keyof ISuitOverrides
+                ]
           }
           backgroundColor={settings.fourColor ? "#fff" : settings.darkMode ? "#000" : "#fff"}
         />

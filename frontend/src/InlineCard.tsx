@@ -25,7 +25,9 @@ function Suit(
         className={className}
         {...props}
         style={{
-          color: settings.suitColorOverrides[className as keyof ISuitOverrides],
+          color: settings.fourColor
+            ? undefined
+            : settings.suitColorOverrides[className as keyof ISuitOverrides],
         }}
       />
     );
