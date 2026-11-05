@@ -224,9 +224,9 @@ const Card = (props: IProps): JSX.Element => {
           suit={classNames(
             "unknown",
             settings.fourColor ? "four-color" : null,
-            settings.darkMode ? "dark-mode" : null,
+            settings.darkMode && !settings.fourColor ? "dark-mode" : null,
           )}
-          backgroundColor={settings.darkMode ? "#000" : "#fff"}
+          backgroundColor={settings.fourColor ? "#fff" : settings.darkMode ? "#000" : "#fff"}
         />
       </div>
     );
@@ -298,14 +298,14 @@ const Card = (props: IProps): JSX.Element => {
           suit={classNames(
             staticCardInfo.typ,
             settings.fourColor ? "four-color" : null,
-            settings.darkMode ? "dark-mode" : null,
+            settings.darkMode && !settings.fourColor ? "dark-mode" : null,
           )}
           colorOverride={
             settings.suitColorOverrides[
               staticCardInfo.typ as keyof ISuitOverrides
             ]
           }
-          backgroundColor={settings.darkMode ? "#000" : "#fff"}
+          backgroundColor={settings.fourColor ? "#fff" : settings.darkMode ? "#000" : "#fff"}
         />
       </div>
     );
