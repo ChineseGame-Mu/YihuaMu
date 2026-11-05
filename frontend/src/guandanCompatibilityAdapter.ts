@@ -179,6 +179,15 @@ export const adaptGuandanServerMessage = (
         seat: message.seat,
         error: null,
       };
+    case "room_reset":
+      return {
+        ...initialGuandanTableState,
+        room: message.room,
+        seat: 0,
+        matchId: message.match_id,
+        players: [],
+        error: null,
+      };
     case "waiting":
       return {
         ...state,

@@ -45,16 +45,21 @@ const selectableRooms = CLEANROOM_ROOM_IDS;
 type SelectableRoom = CleanroomRoomId;
 // QA-only routing: preview gameplay must use its own isolated Rust backend.
 // The approved production hostname and homepage remain unchanged.
+const isResetRoomQa = window.location.hostname === "guandan-reset-room-qa-20261105.onrender.com";
 const isIsolatedQaPreview =
   window.location.hostname === "yihua-guandan-qa-safe.vercel.app" ||
   (window.location.hostname.startsWith("yihua-guandan-qa-safe-") &&
     window.location.hostname.endsWith(".vercel.app"));
-const cleanroomWebsocket = isIsolatedQaPreview
-  ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
-  : "wss://card-games-yihua.onrender.com/api/guandan";
-const cleanroomRoomAvailabilityUrl = isIsolatedQaPreview
-  ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
-  : "https://card-games-yihua.onrender.com/api/guandan/rooms";
+const cleanroomWebsocket = isResetRoomQa
+  ? "wss://guandan-reset-room-qa-20261105.onrender.com/api/guandan"
+  : isIsolatedQaPreview
+    ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
+    : "wss://card-games-yihua.onrender.com/api/guandan";
+const cleanroomRoomAvailabilityUrl = isResetRoomQa
+  ? "https://guandan-reset-room-qa-20261105.onrender.com/api/guandan/rooms"
+  : isIsolatedQaPreview
+    ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
+    : "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = isCleanroomRoomId;
 const roomFromLocation = (): SelectableRoom => {
@@ -138,9 +143,19 @@ const CleanroomEntry = (): JSX.Element => {
   const [name, setName] = React.useState(
     initial.get("playerName") ?? initial.get("name") ?? "",
   );
+  // On the isolated Reset Room QA host, opening or refreshing any link
+  // must first show the approved mountain-water lobby.  Old copied links can
+  // contain autoJoin=1, name and game=guandan; these must not skip the lobby.
+  // Clicking "进入牌室" below still sets joined=true in this same React mount.
   const [joined, setJoined] = React.useState(() =>
-    shouldAutoJoinCleanroom(window.location.search),
+    isResetRoomQa ? false : shouldAutoJoinCleanroom(window.location.search),
   );
+  React.useEffect(() => {
+    if (!isResetRoomQa) return;
+    // Preserve the selected room/name in component state, but strip stale
+    // autologin and third-party tracking query params from the shareable URL.
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
   const [roomAvailability, setRoomAvailability] = React.useState<
     Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
   >({});

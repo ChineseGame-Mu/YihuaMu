@@ -75,7 +75,13 @@ const bootstrap = (): void => {
 
   const params = new URLSearchParams(window.location.search);
   const game = params.get("game");
+  // The isolated Reset Room QA site must always use the same approved
+  // Guandan lobby as production, including when an old link carries
+  // ?game=guandan. Inside the lobby, autoJoin still opens the room normally.
+  const resetRoomQa =
+    window.location.hostname === "guandan-reset-room-qa-20261105.onrender.com";
   const cleanroom =
+    resetRoomQa ||
     params.get("cleanroom") === "1" ||
     (game === null && params.get("classic") !== "1");
 
