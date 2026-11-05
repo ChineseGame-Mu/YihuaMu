@@ -97,31 +97,24 @@ impl InteractiveGame {
         &mut self,
         logger: &Logger,
     ) -> Result<Vec<(BroadcastMessage, String)>, Error> {
-        let mut messages = Vec::new();
-        for _ in 0..128 {
-            // The last card of a trick empties the turn queue.  If we only
-            // consult next_player(), robots appear to freeze after all four
-            // seats have played.  Complete the trick before selecting turns.
-            if let GameState::Play(phase) = &self.state {
-                if let Ok(completed) = phase.trick().complete() {
-                    messages.extend(self.interact(Action::EndTrick, completed.winner, logger)?);
-                    continue;
-                }
+        // Execute only ONE transition per server tick. Publishing all bot
+        // moves in a single operation skips intermediate visible card states.
+        if let GameState::Play(phase) = &self.state {
+            if let Ok(completed) = phase.trick().complete() {
+                return self.interact(Action::EndTrick, completed.winner, logger);
             }
-            let actor = match self.state.next_player() {
-                Ok(player) => player,
-                Err(_) => break,
-            };
-            let name = self.state.player_name(actor)?;
-            if !name.starts_with("机器人") {
-                break;
-            }
-            let Some(action) = crate::robot_policy::choose_robot_action(&self.state, actor) else {
-                break;
-            };
-            messages.extend(self.interact(action, actor, logger)?);
         }
-        Ok(messages)
+        let actor = match self.state.next_player() {
+            Ok(player) => player,
+            Err(_) => return Ok(Vec::new()),
+        };
+        if !self.state.player_name(actor)?.starts_with("机器人") {
+            return Ok(Vec::new());
+        }
+        let Some(action) = crate::robot_policy::choose_robot_action(&self.state, actor) else {
+            return Ok(Vec::new());
+        };
+        self.interact(action, actor, logger)
     }
 
     #[allow(clippy::cognitive_complexity)]
