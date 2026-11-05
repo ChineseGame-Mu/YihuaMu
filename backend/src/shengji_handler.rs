@@ -15,7 +15,7 @@ use crate::{
     ZSTD_COMPRESSOR,
 };
 
-pub async fn entrypoint<S: Storage<VersionedGame, E>, E: std::fmt::Debug + Send>(
+pub async fn entrypoint<S: Storage<VersionedGame, E> + 'static, E: std::fmt::Debug + Send + 'static>(
     tx: mpsc::UnboundedSender<Vec<u8>>,
     rx: mpsc::UnboundedReceiver<Vec<u8>>,
     ws_id: usize,
@@ -56,7 +56,7 @@ async fn send_to_user_with_compression(
     Err(anyhow::anyhow!("Unable to send message to user {:?}", msg))
 }
 
-async fn handle_user_connected<S: Storage<VersionedGame, E>, E: std::fmt::Debug + Send>(
+async fn handle_user_connected<S: Storage<VersionedGame, E> + 'static, E: std::fmt::Debug + Send + 'static>(
     tx: mpsc::UnboundedSender<Vec<u8>>,
     mut rx: mpsc::UnboundedReceiver<Vec<u8>>,
     ws_id: usize,
@@ -190,7 +190,7 @@ async fn player_subscribe_task(
     debug!(logger_, "Subscription task completed");
 }
 
-async fn register_user<S: Storage<VersionedGame, E>, E: std::fmt::Debug + Send>(
+async fn register_user<S: Storage<VersionedGame, E> + 'static, E: std::fmt::Debug + Send + 'static>(
     logger: Logger,
     name: String,
     ws_id: usize,
@@ -262,7 +262,7 @@ async fn register_user<S: Storage<VersionedGame, E>, E: std::fmt::Debug + Send>(
     }
 }
 
-async fn run_game_for_player<S: Storage<VersionedGame, E>, E: Send + std::fmt::Debug>(
+async fn run_game_for_player<S: Storage<VersionedGame, E> + 'static, E: Send + std::fmt::Debug + 'static>(
     logger: Logger,
     ws_id: usize,
     player_id: PlayerID,
@@ -312,7 +312,7 @@ async fn run_game_for_player<S: Storage<VersionedGame, E>, E: Send + std::fmt::D
     debug!(logger, "Exiting main game loop");
 }
 
-async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
+async fn handle_user_action<S: Storage<VersionedGame, E> + 'static, E: Send + 'static>(
     logger: Logger,
     ws_id: usize,
     caller: PlayerID,
@@ -466,7 +466,7 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
     Ok(())
 }
 
-async fn user_disconnected<S: Storage<VersionedGame, E>, E: Send>(
+async fn user_disconnected<S: Storage<VersionedGame, E> + 'static, E: Send + 'static>(
     room: String,
     ws_id: usize,
     backend_storage: S,
