@@ -491,3 +491,25 @@ svg[class*="C_svg__card"] [fill="green"] { fill: #176b43; }
 svg[class*="C_svg__card"] [stroke="green"] { stroke: #176b43; }
 svg[class*="S_svg__card"] [fill="#000"] { fill: #202a39; }
 svg[class*="S_svg__card"] [stroke="#000"] { stroke: #202a39; }
+
+/* Guandan-style practice robot configuration on the isolated two-game QA site. */
+.two-game-bot-settings {
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d4b36f;
+  border-radius: 12px;
+  background: #fffaf0;
+  color: #244130;
+}
+.two-game-bot-settings h4 {
+  margin: 0 0 0.5rem;
+}
+.two-game-bot-settings select {
+  max-width: 100%;
+  font-size: 1rem;
+  padding: 0.4rem;
+}
+.two-game-bot-settings p {
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0;
+}

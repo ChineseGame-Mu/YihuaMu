@@ -701,6 +701,26 @@ interface IProps {
 const Initialize = (props: IProps): JSX.Element => {
   const { send } = React.useContext(WebsocketContext);
   const [showPicker, setShowPicker] = React.useState<boolean>(false);
+  const botRequestHandled = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const room = window.location.hash.slice(1).match(/^000[1-4]/)?.[0];
+    if (!room || !props.name) return;
+    const key = `two_game_bots:${room}:${props.name}`;
+    const requested = window.sessionStorage.getItem(key);
+    if (requested === null || botRequestHandled.current === key) return;
+    const count = Number(requested);
+    const players = props.state.propagated.players;
+    const humanPlayers = players.filter((p) => !p.name.startsWith("机器人"));
+    if (humanPlayers[0]?.name !== props.name) return;
+    botRequestHandled.current = key;
+    window.sessionStorage.removeItem(key);
+    if (!Number.isInteger(count) || count < 1 || count > 3) return;
+    if (humanPlayers.length + count > 4) return;
+    const existing = players.filter((p) => p.name.startsWith("机器人")).length;
+    if (existing !== count) {
+      send({ Action: { SetBots: count } });
+    }
+  }, [props.name, props.state.propagated.players, send]);
   const setGameMode = (evt: React.ChangeEvent<HTMLSelectElement>): void => {
     evt.preventDefault();
     if (evt.target.value === "Tractor") {
@@ -1123,18 +1143,32 @@ const Initialize = (props: IProps): JSX.Element => {
       />
       <div className="game-settings">
         <h3>游戏设置</h3>
-        <div className="robot-settings">
-          <label htmlFor="two-game-bot-count">机器人陪玩：</label>
-          <select id="two-game-bot-count"
+        <div className="two-game-bot-settings">
+          <h4>高级机器人陪玩设置（参考掼蛋）</h4>
+          <label htmlFor="two-game-bot-count">机器人玩家：</label>{" "}
+          <select
+            id="two-game-bot-count"
+            aria-label="机器人玩家数量"
             value={props.state.propagated.players.filter((p) => p.name.startsWith("机器人")).length}
-            onChange={(event) => send({ Action: { SetBots: Number(event.target.value) } })}>
+            disabled={props.state.propagated.players.find((p) => !p.name.startsWith("机器人"))?.name !== props.name}
+            onChange={(event) => send({ Action: { SetBots: Number(event.target.value) } })}
+          >
             {[0, 1, 2, 3].map((count) => (
-              <option key={count} value={count} disabled={props.state.propagated.players.filter((p) => !p.name.startsWith("机器人")).length + count > 4}>
-                {count === 0 ? "无机器人" : `${count} 个机器人`}
+              <option
+                key={count}
+                value={count}
+                disabled={props.state.propagated.players.filter((p) => !p.name.startsWith("机器人")).length + count > 4}
+              >
+                {count === 0 ? "不加机器人" : `${count} 个机器人`}
               </option>
             ))}
           </select>
-          <p>真人与机器人合计最多四人，开局前选择。</p>
+          <p>
+            仅房主可更改；真人与机器人共四席。真人加入满员房间时，优先替换机器人座位。
+          </p>
+          <p>
+            服务器自动驱动连续机器人回合；自动叫牌、复杂甩牌与完整对局仍须单独验收。
+          </p>
         </div>
         <div>
           <label>

@@ -25,6 +25,8 @@ const JoinRoom = (props: IProps): JSX.Element => {
     !isValidRoomCode(props.room_name),
   );
   const { send } = React.useContext(WebsocketContext);
+  // Guandan-style pre-join selection.  The server remains authoritative.
+  const [pendingBots, setPendingBots] = React.useState<number>(0);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>): void =>
     props.setName(event.target.value.trim());
@@ -48,6 +50,14 @@ const JoinRoom = (props: IProps): JSX.Element => {
       });
 
       if (creatingNewRoom) {
+        // Apply only after the server confirms this human has joined the room.
+        // Never blindly modify a previously shared room from the join screen.
+        const requestKey = `two_game_bots:${props.room_name}:${props.name}`;
+        if (pendingBots > 0) {
+          window.sessionStorage.setItem(requestKey, String(pendingBots));
+        } else {
+          window.sessionStorage.removeItem(requestKey);
+        }
         const gameMode = props.gameMode ?? "Tractor";
         if (gameMode === "Tractor") {
           send({ Action: { SetGameMode: "Tractor" } });
@@ -128,6 +138,31 @@ const JoinRoom = (props: IProps): JSX.Element => {
             />
           </label>
         </div>
+        {creatingNewRoom && (
+          <div className="two-game-bot-settings">
+            <label htmlFor="two-games-prejoin-bots">
+              <strong>高级机器人陪玩设置：</strong>
+            </label>{" "}
+            <select
+              id="two-games-prejoin-bots"
+              aria-label="机器人玩家数量"
+              value={pendingBots}
+              onChange={(event) => setPendingBots(Number(event.target.value))}
+            >
+              <option value={0}>不加机器人</option>
+              <option value={1}>1 个机器人（需 3 位真人）</option>
+              <option value={2}>2 个机器人（需 2 位真人）</option>
+              <option value={3}>3 个机器人（1 位真人即可开局）</option>
+            </select>
+            <p>
+              参考掼蛋：建房前预选，入座后由服务器添加机器人。
+              真人与机器人共四席；只允许房主修改，开局后锁定。
+            </p>
+            <p>
+              机器人自动摸牌、尝试合法跟牌及回合衔接；复杂牌型由原游戏规则引擎核查。
+            </p>
+          </div>
+        )}
         <div style={{ marginTop: "1em", marginBottom: "1em" }}>
           <button
             type="submit"
