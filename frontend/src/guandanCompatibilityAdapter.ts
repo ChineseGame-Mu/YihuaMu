@@ -185,7 +185,7 @@ export const adaptGuandanServerMessage = (
         room: message.room,
         seat: 0,
         matchId: message.match_id,
-        players: state.players.length ? [state.players[state.seat ?? 0]] : [],
+        players: [],
         error: null,
       };
     case "waiting":
