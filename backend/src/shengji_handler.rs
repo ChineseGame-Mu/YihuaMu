@@ -423,7 +423,22 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                 // next move. Each operation publishes a distinct game state.
                 tokio::spawn(async move {
                     for _ in 0..128 {
-                        tokio::time::sleep(std::time::Duration::from_millis(1100)).await;
+                        // Keep all four face-up plays on the table after the
+                        // fourth card. Clear only when the next trick starts.
+                        // Give humans time to read the complete trick.
+                        let completed_trick = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+                        let completed_marker = completed_trick.clone();
+                        let _ = execute_immutable_operation(
+                            ws_id, &robot_room, robot_storage.clone(),
+                            move |game, _| {
+                                if let shengji_core::game_state::GameState::Play(phase) = &game.state {
+                                    completed_marker.store(phase.trick().complete().is_ok(), std::sync::atomic::Ordering::Relaxed);
+                                }
+                                Ok(Vec::new())
+                            }, "check completed trick",
+                        ).await;
+                        let wait_ms = if completed_trick.load(std::sync::atomic::Ordering::Relaxed) { 4000 } else { 1100 };
+                        tokio::time::sleep(std::time::Duration::from_millis(wait_ms)).await;
                         let progressed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
                         let marker = progressed.clone();
                         let tick_logger = robot_logger.clone();
