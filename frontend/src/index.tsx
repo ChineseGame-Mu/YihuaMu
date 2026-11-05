@@ -23,22 +23,10 @@ import WebsocketProvider from "./WebsocketProvider";
 import TimerProvider from "./TimerProvider";
 import Root from "./Root";
 import Welcome from "./Welcome";
-import GuandanWebsocketProvider from "./GuandanWebsocketProvider";
-import GuandanStateProvider from "./GuandanStateProvider";
-import GuandanTable from "./GuandanTable";
-import GuandanNoBeatHint from "./GuandanNoBeatHint";
-import GuandanNoBeatControls from "./GuandanNoBeatControls";
-import ExitGameButton from "./ExitGameButton";
-import GuandanHeaderDecor from "./GuandanHeaderDecor";
-import GuandanCustomSortControls from "./GuandanCustomSortControls";
 
 const WasmProvider = React.lazy(
   async () => await import("./WasmOrRpcProvider"),
 );
-
-const returnToGameSelection = (): void => {
-  window.location.href = `${window.location.origin}${window.location.pathname}`;
-};
 
 const bootstrap = (): void => {
   Sentry.init({
@@ -80,28 +68,6 @@ const bootstrap = (): void => {
           window.location.assign(window.location.pathname + "?game=" + query);
         }}
       />,
-    );
-    return;
-  }
-
-  // TWO-GAME ISOLATED QA: default to the Tractor / Finding Friends welcome page.
-  // Never redirect visitors to the standalone Guandan lobby from this test site.
-  if (false && game === "guandan") {
-    root_.render(
-      <React.Suspense fallback={fallback}>
-        <TimerProvider>
-          <GuandanWebsocketProvider>
-            <GuandanStateProvider>
-              <ExitGameButton onClick={returnToGameSelection} />
-              <GuandanHeaderDecor />
-              <GuandanCustomSortControls />
-              <GuandanTable />
-              <GuandanNoBeatHint />
-              <GuandanNoBeatControls />
-            </GuandanStateProvider>
-          </GuandanWebsocketProvider>
-        </TimerProvider>
-      </React.Suspense>,
     );
     return;
   }
