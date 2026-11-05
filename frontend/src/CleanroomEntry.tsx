@@ -45,16 +45,21 @@ const selectableRooms = CLEANROOM_ROOM_IDS;
 type SelectableRoom = CleanroomRoomId;
 // QA-only routing: preview gameplay must use its own isolated Rust backend.
 // The approved production hostname and homepage remain unchanged.
+const isResetRoomQa = window.location.hostname === "guandan-reset-room-qa-20261105.onrender.com";
 const isIsolatedQaPreview =
   window.location.hostname === "yihua-guandan-qa-safe.vercel.app" ||
   (window.location.hostname.startsWith("yihua-guandan-qa-safe-") &&
     window.location.hostname.endsWith(".vercel.app"));
-const cleanroomWebsocket = isIsolatedQaPreview
-  ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
-  : "wss://card-games-yihua.onrender.com/api/guandan";
-const cleanroomRoomAvailabilityUrl = isIsolatedQaPreview
-  ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
-  : "https://card-games-yihua.onrender.com/api/guandan/rooms";
+const cleanroomWebsocket = isResetRoomQa
+  ? "wss://guandan-reset-room-qa-20261105.onrender.com/api/guandan"
+  : isIsolatedQaPreview
+    ? "wss://guandan-stable-ws-qa-20261018.onrender.com/api/guandan"
+    : "wss://card-games-yihua.onrender.com/api/guandan";
+const cleanroomRoomAvailabilityUrl = isResetRoomQa
+  ? "https://guandan-reset-room-qa-20261105.onrender.com/api/guandan/rooms"
+  : isIsolatedQaPreview
+    ? "https://guandan-stable-ws-qa-20261018.onrender.com/api/guandan/rooms"
+    : "https://card-games-yihua.onrender.com/api/guandan/rooms";
 const defaultCleanroomRoom: SelectableRoom = "0004";
 const isSelectableRoom = isCleanroomRoomId;
 const roomFromLocation = (): SelectableRoom => {
