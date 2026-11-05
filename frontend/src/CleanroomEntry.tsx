@@ -143,9 +143,19 @@ const CleanroomEntry = (): JSX.Element => {
   const [name, setName] = React.useState(
     initial.get("playerName") ?? initial.get("name") ?? "",
   );
+  // On the isolated Reset Room QA host, opening or refreshing any link
+  // must first show the approved mountain-water lobby.  Old copied links can
+  // contain autoJoin=1, name and game=guandan; these must not skip the lobby.
+  // Clicking "进入牌室" below still sets joined=true in this same React mount.
   const [joined, setJoined] = React.useState(() =>
-    shouldAutoJoinCleanroom(window.location.search),
+    isResetRoomQa ? false : shouldAutoJoinCleanroom(window.location.search),
   );
+  React.useEffect(() => {
+    if (!isResetRoomQa) return;
+    // Preserve the selected room/name in component state, but strip stale
+    // autologin and third-party tracking query params from the shareable URL.
+    window.history.replaceState({}, "", window.location.pathname);
+  }, []);
   const [roomAvailability, setRoomAvailability] = React.useState<
     Readonly<Partial<Record<SelectableRoom, CleanroomRoomAvailability>>>
   >({});
