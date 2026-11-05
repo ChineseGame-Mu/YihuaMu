@@ -1001,6 +1001,30 @@ const GuandanTable: React.FunctionComponent = () => {
     }
   };
 
+  // Explicitly destructive. The backend separately enforces the one-online-human rule.
+  const resetRoom = (): void => {
+    if (!joined || state.seat === null || state.room === null) return;
+    const otherOnlineHuman = state.players.some(
+      (player, index) =>
+        index !== state.seat &&
+        !player.startsWith("机器人") &&
+        state.onlinePlayers[index],
+    );
+    if (otherOnlineHuman) {
+      window.alert("还有其他真人在线。请先让他们退出房间，再清空旧玩家。");
+      return;
+    }
+    const confirmation = window.prompt(
+      `清空房间 ${state.room} 将删除旧玩家、机器人座位和本局全部记录；仅保留您自己与房间号。\n此操作不可撤销。请输入房间号 ${state.room} 确认：`,
+      "",
+    );
+    if (confirmation !== state.room) return;
+    if (!window.confirm("最后确认：清空整个房间的旧玩家和牌局数据？")) return;
+    if (!send({ type: "reset_room" })) {
+      window.alert("服务器未连接，清空操作没有发送，请重新连接后再试。");
+    }
+  };
+
   const emergencyReset = (): void => {
     if (state.seat === null) return;
     const confirmed = window.confirm(
@@ -1508,6 +1532,31 @@ const GuandanTable: React.FunctionComponent = () => {
               </p>
             </div>
           )}
+          <div className="guandan-emergency-reset">
+            <strong>清空旧玩家 / Reset Room：</strong>{" "}
+            <button
+              type="button"
+              className="normal"
+              disabled={
+                !joined ||
+                state.seat === null ||
+                state.players.some(
+                  (player, index) =>
+                    index !== state.seat &&
+                    !player.startsWith("机器人") &&
+                    state.onlinePlayers[index],
+                )
+              }
+              onClick={resetRoom}
+            >
+              清空旧玩家 / Reset Room
+            </button>
+            <p>
+              只在房间内仅您一位真人在线时可用。删除旧玩家、机器人及当前牌局，
+              保留您本人和原房间号；要求输入房间号并再次确认。
+              有其他真人在线时服务器会拒绝操作。与下面的“清零牌局”不同。
+            </p>
+          </div>
           <div className="guandan-emergency-reset">
             <strong>异常恢复：</strong>{" "}
             <button
