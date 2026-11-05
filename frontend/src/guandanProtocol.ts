@@ -74,6 +74,7 @@ export type GuandanServerMessage =
       player_id?: string;
       resume_token?: string;
     }
+  | { type: "room_reset"; room: string; match_id: number }
   | {
       type: "waiting";
       players: string[];

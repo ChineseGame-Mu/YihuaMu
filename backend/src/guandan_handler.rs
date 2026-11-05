@@ -94,6 +94,10 @@ pub enum GuandanServerMessage {
         room: String,
         seat: Option<usize>,
     },
+    RoomReset {
+        room: String,
+        match_id: u64,
+    },
     Waiting {
         players: Vec<String>,
         observers: Vec<String>,
@@ -1232,6 +1236,10 @@ pub async fn websocket(
                     GUANDAN_OBSERVERS.lock().ok().map(|mut rooms| rooms.remove(&key));
                     GUANDAN_HOOK_TO_BOTTOM.lock().ok().map(|mut rooms| rooms.remove(&key));
                     if let Ok(state) = storage.clone().get(key.clone()).await {
+                        send(&tx, &GuandanServerMessage::RoomReset {
+                            room: String::from_utf8_lossy(&key).to_string(),
+                            match_id: state.game.match_id,
+                        });
                         send(&tx, &waiting_message(&key, &state.game));
                     }
                 }
