@@ -431,7 +431,7 @@ async fn handle_user_action<S: Storage<VersionedGame, E>, E: Send>(
                         let _ = execute_immutable_operation(
                             ws_id, &robot_room, robot_storage.clone(),
                             move |game, _| {
-                                if let shengji_core::game_state::GameState::Play(phase) = &game.state {
+                                if let shengji_core::game_state::GameState::Play(phase) = game.dump_state()? {
                                     completed_marker.store(phase.trick().complete().is_ok(), std::sync::atomic::Ordering::Relaxed);
                                 }
                                 Ok(Vec::new())
