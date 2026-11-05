@@ -1257,10 +1257,13 @@ pub async fn websocket(
                         .ok()
                         .map(|mut rooms| rooms.remove(&key));
                     if let Ok(state) = storage.clone().get(key.clone()).await {
-                        send(&tx, &GuandanServerMessage::RoomReset {
-                            room: String::from_utf8_lossy(&key).to_string(),
-                            match_id: state.game.match_id,
-                        });
+                        send(
+                            &tx,
+                            &GuandanServerMessage::RoomReset {
+                                room: String::from_utf8_lossy(&key).to_string(),
+                                match_id: state.game.match_id,
+                            },
+                        );
                         send(&tx, &waiting_message(&key, &state.game));
                     }
                 }
