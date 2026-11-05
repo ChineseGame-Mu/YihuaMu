@@ -24,6 +24,7 @@ interface IDrawState {
 class Draw extends React.Component<IDrawProps, IDrawState> {
   private timeout: number | null = null;
   private drawCardAudio: HTMLAudioElement | null = null;
+  private autoKittySent = false;
 
   constructor(props: IDrawProps) {
     super(props);
@@ -38,10 +39,12 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
 
   componentDidMount(): void {
     this.scheduleAutodrawIfNeeded();
+    this.scheduleAutoKittyIfNeeded();
   }
 
   componentDidUpdate(): void {
     this.scheduleAutodrawIfNeeded();
+    this.scheduleAutoKittyIfNeeded();
   }
 
   componentWillUnmount(): void {
@@ -72,6 +75,31 @@ class Draw extends React.Component<IDrawProps, IDrawState> {
       },
       this.props.autodrawSpeedMs !== null ? this.props.autodrawSpeedMs : 250,
     );
+  }
+
+  // In a one-human / three-robot room, advance the human landlord once
+  // drawing and bidding have finished. The ordinary multiplayer flow still
+  // requires the landlord to click the Pick Up Kitty button.
+  private scheduleAutoKittyIfNeeded(): void {
+    const draw = this.props.state;
+    if (draw.deck.length > 0) {
+      this.autoKittySent = false;
+      return;
+    }
+    if (this.autoKittySent || this.timeout !== null) return;
+    const players = draw.propagated.players;
+    if (players.length !== 4 || players.filter(p => p.name.startsWith("机器人")).length !== 3) return;
+    const human = players.find(p => p.name === this.props.name);
+    if (!human) return;
+    const landlord = draw.propagated.landlord;
+    const winner = draw.propagated.first_landlord_selection_policy === "ByFirstBid"
+      ? draw.bids[0] : draw.bids[draw.bids.length - 1];
+    if (landlord !== null && landlord !== undefined && landlord !== human.id) return;
+    if ((landlord === null || landlord === undefined) && (!winner || winner.id !== human.id)) return;
+    if (draw.bids.length === 0 && draw.autobid === null &&
+        !(landlord === human.id && human.level === "NT")) return;
+    this.autoKittySent = true;
+    (window as any).send({ Action: "PickUpKitty" });
   }
 
   drawCard(): void {
