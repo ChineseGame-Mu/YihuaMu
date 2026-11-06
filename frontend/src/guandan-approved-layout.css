@@ -458,3 +458,99 @@ html
   min-height: 0 !important;
   height: 100% !important;
 }
+
+
+/* Isolated QA: the tribute/return-card review belongs to the right review
+   panel, NEVER above public tricks or public-player seats. */
+html body .guandan-table:has(.guandan-public-zone) .guandan-exchange-review {
+  position: absolute !important;
+  inset: 80px 10px 10px !important;
+  z-index: 85 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  padding: 9px !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  background: #fff8da !important;
+  border: 2px solid #c89a2d !important;
+  border-radius: 12px !important;
+  color: #253a2b !important;
+  font-size: 0.86rem !important;
+}
+.guandan-exchange-review > strong { text-align: center; font-size: 1rem; }
+.guandan-exchange-review > p { margin: 0; font-size: 0.8rem; }
+.guandan-exchange-review-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  border-bottom: 1px solid #d8c58b;
+  padding-bottom: 5px;
+}
+.guandan-exchange-review-cards { display: inline-flex; justify-content: center; }
+.guandan-exchange-review-cards > span { display: inline-flex; }
+.guandan-resisted-review { inset: 80px 10px auto !important; min-height: 90px; }
+
+/* Simplified hand management: three prominent actions, one tap per card or
+   one tap for a full combination. Advanced controls stay available separately. */
+html body .guandan-table:has(.guandan-public-zone)
+  > .guandan-private-zone > .guandan-hand-section {
+  padding-top: 68px !important;
+}
+.guandan-simple-hand-toolbar {
+  position: absolute;
+  top: 28px;
+  left: 5px;
+  right: 5px;
+  z-index: 9;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+.guandan-simple-hand-toolbar button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 33px;
+  padding: 3px 4px;
+  border: 1px solid #a88231;
+  border-radius: 7px;
+  background: #fff2bf;
+  color: #17452b;
+  font-weight: 800;
+  font-size: clamp(10px, 1.1vw, 14px);
+  white-space: normal;
+  cursor: pointer;
+}
+.guandan-simple-hand-toolbar button:disabled { opacity: .52; }
+.guandan-simple-select-group {
+  min-width: 0;
+  max-width: 100%;
+  padding: 3px 5px;
+  border: 1px solid #caac54;
+  background: #fef4ce;
+  color: #274e36;
+  font-weight: 850;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.guandan-simple-select-group:disabled { opacity: .5; }
+@media (max-width: 760px) {
+  html body .guandan-table:has(.guandan-public-zone)
+    > .guandan-private-zone > .guandan-hand-section {
+    padding-top: 76px !important;
+  }
+  .guandan-simple-hand-toolbar { flex-wrap: wrap; gap: 2px; }
+  .guandan-simple-hand-toolbar button {
+    flex: 1 1 30%;
+    padding: 2px;
+    min-height: 29px;
+    font-size: 10px;
+  }
+  html body .guandan-table:has(.guandan-public-zone) .guandan-exchange-review {
+    inset: 69px 4px 4px !important;
+    font-size: 12px !important;
+  }
+}
