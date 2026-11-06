@@ -2477,6 +2477,36 @@ const GuandanTable: React.FunctionComponent = () => {
                   我的手牌（
                   {visibleHand.length}）
                 </h2>
+                <div className="guandan-simple-hand-toolbar" role="group" aria-label="简易理牌操作">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHandArrangeMode("auto");
+                      setAutoArrangeStrategy("balanced");
+                      setAutoGroupOverrides(null);
+                      setActiveAutoGroupIndex(0);
+                      setAutoHandLayout("horizontal");
+                    }}
+                  >
+                    一键理牌
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHandArrangeMode("manual");
+                      setHandSortOrder((order) => order === "asc" ? "desc" : "asc");
+                    }}
+                  >
+                    按点数排序 ↕
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelected([])}
+                    disabled={selected.length === 0}
+                  >
+                    取消选牌（{selected.length}）
+                  </button>
+                </div>
                 <div
                   className={`guandan-hand${
                     handArrangeMode === "auto"
@@ -2497,9 +2527,15 @@ const GuandanTable: React.FunctionComponent = () => {
                             setActiveAutoGroupIndex(group.editableIndex)
                           }
                         >
-                          <span className="guandan-auto-hand-group-label">
-                            {group.label}
-                          </span>
+                          <button
+                            type="button"
+                            className="guandan-simple-select-group"
+                            disabled={!gameStarted}
+                            aria-label={`选中整组：${group.label}`}
+                            onClick={() => setSelected([...group.indexes])}
+                          >
+                            {group.label} · 选整组
+                          </button>
                           {group.cards.map(
                             ({ card, originalIndex }, cardIndex) => (
                               <button
