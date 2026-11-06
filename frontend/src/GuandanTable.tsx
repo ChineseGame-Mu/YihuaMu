@@ -2371,58 +2371,6 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
             )}
 
-            {tributePending && !dealing && !nextRoundPending && serverDealt && (
-              <section className="guandan-tribute-panel guandan-panel">
-                <h2>{tributePhase === "tribute" ? "进贡" : "还贡"}</h2>
-                <p>
-                  {tributePhase === "tribute" && role === "giver"
-                    ? "请选择 1 张牌进贡。"
-                    : tributePhase === "return" && role === "receiver"
-                      ? "请选择 1 张牌还贡。"
-                      : tributePhase === "tribute"
-                        ? "等待所有进贡玩家完成进贡；完成后才能还贡。"
-                        : "进贡已完成，等待相关玩家还贡。"}
-                </p>
-                {state.tributeCards.length > 0 && (
-                  <div className="guandan-tribute-cards" role="status">
-                    {state.tributeCards.map((play, index) => (
-                      <div key={`tribute-${play.player}-${index}`}>
-                        <strong>
-                          {state.players[play.player] ??
-                            `玩家${play.player + 1}`}
-                          进贡：
-                        </strong>
-                        {play.cards.map((card, cardIndex) => (
-                          <span key={`tribute-card-${cardIndex}`}>
-                            {fullCard(card, 86)}
-                          </span>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </section>
-            )}
-
-            {state.tributeResisted &&
-              !dealing &&
-              !nextRoundPending &&
-              serverDealt &&
-              state.finishOrder.length === 0 &&
-              state.lastPlay.length === 0 &&
-              state.tablePlays.length === 0 && (
-                <section
-                  className="guandan-tribute-panel guandan-panel"
-                  role="status"
-                >
-                  <h2>抗贡（{effectiveTableSize / 2} 张大王）</h2>
-                  <p>
-                    输方全队合计持有 {effectiveTableSize / 2}{" "}
-                    张大王，本局无需进贡、还贡，由上一局赢家先出牌。
-                  </p>
-                </section>
-              )}
-
             <section className="guandan-table-stage">
               <h2>本轮出牌</h2>
               {dealing && (
@@ -2462,84 +2410,6 @@ const GuandanTable: React.FunctionComponent = () => {
                     已发 {dealPresentation.dealtCards}/
                     {dealPresentation.totalCards} 张
                   </small>
-                </div>
-              )}
-              {tributePending && !dealing && (
-                <div
-                  className={`guandan-exchange-ceremony guandan-exchange-${tributePhase}`}
-                  role="status"
-                  aria-live="polite"
-                  aria-label={
-                    tributePhase === "tribute"
-                      ? "公共桌面进贡过程"
-                      : "公共桌面还贡过程"
-                  }
-                >
-                  <strong>
-                    {tributePhase === "tribute" ? "进贡进行中" : "还贡进行中"}
-                  </strong>
-                  <div className="guandan-exchange-list">
-                    {state.tributeCards.map((play, index) => (
-                      <div
-                        className="guandan-exchange-move is-tribute"
-                        key={`table-tribute-${play.player}-${index}`}
-                      >
-                        <span>
-                          {state.players[play.player] ??
-                            `玩家${play.player + 1}`}
-                        </span>
-                        <span className="guandan-exchange-card">
-                          {play.cards.map((card, cardIndex) => (
-                            <span key={`table-tribute-card-${cardIndex}`}>
-                              {fullCard(card, 74)}
-                            </span>
-                          ))}
-                        </span>
-                        <span className="guandan-exchange-arrow">进贡 →</span>
-                        <span>
-                          {tributePlan !== null && "Single" in tributePlan
-                            ? (state.players[tributePlan.Single.receiver] ??
-                              `玩家${tributePlan.Single.receiver + 1}`)
-                            : "胜方接收"}
-                        </span>
-                      </div>
-                    ))}
-                    {state.returnTributeCards.map((play, index) => (
-                      <div
-                        className="guandan-exchange-move is-return"
-                        key={`table-return-${play.player}-${index}`}
-                      >
-                        <span>
-                          {state.players[play.player] ??
-                            `玩家${play.player + 1}`}
-                        </span>
-                        <span className="guandan-exchange-card">
-                          {play.cards.map((card, cardIndex) => (
-                            <span key={`table-return-card-${cardIndex}`}>
-                              {fullCard(card, 74)}
-                            </span>
-                          ))}
-                        </span>
-                        <span className="guandan-exchange-arrow">还贡 →</span>
-                        <span>
-                          {tributePlan !== null && "Single" in tributePlan
-                            ? (state.players[tributePlan.Single.giver] ??
-                              `玩家${tributePlan.Single.giver + 1}`)
-                            : "输方接收"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  {state.tributeCards.length === 0 &&
-                    state.returnTributeCards.length === 0 && (
-                      <small>
-                        等待玩家选择贡牌，选定后将在这里显示移动过程。
-                      </small>
-                    )}
-                  {tributePhase === "return" &&
-                    state.returnTributeCards.length === 0 && (
-                      <small>进贡完成，等待胜方选择还贡牌。</small>
-                    )}
                 </div>
               )}
               {state.tablePlays.length === 0 ? (
@@ -2705,6 +2575,65 @@ const GuandanTable: React.FunctionComponent = () => {
               </section>
 
               <section className="guandan-actions guandan-play-actions">
+                {tributePending && !dealing && !nextRoundPending && (
+                  <section
+                    className="guandan-exchange-review"
+                    aria-label="进贡还贡牌核对区"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <strong>{tributePhase === "tribute" ? "进贡牌核对" : "还贡牌核对"}</strong>
+                    <p>
+                      {tributePhase === "tribute" && role === "giver"
+                        ? "从自己的手牌选一张，点击上方进贡按钮。"
+                        : tributePhase === "return" && role === "receiver"
+                          ? "从自己的手牌选一张，点击上方还贡按钮。"
+                          : tributePhase === "tribute"
+                            ? "等待进贡完成。"
+                            : "等待还贡完成。"}
+                    </p>
+                    {state.tributeCards.map((play, index) => (
+                      <div className="guandan-exchange-review-row" key={`review-tribute-${play.player}-${index}`}>
+                        <span>{state.players[play.player] ?? `玩家${play.player + 1}`} 进贡</span>
+                        <span className="guandan-exchange-review-cards">
+                          {play.cards.map((card, cardIndex) => (
+                            <span key={`review-tribute-card-${cardIndex}`}>{fullCard(card, 70)}</span>
+                          ))}
+                        </span>
+                        <span>
+                          → {tributePlan !== null && "Single" in tributePlan
+                            ? (state.players[tributePlan.Single.receiver] ?? `玩家${tributePlan.Single.receiver + 1}`)
+                            : "胜方"}
+                        </span>
+                      </div>
+                    ))}
+                    {state.returnTributeCards.map((play, index) => (
+                      <div className="guandan-exchange-review-row" key={`review-return-${play.player}-${index}`}>
+                        <span>{state.players[play.player] ?? `玩家${play.player + 1}`} 还贡</span>
+                        <span className="guandan-exchange-review-cards">
+                          {play.cards.map((card, cardIndex) => (
+                            <span key={`review-return-card-${cardIndex}`}>{fullCard(card, 70)}</span>
+                          ))}
+                        </span>
+                        <span>
+                          → {tributePlan !== null && "Single" in tributePlan
+                            ? (state.players[tributePlan.Single.giver] ?? `玩家${tributePlan.Single.giver + 1}`)
+                            : "输方"}
+                        </span>
+                      </div>
+                    ))}
+                    {state.tributeCards.length === 0 && state.returnTributeCards.length === 0 && (
+                      <small>尚未交牌，请从自己的手牌选贡牌或还贡牌。</small>
+                    )}
+                  </section>
+                )}
+                {state.tributeResisted && !tributePending && !dealing && serverDealt &&
+                  state.finishOrder.length === 0 && state.lastPlay.length === 0 && state.tablePlays.length === 0 && (
+                    <div className="guandan-exchange-review guandan-resisted-review" role="status">
+                      <strong>抗贡成立</strong>
+                      <p>输方共持有 {effectiveTableSize / 2} 张大王，本局无需进贡和还贡。</p>
+                    </div>
+                  )}
                 {editableAutoGroups.length > 0 && !tributePending && (
                   <div className="guandan-combo-arrange-panel" role="group" aria-label="排列与选择组合">
                     <div
