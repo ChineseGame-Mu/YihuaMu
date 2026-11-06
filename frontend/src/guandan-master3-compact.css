@@ -1,0 +1,36 @@
+/* Master 3 isolated compact hand experiment. Not enabled on production. */
+.guandan-table .guandan-hand {
+  display: grid !important;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(42px, 1fr);
+  align-items: end;
+  align-content: stretch;
+  gap: 2px 3px;
+  overflow-x: auto;
+  overflow-y: visible;
+  min-height: 190px;
+  padding: 5px 8px 8px;
+}
+.guandan-table .guandan-card-stack {
+  min-width: 42px;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow: visible;
+}
+.guandan-table .guandan-card-stack > button {
+  max-width: 100%;
+  touch-action: manipulation;
+}
+/* Hide explanatory filler in review panel; never hide selected cards or actions. */
+.guandan-private-zone > section.guandan-play-actions::after {
+  content: none !important;
+}
+@media (max-width: 700px) {
+  .guandan-table .guandan-hand {
+    grid-auto-columns: minmax(38px, 1fr);
+    min-height: 170px;
+    gap: 2px;
+  }
+}
