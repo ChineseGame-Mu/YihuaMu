@@ -479,7 +479,8 @@ fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &
     game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
     game.last_play.clear();
     game.last_player = None;
-    game.table_plays.clear();
+    // Keep the final trick visible in the settled state. Clear it only
+    // when the losing team shuffles for the next deal.
     game.passes = 0;
     game.trick_complete = false;
     game.last_trick_winner = None;
@@ -1597,6 +1598,9 @@ pub async fn websocket(
                             return Err(PlayError::Invalid("next Guandan deal left undealt cards"));
                         }
                         state.game.hands = hands;
+                        // The previous deal's final cards have been displayed
+                        // throughout the shuffle phase; now start a clean table.
+                        state.game.table_plays.clear();
                         state.game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
                         if auto_deal_if_robot_winner(&mut state.game).map_err(PlayError::Invalid)? {
                             run_robot_turns(&mut state.game, hook_to_bottom)
@@ -2427,6 +2431,26 @@ mod tests {
         )
         .is_ok());
     }
+    #[test]
+    fn settlement_preserves_final_table_cards_until_next_shuffle() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![vec![], vec![], vec![], vec![]];
+        game.finish_order = vec![0, 2, 1];
+        let final_card = card(Suit::Spades, Rank::Ace);
+        game.table_plays = vec![GuandanTablePlay {
+            player: 1,
+            cards: vec![final_card],
+        }];
+        game.last_play = vec![final_card];
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle));
+        assert_eq!(game.table_plays.len(), 1);
+        assert_eq!(game.table_plays[0].cards, vec![final_card]);
+        assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
+    }
+
     #[test]
     fn robot_previous_winner_auto_deals_after_shuffle() {
         let mut game = GuandanGameState::default();
