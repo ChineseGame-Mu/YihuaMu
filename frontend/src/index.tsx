@@ -23,7 +23,6 @@ import "./guandan-auto-layout-options.css";
 import "./cleanroom-join.css";
 import "./cleanroom-hand-fit.css";
 import "./cleanroom-hide-review-label.css";
-import "./guandan-master3-compact.css";
 
 import AppStateProvider from "./AppStateProvider";
 import WebsocketProvider from "./WebsocketProvider";
