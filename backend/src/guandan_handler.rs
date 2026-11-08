@@ -932,8 +932,16 @@ fn run_robot_tribute_exchange(game: &mut GuandanGameState) -> Result<(), &'stati
             .get(receiver)
             .ok_or("robot return-card receiver seat is invalid")?
             .len();
+        // Return the weakest legal non-level card rather than whichever card
+        // happened to be first in the shuffled hand. Preserve the server's
+        // validation as the final authority for every candidate.
+        let mut candidates: Vec<usize> = (0..hand_len).collect();
+        candidates.sort_by_key(|&index| match game.hands[receiver][index] {
+            CardFace::Suited { rank, .. } => rank,
+            CardFace::Joker(_) => Rank::Ace,
+        });
         let mut submitted = false;
-        for card_index in 0..hand_len {
+        for card_index in candidates {
             if game.submit_return_card(receiver, card_index).is_ok() {
                 submitted = true;
                 break;
@@ -2540,6 +2548,31 @@ mod tests {
         assert!(game.return_cards.is_empty());
         assert_eq!(game.next_round_phase, None);
         assert_eq!(game.hands[1], vec![card(Suit::Clubs, Rank::Five)]);
+    }
+
+    #[test]
+    fn robot_returns_lowest_legal_card_after_human_tribute() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "机器人1".into(), "Human".into(), "机器人2".into(), "机器人3".into(),
+        ];
+        game.pending_tribute = Some(TributePlan::Single { giver: 1, receiver: 0 });
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Ten),
+                card(Suit::Diamonds, Rank::Three),
+                card(Suit::Hearts, Rank::Seven),
+            ],
+            vec![card(Suit::Spades, Rank::Ace)],
+            vec![card(Suit::Clubs, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+        ];
+        game.submit_tribute_card(1, 0).unwrap();
+        run_robot_tribute_exchange(&mut game).unwrap();
+        assert!(game.pending_tribute.is_none());
+        assert!(game.hands[1].contains(&card(Suit::Diamonds, Rank::Three)));
+        assert!(game.hands[0].contains(&card(Suit::Spades, Rank::Ace)));
     }
 
     #[test]
