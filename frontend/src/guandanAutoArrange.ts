@@ -365,6 +365,18 @@ export const arrangeGuandanHand = (
     takeRankGroups();
   }
 
+  // Keep a mixed big/small joker pair together in the hand organizer.
+  // This is presentation only: the server remains responsible for legal plays.
+  const remainingSmallJoker = Array.from(remaining).find(
+    (index) => "Joker" in hand[index] && hand[index].Joker === "Small",
+  );
+  const remainingBigJoker = Array.from(remaining).find(
+    (index) => "Joker" in hand[index] && hand[index].Joker === "Big",
+  );
+  if (remainingSmallJoker !== undefined && remainingBigJoker !== undefined) {
+    addGroup("pair", "大小王对子", [remainingSmallJoker, remainingBigJoker]);
+  }
+
   Array.from(remaining).forEach((index) => {
     const card = hand[index];
     const label =
