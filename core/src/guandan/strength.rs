@@ -289,6 +289,21 @@ mod tests {
     }
 
     #[test]
+    fn mixed_joker_attachment_uses_triple_rank_for_strength() {
+        let cards = [
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Diamonds, Rank::Nine),
+            card(Suit::Hearts, Rank::Nine),
+            CardFace::Joker(Joker::Small),
+            CardFace::Joker(Joker::Big),
+        ];
+        let strength = strength_basic(&cards).expect("mixed jokers form an attached pair");
+        assert_eq!(strength.pattern, PlayPattern::TripleWithPair);
+        assert_eq!(strength.main_rank, Rank::Nine);
+        assert_eq!(strengths_at_level(&cards, Rank::Two), vec![strength]);
+    }
+
+    #[test]
     fn ace_low_straight_is_five_high() {
         let play = strength_basic(&[
             card(Suit::Clubs, Rank::Ace),
