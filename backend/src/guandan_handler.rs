@@ -441,6 +441,19 @@ fn draw_starting_seat(deck: &mut [CardFace], player_count: usize) -> (Vec<CardFa
     }
 }
 
+/// Settlement ranks are seat indexes, not indexes into a reordered player list.
+/// Reject duplicate/out-of-range seats before publishing a winner or promotion.
+fn validate_finish_order_seats(finish_order: &[usize], player_count: usize) -> Result<(), &'static str> {
+    let mut seen = vec![false; player_count];
+    for &seat in finish_order {
+        if seat >= player_count || seen[seat] {
+            return Err("finish order contains a duplicate or invalid player seat");
+        }
+        seen[seat] = true;
+    }
+    Ok(())
+}
+
 fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &'static str> {
     let player_count = game.hands.len();
     if player_count <= GUANDAN_CLASSIC_PLAYER_COUNT
@@ -449,6 +462,7 @@ fn settle_multiplayer_if_complete(game: &mut GuandanGameState) -> Result<bool, &
     {
         return Err("expanded Guandan settlement requires 6 to 14 even players");
     }
+    validate_finish_order_seats(&game.finish_order, player_count)?;
     if game.finish_order.len() == player_count - 1 {
         let last_seat = (0..player_count)
             .find(|seat| !game.finish_order.contains(seat))
@@ -499,6 +513,7 @@ fn settle_and_redeal_if_complete(
     if player_count != GUANDAN_CLASSIC_PLAYER_COUNT {
         return settle_multiplayer_if_complete(game);
     }
+    validate_finish_order_seats(&game.finish_order, player_count)?;
     if game.finish_order.len() == 2 {
         let first = game.finish_order[0];
         let second = game.finish_order[1];
@@ -2449,6 +2464,20 @@ mod tests {
         assert_eq!(game.table_plays.len(), 1);
         assert_eq!(game.table_plays[0].cards, vec![final_card]);
         assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
+    }
+
+    #[test]
+    fn settlement_rejects_duplicate_and_invalid_rank_seats() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec!["A1".into(), "B1".into(), "A2".into(), "B2".into()];
+        game.hands = vec![vec![], vec![], vec![], vec![]];
+        game.finish_order = vec![0, 1, 1, 3];
+        assert!(settle_and_redeal_if_complete(&mut game, false).is_err());
+        assert!(game.last_game_winner.is_none());
+        game.finish_order = vec![0, 1, 2, 4];
+        assert!(settle_and_redeal_if_complete(&mut game, false).is_err());
+        assert!(game.last_game_winner.is_none());
     }
 
     #[test]
