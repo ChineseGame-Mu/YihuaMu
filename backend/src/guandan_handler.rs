@@ -2462,6 +2462,34 @@ mod tests {
     }
 
     #[test]
+    fn robot_first_human_second_completes_tribute_without_human_return() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "机器人1".into(),
+            "Human".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+        ];
+        game.last_game_winner = Some(0);
+        game.last_game_winner_team = Some(Team::A);
+        game.next_round_finish_order = vec![0, 1, 2];
+        game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Diamonds, Rank::Six)],
+            vec![card(Suit::Spades, Rank::Ace), card(Suit::Clubs, Rank::Seven)],
+        ];
+        assert!(auto_deal_if_robot_winner(&mut game).unwrap());
+        assert!(game.pending_tribute.is_none(), "robot tribute and return must finalize");
+        assert!(game.tribute_cards.is_empty());
+        assert!(game.return_cards.is_empty());
+        assert_eq!(game.next_round_phase, None);
+        assert_eq!(game.hands[1], vec![card(Suit::Clubs, Rank::Five)]);
+    }
+
+    #[test]
     fn anti_tribute_only_occurs_at_the_start_of_the_deal() {
         let mut game = GuandanGameState::default();
         game.started = true;
