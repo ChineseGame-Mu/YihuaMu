@@ -2560,6 +2560,28 @@ mod tests {
     }
 
     #[test]
+    fn robot_tribute_prefers_strongest_eligible_card_over_hand_order() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "Human".into(), "机器人1".into(), "机器人2".into(), "机器人3".into(),
+        ];
+        game.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
+        game.hands = vec![
+            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Four)],
+            vec![card(Suit::Clubs, Rank::Five)],
+            vec![card(Suit::Clubs, Rank::Six)],
+            vec![card(Suit::Clubs, Rank::Seven), card(Suit::Spades, Rank::Ace)],
+        ];
+        run_robot_tribute_exchange(&mut game).unwrap();
+        assert_eq!(game.tribute_cards.len(), 1);
+        assert_eq!(game.tribute_cards[0].player, 3);
+        assert_eq!(game.tribute_cards[0].card, card(Suit::Spades, Rank::Ace));
+        // The human receiver must still choose the return card manually.
+        assert!(game.pending_tribute.is_some());
+    }
+
+    #[test]
     fn robot_returns_lowest_legal_card_after_human_tribute() {
         let mut game = GuandanGameState::default();
         game.started = true;
