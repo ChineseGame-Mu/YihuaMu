@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{level::is_level_wildcard, CardFace, PlayPattern, Rank, Suit};
+use super::{level::is_level_wildcard, CardFace, Joker, PlayPattern, Rank, Suit};
 
 /// Classify a Guandan play without wild-card substitution.
 pub fn classify_basic(cards: &[CardFace]) -> Option<PlayPattern> {
