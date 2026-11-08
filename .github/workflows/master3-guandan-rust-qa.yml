@@ -1,0 +1,21 @@
+name: Master3 Guandan Rust QA
+on:
+  push:
+    branches: [master3]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guandan-rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile Guandan backend and core tests
+        run: cargo test -p shengji-core -p shengji --no-run
+      - name: Run Guandan rules and backend regression tests
+        run: |
+          cargo test -p shengji-core guandan -- --nocapture
+          cargo test -p shengji guandan_handler -- --nocapture
