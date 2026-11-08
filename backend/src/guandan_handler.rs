@@ -2484,6 +2484,27 @@ mod tests {
     }
 
     #[test]
+    fn settlement_keeps_player_names_bound_to_original_seats() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "East".into(), "South".into(), "West".into(), "North".into(),
+        ];
+        let original_players = game.player_names.clone();
+        game.hands = vec![vec![], vec![], vec![], vec![]];
+        // West wins; East is the partner in third place. The displayed
+        // winner must remain West (seat 2), not the first lobby name.
+        game.finish_order = vec![2, 1, 0];
+        assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
+        assert_eq!(game.player_names, original_players);
+        assert_eq!(game.finish_order, vec![2, 1, 0, 3]);
+        assert_eq!(game.last_game_winner, Some(2));
+        assert_eq!(game.last_game_winner_team, Some(Team::A));
+        assert_eq!(game.last_promotion_steps, Some(2));
+        assert_eq!(game.next_round_finish_order, vec![2, 1, 0]);
+    }
+
+    #[test]
     fn settlement_rejects_duplicate_and_invalid_rank_seats() {
         let mut game = GuandanGameState::default();
         game.started = true;
