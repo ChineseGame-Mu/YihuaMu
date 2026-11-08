@@ -324,6 +324,19 @@ fn ace_low_straight(ranks: &[Rank]) -> bool {
 }
 
 fn is_triple_with_pair(cards: &[CardFace]) -> bool {
+    if cards.len() != 5 {
+        return false;
+    }
+    // House rule: one big and one small joker can serve as the attached
+    // pair in a triple-with-pair, without becoming a standalone joker pair.
+    let big = cards.iter().filter(|card| matches!(card, CardFace::Joker(Joker::Big))).count();
+    let small = cards.iter().filter(|card| matches!(card, CardFace::Joker(Joker::Small))).count();
+    if big == 1 && small == 1 {
+        let suited = cards.iter().filter_map(|card| rank_of(*card)).collect::<Vec<_>>();
+        if suited.len() == 3 && suited.iter().all(|rank| *rank == suited[0]) {
+            return true;
+        }
+    }
     let Some(counts) = rank_counts(cards) else {
         return false;
     };
@@ -420,6 +433,20 @@ mod tests {
             classify_basic(&[CardFace::Joker(Joker::Small), CardFace::Joker(Joker::Big),]),
             None
         );
+    }
+
+    #[test]
+    fn mixed_jokers_can_attach_to_triple_but_not_form_standalone_pair() {
+        let cards = [
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Diamonds, Rank::Nine),
+            card(Suit::Hearts, Rank::Nine),
+            CardFace::Joker(Joker::Big),
+            CardFace::Joker(Joker::Small),
+        ];
+        assert_eq!(classify_basic(&cards), Some(PlayPattern::TripleWithPair));
+        assert_eq!(classify_at_level(&cards, Rank::Two), vec![PlayPattern::TripleWithPair]);
+        assert_eq!(classify_basic(&cards[3..]), None);
     }
 
     #[test]
