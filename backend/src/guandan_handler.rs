@@ -894,8 +894,17 @@ fn run_robot_tribute_exchange(game: &mut GuandanGameState) -> Result<(), &'stati
             .get(giver)
             .ok_or("robot tribute giver seat is invalid")?
             .len();
+        // A tribute must offer the strongest eligible card. Try candidates in
+        // descending rank order; submit_tribute_card remains the rule authority
+        // (including jokers and the current level's special restrictions).
+        let mut candidates: Vec<usize> = (0..hand_len).collect();
+        candidates.sort_by_key(|&index| match game.hands[giver][index] {
+            CardFace::Joker(Joker::Big) => 16u8,
+            CardFace::Joker(Joker::Small) => 15u8,
+            CardFace::Suited { rank, .. } => rank as u8,
+        });
         let mut submitted = false;
-        for card_index in 0..hand_len {
+        for card_index in candidates.into_iter().rev() {
             if game.submit_tribute_card(giver, card_index).is_ok() {
                 submitted = true;
                 break;
