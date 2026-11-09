@@ -24,3 +24,21 @@ jobs:
         run: |
           cargo test -p shengji-core guandan -- --nocapture
           cargo test -p shengji guandan_handler -- --nocapture
+
+  guandan-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install locked frontend dependencies
+        run: corepack enable && yarn install --frozen-lockfile
+      - name: Verify intelligent hand arrangement and free selection indexes
+        run: yarn test --runInBand --watch=false src/guandanAutoArrange.test.ts
