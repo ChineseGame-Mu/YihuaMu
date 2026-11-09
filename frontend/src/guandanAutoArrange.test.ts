@@ -57,6 +57,33 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("prefers a natural triple over a wildcard-made triple with mixed jokers", () => {
+    const hand: GuandanCard[] = [
+      suited("Three", "Clubs"),
+      suited("Three", "Diamonds"),
+      suited("Eight", "Clubs"),
+      { Joker: "Small" },
+      suited("Eight", "Diamonds"),
+      suited("Nine", "Hearts"),
+      { Joker: "Big" },
+      suited("Eight", "Spades"),
+    ];
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Nine", strategy);
+      expect(groups.some(({ kind, label, indexes }) =>
+        kind === "full-house" &&
+        label === "三带二（8带大小王）" &&
+        [2, 3, 4, 6, 7].every((index) => indexes.includes(index)),
+      )).toBe(true);
+      const allIndexes = groups.flatMap(({ indexes }) => indexes);
+      expect(allIndexes).toHaveLength(hand.length);
+      expect(new Set(allIndexes).size).toBe(hand.length);
+      expect([...allIndexes].sort((a, b) => a - b)).toEqual(
+        hand.map((_, index) => index),
+      );
+    }
+  });
+
   test("never duplicates or loses card indexes when a joker pair competes with other groups", () => {
     const hand: GuandanCard[] = [
       suited("Eight", "Clubs"),
