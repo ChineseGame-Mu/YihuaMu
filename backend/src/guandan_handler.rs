@@ -622,9 +622,8 @@ fn settle_and_redeal_if_complete(
     game.level = next_level;
     game.next_round_finish_order = completed_finish_order[..player_count - 1].to_vec();
     game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingShuffle);
-    game.last_play.clear();
-    game.last_player = None;
-    game.table_plays.clear();
+    // Preserve the final trick through settlement so players can see all cards.
+    // The next deal's shuffle clears table_plays and last_play.
     game.passes = 0;
     game.trick_complete = false;
     game.last_trick_winner = None;
