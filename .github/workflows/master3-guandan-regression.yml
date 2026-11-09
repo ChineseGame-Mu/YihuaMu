@@ -22,3 +22,5 @@ jobs:
         run: corepack enable && yarn install --frozen-lockfile
       - name: Guandan auto-arrange regression
         run: yarn test --runInBand --watch=false src/guandanAutoArrange.test.ts
+      - name: Compile frontend production bundle
+        run: yarn build
