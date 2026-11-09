@@ -314,8 +314,27 @@ export const arrangeGuandanHand = (
     );
 
   const takeFullHouses = (): void =>
-    takeRepeatedly("full-house", () =>
-      ranks.flatMap((tripleRank) =>
+    takeRepeatedly("full-house", () => {
+      // The server accepts one big and one small joker as the attached pair.
+      // Keep their original hand indexes so either card remains freely selectable.
+      const smallJoker = Array.from(remaining).find(
+        (index) => "Joker" in hand[index] && hand[index].Joker === "Small",
+      );
+      const bigJoker = Array.from(remaining).find(
+        (index) => "Joker" in hand[index] && hand[index].Joker === "Big",
+      );
+      const jokerPairHouses =
+        smallJoker === undefined || bigJoker === undefined
+          ? []
+          : ranks.map((tripleRank) => {
+              const triple = findTarget([{ rank: tripleRank, count: 3 }]);
+              return {
+                indexes: triple === null ? null : triple.concat([smallJoker, bigJoker]),
+                label: `三带二（${rankLabels[tripleRank]}带大小王）`,
+              };
+            });
+      return jokerPairHouses.concat(
+        ranks.flatMap((tripleRank) =>
         ranks
           .filter((pairRank) => pairRank !== tripleRank)
           .map((pairRank) => ({
@@ -325,8 +344,8 @@ export const arrangeGuandanHand = (
             ]),
             label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
           })),
-      ),
-    );
+      );
+    });
 
   const takeRankGroups = (): void => {
     ranks.forEach((rank) => {
