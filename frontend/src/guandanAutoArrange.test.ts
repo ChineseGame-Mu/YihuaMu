@@ -3,6 +3,9 @@ import type { GuandanCard, GuandanRank, GuandanSuit } from "./guandanProtocol";
 
 const suited = (rank: GuandanRank, suit: GuandanSuit): GuandanCard => ({
   Suited: { rank, suit },
+});
+
+describe("automatic Guandan hand arrangement", () => {
   test("mixed joker display grouping preserves individual selection indexes", () => {
     const hand: GuandanCard[] = [
       { Joker: "Big" },
@@ -13,9 +16,7 @@ const suited = (rank: GuandanRank, suit: GuandanSuit): GuandanCard => ({
     expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([2, 0]);
     expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
-});
 
-describe("automatic Guandan hand arrangement", () => {
   test("groups all requested compound patterns", () => {
     const hand: GuandanCard[] = [
       suited("Ten", "Clubs"),
