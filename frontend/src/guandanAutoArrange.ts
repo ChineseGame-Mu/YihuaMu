@@ -343,7 +343,7 @@ export const arrangeGuandanHand = (
               { rank: pairRank, count: 2 },
             ]),
             label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
-          })),
+          }))),
       );
     });
 
