@@ -31,6 +31,8 @@ export interface PublicEndgameRules<State> {
   ) => PublicEndgamePosition<State>;
   /** Terminal values are from this robot's team's perspective. */
   readonly terminalScore: (position: PublicEndgamePosition<State>) => number | undefined;
+  /** Whether the public current actor belongs to the robot's team. Defaults to true for single-agent planning. */
+  readonly maximizingTurn?: (position: PublicEndgamePosition<State>) => boolean;
   /** Nonterminal, public-only heuristic score; higher is better. */
   readonly evaluate: (position: PublicEndgamePosition<State>) => number;
 }
@@ -95,16 +97,20 @@ export const chooseBoundedEndgameMove = <State>(
     }
     const moves = ordered(p);
     if (moves.length === 0) return rules.evaluate(p);
-    let result = Number.NEGATIVE_INFINITY;
+    const maximizing = rules.maximizingTurn?.(p) ?? true;
+    let result = maximizing ? Number.NEGATIVE_INFINITY : Number.POSITIVE_INFINITY;
+    let explored = false;
     for (const move of moves) {
       if (nodes >= maxNodes) {
         exhausted = true;
         break;
       }
       nodes += 1;
-      result = Math.max(result, score(rules.advance(p, move), remaining - 1));
+      explored = true;
+      const child = score(rules.advance(p, move), remaining - 1);
+      result = maximizing ? Math.max(result, child) : Math.min(result, child);
     }
-    return result === Number.NEGATIVE_INFINITY ? rules.evaluate(p) : result;
+    return explored ? result : rules.evaluate(p);
   };
 
   for (const move of rootMoves) {
