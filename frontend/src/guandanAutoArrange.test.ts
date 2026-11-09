@@ -17,6 +17,25 @@ describe("automatic Guandan hand arrangement", () => {
     expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 
+  test("groups a natural triple with mixed jokers as a legal full house", () => {
+    const hand: GuandanCard[] = [
+      { Joker: "Big" },
+      suited("Eight", "Clubs"),
+      suited("Eight", "Diamonds"),
+      { Joker: "Small" },
+      suited("Eight", "Spades"),
+    ];
+    const groups = arrangeGuandanHand(hand, "Two");
+    expect(groups).toEqual([
+      {
+        kind: "full-house",
+        label: "三带二（8带大小王）",
+        indexes: [1, 2, 4, 3, 0],
+      },
+    ]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+  });
+
   test("groups all requested compound patterns", () => {
     const hand: GuandanCard[] = [
       suited("Ten", "Clubs"),
