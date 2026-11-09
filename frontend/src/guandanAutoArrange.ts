@@ -326,13 +326,28 @@ export const arrangeGuandanHand = (
       const jokerPairHouses =
         smallJoker === undefined || bigJoker === undefined
           ? []
-          : ranks.map((tripleRank) => {
-              const triple = findTarget([{ rank: tripleRank, count: 3 }]);
-              return {
-                indexes: triple === null ? null : triple.concat([smallJoker, bigJoker]),
-                label: `三带二（${rankLabels[tripleRank]}带大小王）`,
-              };
-            });
+          : [...ranks]
+              .sort((left, right) => {
+                // Prefer an existing natural triple over spending heart-level
+                // wildcards to manufacture a lower-ranked triple.
+                const naturalCount = (rank: GuandanRank): number =>
+                  Array.from(remaining).filter(
+                    (index) =>
+                      !isWildcard(hand[index], level) &&
+                      rankOf(hand[index]) === rank,
+                  ).length;
+                return (
+                  Math.min(3, naturalCount(right)) -
+                  Math.min(3, naturalCount(left))
+                );
+              })
+              .map((tripleRank) => {
+                const triple = findTarget([{ rank: tripleRank, count: 3 }]);
+                return {
+                  indexes: triple === null ? null : triple.concat([smallJoker, bigJoker]),
+                  label: `三带二（${rankLabels[tripleRank]}带大小王）`,
+                };
+              });
       return jokerPairHouses.concat(
         ranks.flatMap((tripleRank) =>
         ranks
