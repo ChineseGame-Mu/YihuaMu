@@ -1,0 +1,24 @@
+name: Master3 Guandan frontend regression
+on:
+  push:
+    branches: [master3]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  guandan-frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install locked dependencies
+        run: corepack enable && yarn install --frozen-lockfile
+      - name: Guandan auto-arrange regression
+        run: yarn test --runInBand --watch=false src/guandanAutoArrange.test.ts
