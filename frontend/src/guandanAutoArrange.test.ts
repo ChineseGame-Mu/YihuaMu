@@ -57,6 +57,34 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("never duplicates or loses card indexes when a joker pair competes with other groups", () => {
+    const hand: GuandanCard[] = [
+      suited("Eight", "Clubs"),
+      { Joker: "Small" },
+      suited("Eight", "Diamonds"),
+      suited("Eight", "Spades"),
+      { Joker: "Big" },
+      suited("Four", "Clubs"),
+      suited("Four", "Diamonds"),
+      suited("Five", "Clubs"),
+      suited("Five", "Spades"),
+      suited("Six", "Clubs"),
+      suited("Six", "Diamonds"),
+    ];
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Two", strategy);
+      const allIndexes = groups.flatMap(({ indexes }) => indexes);
+      expect(allIndexes).toHaveLength(hand.length);
+      expect(new Set(allIndexes).size).toBe(hand.length);
+      expect([...allIndexes].sort((a, b) => a - b)).toEqual(
+        hand.map((_, index) => index),
+      );
+      expect(groups.some(({ kind, label }) =>
+        kind === "full-house" && label === "三带二（8带大小王）",
+      )).toBe(true);
+    }
+  });
+
   test("groups all requested compound patterns", () => {
     const hand: GuandanCard[] = [
       suited("Ten", "Clubs"),
