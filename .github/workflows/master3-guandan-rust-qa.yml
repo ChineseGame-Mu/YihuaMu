@@ -13,6 +13,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - name: Prepare placeholder static assets for Rust-only CI
+        run: |
+          # include_dir! expands at compile time; production builds generate frontend/dist.
+          # These placeholders are only present on this ephemeral CI runner.
+          mkdir -p frontend/dist
       - name: Compile Guandan backend and core tests
         run: cargo test -p shengji-core -p shengji --no-run
       - name: Run Guandan rules and backend regression tests
