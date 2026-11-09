@@ -162,16 +162,24 @@ describe("automatic Guandan hand arrangement", () => {
       suited("Seven", "Clubs"),
     ];
 
-    const groups = arrangeGuandanHand(hand, "Two");
-    expect(groups).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: "joker-bomb", label: "四王炸" }),
-        expect.objectContaining({ kind: "bomb", label: "4张6炸" }),
-      ]),
-    );
-    expect(groups.find(({ kind }) => kind === "bomb")?.indexes).toEqual([
-      0, 1, 2, 3,
-    ]);
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Two", strategy);
+      expect(groups).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ kind: "joker-bomb", label: "四王炸" }),
+          expect.objectContaining({ kind: "bomb", label: "4张6炸" }),
+        ]),
+      );
+      expect(groups.find(({ kind }) => kind === "joker-bomb")?.indexes).toEqual([
+        4, 5, 6, 7,
+      ]);
+      expect(groups.find(({ kind }) => kind === "bomb")?.indexes).toEqual([
+        0, 1, 2, 3,
+      ]);
+      const indexes = groups.flatMap(({ indexes }) => indexes);
+      expect(indexes).toHaveLength(hand.length);
+      expect(new Set(indexes).size).toBe(hand.length);
+    }
   });
 
   test("uses a heart level card as wildcard without using a joker", () => {
