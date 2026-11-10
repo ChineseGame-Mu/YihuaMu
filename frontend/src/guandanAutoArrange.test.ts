@@ -13,8 +13,12 @@ describe("automatic Guandan hand arrangement", () => {
       { Joker: "Small" },
     ];
     const groups = arrangeGuandanHand(hand, "Two");
-    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([2, 0]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2]);
+    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([
+      2, 0,
+    ]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
+      0, 1, 2,
+    ]);
   });
 
   test("groups a natural triple with mixed jokers as a legal full house", () => {
@@ -33,7 +37,9 @@ describe("automatic Guandan hand arrangement", () => {
         indexes: [1, 2, 4, 3, 0],
       },
     ]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
+      0, 1, 2, 3, 4,
+    ]);
   });
 
   test("keeps mixed-joker full houses selectable across all arrangement strategies", () => {
@@ -53,7 +59,9 @@ describe("automatic Guandan hand arrangement", () => {
           indexes: [0, 2, 4, 1, 3],
         },
       ]);
-      expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
+      expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
+      0, 1, 2, 3, 4,
+    ]);
     }
   });
 
@@ -70,11 +78,14 @@ describe("automatic Guandan hand arrangement", () => {
     ];
     for (const strategy of ["balanced", "sequences", "sets"] as const) {
       const groups = arrangeGuandanHand(hand, "Nine", strategy);
-      expect(groups.some(({ kind, label, indexes }) =>
-        kind === "full-house" &&
-        label === "三带二（8带大小王）" &&
-        [2, 3, 4, 6, 7].every((index) => indexes.includes(index)),
-      )).toBe(true);
+      expect(
+        groups.some(
+          ({ kind, label, indexes }) =>
+            kind === "full-house" &&
+            label === "三带二（8带大小王）" &&
+            [2, 3, 4, 6, 7].every((index) => indexes.includes(index)),
+        ),
+      ).toBe(true);
       const allIndexes = groups.flatMap(({ indexes }) => indexes);
       expect(allIndexes).toHaveLength(hand.length);
       expect(new Set(allIndexes).size).toBe(hand.length);
@@ -106,9 +117,12 @@ describe("automatic Guandan hand arrangement", () => {
       expect([...allIndexes].sort((a, b) => a - b)).toEqual(
         hand.map((_, index) => index),
       );
-      expect(groups.some(({ kind, label }) =>
-        kind === "full-house" && label === "三带二（8带大小王）",
-      )).toBe(true);
+      expect(
+        groups.some(
+          ({ kind, label }) =>
+            kind === "full-house" && label === "三带二（8带大小王）",
+        ),
+      ).toBe(true);
     }
   });
 
