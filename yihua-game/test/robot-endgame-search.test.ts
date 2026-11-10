@@ -56,6 +56,16 @@ describe("Master3 bounded legal-only endgame search", () => {
     expect(["single", "pair"]).toContain(result.move?.id);
   });
 
+  it("never plays from a terminal state even if stale legal moves are supplied", () => {
+    const terminalPosition = position(2);
+    const terminalRules: PublicEndgameRules<State> = {
+      ...rules,
+      terminalScore: () => 100,
+    };
+    const result = chooseBoundedEndgameMove(terminalPosition, terminalRules, 10, 3);
+    expect(result).toEqual({ move: undefined, nodes: 0, exhausted: false });
+  });
+
   it("returns no action when there are no legal moves", () => {
     expect(chooseBoundedEndgameMove(position(0), rules, 5, 3).move).toBeUndefined();
   });
