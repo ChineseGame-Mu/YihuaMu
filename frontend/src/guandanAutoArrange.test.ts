@@ -325,6 +325,31 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("supports deeply frozen input cards without modifying them", () => {
+    const hand: GuandanCard[] = [
+      suited("Eight", "Clubs"),
+      suited("Eight", "Diamonds"),
+      suited("Eight", "Spades"),
+      { Joker: "Small" },
+      { Joker: "Big" },
+    ];
+    hand.forEach((card) => {
+      if ("Suited" in card) Object.freeze(card.Suited);
+      Object.freeze(card);
+    });
+    Object.freeze(hand);
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Two", strategy);
+      expect(groups).toEqual([
+        {
+          kind: "full-house",
+          label: "三带二（8带大小王）",
+          indexes: [0, 1, 2, 3, 4],
+        },
+      ]);
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
