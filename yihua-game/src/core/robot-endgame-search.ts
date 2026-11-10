@@ -56,6 +56,11 @@ export const chooseBoundedEndgameMove = <State>(
     throw new Error("depth must be an integer from 1 to 12");
   }
 
+  // Never propose a move after the authoritative engine has ended the game.
+  if (rules.terminalScore(position) !== undefined) {
+    return { move: undefined, nodes: 0, exhausted: false };
+  }
+
   let nodes = 0;
   let exhausted = false;
   const priority = (
