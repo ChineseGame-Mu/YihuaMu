@@ -355,11 +355,14 @@ describe("automatic Guandan hand arrangement", () => {
       const level = ranks[deal % ranks.length];
       for (let seat = 0; seat < 4; seat += 1) {
         const hand = shuffled.slice(seat * 27, (seat + 1) * 27);
+        const originalHand = JSON.stringify(hand);
         for (const strategy of ["balanced", "sequences", "sets"] as const) {
           const first = arrangeGuandanHand(hand, level, strategy);
           expect(arrangeGuandanHand(hand, level, strategy)).toEqual(first);
           const indexes = first.flatMap((group) => group.indexes);
+          expect(JSON.stringify(hand)).toBe(originalHand);
           expect(indexes).toHaveLength(27);
+          expect(new Set(indexes).size).toBe(27);
           expect([...indexes].sort((a, b) => a - b)).toEqual(
             hand.map((_, index) => index),
           );
