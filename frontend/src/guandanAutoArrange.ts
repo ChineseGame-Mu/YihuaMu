@@ -239,23 +239,6 @@ export const arrangeGuandanHand = (
     }
   });
 
-  // Heart-level wildcards can complete or enlarge a protected bomb.
-  ranks.forEach((rank) => {
-    const indexes = Array.from(remaining).filter(
-      (index) =>
-        !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
-    );
-    const wildcards = availableWildcards();
-    if (indexes.length >= 2 && indexes.length + wildcards.length >= 4) {
-      const bombIndexes = indexes.concat(wildcards);
-      addGroup(
-        "bomb",
-        `${bombIndexes.length}张${rankLabels[rank]}炸`,
-        bombIndexes,
-      );
-    }
-  });
-
   // Reserve an existing natural triple and mixed-joker pair before sequence
   // grouping can consume the triple (e.g. as part of a steel plate). This
   // display-only choice does not change the server's play validation.
@@ -282,6 +265,23 @@ export const arrangeGuandanHand = (
       );
     }
   }
+
+  // Heart-level wildcards can complete or enlarge a protected bomb.
+  ranks.forEach((rank) => {
+    const indexes = Array.from(remaining).filter(
+      (index) =>
+        !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
+    );
+    const wildcards = availableWildcards();
+    if (indexes.length >= 2 && indexes.length + wildcards.length >= 4) {
+      const bombIndexes = indexes.concat(wildcards);
+      addGroup(
+        "bomb",
+        `${bombIndexes.length}张${rankLabels[rank]}炸`,
+        bombIndexes,
+      );
+    }
+  });
 
   const takeRepeatedly = (
     kind: GuandanAutoGroupKind,
