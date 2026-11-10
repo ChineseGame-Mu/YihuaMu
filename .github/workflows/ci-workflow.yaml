@@ -59,7 +59,12 @@ jobs:
       - name: Check frontend formatting
         run: |
           test "$(yarn --silent prettier --version)" = "3.4.1"
-          yarn prettier --check
+          if ! yarn prettier --check; then
+            yarn prettier src/guandanAutoArrange.test.ts --write
+            git diff -- src/guandanAutoArrange.test.ts
+            echo "Prettier formatting differs; see exact patch above. No source changes committed by CI."
+            exit 1
+          fi
         working-directory: ./frontend
       - name: Guandan runtime snapshot and restart regression
         working-directory: ./yihua-game
