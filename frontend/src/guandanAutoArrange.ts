@@ -252,7 +252,8 @@ export const arrangeGuandanHand = (
     const naturalTriple = ranks
       .map((rank) =>
         Array.from(remaining).filter(
-          (index) => !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
+          (index) =>
+            !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
         ),
       )
       .find((indexes) => indexes.length >= 3);
