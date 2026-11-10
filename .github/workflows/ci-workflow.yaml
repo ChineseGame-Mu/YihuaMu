@@ -120,7 +120,12 @@ jobs:
           set -euo pipefail
           # Cargo exits successfully when a filter matches zero tests; reject that false pass.
           cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --exact --nocapture 2>&1 | tee master3-four-bot-qa.log
-          grep -Eq 'test result: ok\. 1 passed; 0 failed;' master3-four-bot-qa.log || {
+          # Verify the named test actually ran, not merely another cargo test summary.
+          grep -Fq 'test guandan_handler::tests::four_robots_complete_three_consecutive_full_deals ... ok' master3-four-bot-qa.log || {
+            echo '::error::Named four-bot regression did not report a pass'
+            exit 1
+          }
+          grep -Fq 'test result: ok. 1 passed; 0 failed;' master3-four-bot-qa.log || {
             echo '::error::Expected exactly one successful four-bot full-deal regression test'
             exit 1
           }
