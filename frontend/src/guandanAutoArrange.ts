@@ -64,9 +64,7 @@ const isWildcard = (card: GuandanCard, level: GuandanRank): boolean =>
   card.Suited.rank === level;
 
 const straightWindows = (): GuandanRank[][] => {
-  const windows: GuandanRank[][] = [
-    ["Ace", "Two", "Three", "Four", "Five"],
-  ];
+  const windows: GuandanRank[][] = [["Ace", "Two", "Three", "Four", "Five"]];
   for (let start = 0; start <= 8; start += 1) {
     windows.push(ranks.slice(start, start + 5));
   }
