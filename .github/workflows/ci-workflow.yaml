@@ -93,3 +93,10 @@ jobs:
 
       - name: Test Rust code
         run: cargo test --all
+
+      # Isolated Master3 bot QA: run the existing full-deal integration regression
+      # on this branch, not just on the older manual-QA branch. Never deploy here.
+      - name: Master3 four-robot full-deal integration regression
+        if: ${{ github.head_ref == 'qa/master3-smart-bots-20261109' || github.ref_name == 'qa/master3-smart-bots-20261109' }}
+        timeout-minutes: 20
+        run: cargo test -p shengji guandan_handler::tests::four_robots_complete_three_consecutive_full_deals -- --ignored --exact --nocapture
