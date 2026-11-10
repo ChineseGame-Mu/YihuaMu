@@ -56,6 +56,17 @@ describe("Master3 public-only robot card memory", () => {
     expect(initial.revealedIds.size).toBe(0);
   });
 
+  it("rejects a mixed valid and forged public batch atomically", () => {
+    const deck = createDeck(4);
+    const valid = deck[0]!;
+    const forged = { ...deck[1]!, id: "0:forged:card" };
+    const before = observePublicCards(createPublicCardMemory(4), [deck[2]!]);
+    expect(() => observePublicCards(before, [valid, forged])).toThrow("identity");
+    expect(before.revealedIds.size).toBe(1);
+    expect(before.revealedIds.has(valid.id)).toBe(false);
+    expect(unseenPublicCopies(before, valid.card)).toBe(2);
+  });
+
   it("resets between deals without carrying over public observations", () => {
     const card = createDeck(4)[0]!;
     const previous = observePublicCards(createPublicCardMemory(4), [card]);
