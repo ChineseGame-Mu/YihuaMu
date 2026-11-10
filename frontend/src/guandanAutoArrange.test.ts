@@ -13,12 +13,8 @@ describe("automatic Guandan hand arrangement", () => {
       { Joker: "Small" },
     ];
     const groups = arrangeGuandanHand(hand, "Two");
-    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([
-      2, 0,
-    ]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
-      0, 1, 2,
-    ]);
+    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([2, 0]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 
   test("groups a natural triple with mixed jokers as a legal full house", () => {
@@ -37,9 +33,7 @@ describe("automatic Guandan hand arrangement", () => {
         indexes: [1, 2, 4, 3, 0],
       },
     ]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
-      0, 1, 2, 3, 4,
-    ]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
   });
 
   test("keeps mixed-joker full houses selectable across all arrangement strategies", () => {
@@ -184,12 +178,8 @@ describe("automatic Guandan hand arrangement", () => {
           expect.objectContaining({ kind: "bomb", label: "4张6炸" }),
         ]),
       );
-      expect(groups.find(({ kind }) => kind === "joker-bomb")?.indexes).toEqual([
-        4, 5, 6, 7,
-      ]);
-      expect(groups.find(({ kind }) => kind === "bomb")?.indexes).toEqual([
-        0, 1, 2, 3,
-      ]);
+      expect(groups.find(({ kind }) => kind === "joker-bomb")?.indexes).toEqual([4, 5, 6, 7]);
+      expect(groups.find(({ kind }) => kind === "bomb")?.indexes).toEqual([0, 1, 2, 3]);
       const indexes = groups.flatMap(({ indexes }) => indexes);
       expect(indexes).toHaveLength(hand.length);
       expect(new Set(indexes).size).toBe(hand.length);
