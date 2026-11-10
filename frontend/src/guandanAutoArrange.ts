@@ -246,7 +246,21 @@ export const arrangeGuandanHand = (
         !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
     );
     const wildcards = availableWildcards();
-    if (indexes.length >= 2 && indexes.length + wildcards.length >= 4) {
+    // Preserve a natural triple for the legal triple + mixed-joker pair.
+    // A wildcard-made four-card bomb would otherwise consume that triple
+    // before the full-house pass, even when both jokers are available.
+    const hasMixedJokerPair =
+      Array.from(remaining).some((index) =>
+        "Joker" in hand[index] && hand[index].Joker === "Small",
+      ) &&
+      Array.from(remaining).some((index) =>
+        "Joker" in hand[index] && hand[index].Joker === "Big",
+      );
+    if (
+      indexes.length >= 2 &&
+      indexes.length + wildcards.length >= 4 &&
+      !(indexes.length === 3 && hasMixedJokerPair)
+    ) {
       const bombIndexes = indexes.concat(wildcards);
       addGroup(
         "bomb",
