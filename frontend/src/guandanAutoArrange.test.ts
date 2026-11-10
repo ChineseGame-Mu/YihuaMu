@@ -346,7 +346,7 @@ describe("automatic Guandan hand arrangement", () => {
       seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
       return seed / 0x100000000;
     };
-    for (let deal = 0; deal < 8; deal += 1) {
+    for (let deal = 0; deal < 104; deal += 1) {
       const shuffled = [...deck];
       for (let i = shuffled.length - 1; i > 0; i -= 1) {
         const j = Math.floor(nextRandom() * (i + 1));
