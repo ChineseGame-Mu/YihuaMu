@@ -14,9 +14,7 @@ describe("automatic Guandan hand arrangement", () => {
     ];
     const groups = arrangeGuandanHand(hand, "Two");
     expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([2, 0]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
-      0, 1, 2,
-    ]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2]);
   });
 
   test("groups a natural triple with mixed jokers as a legal full house", () => {
@@ -35,9 +33,7 @@ describe("automatic Guandan hand arrangement", () => {
         indexes: [1, 2, 4, 3, 0],
       },
     ]);
-    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
-      0, 1, 2, 3, 4,
-    ]);
+    expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
   });
 
   test("keeps mixed-joker full houses selectable across all arrangement strategies", () => {
@@ -57,9 +53,7 @@ describe("automatic Guandan hand arrangement", () => {
           indexes: [0, 2, 4, 1, 3],
         },
       ]);
-      expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([
-        0, 1, 2, 3, 4,
-      ]);
+      expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4]);
     }
   });
 
