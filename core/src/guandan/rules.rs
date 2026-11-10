@@ -329,10 +329,19 @@ fn is_triple_with_pair(cards: &[CardFace]) -> bool {
     }
     // House rule: one big and one small joker can serve as the attached
     // pair in a triple-with-pair, without becoming a standalone joker pair.
-    let big = cards.iter().filter(|card| matches!(card, CardFace::Joker(Joker::Big))).count();
-    let small = cards.iter().filter(|card| matches!(card, CardFace::Joker(Joker::Small))).count();
+    let big = cards
+        .iter()
+        .filter(|card| matches!(card, CardFace::Joker(Joker::Big)))
+        .count();
+    let small = cards
+        .iter()
+        .filter(|card| matches!(card, CardFace::Joker(Joker::Small)))
+        .count();
     if big == 1 && small == 1 {
-        let suited = cards.iter().filter_map(|card| rank_of(*card)).collect::<Vec<_>>();
+        let suited = cards
+            .iter()
+            .filter_map(|card| rank_of(*card))
+            .collect::<Vec<_>>();
         if suited.len() == 3 && suited.iter().all(|rank| *rank == suited[0]) {
             return true;
         }
@@ -445,7 +454,10 @@ mod tests {
             CardFace::Joker(Joker::Small),
         ];
         assert_eq!(classify_basic(&cards), Some(PlayPattern::TripleWithPair));
-        assert_eq!(classify_at_level(&cards, Rank::Two), vec![PlayPattern::TripleWithPair]);
+        assert_eq!(
+            classify_at_level(&cards, Rank::Two),
+            vec![PlayPattern::TripleWithPair]
+        );
         assert_eq!(classify_basic(&cards[3..]), None);
     }
 
