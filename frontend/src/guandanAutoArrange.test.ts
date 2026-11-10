@@ -60,8 +60,8 @@ describe("automatic Guandan hand arrangement", () => {
         },
       ]);
       expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual(
-      [0, 1, 2, 3, 4],
-    );
+        [0, 1, 2, 3, 4],
+      );
     }
   });
 
