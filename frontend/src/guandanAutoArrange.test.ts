@@ -13,9 +13,9 @@ describe("automatic Guandan hand arrangement", () => {
       { Joker: "Small" },
     ];
     const groups = arrangeGuandanHand(hand, "Two");
-    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual(
-      [2, 0],
-    );
+    expect(groups.find(({ label }) => label === "大小王对子")?.indexes).toEqual([
+      2, 0,
+    ]);
     expect(groups.flatMap(({ indexes }) => indexes).sort((a, b) => a - b)).toEqual(
       [0, 1, 2],
     );
