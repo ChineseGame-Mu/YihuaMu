@@ -462,6 +462,19 @@ mod tests {
     }
 
     #[test]
+    fn mixed_joker_attachment_requires_three_matching_non_jokers() {
+        let cards = [
+            card(Suit::Clubs, Rank::Nine),
+            card(Suit::Diamonds, Rank::Nine),
+            card(Suit::Hearts, Rank::Ten),
+            CardFace::Joker(Joker::Big),
+            CardFace::Joker(Joker::Small),
+        ];
+        assert_eq!(classify_basic(&cards), None);
+        assert!(classify_at_level(&cards, Rank::Two).is_empty());
+    }
+
+    #[test]
     fn classifies_bombs_and_joker_bomb() {
         let four = [
             card(Suit::Clubs, Rank::Nine),
