@@ -317,5 +317,4 @@ describe("automatic Guandan hand arrangement", () => {
       }
     }
   });
-
 });
