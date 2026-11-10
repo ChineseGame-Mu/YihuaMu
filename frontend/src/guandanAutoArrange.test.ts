@@ -277,10 +277,40 @@ describe("automatic Guandan hand arrangement", () => {
       "大小王对子",
     ]);
   });
+  test("does not invent groups when the level is not yet known", () => {
+    const hand: GuandanCard[] = [
+      suited("Eight", "Clubs"),
+      suited("Eight", "Diamonds"),
+      suited("Eight", "Spades"),
+      { Joker: "Small" },
+      { Joker: "Big" },
+    ];
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      expect(arrangeGuandanHand(hand, null, strategy)).toEqual(
+        hand.map((_, index) => ({
+          kind: "single",
+          label: "单张",
+          indexes: [index],
+        })),
+      );
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
-      "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
-      "Nine", "Ten", "Jack", "Queen", "King", "Ace",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Jack",
+      "Queen",
+      "King",
+      "Ace",
     ];
     const suits: GuandanSuit[] = ["Clubs", "Diamonds", "Spades", "Hearts"];
     const deck: GuandanCard[] = [];
