@@ -59,7 +59,12 @@ jobs:
       - name: Check frontend formatting
         run: |
           test "$(yarn --silent prettier --version)" = "3.4.1"
-          yarn prettier --check
+          if ! yarn prettier --check; then
+            echo "::error::Frontend Prettier 3.4.1 check failed; showing proposed formatting-only diff"
+            yarn prettier --write
+            git diff -- src
+            exit 1
+          fi
         working-directory: ./frontend
       - name: Guandan runtime snapshot and restart regression
         working-directory: ./yihua-game
