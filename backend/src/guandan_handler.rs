@@ -443,7 +443,10 @@ fn draw_starting_seat(deck: &mut [CardFace], player_count: usize) -> (Vec<CardFa
 
 /// Settlement ranks are seat indexes, not indexes into a reordered player list.
 /// Reject duplicate/out-of-range seats before publishing a winner or promotion.
-fn validate_finish_order_seats(finish_order: &[usize], player_count: usize) -> Result<(), &'static str> {
+fn validate_finish_order_seats(
+    finish_order: &[usize],
+    player_count: usize,
+) -> Result<(), &'static str> {
     let mut seen = vec![false; player_count];
     for &seat in finish_order {
         if seat >= player_count || seen[seat] {
@@ -2476,7 +2479,10 @@ mod tests {
         }];
         game.last_play = vec![final_card];
         assert!(settle_and_redeal_if_complete(&mut game, false).unwrap());
-        assert_eq!(game.next_round_phase, Some(GuandanNextRoundPhase::AwaitingShuffle));
+        assert_eq!(
+            game.next_round_phase,
+            Some(GuandanNextRoundPhase::AwaitingShuffle)
+        );
         assert_eq!(game.table_plays.len(), 1);
         assert_eq!(game.table_plays[0].cards, vec![final_card]);
         assert_eq!(game.finish_order, vec![0, 2, 1, 3]);
@@ -2486,9 +2492,7 @@ mod tests {
     fn settlement_keeps_player_names_bound_to_original_seats() {
         let mut game = GuandanGameState::default();
         game.started = true;
-        game.player_names = vec![
-            "East".into(), "South".into(), "West".into(), "North".into(),
-        ];
+        game.player_names = vec!["East".into(), "South".into(), "West".into(), "North".into()];
         let original_players = game.player_names.clone();
         game.hands = vec![vec![], vec![], vec![], vec![]];
         // West wins; East is the partner in third place. The displayed
@@ -2566,13 +2570,22 @@ mod tests {
         game.next_round_finish_order = vec![0, 1, 2];
         game.next_round_phase = Some(GuandanNextRoundPhase::AwaitingDeal);
         game.hands = vec![
-            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Four)],
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Four),
+            ],
             vec![card(Suit::Clubs, Rank::Five)],
             vec![card(Suit::Diamonds, Rank::Six)],
-            vec![card(Suit::Spades, Rank::Ace), card(Suit::Clubs, Rank::Seven)],
+            vec![
+                card(Suit::Spades, Rank::Ace),
+                card(Suit::Clubs, Rank::Seven),
+            ],
         ];
         assert!(auto_deal_if_robot_winner(&mut game).unwrap());
-        assert!(game.pending_tribute.is_none(), "robot tribute and return must finalize");
+        assert!(
+            game.pending_tribute.is_none(),
+            "robot tribute and return must finalize"
+        );
         assert!(game.tribute_cards.is_empty());
         assert!(game.return_cards.is_empty());
         assert_eq!(game.next_round_phase, None);
@@ -2584,14 +2597,26 @@ mod tests {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec![
-            "Human".into(), "机器人1".into(), "机器人2".into(), "机器人3".into(),
+            "Human".into(),
+            "机器人1".into(),
+            "机器人2".into(),
+            "机器人3".into(),
         ];
-        game.pending_tribute = Some(TributePlan::Single { giver: 3, receiver: 0 });
+        game.pending_tribute = Some(TributePlan::Single {
+            giver: 3,
+            receiver: 0,
+        });
         game.hands = vec![
-            vec![card(Suit::Clubs, Rank::Three), card(Suit::Diamonds, Rank::Four)],
+            vec![
+                card(Suit::Clubs, Rank::Three),
+                card(Suit::Diamonds, Rank::Four),
+            ],
             vec![card(Suit::Clubs, Rank::Five)],
             vec![card(Suit::Clubs, Rank::Six)],
-            vec![card(Suit::Clubs, Rank::Seven), card(Suit::Spades, Rank::Ace)],
+            vec![
+                card(Suit::Clubs, Rank::Seven),
+                card(Suit::Spades, Rank::Ace),
+            ],
         ];
         run_robot_tribute_exchange(&mut game).unwrap();
         assert_eq!(game.tribute_cards.len(), 1);
@@ -2606,9 +2631,15 @@ mod tests {
         let mut game = GuandanGameState::default();
         game.started = true;
         game.player_names = vec![
-            "机器人1".into(), "Human".into(), "机器人2".into(), "机器人3".into(),
+            "机器人1".into(),
+            "Human".into(),
+            "机器人2".into(),
+            "机器人3".into(),
         ];
-        game.pending_tribute = Some(TributePlan::Single { giver: 1, receiver: 0 });
+        game.pending_tribute = Some(TributePlan::Single {
+            giver: 1,
+            receiver: 0,
+        });
         game.hands = vec![
             vec![
                 card(Suit::Clubs, Rank::Ten),
