@@ -30,7 +30,7 @@ describe("Master3 public-only endgame alpha-beta pruning", () => {
       legalMoves: (p) => (edges[p.state] ?? []).map((next) => ({
         id: next,
         kind: "single" as const,
-        strength: 1,
+        strength: next === "risky" ? 2 : 1,
         size: 1,
         playSize: 1,
         next,
