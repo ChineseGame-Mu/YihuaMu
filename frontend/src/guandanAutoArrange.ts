@@ -358,7 +358,10 @@ export const arrangeGuandanHand = (
               .map((tripleRank) => {
                 const triple = findTarget([{ rank: tripleRank, count: 3 }]);
                 return {
-                  indexes: triple === null ? null : triple.concat([smallJoker, bigJoker]),
+                  indexes:
+                    triple === null
+                      ? null
+                      : triple.concat([smallJoker, bigJoker]),
                   label: `三带二（${rankLabels[tripleRank]}带大小王）`,
                 };
               });
