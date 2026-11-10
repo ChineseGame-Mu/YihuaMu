@@ -256,6 +256,33 @@ export const arrangeGuandanHand = (
     }
   });
 
+  // Reserve an existing natural triple and mixed-joker pair before sequence
+  // grouping can consume the triple (e.g. as part of a steel plate). This
+  // display-only choice does not change the server's play validation.
+  const freeSmallJoker = Array.from(remaining).find(
+    (index) => "Joker" in hand[index] && hand[index].Joker === "Small",
+  );
+  const freeBigJoker = Array.from(remaining).find(
+    (index) => "Joker" in hand[index] && hand[index].Joker === "Big",
+  );
+  if (freeSmallJoker !== undefined && freeBigJoker !== undefined) {
+    const naturalTriple = ranks
+      .map((rank) =>
+        Array.from(remaining).filter(
+          (index) => !isWildcard(hand[index], level) && rankOf(hand[index]) === rank,
+        ),
+      )
+      .find((indexes) => indexes.length >= 3);
+    if (naturalTriple !== undefined) {
+      const tripleRank = rankOf(hand[naturalTriple[0]])!;
+      addGroup(
+        "full-house",
+        `三带二（${rankLabels[tripleRank]}带大小王）`,
+        naturalTriple.slice(0, 3).concat([freeSmallJoker, freeBigJoker]),
+      );
+    }
+  }
+
   const takeRepeatedly = (
     kind: GuandanAutoGroupKind,
     candidates: () => Array<{ indexes: number[] | null; label: string }>,
