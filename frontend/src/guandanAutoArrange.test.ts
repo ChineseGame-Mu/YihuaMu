@@ -316,6 +316,15 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("empty hands remain empty for every level and arrangement strategy", () => {
+    const levels: Array<GuandanRank | null> = [null, "Two", "Nine", "Ace"];
+    for (const level of levels) {
+      for (const strategy of ["balanced", "sequences", "sets"] as const) {
+        expect(arrangeGuandanHand([], level, strategy)).toEqual([]);
+      }
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
