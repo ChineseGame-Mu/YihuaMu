@@ -297,6 +297,25 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("never mutates the caller's hand or card objects during arrangement", () => {
+    const hand: GuandanCard[] = [
+      suited("Three", "Clubs"),
+      suited("Three", "Diamonds"),
+      suited("Three", "Spades"),
+      suited("Nine", "Hearts"),
+      { Joker: "Small" },
+      { Joker: "Big" },
+    ];
+    const before = JSON.stringify(hand);
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Nine", strategy);
+      expect(JSON.stringify(hand)).toBe(before);
+      const indexes = groups.flatMap(({ indexes }) => indexes);
+      expect(indexes).toHaveLength(hand.length);
+      expect(new Set(indexes).size).toBe(hand.length);
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
