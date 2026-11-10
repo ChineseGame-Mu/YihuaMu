@@ -371,21 +371,25 @@ export const arrangeGuandanHand = (
               .map((tripleRank) => {
                 const triple = findTarget([{ rank: tripleRank, count: 3 }]);
                 return {
-                  indexes: triple === null ? null : triple.concat([smallJoker, bigJoker]),
+                  indexes:
+                    triple === null
+                      ? null
+                      : triple.concat([smallJoker, bigJoker]),
                   label: `三带二（${rankLabels[tripleRank]}带大小王）`,
                 };
               });
       return jokerPairHouses.concat(
         ranks.flatMap((tripleRank) =>
-        ranks
-          .filter((pairRank) => pairRank !== tripleRank)
-          .map((pairRank) => ({
-            indexes: findTarget([
-              { rank: tripleRank, count: 3 },
-              { rank: pairRank, count: 2 },
-            ]),
-            label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
-          }))),
+          ranks
+            .filter((pairRank) => pairRank !== tripleRank)
+            .map((pairRank) => ({
+              indexes: findTarget([
+                { rank: tripleRank, count: 3 },
+                { rank: pairRank, count: 2 },
+              ]),
+              label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
+            })),
+        ),
       );
     });
 
