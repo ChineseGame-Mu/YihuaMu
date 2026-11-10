@@ -277,4 +277,45 @@ describe("automatic Guandan hand arrangement", () => {
       "大小王对子",
     ]);
   });
+  test("preserves every original card index across seeded four-player deals", () => {
+    const ranks: GuandanRank[] = [
+      "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+      "Nine", "Ten", "Jack", "Queen", "King", "Ace",
+    ];
+    const suits: GuandanSuit[] = ["Clubs", "Diamonds", "Spades", "Hearts"];
+    const deck: GuandanCard[] = [];
+    for (let copy = 0; copy < 2; copy += 1) {
+      for (const rank of ranks) {
+        for (const suit of suits) deck.push(suited(rank, suit));
+      }
+      deck.push({ Joker: "Small" }, { Joker: "Big" });
+    }
+    expect(deck).toHaveLength(108);
+    let seed = 20261109;
+    const nextRandom = (): number => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 0x100000000;
+    };
+    for (let deal = 0; deal < 8; deal += 1) {
+      const shuffled = [...deck];
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(nextRandom() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      const level = ranks[deal % ranks.length];
+      for (let seat = 0; seat < 4; seat += 1) {
+        const hand = shuffled.slice(seat * 27, (seat + 1) * 27);
+        for (const strategy of ["balanced", "sequences", "sets"] as const) {
+          const first = arrangeGuandanHand(hand, level, strategy);
+          expect(arrangeGuandanHand(hand, level, strategy)).toEqual(first);
+          const indexes = first.flatMap((group) => group.indexes);
+          expect(indexes).toHaveLength(27);
+          expect([...indexes].sort((a, b) => a - b)).toEqual(
+            hand.map((_, index) => index),
+          );
+        }
+      }
+    }
+  });
+
 });
