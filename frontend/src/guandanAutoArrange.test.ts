@@ -277,6 +277,7 @@ describe("automatic Guandan hand arrangement", () => {
       "大小王对子",
     ]);
   });
+
   test("does not invent groups when the level is not yet known", () => {
     const hand: GuandanCard[] = [
       suited("Eight", "Clubs"),
