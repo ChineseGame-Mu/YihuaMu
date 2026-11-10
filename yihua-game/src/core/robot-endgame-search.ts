@@ -88,7 +88,7 @@ export const chooseBoundedEndgameMove = <State>(
   let best = rootMoves[0]!;
   let bestScore = Number.NEGATIVE_INFINITY;
 
-  const score = (p: PublicEndgamePosition<State>, remaining: number): number => {
+  const score = (p: PublicEndgamePosition<State>, remaining: number, alpha: number, beta: number): number => {
     const terminal = rules.terminalScore(p);
     if (terminal !== undefined) return terminal;
     if (remaining === 0 || nodes >= maxNodes) {
@@ -107,8 +107,12 @@ export const chooseBoundedEndgameMove = <State>(
       }
       nodes += 1;
       explored = true;
-      const child = score(rules.advance(p, move), remaining - 1);
+      const child = score(rules.advance(p, move), remaining - 1, alpha, beta);
       result = maximizing ? Math.max(result, child) : Math.min(result, child);
+      // Prune public legal branches that cannot improve the root choice.
+      if (maximizing) alpha = Math.max(alpha, result);
+      else beta = Math.min(beta, result);
+      if (alpha >= beta) break;
     }
     return explored ? result : rules.evaluate(p);
   };
@@ -119,7 +123,7 @@ export const chooseBoundedEndgameMove = <State>(
       break;
     }
     nodes += 1;
-    const value = score(rules.advance(position, move), depth - 1);
+    const value = score(rules.advance(position, move), depth - 1, bestScore, Number.POSITIVE_INFINITY);
     if (value > bestScore) {
       bestScore = value;
       best = move;
