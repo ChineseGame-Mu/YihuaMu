@@ -364,15 +364,16 @@ export const arrangeGuandanHand = (
               });
       return jokerPairHouses.concat(
         ranks.flatMap((tripleRank) =>
-        ranks
-          .filter((pairRank) => pairRank !== tripleRank)
-          .map((pairRank) => ({
-            indexes: findTarget([
-              { rank: tripleRank, count: 3 },
-              { rank: pairRank, count: 2 },
-            ]),
-            label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
-          }))),
+          ranks
+            .filter((pairRank) => pairRank !== tripleRank)
+            .map((pairRank) => ({
+              indexes: findTarget([
+                { rank: tripleRank, count: 3 },
+                { rank: pairRank, count: 2 },
+              ]),
+              label: `三带二（${rankLabels[tripleRank]}带${rankLabels[pairRank]}）`,
+            })),
+        ),
       );
     });
 
