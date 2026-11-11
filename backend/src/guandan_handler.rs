@@ -2604,6 +2604,12 @@ mod tests {
         assert!(game.return_cards.is_empty());
         assert_eq!(game.next_round_phase, None);
         assert_eq!(game.hands[1], vec![card(Suit::Clubs, Rank::Five)]);
+        // The robot in last place pays its Ace, and the robot winner returns
+        // its lowest card. The human runner-up must never enter the exchange.
+        assert!(game.hands[0].contains(&card(Suit::Spades, Rank::Ace)));
+        assert!(game.hands[3].contains(&card(Suit::Clubs, Rank::Three)));
+        assert!(!game.hands[3].contains(&card(Suit::Spades, Rank::Ace)));
+        assert_eq!(game.hands.iter().map(Vec::len).sum::<usize>(), 6);
     }
 
     #[test]
