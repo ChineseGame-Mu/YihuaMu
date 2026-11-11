@@ -121,7 +121,17 @@ jobs:
         run: yarn install --frozen-lockfile
       - name: Execute smart hand-arrangement regressions
         working-directory: ./frontend
-        run: yarn test --runInBand --watch=false guandanAutoArrange.test.ts
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn test --runInBand --watch=false guandanAutoArrange.test.ts 2>&1 | tee master3-hand-arrangement-qa.log
+      - name: Preserve hand-arrangement QA evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: master3-hand-arrangement-qa-log
+          path: frontend/master3-hand-arrangement-qa.log
+          if-no-files-found: warn
 
   # Independent of frontend formatting failures: always collect the Master3
   # four-bot regression result on the isolated QA branch. No deployment.
