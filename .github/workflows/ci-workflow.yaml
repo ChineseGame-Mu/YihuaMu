@@ -124,13 +124,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yarn test --ci --runInBand --watch=false --runTestsByPath src/guandanAutoArrange.test.ts 2>&1 | tee master3-hand-arrangement-qa.log
+          yarn test --ci --runInBand --watch=false --runTestsByPath src/guandanAutoArrange.test.ts --json --outputFile=master3-hand-arrangement-results.json 2>&1 | tee master3-hand-arrangement-qa.log
+          # A successful command must have executed tests and produced machine-readable evidence.
+          node -e 'const r=require("./master3-hand-arrangement-results.json"); if(r.numTotalTests < 1 || r.numFailedTests !== 0 || !r.success) process.exit(1)'
       - name: Preserve hand-arrangement QA evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: master3-hand-arrangement-qa-log
-          path: frontend/master3-hand-arrangement-qa.log
+          path: |
+            frontend/master3-hand-arrangement-qa.log
+            frontend/master3-hand-arrangement-results.json
           if-no-files-found: warn
 
   # Independent of frontend formatting failures: always collect the Master3
