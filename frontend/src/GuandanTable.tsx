@@ -1055,12 +1055,11 @@ const GuandanTable: React.FunctionComponent = () => {
   // Finish order is an individual ranking, not the winning team's roster.
   // Keep the fixed seat parity when presenting the A-level award ceremony.
   const winningParity = state.matchWinner === "TeamA" ? 0 : 1;
-  const victoryWinners = state.finishOrder.filter(
-    (seat) => seat % 2 === winningParity,
-  );
-  const victoryLosers = state.finishOrder.filter(
-    (seat) => seat % 2 !== winningParity,
-  );
+  // Award membership comes from fixed team seats, never the finish ranking.
+  // A ranking may be incomplete or reordered, but it cannot change partners.
+  const teamSeats = state.players.map((_, seat) => seat);
+  const victoryWinners = teamSeats.filter((seat) => seat % 2 === winningParity);
+  const victoryLosers = teamSeats.filter((seat) => seat % 2 !== winningParity);
   const victoryWinnerNames = victoryWinners.map(
     (seat) => state.players[seat] ?? `玩家${seat + 1}`,
   );
