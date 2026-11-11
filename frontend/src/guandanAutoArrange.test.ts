@@ -522,4 +522,43 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("seeded four-seat replay is deterministic and does not share mutable group indexes", () => {
+    const ranks: GuandanRank[] = [
+      "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+      "Nine", "Ten", "Jack", "Queen", "King", "Ace",
+    ];
+    const suits: GuandanSuit[] = ["Clubs", "Diamonds", "Hearts", "Spades"];
+    const deck: GuandanCard[] = [];
+    for (let copy = 0; copy < 2; copy++) {
+      for (const rank of ranks) {
+        for (const suit of suits) deck.push(suited(rank, suit));
+      }
+      deck.push({ Joker: "Small" }, { Joker: "Big" });
+    }
+    const replay = (initialSeed: number) => {
+      let seed = initialSeed;
+      const shuffled = [...deck];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        const j = Math.floor((seed / 0x100000000) * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return Array.from({ length: 4 }, (_, seat) =>
+        arrangeGuandanHand(shuffled.slice(seat * 27, (seat + 1) * 27), "Nine"),
+      );
+    };
+    const first = replay(20261111);
+    const second = replay(20261111);
+    expect(first).toEqual(second);
+    expect(first).not.toBe(second);
+    for (let seat = 0; seat < 4; seat++) {
+      expect(first[seat]).not.toBe(second[seat]);
+      const indexes = first[seat].flatMap(({ indexes }) => indexes);
+      expect(indexes).toHaveLength(27);
+      expect(new Set(indexes).size).toBe(27);
+    }
+    first[0][0].indexes.reverse();
+    expect(replay(20261111)).toEqual(second);
+  });
+
 });
