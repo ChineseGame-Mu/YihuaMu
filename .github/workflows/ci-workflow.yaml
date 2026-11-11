@@ -124,7 +124,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          yarn test --runInBand --watch=false guandanAutoArrange.test.ts 2>&1 | tee master3-hand-arrangement-qa.log
+          yarn test --ci --runInBand --watch=false --runTestsByPath src/guandanAutoArrange.test.ts 2>&1 | tee master3-hand-arrangement-qa.log
       - name: Preserve hand-arrangement QA evidence
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
