@@ -100,6 +100,29 @@ jobs:
         run: cargo test --all
 
 
+  # Run Master3 hand-arrangement regressions independently of the main build,
+  # so a Prettier failure cannot hide their actual test outcome. No deployment.
+  master3-hand-arrangement-qa:
+    name: "Master3 smart hand-arrangement QA"
+    if: ${{ github.head_ref == 'qa/master3-smart-bots-20261109' || github.ref_name == 'qa/master3-smart-bots-20261109' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: yarn install --frozen-lockfile
+      - name: Execute smart hand-arrangement regressions
+        working-directory: ./frontend
+        run: yarn test --runInBand --watch=false guandanAutoArrange.test.ts
+
   # Independent of frontend formatting failures: always collect the Master3
   # four-bot regression result on the isolated QA branch. No deployment.
   master3-four-bot-qa:
