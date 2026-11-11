@@ -2714,6 +2714,7 @@ mod tests {
                 card(Suit::Hearts, Rank::Nine),
                 CardFace::Joker(Joker::Big),
                 CardFace::Joker(Joker::Small),
+                card(Suit::Spades, Rank::Two),
             ],
             vec![card(Suit::Clubs, Rank::Ace)],
             vec![card(Suit::Diamonds, Rank::Ace)],
@@ -2733,7 +2734,8 @@ mod tests {
         assert_eq!(game.table_plays.len(), 1);
         assert_eq!(game.table_plays[0].player, 0);
         assert_eq!(game.table_plays[0].cards.len(), 5);
-        assert!(game.hands[0].is_empty());
+        assert_eq!(game.hands[0], vec![card(Suit::Spades, Rank::Two)]);
+        assert!(!game.finish_order.contains(&0));
     }
 
     #[test]
