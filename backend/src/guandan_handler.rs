@@ -735,6 +735,20 @@ fn run_robot_turns(game: &mut GuandanGameState, hook_to_bottom: bool) -> Result<
                 }
             }
         }
+        // A big joker and a small joker form a legal pair for a full house.
+        // Generate this candidate for bots as well as human players; the
+        // canonical validator still decides whether the play is legal.
+        let big_joker = hand.iter().position(|card| *card == CardFace::Joker(Joker::Big));
+        let small_joker = hand.iter().position(|card| *card == CardFace::Joker(Joker::Small));
+        if let (Some(big), Some(small)) = (big_joker, small_joker) {
+            for (_, triple) in &rank_groups {
+                if triple.len() >= 3 {
+                    let mut indexes = triple[..3].to_vec();
+                    indexes.extend([big, small]);
+                    candidates.push(indexes);
+                }
+            }
+        }
         // Rank values are consecutive for ordinary suited cards; validate
         // each generated run to exclude any disallowed wraps or level rules.
         rank_groups.sort_by_key(|(rank, _)| *rank as usize);
