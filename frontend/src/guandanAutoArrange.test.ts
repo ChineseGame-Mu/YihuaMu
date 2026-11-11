@@ -392,6 +392,31 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("unknown level never creates speculative combinations from duplicate-deck cards", () => {
+    const hand: GuandanCard[] = [
+      suited("Nine", "Hearts"),
+      suited("Nine", "Hearts"),
+      suited("Nine", "Clubs"),
+      suited("Nine", "Diamonds"),
+      { Joker: "Small" },
+      { Joker: "Small" },
+      { Joker: "Big" },
+      { Joker: "Big" },
+    ];
+    const original = JSON.stringify(hand);
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, null, strategy);
+      expect(groups).toEqual(
+        hand.map((_, index) => ({
+          kind: "single",
+          label: "单张",
+          indexes: [index],
+        })),
+      );
+      expect(JSON.stringify(hand)).toBe(original);
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
