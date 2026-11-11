@@ -1052,19 +1052,21 @@ const GuandanTable: React.FunctionComponent = () => {
     window.setTimeout(() => window.location.replace("about:blank"), 50);
   };
 
-  const victoryFirstPlaceName =
-    state.finishOrder[0] === undefined
-      ? null
-      : (state.players[state.finishOrder[0]] ??
-        `玩家${state.finishOrder[0] + 1}`);
-  const victorySecondPlaceName =
-    state.finishOrder[1] === undefined
-      ? null
-      : (state.players[state.finishOrder[1]] ??
-        `玩家${state.finishOrder[1] + 1}`);
-  const victoryRemainingNames = state.finishOrder
-    .slice(2)
-    .map((seat) => state.players[seat] ?? `玩家${seat + 1}`);
+  // Finish order is an individual ranking, not the winning team's roster.
+  // Keep the fixed seat parity when presenting the A-level award ceremony.
+  const winningParity = state.matchWinner === "TeamA" ? 0 : 1;
+  const victoryWinners = state.finishOrder.filter(
+    (seat) => seat % 2 === winningParity,
+  );
+  const victoryLosers = state.finishOrder.filter(
+    (seat) => seat % 2 !== winningParity,
+  );
+  const victoryWinnerNames = victoryWinners.map(
+    (seat) => state.players[seat] ?? `玩家${seat + 1}`,
+  );
+  const victoryLoserNames = victoryLosers.map(
+    (seat) => state.players[seat] ?? `玩家${seat + 1}`,
+  );
   const threeMatchSeriesActive =
     state.seriesMatchNumber !== null && state.seriesTotalMatches === 3;
   const threeMatchSeriesComplete =
@@ -2138,21 +2140,20 @@ const GuandanTable: React.FunctionComponent = () => {
                         textShadow: "0 2px 8px rgba(0,0,0,.5)",
                       }}
                     >
-                      {victoryFirstPlaceName !== null && (
-                        <div>第1名 {victoryFirstPlaceName}</div>
-                      )}
-                      {victorySecondPlaceName !== null && (
-                        <div>第2名 {victorySecondPlaceName}</div>
-                      )}
-                      {victoryRemainingNames.length > 0 && (
+                      {victoryWinnerNames.map((name, index) => (
+                        <div key={victoryWinners[index]}>
+                          获胜队员 · 第{state.finishOrder.indexOf(victoryWinners[index]) + 1}名 {name}
+                        </div>
+                      ))}
+                      {victoryLoserNames.length > 0 && (
                         <div
                           style={{
                             marginTop: 8,
-                            color: "#ffd77a",
+                            color: "#d9e8d7",
                             fontSize: "clamp(20px, 2.2vw, 32px)",
                           }}
                         >
-                          双下（并列）：{victoryRemainingNames.join("、")}
+                          对方队员：{victoryLoserNames.join("、")}
                         </div>
                       )}
                     </div>
