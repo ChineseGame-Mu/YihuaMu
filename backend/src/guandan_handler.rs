@@ -2698,6 +2698,45 @@ mod tests {
     }
 
     #[test]
+    fn robot_can_beat_full_house_with_mixed_joker_pair() {
+        let mut game = GuandanGameState::default();
+        game.started = true;
+        game.player_names = vec![
+            "机器人1".into(),
+            "Human".into(),
+            "机器人2".into(),
+            "机器人3".into(),
+        ];
+        game.hands = vec![
+            vec![
+                card(Suit::Clubs, Rank::Nine),
+                card(Suit::Diamonds, Rank::Nine),
+                card(Suit::Hearts, Rank::Nine),
+                CardFace::Joker(Joker::Big),
+                CardFace::Joker(Joker::Small),
+            ],
+            vec![card(Suit::Clubs, Rank::Ace)],
+            vec![card(Suit::Diamonds, Rank::Ace)],
+            vec![card(Suit::Hearts, Rank::Ace)],
+        ];
+        game.turn = 0;
+        game.last_player = Some(1);
+        game.last_play = vec![
+            card(Suit::Clubs, Rank::Eight),
+            card(Suit::Diamonds, Rank::Eight),
+            card(Suit::Hearts, Rank::Eight),
+            card(Suit::Clubs, Rank::Seven),
+            card(Suit::Diamonds, Rank::Seven),
+        ];
+
+        run_robot_turns(&mut game, false).unwrap();
+        assert_eq!(game.table_plays.len(), 1);
+        assert_eq!(game.table_plays[0].player, 0);
+        assert_eq!(game.table_plays[0].cards.len(), 5);
+        assert!(game.hands[0].is_empty());
+    }
+
+    #[test]
     fn first_robot_play_consumes_resistance_notice() {
         let mut game = GuandanGameState::default();
         game.started = true;
