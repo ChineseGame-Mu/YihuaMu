@@ -373,6 +373,25 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("returns independent group indexes on repeated arrangement calls", () => {
+    const hand: GuandanCard[] = [
+      suited("Eight", "Clubs"),
+      suited("Eight", "Diamonds"),
+      suited("Eight", "Spades"),
+      { Joker: "Small" },
+      { Joker: "Big" },
+    ];
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const first = arrangeGuandanHand(hand, "Two", strategy);
+      const expected = arrangeGuandanHand(hand, "Two", strategy);
+      expect(first).toEqual(expected);
+      expect(first).not.toBe(expected);
+      expect(first[0].indexes).not.toBe(expected[0].indexes);
+      first[0].indexes.reverse();
+      expect(arrangeGuandanHand(hand, "Two", strategy)).toEqual(expected);
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
