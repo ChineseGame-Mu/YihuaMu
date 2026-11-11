@@ -497,7 +497,13 @@ describe("automatic Guandan hand arrangement", () => {
         const j = Math.floor(random() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
+      const shuffledBefore = JSON.stringify(shuffled);
+      const seenSeatIndexes = new Set<number>();
       for (let seat = 0; seat < 4; seat++) {
+        for (let physicalIndex = seat * 27; physicalIndex < (seat + 1) * 27; physicalIndex++) {
+          expect(seenSeatIndexes.has(physicalIndex)).toBe(false);
+          seenSeatIndexes.add(physicalIndex);
+        }
         const hand = shuffled.slice(seat * 27, (seat + 1) * 27);
         const before = JSON.stringify(hand);
         for (const strategy of ["balanced", "sequences", "sets"] as const) {
@@ -511,6 +517,8 @@ describe("automatic Guandan hand arrangement", () => {
           expect(JSON.stringify(hand)).toBe(before);
         }
       }
+      expect(seenSeatIndexes.size).toBe(108);
+      expect(JSON.stringify(shuffled)).toBe(shuffledBefore);
     }
   });
 
