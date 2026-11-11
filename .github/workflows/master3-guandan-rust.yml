@@ -1,0 +1,31 @@
+name: Master3 Guandan Rust regression
+
+on:
+  push:
+    branches: [master3]
+    paths:
+      - 'backend/**'
+      - 'core/**'
+      - 'mechanics/**'
+      - 'storage/**'
+      - 'wasm-rpc-impl/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/master3-guandan-rust.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guandan-rust:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Compile backend
+        run: cargo check -p shengji
+      - name: Guandan server regression tests
+        run: cargo test -p shengji guandan_handler::tests --lib -- --nocapture
