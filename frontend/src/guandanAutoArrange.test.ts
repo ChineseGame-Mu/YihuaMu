@@ -285,4 +285,50 @@ describe("automatic Guandan hand arrangement", () => {
       "大小王对子",
     ]);
   });
+
+  test("preserves every physical card exactly once across deterministic double-deck shuffles", () => {
+    const ranks: GuandanRank[] = [
+      "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
+      "Nine", "Ten", "Jack", "Queen", "King", "Ace",
+    ];
+    const suits: GuandanSuit[] = ["Clubs", "Diamonds", "Spades", "Hearts"];
+    const deck: GuandanCard[] = [];
+    for (let copy = 0; copy < 2; copy += 1) {
+      for (const rank of ranks) {
+        for (const suit of suits) deck.push(suited(rank, suit));
+      }
+      deck.push({ Joker: "Small" }, { Joker: "Big" });
+    }
+    expect(deck).toHaveLength(108);
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const shuffled = [...deck];
+      let state = seed;
+      const next = (): number => {
+        state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+        return state / 0x100000000;
+      };
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(next() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      // Each 27-card hand is a real four-seat deal, with original hand indexes.
+      for (let seat = 0; seat < 4; seat += 1) {
+        const hand = shuffled.slice(seat * 27, (seat + 1) * 27);
+        for (const strategy of ["balanced", "sequences", "sets"] as const) {
+          const groups = arrangeGuandanHand(hand, "Nine", strategy);
+          const indexes = groups.flatMap((group) => group.indexes);
+          expect(indexes).toHaveLength(27);
+          expect(new Set(indexes).size).toBe(27);
+          expect([...indexes].sort((a, b) => a - b)).toEqual(
+            hand.map((_, index) => index),
+          );
+          for (const index of indexes) {
+            expect(Number.isInteger(index)).toBe(true);
+            expect(index).toBeGreaterThanOrEqual(0);
+            expect(index).toBeLessThan(27);
+          }
+        }
+      }
+    }
+  });
 });
