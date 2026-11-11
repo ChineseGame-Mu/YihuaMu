@@ -134,5 +134,5 @@ export const chooseBoundedEndgameMove = <State>(
       best = move;
     }
   }
-  return { move: exhausted ? rootMoves[0] : best, nodes, exhausted };
+  // Keep the best evaluated legal root action even when the node budget ends.\n  // Reverting to the first heuristic candidate would discard completed search work.\n  return { move: best, nodes, exhausted };
 };
