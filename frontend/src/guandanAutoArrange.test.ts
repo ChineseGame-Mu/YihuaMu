@@ -288,8 +288,19 @@ describe("automatic Guandan hand arrangement", () => {
 
   test("preserves every physical card exactly once across deterministic double-deck shuffles", () => {
     const ranks: GuandanRank[] = [
-      "Two", "Three", "Four", "Five", "Six", "Seven", "Eight",
-      "Nine", "Ten", "Jack", "Queen", "King", "Ace",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+      "Ten",
+      "Jack",
+      "Queen",
+      "King",
+      "Ace",
     ];
     const suits: GuandanSuit[] = ["Clubs", "Diamonds", "Spades", "Hearts"];
     const deck: GuandanCard[] = [];
