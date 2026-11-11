@@ -42,6 +42,26 @@ describe("bounded public-information endgame search", () => {
     expect(result).toEqual({ move: undefined, nodes: 0, exhausted: false });
   });
 
+  it("falls back to the first ordered legal move with only one search node", () => {
+    const result = chooseBoundedEndgameMove(position, rules, 1, 1);
+    expect(result).toMatchObject({ nodes: 1, exhausted: true });
+    expect(result.move?.id).toBe("first");
+    expect(moves).toContain(result.move);
+  });
+
+  it("does not invent a move when the legal move list is empty", () => {
+    const result = chooseBoundedEndgameMove(position, {
+      ...rules,
+      legalMoves: () => [],
+    }, 2, 1);
+    expect(result).toEqual({ move: undefined, nodes: 0, exhausted: false });
+  });
+
+  it("rejects invalid search depths before proposing a move", () => {
+    expect(() => chooseBoundedEndgameMove(position, rules, 2, 0)).toThrow();
+    expect(() => chooseBoundedEndgameMove(position, rules, 2, 13)).toThrow();
+  });
+
   it("rejects invalid node budgets before proposing a move", () => {
     expect(() => chooseBoundedEndgameMove(position, rules, 0, 1)).toThrow();
   });
