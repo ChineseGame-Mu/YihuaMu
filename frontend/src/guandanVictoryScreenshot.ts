@@ -59,9 +59,10 @@ export const createGuandanVictoryScreenshot = async (
   const hasDoubleUp =
     leadingTeam.length === input.players.length / 2 &&
     leadingTeam.every((seat) => seat % 2 === winningParity);
-  const winners = hasDoubleUp
-    ? leadingTeam
-    : input.finishOrder.filter((seat) => seat % 2 === winningParity);
+  // The award roster is defined by fixed partner seats, not finishing order.
+  const winners = input.players
+    .map((_, seat) => seat)
+    .filter((seat) => seat % 2 === winningParity);
   const winnerLines = winners
     .map((seat, index) =>
       svgText(
