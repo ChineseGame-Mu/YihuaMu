@@ -350,6 +350,29 @@ describe("automatic Guandan hand arrangement", () => {
     }
   });
 
+  test("keeps both physical deck copies distinct when identical cards appear", () => {
+    const hand: GuandanCard[] = [
+      suited("Six", "Clubs"),
+      suited("Six", "Clubs"),
+      suited("Six", "Diamonds"),
+      suited("Six", "Diamonds"),
+      { Joker: "Small" },
+      { Joker: "Small" },
+      { Joker: "Big" },
+      { Joker: "Big" },
+    ];
+    for (const strategy of ["balanced", "sequences", "sets"] as const) {
+      const groups = arrangeGuandanHand(hand, "Two", strategy);
+      const indexes = groups.flatMap(({ indexes }) => indexes);
+      expect(indexes).toHaveLength(hand.length);
+      expect(new Set(indexes).size).toBe(hand.length);
+      expect([...indexes].sort((a, b) => a - b)).toEqual(
+        hand.map((_, index) => index),
+      );
+      expect(groups.some(({ kind }) => kind === "joker-bomb")).toBe(true);
+    }
+  });
+
   test("preserves every original card index across seeded four-player deals", () => {
     const ranks: GuandanRank[] = [
       "Two",
