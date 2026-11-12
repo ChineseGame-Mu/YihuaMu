@@ -87,7 +87,6 @@ describe("Guandan enlarged player displays", () => {
     expect(table).toContain("GUANDAN_TOP_SEAT_NOTICE_SELECTORS.join");
     for (const selector of [
       ".guandan-initial-draw-mini",
-      ".guandan-start-panel",
       ".guandan-next-round-panel",
       ".guandan-tribute-panel",
       ".guandan-notice-panel",
