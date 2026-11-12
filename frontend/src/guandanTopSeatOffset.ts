@@ -1,7 +1,6 @@
 // Only transient notices displace the opposite player's seat. The permanent
 // public-table heading is placed separately so the resting offset stays zero.
 export const GUANDAN_TOP_SEAT_NOTICE_SELECTORS = [
-  ".guandan-start-panel",
   ".guandan-next-round-panel",
   ".guandan-tribute-panel",
   ".guandan-notice-panel",
