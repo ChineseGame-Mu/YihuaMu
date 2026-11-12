@@ -331,12 +331,19 @@ const GuandanTable: React.FunctionComponent = () => {
   const lastVisiblePlaysRef = React.useRef(state.tablePlays);
   React.useEffect(() => {
     if (state.nextRoundPhase === null) {
-      if (state.tablePlays.length > 0) lastVisiblePlaysRef.current = state.tablePlays;
+      if (state.tablePlays.length > 0) {
+        lastVisiblePlaysRef.current = state.tablePlays;
+      }
       if (finalTrickHold !== null) setFinalTrickHold(null);
       return;
     }
-    if (finalTrickHold !== null || lastVisiblePlaysRef.current.length === 0) return;
-    setFinalTrickHold({ plays: lastVisiblePlaysRef.current, until: Date.now() + 5000 });
+    if (finalTrickHold !== null || lastVisiblePlaysRef.current.length === 0) {
+      return;
+    }
+    setFinalTrickHold({
+      plays: lastVisiblePlaysRef.current,
+      until: Date.now() + 5000,
+    });
   }, [state.nextRoundPhase, state.tablePlays, finalTrickHold]);
   React.useEffect(() => {
     if (finalTrickHold === null) return;
@@ -347,8 +354,11 @@ const GuandanTable: React.FunctionComponent = () => {
     }, remaining);
     return () => window.clearTimeout(timer);
   }, [finalTrickHold]);
-  const showFinalTrickHold = state.nextRoundPhase !== null && finalTrickHold !== null;
-  const displayedTablePlays = showFinalTrickHold ? finalTrickHold.plays : state.tablePlays;
+  const showFinalTrickHold =
+    state.nextRoundPhase !== null && finalTrickHold !== null;
+  const displayedTablePlays = showFinalTrickHold
+    ? finalTrickHold.plays
+    : state.tablePlays;
   const previousNextRoundPhaseRef = React.useRef(state.nextRoundPhase);
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const lastTurnPromptKeyRef = React.useRef<string | null>(null);
@@ -2322,7 +2332,9 @@ const GuandanTable: React.FunctionComponent = () => {
                 document.body,
               )}
 
-            {state.matchWinner === null && state.nextRoundPhase !== null && !showFinalTrickHold && (
+            {state.matchWinner === null &&
+              state.nextRoundPhase !== null &&
+              !showFinalTrickHold && (
               <section
                 className="guandan-next-round-panel"
                 aria-label="下局开始"
