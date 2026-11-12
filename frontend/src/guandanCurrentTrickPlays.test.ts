@@ -111,6 +111,19 @@ describe("public current-trick history", () => {
     ).toEqual(finalPlays);
   });
 
+  test("holds final cards when completion flag drops before table history catches up", () => {
+    const completed = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    expect(
+      mergeCurrentTrickPlays(completed, [], true, false, completed[3]!.cards),
+    ).toEqual(completed);
+    expect(mergeCurrentTrickPlays(completed, [], true, false, [])).toEqual([]);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
