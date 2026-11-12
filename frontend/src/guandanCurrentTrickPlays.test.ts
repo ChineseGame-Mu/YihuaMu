@@ -55,6 +55,19 @@ describe("public current-trick history", () => {
     expect(history.flatMap((play) => play.cards)).toHaveLength(4);
   });
 
+  test("starts a fresh trick after the previous completed trick is collected", () => {
+    const completed = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    const next = { player: 1, cards: [card("Four")] };
+    expect(
+      mergeCurrentTrickPlays(completed, [next], true, false, next.cards),
+    ).toEqual([next]);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
