@@ -147,6 +147,7 @@ export const mergeCurrentTrickPlays = (
   if (
     incoming.length === 0 &&
     incomingLastPlay.length === 0 &&
+    !incomingTrickComplete &&
     previous.length > 0
   ) {
     return [];
