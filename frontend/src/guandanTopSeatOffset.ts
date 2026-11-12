@@ -13,6 +13,8 @@ export const GUANDAN_TOP_SEAT_NOTICE_SELECTORS = [
 export type GuandanPanelBounds = {
   top: number;
   bottom: number;
+  left?: number;
+  right?: number;
   width: number;
   height: number;
   display: string;
@@ -20,7 +22,7 @@ export type GuandanPanelBounds = {
 };
 
 export const calculateGuandanTopSeatOffset = (
-  zone: { top: number; bottom: number },
+  zone: { top: number; bottom: number; left?: number; right?: number },
   panels: readonly GuandanPanelBounds[],
 ): number => {
   let offset = 0;
@@ -31,7 +33,10 @@ export const calculateGuandanTopSeatOffset = (
       panel.width === 0 ||
       panel.height === 0 ||
       panel.bottom <= zone.top ||
-      panel.top >= zone.bottom
+      panel.top >= zone.bottom ||
+      // Side-mounted notices must not push the top player into the table center.
+      (panel.right !== undefined && zone.left !== undefined && panel.right <= zone.left) ||
+      (panel.left !== undefined && zone.right !== undefined && panel.left >= zone.right)
     ) {
       continue;
     }
