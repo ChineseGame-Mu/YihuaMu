@@ -86,6 +86,17 @@ describe("public current-trick history", () => {
     expect(held.flatMap((play) => play.cards)).toHaveLength(4);
   });
 
+  test("retains final seat cards when a completed-trick snapshot temporarily omits all plays", () => {
+    const completed = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    expect(mergeCurrentTrickPlays(completed, [], true, true, [])).toEqual(completed);
+    expect(mergeCurrentTrickPlays(completed, [], true, false, [])).toEqual([]);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
