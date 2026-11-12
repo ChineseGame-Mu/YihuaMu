@@ -324,6 +324,31 @@ const GuandanTable: React.FunctionComponent = () => {
   const joinPendingRef = React.useRef(false);
   const [joinBusy, setJoinBusy] = React.useState(false);
   const lastAnimatedHandSizeRef = React.useRef(0);
+  const [finalTrickHold, setFinalTrickHold] = React.useState<{
+    plays: typeof state.tablePlays;
+    until: number;
+  } | null>(null);
+  const lastVisiblePlaysRef = React.useRef(state.tablePlays);
+  React.useEffect(() => {
+    if (state.nextRoundPhase === null) {
+      if (state.tablePlays.length > 0) lastVisiblePlaysRef.current = state.tablePlays;
+      if (finalTrickHold !== null) setFinalTrickHold(null);
+      return;
+    }
+    if (finalTrickHold !== null || lastVisiblePlaysRef.current.length === 0) return;
+    setFinalTrickHold({ plays: lastVisiblePlaysRef.current, until: Date.now() + 5000 });
+  }, [state.nextRoundPhase, state.tablePlays, finalTrickHold]);
+  React.useEffect(() => {
+    if (finalTrickHold === null) return;
+    const remaining = Math.max(0, finalTrickHold.until - Date.now());
+    const timer = window.setTimeout(() => {
+      setFinalTrickHold(null);
+      lastVisiblePlaysRef.current = [];
+    }, remaining);
+    return () => window.clearTimeout(timer);
+  }, [finalTrickHold]);
+  const showFinalTrickHold = state.nextRoundPhase !== null && finalTrickHold !== null;
+  const displayedTablePlays = showFinalTrickHold ? finalTrickHold.plays : state.tablePlays;
   const previousNextRoundPhaseRef = React.useRef(state.nextRoundPhase);
   const hasAnimatedCurrentDealRef = React.useRef(false);
   const lastTurnPromptKeyRef = React.useRef<string | null>(null);
@@ -2297,7 +2322,7 @@ const GuandanTable: React.FunctionComponent = () => {
                 document.body,
               )}
 
-            {state.matchWinner === null && state.nextRoundPhase !== null && (
+            {state.matchWinner === null && state.nextRoundPhase !== null && !showFinalTrickHold && (
               <section
                 className="guandan-next-round-panel"
                 aria-label="下局开始"
@@ -2544,11 +2569,11 @@ const GuandanTable: React.FunctionComponent = () => {
                     )}
                 </div>
               )}
-              {state.tablePlays.length === 0 ? (
+              {displayedTablePlays.length === 0 ? (
                 <div>暂无出牌</div>
               ) : (
                 <div className="guandan-trick-plays">
-                  {state.tablePlays.map((play, playIndex) => (
+                  {displayedTablePlays.map((play, playIndex) => (
                     <div
                       className={`guandan-trick-play guandan-public-team-${
                         play.player % 2 === 0 ? "a" : "b"
