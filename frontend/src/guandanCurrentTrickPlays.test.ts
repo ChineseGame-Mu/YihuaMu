@@ -68,6 +68,24 @@ describe("public current-trick history", () => {
     ).toEqual([next]);
   });
 
+  test("keeps all final four seat cards while the completed trick remains on screen", () => {
+    const completed = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    const held = mergeCurrentTrickPlays(
+      completed,
+      [completed[3]!],
+      true,
+      true,
+      completed[3]!.cards,
+    );
+    expect(held).toEqual(completed);
+    expect(held.flatMap((play) => play.cards)).toHaveLength(4);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
