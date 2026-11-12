@@ -836,6 +836,8 @@ const GuandanTable: React.FunctionComponent = () => {
         return {
           top: rect.top,
           bottom: rect.bottom,
+          left: rect.left,
+          right: rect.right,
           width: rect.width,
           height: rect.height,
           display: style.display,
