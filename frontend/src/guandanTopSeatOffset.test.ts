@@ -24,6 +24,16 @@ describe("top seat dynamically clears visible public-table notices", () => {
     const selectors = GUANDAN_TOP_SEAT_NOTICE_SELECTORS;
     expect(selectors.join(",")).not.toContain(".guandan-zone-title");
     expect(selectors).toContain(".guandan-tribute-panel");
+    expect(selectors).not.toContain(".guandan-start-panel");
+  });
+
+  test("ignores notices outside the horizontal table bounds", () => {
+    expect(
+      calculateGuandanTopSeatOffset(
+        { ...zone, left: 300, right: 1000 },
+        [panel(110, 450, { left: 0, right: 250 })],
+      ),
+    ).toBe(0);
   });
 
   test("rests at the public-table edge when no notice is visible", () => {
