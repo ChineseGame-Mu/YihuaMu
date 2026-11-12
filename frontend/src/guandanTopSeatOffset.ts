@@ -34,8 +34,12 @@ export const calculateGuandanTopSeatOffset = (
       panel.bottom <= zone.top ||
       panel.top >= zone.bottom ||
       // Side-mounted notices must not push the top player into the table center.
-      (panel.right !== undefined && zone.left !== undefined && panel.right <= zone.left) ||
-      (panel.left !== undefined && zone.right !== undefined && panel.left >= zone.right)
+      (panel.right !== undefined &&
+        zone.left !== undefined &&
+        panel.right <= zone.left) ||
+      (panel.left !== undefined &&
+        zone.right !== undefined &&
+        panel.left >= zone.right)
     ) {
       continue;
     }
