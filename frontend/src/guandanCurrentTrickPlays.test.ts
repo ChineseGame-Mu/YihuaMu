@@ -97,6 +97,20 @@ describe("public current-trick history", () => {
     expect(mergeCurrentTrickPlays(completed, [], true, false, [])).toEqual([]);
   });
 
+  test("does not erase final cards when an interim snapshot omits table plays but retains last play", () => {
+    const finalPlays = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    // The last-play field can arrive before the table-play history catches up.
+    // An empty table_plays array is not by itself evidence of collection.
+    expect(
+      mergeCurrentTrickPlays(finalPlays, [], false, false, finalPlays[3]!.cards),
+    ).toEqual(finalPlays);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
