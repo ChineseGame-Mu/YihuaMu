@@ -34,6 +34,27 @@ describe("public current-trick history", () => {
     expect(afterSecond[1]?.player).toBe(1);
   });
 
+  test("preserves all four final seat plays across incremental snapshots", () => {
+    const plays = [
+      { player: 0, cards: [card("Four")] },
+      { player: 1, cards: [card("Six")] },
+      { player: 2, cards: [card("Eight")] },
+      { player: 3, cards: [card("Nine")] },
+    ];
+    let history: typeof plays = [];
+    for (const play of plays) {
+      history = mergeCurrentTrickPlays(
+        history,
+        [play],
+        false,
+        false,
+        play.cards,
+      );
+    }
+    expect(history.map((play) => play.player)).toEqual([0, 1, 2, 3]);
+    expect(history.flatMap((play) => play.cards)).toHaveLength(4);
+  });
+
   test("does not duplicate a full server snapshot", () => {
     const first = { player: 0, cards: [card("Four")] };
     const second = { player: 1, cards: [card("Six")] };
