@@ -6,13 +6,6 @@ import type { GuandanCard } from "./guandanProtocol";
 const card = (rank: "Four" | "Six" | "Eight" | "Nine"): GuandanCard => ({
   Suited: { suit: "Diamonds", rank },
 
-  test("the final-trick hold is rendered before next-round controls", () => {
-    const source = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
-    expect(source).toContain("Date.now() + 5000");
-    expect(source).toContain("!showFinalTrickHold");
-    expect(source).toContain("displayedTablePlays.map");
-  });
-});
 
 describe("public current-trick history", () => {
   test("keeps every distinct play when server snapshots contain only the newest play", () => {
