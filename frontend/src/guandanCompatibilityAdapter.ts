@@ -153,8 +153,12 @@ export const mergeCurrentTrickPlays = (
     return [];
   }
 
-  const base =
-    previousTrickComplete && !incomingTrickComplete ? [] : [...previous];
+  // A partial snapshot may drop table_plays while still reporting the final
+  // last_play. Do not collect the visible four seats until the server actually
+  // supplies a new trick or clears the last play.
+  const startsNextTrick =
+    previousTrickComplete && !incomingTrickComplete && incoming.length > 0;
+  const base = startsNextTrick ? [] : [...previous];
   const seen = new Set(base.map(trickPlayKey));
   for (const play of incoming) {
     const key = trickPlayKey(play);
