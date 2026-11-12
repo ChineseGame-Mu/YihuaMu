@@ -5,9 +5,16 @@ import type { GuandanCard } from "./guandanProtocol";
 
 const card = (rank: "Four" | "Six" | "Eight" | "Nine"): GuandanCard => ({
   Suited: { suit: "Diamonds", rank },
-
+});
 
 describe("public current-trick history", () => {
+  test("holds the last cards before next-round controls", () => {
+    const source = readFileSync(join(__dirname, "GuandanTable.tsx"), "utf8");
+    expect(source).toContain("Date.now() + 5000");
+    expect(source).toContain("!showFinalTrickHold");
+    expect(source).toContain("displayedTablePlays.map");
+  });
+
   test("keeps every distinct play when server snapshots contain only the newest play", () => {
     const first = [{ player: 0, cards: [card("Four"), card("Six")] }];
     const second = [{ player: 1, cards: [card("Eight"), card("Nine")] }];
