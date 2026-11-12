@@ -29,10 +29,9 @@ describe("top seat dynamically clears visible public-table notices", () => {
 
   test("ignores notices outside the horizontal table bounds", () => {
     expect(
-      calculateGuandanTopSeatOffset(
-        { ...zone, left: 300, right: 1000 },
-        [panel(110, 450, { left: 0, right: 250 })],
-      ),
+      calculateGuandanTopSeatOffset({ ...zone, left: 300, right: 1000 }, [
+        panel(110, 450, { left: 0, right: 250 }),
+      ]),
     ).toBe(0);
   });
 
