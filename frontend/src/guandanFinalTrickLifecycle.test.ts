@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { mergeCurrentTrickPlays } from "./guandanCompatibilityAdapter";
 import type { GuandanCard } from "./guandanProtocol";
 
@@ -27,8 +29,8 @@ describe("final trick lifecycle across server snapshots", () => {
 });
 
 test("new match snapshots do not carry completed trick history into a new round", () => {
-  const source = require("fs").readFileSync(
-    require("path").join(__dirname, "guandanCompatibilityAdapter.ts"),
+  const source = readFileSync(
+    join(__dirname, "guandanCompatibilityAdapter.ts"),
     "utf8",
   );
   expect(source).toContain("tableWasAuthoritativelyCleared || startedNewMatch ? [] : state.tablePlays");
