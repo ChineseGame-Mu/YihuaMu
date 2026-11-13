@@ -37,19 +37,17 @@ describe("top seat dynamically clears visible public-table notices", () => {
 
   test("right-side controls never push Robot 2 into the table center", () => {
     expect(
-      calculateGuandanTopSeatOffset(
-        { ...zone, left: 300, right: 1000 },
-        [panel(105, 490, { left: 840, right: 990, width: 150 })],
-      ),
+      calculateGuandanTopSeatOffset({ ...zone, left: 300, right: 1000 }, [
+        panel(105, 490, { left: 840, right: 990, width: 150 }),
+      ]),
     ).toBe(0);
   });
 
   test("central tribute notice still moves Robot 2 below the notice", () => {
     expect(
-      calculateGuandanTopSeatOffset(
-        { ...zone, left: 300, right: 1000 },
-        [panel(110, 235, { left: 550, right: 750, width: 200 })],
-      ),
+      calculateGuandanTopSeatOffset({ ...zone, left: 300, right: 1000 }, [
+        panel(110, 235, { left: 550, right: 750, width: 200 }),
+      ]),
     ).toBe(135);
   });
 
