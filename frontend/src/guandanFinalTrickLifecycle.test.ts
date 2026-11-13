@@ -34,3 +34,20 @@ test("new match snapshots do not carry completed trick history into a new round"
   expect(source).toContain("tableWasAuthoritativelyCleared || startedNewMatch ? [] : state.tablePlays");
   expect(source).toContain("startedNewMatch ? false : state.trickComplete");
 });
+
+test("replayed snapshots do not duplicate the final four visible plays", () => {
+  const plays = [
+    { player: 0, cards: [card("Four")] },
+    { player: 1, cards: [card("Six")] },
+    { player: 2, cards: [card("Eight")] },
+    { player: 3, cards: [card("Nine")] },
+  ];
+  let history: typeof plays = [];
+  for (const play of plays) {
+    history = mergeCurrentTrickPlays(history, [play], false, false, play.cards);
+  }
+  for (let replay = 0; replay < 3; replay++) {
+    history = mergeCurrentTrickPlays(history, plays, true, true, plays[3]!.cards);
+  }
+  expect(history).toEqual(plays);
+});
