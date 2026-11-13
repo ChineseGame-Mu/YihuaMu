@@ -29,8 +29,9 @@ export const calculateGuandanTopSeatOffset = (
     if (
       panel.display === "none" ||
       panel.visibility === "hidden" ||
-      panel.width === 0 ||
-      panel.height === 0 ||
+      panel.width <= 0 ||
+      panel.height <= 0 ||
+      panel.bottom <= panel.top ||
       panel.bottom <= zone.top ||
       panel.top >= zone.bottom ||
       // Only notices crossing the central top seat may displace it. A tall
