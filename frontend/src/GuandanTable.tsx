@@ -2447,6 +2447,11 @@ const GuandanTable: React.FunctionComponent = () => {
               !dealing &&
               !nextRoundPending &&
               serverDealt &&
+              // Show the anti-tribute announcement only before the very first
+              // accepted play. A cleared trick is also an empty table, but
+              // must never reopen this opening-only announcement.
+              state.handCounts.length === effectiveTableSize &&
+              state.handCounts.every((count) => count === 27) &&
               state.finishOrder.length === 0 &&
               state.lastPlay.length === 0 &&
               state.tablePlays.length === 0 && (
