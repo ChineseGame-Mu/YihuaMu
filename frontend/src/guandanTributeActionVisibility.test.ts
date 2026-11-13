@@ -30,8 +30,17 @@ describe("Guandan tribute action visibility", () => {
       /tributePending\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&/,
     );
     expect(table).toMatch(
-      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&\s*state\.finishOrder\.length === 0\s*&&\s*state\.lastPlay\.length === 0\s*&&\s*state\.tablePlays\.length === 0/,
+      /state\.tributeResisted\s*&&\s*!dealing\s*&&\s*!nextRoundPending\s*&&\s*serverDealt\s*&&[\s\S]*?state\.handCounts\.length === effectiveTableSize\s*&&\s*state\.handCounts\.every\(\(count\) => count === 27\)\s*&&\s*state\.finishOrder\.length === 0\s*&&\s*state\.lastPlay\.length === 0\s*&&\s*state\.tablePlays\.length === 0/,
     );
+  });
+
+  test("anti-tribute notice is opening-only, even after the table is cleared", () => {
+    // After any accepted play a player's hand has fewer than 27 cards.
+    // A new trick can empty lastPlay and tablePlays again, so both the
+    // public-table and unchanged opening hand-count guards are required.
+    expect(table).toContain("state.handCounts.every((count) => count === 27)");
+    expect(table).toContain("state.lastPlay.length === 0");
+    expect(table).toContain("state.tablePlays.length === 0");
   });
 
   test("gives the exchange action its own full-width, non-overlapping slot", () => {
