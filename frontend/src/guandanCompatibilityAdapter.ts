@@ -157,7 +157,10 @@ export const mergeCurrentTrickPlays = (
   // last_play. Do not collect the visible four seats until the server actually
   // supplies a new trick or clears the last play.
   const startsNextTrick =
-    previousTrickComplete && !incomingTrickComplete && incoming.length > 0;
+    previousTrickComplete &&
+    !incomingTrickComplete &&
+    incoming.length > 0 &&
+    incoming.some((play) => !previous.some((oldPlay) => trickPlayKey(oldPlay) === trickPlayKey(play)));
   const base = startsNextTrick ? [] : [...previous];
   const seen = new Set(base.map(trickPlayKey));
   for (const play of incoming) {
