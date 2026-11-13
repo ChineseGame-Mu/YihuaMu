@@ -272,9 +272,9 @@ export const adaptGuandanServerMessage = (
       const tableWasAuthoritativelyCleared =
         nextTableClearId > state.tableClearId;
       const currentTrickPlays = mergeCurrentTrickPlays(
-        tableWasAuthoritativelyCleared ? [] : state.tablePlays,
+        tableWasAuthoritativelyCleared || startedNewMatch ? [] : state.tablePlays,
         message.table_plays,
-        state.trickComplete,
+        startedNewMatch ? false : state.trickComplete,
         message.trick_complete,
         message.last_play,
       );
