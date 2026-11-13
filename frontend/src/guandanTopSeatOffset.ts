@@ -33,6 +33,14 @@ export const calculateGuandanTopSeatOffset = (
       panel.height === 0 ||
       panel.bottom <= zone.top ||
       panel.top >= zone.bottom ||
+      // Only notices crossing the central top seat may displace it. A tall
+      // right-hand control panel must not push Robot 2 into the play area.
+      (panel.left !== undefined &&
+        panel.right !== undefined &&
+        zone.left !== undefined &&
+        zone.right !== undefined &&
+        (panel.right <= (zone.left + zone.right) / 2 - 65 ||
+          panel.left >= (zone.left + zone.right) / 2 + 65)) ||
       // Side-mounted notices must not push the top player into the table center.
       (panel.right !== undefined &&
         zone.left !== undefined &&
