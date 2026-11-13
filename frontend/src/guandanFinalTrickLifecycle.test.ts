@@ -25,3 +25,12 @@ describe("final trick lifecycle across server snapshots", () => {
     expect(history).toEqual([]);
   });
 });
+
+test("new match snapshots do not carry completed trick history into a new round", () => {
+  const source = require("fs").readFileSync(
+    require("path").join(__dirname, "guandanCompatibilityAdapter.ts"),
+    "utf8",
+  );
+  expect(source).toContain("tableWasAuthoritativelyCleared || startedNewMatch ? [] : state.tablePlays");
+  expect(source).toContain("startedNewMatch ? false : state.trickComplete");
+});
