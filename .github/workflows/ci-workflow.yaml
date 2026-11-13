@@ -60,8 +60,8 @@ jobs:
         run: |
           test "$(yarn --silent prettier --version)" = "3.4.1"
           if ! yarn prettier --check; then
-            yarn prettier src/guandanAutoArrange.test.ts --write
-            git diff -- src/guandanAutoArrange.test.ts
+            yarn prettier src/guandanFinalTrickLifecycle.test.ts src/guandanNextTrickTransition.test.ts src/guandanTopSeatOffset.test.ts --write
+            git diff -- src/guandanFinalTrickLifecycle.test.ts src/guandanNextTrickTransition.test.ts src/guandanTopSeatOffset.test.ts
             echo "Prettier formatting differs; see exact patch above. No source changes committed by CI."
             exit 1
           fi
