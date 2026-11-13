@@ -44,6 +44,15 @@ describe("top seat dynamically clears visible public-table notices", () => {
     ).toBe(0);
   });
 
+  test("central tribute notice still moves Robot 2 below the notice", () => {
+    expect(
+      calculateGuandanTopSeatOffset(
+        { ...zone, left: 300, right: 1000 },
+        [panel(110, 235, { left: 550, right: 750, width: 200 })],
+      ),
+    ).toBe(135);
+  });
+
   test("rests at the public-table edge when no notice is visible", () => {
     expect(calculateGuandanTopSeatOffset(zone, [])).toBe(0);
   });
