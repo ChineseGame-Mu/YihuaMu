@@ -82,6 +82,16 @@ describe("top seat dynamically clears visible public-table notices", () => {
     ).toBe(0);
   });
 
+  test("ignores malformed notices with inverted or negative dimensions", () => {
+    expect(
+      calculateGuandanTopSeatOffset(zone, [
+        panel(110, 400, { width: -1 }),
+        panel(110, 400, { height: -1 }),
+        panel(400, 110, { height: 290 }),
+      ]),
+    ).toBe(0);
+  });
+
   test("returns to table edge after a notice disappears", () => {
     expect(calculateGuandanTopSeatOffset(zone, [panel(110, 260)])).toBe(160);
     expect(
