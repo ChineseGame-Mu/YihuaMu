@@ -1044,16 +1044,8 @@ const GuandanTable: React.FunctionComponent = () => {
       window.alert("请先从掼蛋山水首页选择牌室、输入姓名，并确认已连接及成功入座，再清空旧玩家。");
       return;
     }
-    const otherOnlineHuman = state.players.some(
-      (player, index) =>
-        index !== state.seat &&
-        !player.startsWith("机器人") &&
-        state.onlinePlayers[index],
-    );
-    if (otherOnlineHuman) {
-      window.alert("还有其他真人在线。请先让他们退出房间，再清空旧玩家。");
-      return;
-    }
+    // Do not block a reset based on a possibly stale client occupancy snapshot.
+    // The server checks live connections and rejects resets while another human is online.
     const confirmation = window.prompt(
       `清空房间 ${state.room} 将删除旧玩家、机器人座位和本局全部记录；仅保留您自己与房间号。\n此操作不可撤销。请输入房间号 ${state.room} 确认：`,
       "",
